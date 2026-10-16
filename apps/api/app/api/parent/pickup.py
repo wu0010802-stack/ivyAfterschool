@@ -21,6 +21,9 @@
 - BACKEND-524 ``POST /pickup-authorizations/{auth_id}/regenerate-code``：BACKEND-523（舊碼立即失效、
   重設連錯與鎖定；他人的授權與不存在同一 404）→ 200，新接送碼只在此回應出現一次，回應帶
   ``Cache-Control: no-store``。
+- BACKEND-449 ``POST /pickup-authorizations/{auth_id}/cancel``：BACKEND-422（他人的授權與不存在同一
+  404；已完成 / 已取消 409）→ 200。取消是保護性操作，只驗所有權，不套用 ``for_write`` 守衛（暫停 /
+  退班學生仍為 active 的授權家長也能取消）。
 """
 
 from __future__ import annotations
@@ -172,6 +175,18 @@ def regenerate_authorization_code(
     db.commit()
     # 新接送碼明碼只回一次：禁止任何快取
     response.headers["Cache-Control"] = "no-store"
+    return out
+
+
+@router.post("/pickup-authorizations/{auth_id}/cancel", response_model=PickupAuthorizationOut)
+def cancel_authorization(
+    auth_id: UUID,
+    parent: Annotated[CurrentParent, Depends(get_current_parent)],
+    db: Annotated[Session, Depends(get_db)],
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> PickupAuthorizationOut:
+    out = authorizations.cancel_authorization(db, auth_id, parent=parent, clock=clock)
+    db.commit()
     return out
 
 

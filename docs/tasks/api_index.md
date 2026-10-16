@@ -252,7 +252,7 @@
 | B446 | DELETE | `/pickup-persons/{id}` | → 204 |
 | B447 | GET | `/children/{id}/pickup-authorizations` | → `ParentAuthorization[]`（近 30 天起） |
 | B448 | POST | `/children/{id}/pickup-authorizations` | `{service_date（今天 ~ +config.limits.authorization_max_days_ahead 天）, pickup_person_id}` 或 `{service_date, proxy_name, proxy_phone}` → 201 `{authorization: ParentAuthorization, code}`（6 位接送碼只回一次）；409 `authorization_limit_reached`（同日上限為後台設定 pickup.authorization.max_active_per_day） |
-| B449 | POST | `/pickup-authorizations/{id}/cancel` | → `ParentAuthorization`；409 `authorization_not_active` |
+| B449 | POST | `/pickup-authorizations/{id}/cancel` | → `ParentAuthorization`；他人的 / 不存在同一 404 `pickup_authorization_not_found`；409 `authorization_not_active`；只驗所有權，不套用暫停 / 退班的寫入守衛（保護性操作） |
 | B524 | POST | `/pickup-authorizations/{id}/regenerate-code` | → `{authorization: ParentAuthorization, code}`（新碼只回一次，舊碼立即失效、連錯次數與鎖定重設）；409 `authorization_not_active` / `authorization_expired` |
 | B479 | GET | `/children/{id}/exams` | → `Page[{exam_id, name, exam_type_name, exam_date, published_at, subject_count}]`（只含已發布） |
 | B480 | GET | `/children/{id}/exams/{exam_id}` | → `{exam_id, name, exam_type_name, exam_date, note, subjects: [{subject_name, full_score, score, is_absent, note}]}` |
