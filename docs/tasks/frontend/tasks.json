@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 260,
-  "last_updated": "2026-10-16T14:35:41Z",
+  "version": 261,
+  "last_updated": "2026-10-16T14:36:56Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4973,11 +4973,11 @@
     {
       "id": "FRONTEND-199",
       "title": "實作 components/pickup/PickupCreateDialog.vue：員工代建接送請求（家長來電等情境）",
-      "description": "建立 `apps/web/src/components/pickup/PickupCreateDialog.vue`（domain_spec M7 流程 7：員工替家長建立請求 `source = staff`；不受家長可發起時段限制，BACKEND-406）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`modelValue`、`presetStudent?: {id, name, student_no, class_name}`、`classFilter?: {id, name}`（POS 中欄目前選的班級，全部班級時不傳）、`board: Pick<ReturnType<typeof usePickupBoard>, 'create'>`；emits `update:modelValue`、`created(req)`。\n- 欄位：學生（presetStudent 時唯讀顯示「{name}（{student_no}・{class_name}）」；否則 `StudentSelect` FRONTEND-096，有 classFilter 時傳 `classId = classFilter.id` 只查該班、placeholder「輸入學號或姓名（{classFilter.name}）」）、家長預計抵達時間（選填，el-time-select 步進 5 分，不可早於現在 −5 分，placeholder「不指定」）。\n- 說明（淡灰底 info 區塊）「員工代建的請求不會通知家長；系統會依作業進度自動產生回覆供參考。」；送出鈕「建立請求」。\n- 送出 `board.create({student_id, expected_arrival_at?})` → `ElMessage.success('已建立接送請求')` → emit created。\n- 錯誤：`pickup_request_exists` →「此學生今天已有進行中的接送請求」；`student_not_available` / `not_service_day` / `expected_arrival_in_past` 顯示後端 message。\n\n**驗收標準**\n- body 正確（無時間時不送 expected_arrival_at）；錯誤訊息。",
+      "description": "建立 `apps/web/src/components/pickup/PickupCreateDialog.vue`（domain_spec M7 流程 7：員工替家長建立請求 `source = staff`；不受家長可發起時段限制，BACKEND-406）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`modelValue`、`presetStudent?: {id, name, student_no, class_name}`、`classFilter?: {id, name}`（POS 中欄目前選的班級，全部班級時不傳）、`board: Pick<ReturnType<typeof usePickupBoard>, 'create'>`；emits `update:modelValue`、`created(req)`。\n- 欄位：學生（presetStudent 時唯讀顯示「{name}（{student_no}・{class_name}）」；否則 `StudentSelect` FRONTEND-096，有 classFilter 時傳 `classId = classFilter.id` 只查該班、placeholder「輸入學號或姓名（{classFilter.name}）」）、家長預計抵達時間（選填，el-time-select 步進 5 分，最早為開啟當下「現在 −5 分」進位到 5 分、到 21:00，可清除，placeholder「不指定」）。學生未選時欄位下「請選擇學生」、不送出。FormDialog sm「代建接送請求」，dialog 內輸入框沿用預設高度（稿 decision）；presetStudent 的唯讀列高 ≥ 44px。\n- 說明（淡灰底 info 區塊）「員工代建的請求不會通知家長；系統會依作業進度自動產生回覆供參考。」；送出鈕「建立請求」。\n- 送出 `board.create({student_id, expected_arrival_at?})`（沒選時間不送 expected_arrival_at）→ `ElMessage.success('已建立接送請求')` → emit created 並關閉（emit update:modelValue false）；`board.create` 回 null（404 / 409 invalid_pickup_status 已由 board 提示並重新整理）時不提示成功、直接關閉。\n- 錯誤（表單上方 error alert）：`pickup_request_exists` →「此學生今天已有進行中的接送請求」；`student_not_available` / `not_service_day` / `expected_arrival_in_past` 等顯示後端 message（沒有時 '建立失敗，請稍後再試'）；再次送出時先清掉上一次的錯誤。\n\n**驗收標準**\n- body 正確（無時間時不送 expected_arrival_at）；錯誤訊息。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupCreateDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-188",
@@ -4997,7 +4997,10 @@
           "PickupCreateDialog omits empty arrival time：未選時間 → body 深等於 {student_id:'s1'}",
           "PickupCreateDialog requires student when not preset：未選學生點送出 → 文字含 '請選擇學生'，無請求",
           "PickupCreateDialog shows existing request conflict：回 409 pickup_request_exists → 文字含 '此學生今天已有進行中的接送請求'",
-          "PickupCreateDialog limits student search to class filter：classFilter {id:'c3',name:'中年級班'}、未預選學生 → StudentSelect 的 classId prop === 'c3'，placeholder 為 '輸入學號或姓名（中年級班）'"
+          "PickupCreateDialog limits student search to class filter：classFilter {id:'c3',name:'中年級班'}、未預選學生 → StudentSelect 的 classId prop === 'c3'，placeholder 為 '輸入學號或姓名（中年級班）'；沒有 classFilter 時 classId 為 undefined、placeholder 為 '輸入學號或姓名搜尋'",
+          "PickupCreateDialog offers arrival times from five minutes ago：現在台北 16:02 → 時間選項第一個 '16:00'、第二個 '16:05'、最後一個 '21:00'，placeholder 為 '不指定'",
+          "PickupCreateDialog shows backend message for unavailable student：依序回 409 student_not_available {message:'學生今天請假、缺席或已離班'}、422 expected_arrival_in_past {message:'預計抵達時間不可早於現在'} → 文字依序含各自的訊息，第二次不再含第一次的訊息",
+          "PickupCreateDialog closes quietly when board already handled the error：board.create 回 null → emitted('update:modelValue')[0] 深等於 [false]、沒有 emit created、body 不含 '已建立接送請求'"
         ],
         "run": "just web-test src/components/pickup/PickupCreateDialog.spec.ts -t \"PickupCreateDialog\"",
         "notes": ""
