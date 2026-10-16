@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 291,
-  "last_updated": "2026-10-16T15:31:13Z",
+  "version": 292,
+  "last_updated": "2026-10-16T15:33:28Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3777,7 +3777,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveFormDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
@@ -3785,7 +3785,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "[review-r10-f7 打回] description「其他錯誤 ElMessage.error(errorMessage(err, '送出失敗，請稍後再試'))，dialog 保持開啟」沒有對應測試：突變把 showError 最後的 ElMessage.error 拿掉、或改成 emit update:modelValue(false) 關閉 dialog，tdd.run 12 個測試全綠（未驗收）。真實 Chromium 實測目前行為正確（500 → 顯示後端 message、dialog 保持開啟）。驗收：新增 red_case 與測試「POST 回 500（或非 validation_error 的其他錯誤）→ 畫面出現 ElMessage 錯誤文字（後端 message；無 message 時「送出失敗，請稍後再試」）、沒有 emit created / update:modelValue、表單值保留」，上述兩個突變都要轉紅。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/leaves/LeaveFormDialog.spec.ts",
@@ -3807,9 +3807,9 @@
         "notes": "happy-dom 下在 daterange 輸入框打字不會觸發選取，spec 以 el-date-picker 元件本身 emit update:modelValue / change 模擬在面板上點選；disabled-date 與快捷鍵以元件 props 驗證。表單含真實 daterange 與 StudentSelect，describe 逾時放寬為 20 秒。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f7",
-        "notes": "review-r10-f7 打回 1 項（見 risk_notes）：description 新增的「其他錯誤 ElMessage.error、dialog 保持開啟」沒有測試，突變拿掉訊息或改成關閉 dialog 時 12 個測試全綠。其餘通過：tdd.run 12/12 綠，7 條 red_case 皆以同名測試選到；紅燈 31b22bf（LeaveFormDialog.vue 不存在全紅）先於實作 f1e068c。description 其餘逐條相符：FormDialog md、標題「代登記請假」、送出鈕「送出」、dirty 關閉確認；StudentSelect 預選 presetStudent（每次開啟以 key 重建）；假別三段無預設；daterange 30 天前以前停用、快捷「今天 / 明天」、最早日提示；原因 ≤ 200 字計數、去空白後為空不帶 reason；info alert；前端必填與 61 天上限不送請求；leave_overlap（同一天只顯示一天）/ no_service_days_in_range / student_not_active / 422 欄位對應（start_date / end_date 對到期間欄，合理）。稿 page-leaves.html 兩條 LeaveFormDialog decisions 逐項相符。tdd.notes 以元件 emit 模擬選取、讀 props 驗 disabled-date 與快捷的作法可接受，已用真實 Chromium（1024×768、Asia/Taipei）補驗：dialog 寬 560；點「明天」→ 兩格皆為明天；左面板退到上個月時 30 天前前一天為 disabled、最早日可選，點停用格不改值；點最早日與 +2 天 → 期間正確；打字輸入 62 天 →「單筆請假最長 61 天」且無 POST，61 天 → POST body 正確；500 → ElMessage 顯示後端 message、dialog 保持開啟；成功 → emit created 並關閉。突變（除打回項 2 項外）10 項皆轉紅：61 天上限 +1、原因不去空白、重疊同一天顯示成區間、end_date 不對到期間欄、最早日改 31 天、不檢查學生、student_not_active 放到期間欄、拿掉 dirty、成功不關閉、假別預設病假；還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯（全專案錯誤在他人進行中的 PickupProxyView.spec.ts、PickupAuthorizationsView.vue）。殘留：(1) 兩個測試名稱以「shows student not active:」開頭但內容是 422 欄位對應與 dirty 確認，建議改名。(2) today / 最早日 / 快捷在元件建立時算一次；頁面若跨台北午夜仍保持掛載，「今天」快捷與最早日會晚一天（員工代登記後端沒有日期窗，欄位會顯示實際日期），建議改在每次開啟時重算。"
+        "notes": "review-r10-f7 複審通過。打回項（其他錯誤的 ElMessage / dialog 保持開啟沒有測試）已補：ba87496 新增「shows other errors and keeps dialog open」（500 顯示後端 message、503 空 message 顯示「送出失敗，請稍後再試」、兩次都沒有 emit created / update:modelValue、假別 / 期間 / 原因保留）。初審的兩個突變（拿掉 ElMessage.error、改成 emit 關閉）重跑皆轉紅，另把預設文字改掉也轉紅，還原後 diff 乾淨。一併審的實作改動：today / 最早可選日 / 快捷改為每次開啟以 todayTaipei() 重算（f2cda52；紅燈 ba87496「recomputes today on each open」台北 23:59 開、00:01 再開），description 已寫回，合理；拿掉開啟時重算的突變轉紅。兩個測試已改名（maps validation errors to fields、confirms before closing dirty form）。tdd.run 14/14 綠，9 條 red_case 皆以同名測試選到；commit 順序 ba87496（測試）→ f2cda52（修正）→ def5142（in_review）。初審已驗的部分不變：description 與稿 page-leaves.html 兩條 LeaveFormDialog decisions 逐項相符；真實 Chromium（1024×768、Asia/Taipei）實測 dialog 560、「明天」快捷、30 天前前一天 disabled、點選期間、62 天擋下無 POST、61 天送出、500 顯示後端訊息且 dialog 保持開啟、成功關閉；初審 10 項突變皆轉紅。web-lint 乾淨；web-typecheck 乾淨（exit 0）。殘留：dialog 開著期間跨過台北午夜時，最早日與快捷要到下次開啟才換日（員工代登記後端沒有日期窗，欄位顯示實際日期）。"
       }
     },
     {
