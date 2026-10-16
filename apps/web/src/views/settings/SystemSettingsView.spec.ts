@@ -209,6 +209,20 @@ async function answerMessageBox(text: string): Promise<void> {
   await settle()
 }
 
+/** hash router 的上一頁 / 下一頁：popstate 觸發導航後瀏覽器緊接著派發 hashchange */
+async function fireHashChange(): Promise<void> {
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+  await settle()
+}
+
+/** 被 hashchange 關掉的確認框不會送出結果、導航永遠不結束：以逾時判斷 */
+function settledWithin(promise: Promise<unknown>, ms = 1000): Promise<string> {
+  return Promise.race([
+    promise.then(() => 'settled'),
+    new Promise<string>((resolve) => setTimeout(() => resolve('pending'), ms)),
+  ])
+}
+
 describe('SystemSettingsView', () => {
   beforeEach(() => {
     mock = createApiMock(adminHttp)
@@ -331,6 +345,43 @@ describe('SystemSettingsView', () => {
     expect(document.body.textContent).toContain('尚未儲存的變更將會遺失')
     await answerMessageBox('繼續編輯')
     await switching
+    expect(router.currentRoute.value.query.tab).toBe('pickup')
+    expect(activeTabTitle(wrapper)).toBe('接送')
+    expect(expireMinutesValue(wrapper)).toBe('90')
+  })
+
+  it('SystemSettingsView keeps asking when browser back fires hashchange', async () => {
+    mock.onGet(LIST_URL).reply(200, { items: settingsFixture() })
+    const { wrapper, router } = await mountView('/settings/system?tab=pickup')
+    await setExpireMinutes(wrapper, '90')
+
+    const leaving = router.push('/students')
+    await settle()
+    await fireHashChange()
+    await answerMessageBox('繼續編輯')
+    expect(await settledWithin(leaving)).toBe('settled')
+    expect(router.currentRoute.value.path).toBe('/settings/system')
+    expect(router.currentRoute.value.query.tab).toBe('pickup')
+    expect(expireMinutesValue(wrapper)).toBe('90')
+
+    const leavingAgain = router.push('/students')
+    await settle()
+    await fireHashChange()
+    await answerMessageBox('放棄變更')
+    expect(await settledWithin(leavingAgain)).toBe('settled')
+    expect(router.currentRoute.value.path).toBe('/students')
+  })
+
+  it('SystemSettingsView keeps asking on tab history with hashchange', async () => {
+    mock.onGet(LIST_URL).reply(200, { items: settingsFixture() })
+    const { wrapper, router } = await mountView('/settings/system?tab=pickup')
+    await setExpireMinutes(wrapper, '90')
+
+    const switching = router.push('/settings/system?tab=line')
+    await settle()
+    await fireHashChange()
+    await answerMessageBox('繼續編輯')
+    expect(await settledWithin(switching)).toBe('settled')
     expect(router.currentRoute.value.query.tab).toBe('pickup')
     expect(activeTabTitle(wrapper)).toBe('接送')
     expect(expireMinutesValue(wrapper)).toBe('90')

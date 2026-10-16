@@ -89,4 +89,20 @@ describe('useFormDirty', () => {
     await clickDialogButton('繼續編輯')
     expect(await kept).toBe(false)
   })
+
+  it('useFormDirty confirmDiscardChanges stays open on hashchange', async () => {
+    // hash router 的上一頁 / 下一頁：路由守衛在 popstate 期間開確認框，緊接著瀏覽器派發 hashchange
+    const kept = confirmDiscardChanges()
+    await waitForDialog()
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await waitForDialog()
+
+    const overlay = Array.from(document.body.querySelectorAll<HTMLElement>('.el-overlay.is-message-box')).at(-1)
+    expect(overlay?.textContent).toContain('尚未儲存的變更將會遺失，確定要關閉嗎？')
+    expect(overlay?.style.display).not.toBe('none')
+    await clickDialogButton('繼續編輯')
+    // 被 hashchange 關掉的確認框不會送出結果，Promise 永遠不結束：以逾時判斷
+    const result = await Promise.race([kept, new Promise((resolve) => setTimeout(() => resolve('pending'), 500))])
+    expect(result).toBe(false)
+  })
 })

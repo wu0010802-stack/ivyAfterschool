@@ -196,6 +196,20 @@ async function answerMessageBox(text: string): Promise<void> {
   await settle()
 }
 
+/** hash router 的上一頁 / 下一頁：popstate 觸發導航後瀏覽器緊接著派發 hashchange */
+async function fireHashChange(): Promise<void> {
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+  await settle()
+}
+
+/** 被 hashchange 關掉的確認框不會送出結果、導航永遠不結束：以逾時判斷 */
+function settledWithin(promise: Promise<unknown>, ms = 1000): Promise<string> {
+  return Promise.race([
+    promise.then(() => 'settled'),
+    new Promise<string>((resolve) => setTimeout(() => resolve('pending'), ms)),
+  ])
+}
+
 describe('RolesView', () => {
   beforeEach(() => {
     mock = createApiMock(adminHttp)
@@ -274,6 +288,43 @@ describe('RolesView', () => {
     await leaving
 
     expect(router.currentRoute.value.path).toBe('/settings/roles')
+    expect(detailName(wrapper)).toBe('資深行政')
+  })
+
+  it('RolesView keeps asking when browser back fires hashchange', async () => {
+    mock.onGet(ROLES_URL).reply(200, rolesFixture())
+    const { wrapper, router } = await mountView('/settings/roles?role=clerk')
+    await setDetailName(wrapper, '資深行政')
+
+    const leaving = router.push('/students')
+    await settle()
+    await fireHashChange()
+    await answerMessageBox('繼續編輯')
+    expect(await settledWithin(leaving)).toBe('settled')
+    expect(router.currentRoute.value.path).toBe('/settings/roles')
+    expect(router.currentRoute.value.query.role).toBe('clerk')
+    expect(detailName(wrapper)).toBe('資深行政')
+
+    const leavingAgain = router.push('/students')
+    await settle()
+    await fireHashChange()
+    await answerMessageBox('放棄變更')
+    expect(await settledWithin(leavingAgain)).toBe('settled')
+    expect(router.currentRoute.value.path).toBe('/students')
+  })
+
+  it('RolesView keeps asking on role history with hashchange', async () => {
+    mock.onGet(ROLES_URL).reply(200, rolesFixture())
+    const { wrapper, router } = await mountView('/settings/roles?role=clerk')
+    await setDetailName(wrapper, '資深行政')
+
+    const switching = router.push('/settings/roles?role=tutor')
+    await settle()
+    await fireHashChange()
+    await answerMessageBox('繼續編輯')
+    expect(await settledWithin(switching)).toBe('settled')
+    expect(router.currentRoute.value.query.role).toBe('clerk')
+    expect(selectedCardName(wrapper)).toBe('行政')
     expect(detailName(wrapper)).toBe('資深行政')
   })
 
