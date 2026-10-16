@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 271,
-  "last_updated": "2026-10-16T14:58:26Z",
+  "version": 272,
+  "last_updated": "2026-10-16T15:01:40Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2754,11 +2754,11 @@
     {
       "id": "FRONTEND-087",
       "title": "實作 components/student/StudentDetailPanel.vue：學生詳情（基本資料、監護人、成績紀錄、編輯 / 封存）",
-      "description": "建立 `apps/web/src/components/student/StudentDetailPanel.vue`。移植 ivy `FE:src/components/student/StudentDetailPanel.vue` 的「摘要 header + tabs + 編輯 dialog」骨架；**去掉** lifecycle、費用、活動、健康成長、溝通紀錄、IEP、在學證明等分頁。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`studentId: string`；emits `changed()`、`close()`。\n**內容**\n- 載入 `getStudent(id)`（切換 id 時取消舊請求的結果採用，以序號防護）；載入中 skeleton；404 → EmptyState「找不到此學生，可能已被刪除」。\n- header：照片（`StudentPhotoUploader` FRONTEND-090）、姓名、學號、狀態 tag、年級、安親班班級、就讀國小與班級；封存學生顯示「已封存（{formatDate(archived_at)}）」。\n- 按鈕（`students:write`，封存學生不顯示）：「編輯」→ `StudentFormDialog`（FRONTEND-089）；「封存」→ 確認「封存後此學生不會出現在出勤、接送等名單，確定要封存 {name} 嗎？」→ `archiveStudent` → emit changed。\n- 「永久刪除」（只有持 `students:purge`、且學生已封存 `archived_at` 有值、status 為 `withdrawn` 才顯示，danger 文字按鈕置於 header 右側 ⋮ 選單）→ `StudentPurgeDialog`（FRONTEND-100）→ purged 後重新載入詳情並 emit changed。\n- tabs：\n  - 基本資料：性別、生日、入學日、退班日、備註，以及 `StudentSensitiveFields`（FRONTEND-088）。\n  - 監護人：`GuardianManager`（FRONTEND-091，傳入 detail.guardians 作為初始資料、detail.name 作為 studentName、學生已封存時 readonly）。\n  - 成績紀錄（有 `exams:read` 才顯示）：`StudentExamHistoryTab`（FRONTEND-240）。\n- 分頁存 `route.query.tab`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/student/StudentDetailPanel.vue`。移植 ivy `FE:src/components/student/StudentDetailPanel.vue` 的「摘要 header + tabs + 編輯 dialog」骨架；**去掉** lifecycle、費用、活動、健康成長、溝通紀錄、IEP、在學證明等分頁。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`studentId: string`；emits `changed()`（編輯、封存、照片更新、永久刪除後，讓列表重新載入目前頁）。已核可稿的詳情內沒有關閉鈕，抽屜的關閉與清掉 `query.student` 由 FRONTEND-085 處理，本元件不 emit close。\n**內容**\n- 載入 `getStudent(id)`（切換 id 時取消舊請求的結果採用，以序號防護）；載入中 skeleton；404 → EmptyState「找不到此學生，可能已被刪除」；其他錯誤 → EmptyState error「無法載入學生資料」+「重試」。\n- header：照片（`StudentPhotoUploader` FRONTEND-090，有 `students:write` 且未封存才可編輯；上傳成功 emit changed）、姓名 20px + 狀態 tag、「學號（等寬）・年級・安親班班級（無「未分班」）」換行「就讀國小 short_name 與學校班級（無國小「未填就讀國小」）」；封存學生橘字「已封存（{formatDate(archived_at)}）」。\n- 按鈕（`students:write`，封存學生不顯示）：「編輯」→ `StudentFormDialog`（FRONTEND-089）；「封存」（danger plain）→ 確認框標題「封存學生」、內容「封存後此學生不會出現在出勤、接送等名單，確定要封存 {name} 嗎？」、確定鈕紅色「封存」→ `archiveStudent` → 以回傳值更新 header、ElMessage.success「已封存」、emit changed。\n- 「永久刪除」（只有持 `students:purge`、且學生已封存 `archived_at` 有值、status 為 `withdrawn` 才顯示，danger 文字按鈕置於 header 右側 ⋮ 選單）→ `StudentPurgeDialog`（FRONTEND-100）→ purged 後重新載入詳情（不顯示骨架）並 emit changed。\n- tabs：\n  - 基本資料：性別、生日、入學日、退班日、備註，以及 `StudentSensitiveFields`（FRONTEND-088）。\n  - 監護人（分頁標題「監護人（{人數}）」）：`GuardianManager`（FRONTEND-091，傳入 detail.guardians 作為初始資料、detail.name 作為 studentName、學生已封存時 readonly）；GuardianManager emit change 後靜默重抓詳情以更新人數（不顯示骨架）。\n  - 成績紀錄（有 `exams:read` 才顯示）：`StudentExamHistoryTab`（FRONTEND-240），分頁 lazy（沒切到前不掛載、不發請求）。\n- 分頁存 `route.query.tab`（basic / guardians / exams；不認得或沒有 exams:read 時為 basic）。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentDetailPanel.vue",
       "source_ref": "FE:src/components/student/StudentDetailPanel.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
@@ -2781,14 +2781,25 @@
         "red_cases": [
           "StudentDetailPanel renders header and basic info：GET /admin/students/s1 回 {name:'王小明',student_no:'S1001',status:'active',grade_level:3,class:{name:'低年級A班'},school:{short_name:'某某國小'},school_class:'三年二班',birthday:'2018-05-02',...} → 文字含 '王小明'、'S1001'、'在學'、'三年級'、'2018/05/02'",
           "StudentDetailPanel archives with confirmation：students:write → 點 '封存' → body 含 '確定要封存 王小明 嗎？'；確認 → POST /admin/students/s1/archive，emitted('changed').length === 1",
-          "StudentDetailPanel hides write actions for readers and archived students：permissions ['students:read'] → 沒有 '編輯'、'封存'；students:write 但 archived_at 有值 → 文字含 '已封存（' 且沒有 '編輯'",
-          "StudentDetailPanel shows exam tab only with exams:read：無 exams:read → tab 標題不含 '成績紀錄'；有 → 含",
-          "StudentDetailPanel ignores stale responses when switching：studentId 's1' 的請求 300ms 後回、改為 's2' 後 10ms 回 → 最終顯示 s2 的姓名",
+          "StudentDetailPanel hides write actions for readers and archived students：permissions ['students:read'] → 沒有 '編輯'、'封存'，StudentPhotoUploader editable false；students:write 但 archived_at 有值 → 文字含 '已封存（' 且沒有 '編輯'、'封存'，StudentPhotoUploader editable false",
+          "StudentDetailPanel shows exam tab only with exams:read：無 exams:read → tab 標題為 ['基本資料','監護人（1）']、不含 '成績紀錄'；有 → 含；成績紀錄分頁切到前不掛載 StudentExamHistoryTab，切到後 props 為 {studentId:'s1'}",
+          "StudentDetailPanel ignores stale responses when switching：studentId 's1' 的請求先不回應、改為 's2' 後 s2 先回 → 顯示 s2；之後 s1 才回 → 仍顯示 s2 的姓名與學號（以可控的 Promise 決定先後，取代 300ms / 10ms 計時，順序相同、不依賴時間）",
           "StudentDetailPanel not found state：GET 回 404 student_not_found → 文字含 '找不到此學生，可能已被刪除'",
-          "StudentDetailPanel shows purge only for archived withdrawn students with permission：permissions 含 students:purge、student archived_at 有值且 status 'withdrawn' → ⋮ 含 '永久刪除'，點擊開啟 dialog（文字含 '請輸入學號 S1001 以確認'）；status 'suspended' 或未封存 → 不含；無 students:purge → 不含"
+          "StudentDetailPanel shows purge only for archived withdrawn students with permission：permissions 含 students:purge、student archived_at 有值且 status 'withdrawn' → ⋮（aria-label 更多操作）選單為 ['永久刪除']，點擊開啟 dialog（文字含 '請輸入學號 S1001 以確認'）",
+          "StudentDetailPanel hides purge in other cases：status 'suspended' 且已封存、status 'withdrawn' 但未封存、沒有 students:purge → 都沒有 ⋮ 也沒有 '永久刪除'",
+          "StudentDetailPanel shows fallbacks for missing class and school：class / school / school_class / gender / note 為 null → meta 兩行為 ['S1001・三年級・未分班','未填就讀國小']，性別與備註為 '—'",
+          "StudentDetailPanel cancel archive keeps student：封存確認框選 '取消' → 沒有 POST、沒有 emit changed",
+          "StudentDetailPanel edits via form dialog：點 '編輯' → StudentFormDialog modelValue true、student 為目前詳情；dialog emit saved（改名 / 改年級）→ header 更新、emitted('changed') 一次",
+          "StudentDetailPanel emits changed after photo upload：StudentPhotoUploader emit uploaded(url) → photoUrl prop 更新、emitted('changed') 一次",
+          "StudentDetailPanel passes guardians and refreshes count after change：GuardianManager props {studentId:'s1',studentName:'王小明',initial:[g1],readonly:false}；emit change → 再 GET 詳情一次、分頁標題 '監護人（2）'、不顯示骨架",
+          "StudentDetailPanel guardians readonly when archived：已封存且 ?tab=guardians → 作用中分頁為監護人、GuardianManager readonly true",
+          "StudentDetailPanel syncs tab with query：點 '監護人' → query.tab 'guardians'（保留 query.student）；push ?tab=exams → 作用中為 '成績紀錄'",
+          "StudentDetailPanel falls back to basic tab without exam permission：沒有 exams:read 且 ?tab=exams → 作用中為 '基本資料'",
+          "StudentDetailPanel shows retry on load failure：GET 500 → '無法載入學生資料'；'重試' 回 200 → 顯示王小明",
+          "StudentDetailPanel reloads and emits changed after purge：永久刪除 dialog 輸入學號送出 → POST purge、再 GET 詳情一次並顯示新資料、emitted('changed') 一次"
         ],
         "run": "just web-test src/components/student/StudentDetailPanel.spec.ts -t \"StudentDetailPanel\"",
-        "notes": ""
+        "notes": "StudentPhotoUploader / GuardianManager / StudentExamHistoryTab / StudentFormDialog 以 vi.mock 替身驗證傳入的 props 與完成事件（各自已有完整測試；避免它們各自發請求與多個 el-select 拖慢 happy-dom）；StudentSensitiveFields 與 StudentPurgeDialog 用真實元件。"
       },
       "review": {
         "status": "pending",
