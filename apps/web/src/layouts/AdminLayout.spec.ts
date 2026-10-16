@@ -230,7 +230,9 @@ describe('AdminLayout', () => {
     })
     await nextTick()
 
-    expect(store.items.map((n) => n.id)).toEqual(['n1'])
+    // 卸載時收件匣已清空（換人登入不殘留），且重新啟動的 ws 收到 n2 也不會寫入（通知綁定已解除）
+    expect(store.items).toEqual([])
+    expect(store.unreadCount).toBe(0)
   })
 
   it('AdminLayout survives a failed notification fetch', async () => {
