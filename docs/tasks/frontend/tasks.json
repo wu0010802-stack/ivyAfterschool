@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 262,
-  "last_updated": "2026-10-16T14:37:38Z",
+  "version": 263,
+  "last_updated": "2026-10-16T14:38:37Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2663,7 +2663,7 @@
     {
       "id": "FRONTEND-085",
       "title": "實作 views/StudentWorkbenchView.vue：學生工作台（列表 + 詳情面板）",
-      "description": "建立 `apps/web/src/views/StudentWorkbenchView.vue`（路由 `/students`，`students:read`）。移植 ivy `FE:src/views/StudentWorkbenchView.vue` 的左右兩欄與 query 驅動選取；**去掉** TodayTasksPanel、招生 / 在籍統計連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n- 左：`StudentListPanel`（FRONTEND-086）；右：`StudentDetailPanel`（FRONTEND-087），以 `route.query.student` 決定選中的學生（點列 → `router.replace` 帶入）。\n- 視窗寬 ≥ 1440：左右雙欄（詳情固定寬 520）；< 1440：詳情改為右側 el-drawer（寬 640）；關閉 drawer 清掉 query.student。\n- 詳情中編輯 / 封存 / 照片更新後，通知列表重新載入目前頁（列表 expose `reload`）。\n- 沒選學生時右側顯示「從左側選擇學生以檢視詳情」。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/StudentWorkbenchView.vue')`。\n\n**驗收標準**\n- 點列表列後 query 與詳情同步；直接以 query 進入時開啟該學生。\n- 視窗寬 1440 為雙欄、1439 改為 drawer。\n- 詳情變更後列表重新載入。",
+      "description": "建立 `apps/web/src/views/StudentWorkbenchView.vue`（路由 `/students`，`students:read`）。移植 ivy `FE:src/views/StudentWorkbenchView.vue` 的左右兩欄與 query 驅動選取；**去掉** TodayTasksPanel、招生 / 在籍統計連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n- 左：`StudentListPanel`（FRONTEND-086）；右：`StudentDetailPanel`（FRONTEND-087），以 `route.query.student` 決定選中的學生（點列 → `router.replace` 帶入）。\n- 視窗寬 ≥ 1440：左右雙欄（詳情固定寬 520）；< 1440：詳情改為右側 el-drawer（寬 640）；關閉 drawer 清掉 query.student。\n- 詳情中編輯 / 封存 / 照片更新後，通知列表重新載入目前頁（列表 expose `reload`）。\n- 沒選學生時右側顯示「從左側選擇學生以檢視詳情」。\n- 部分改寫 FRONTEND-045 `usePagedList`：開啟網址同步時，寫回 query 要保留不屬於列表篩選 / 頁碼的參數（例如本頁的 `student`），否則選中學生後改篩選、換頁或清除篩選會清掉 `query.student`、詳情跟著關閉（review-r10-f1 審 086 時發現）。ExamsView、AuditLogView 沒有其他參數，行為不變。在 `apps/web/src/composables/usePagedList.spec.ts` 補測試「usePagedList keeps unrelated query params」：網址為 `?student=s1&page=1`，改篩選與換頁後 `query.student` 仍為 's1'。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/StudentWorkbenchView.vue')`。\n\n**驗收標準**\n- 點列表列後 query 與詳情同步；直接以 query 進入時開啟該學生。\n- 視窗寬 1440 為雙欄、1439 改為 drawer。\n- 詳情變更後列表重新載入。\n- 選中學生後改篩選、換頁，選中狀態與詳情保留。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/StudentWorkbenchView.vue",
       "source_ref": "FE:src/views/StudentWorkbenchView.vue::default",
@@ -2687,10 +2687,11 @@
           "StudentWorkbenchView opens student from query：initialRoute '/students?student=s2' → GET /admin/students/s2 被呼叫，詳情顯示該學生",
           "StudentWorkbenchView reloads list after detail change：詳情 emit 'changed' → GET /admin/students（列表）請求數增加 1",
           "StudentWorkbenchView placeholder without selection：無 query.student → 文字含 '從左側選擇學生以檢視詳情'",
-          "StudentWorkbenchView switches to drawer below 1440：window.innerWidth 1439、query.student 's1' → 詳情渲染在 .el-drawer 內，關閉 drawer → query.student 不存在；innerWidth 1440 → 詳情不在 .el-drawer 內（雙欄）"
+          "StudentWorkbenchView switches to drawer below 1440：window.innerWidth 1439、query.student 's1' → 詳情渲染在 .el-drawer 內，關閉 drawer → query.student 不存在；innerWidth 1440 → 詳情不在 .el-drawer 內（雙欄）",
+          "StudentWorkbenchView keeps selection across list query changes：initialRoute '/students?student=s1' → 在列表改狀態篩選、再換到第 2 頁 → router query.student 仍為 's1'，詳情仍顯示 '王小明'"
         ],
         "run": "just web-test src/views/StudentWorkbenchView.spec.ts -t \"StudentWorkbenchView\"",
-        "notes": ""
+        "notes": "另跑 `just web-test src/composables/usePagedList.spec.ts -t \"usePagedList\"`（改寫 045 的測試）。"
       },
       "review": {
         "status": "pending",
