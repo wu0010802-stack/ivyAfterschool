@@ -41,6 +41,8 @@ const LEAVE_TYPE_ITEMS: SegmentItem[] = [
   { value: 'personal', label: '事假' },
   { value: 'other', label: '其他' },
 ]
+// vue-tsc 不把 template 的 aria-label 對應到 ariaLabel prop，改以物件展開
+const TYPE_SEGMENT_ATTRS = { ariaLabel: '假別' }
 const REASON_MAX_LENGTH = 200
 const END_BEFORE_START = '結束日期不可早於開始日期'
 
@@ -137,7 +139,7 @@ function onSubmit(): void {
         <M3SegmentedButton
           v-model="leaveType"
           :items="LEAVE_TYPE_ITEMS"
-          aria-label="假別"
+          v-bind="TYPE_SEGMENT_ATTRS"
         />
       </div>
 

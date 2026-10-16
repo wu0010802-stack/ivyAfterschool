@@ -292,7 +292,7 @@ describe('ExamsView', () => {
     const failed = await mountView('s1')
 
     expect(failed.wrapper.text()).toContain('成績載入失敗')
-    expect(failed.wrapper.get('[role="alert"]').exists()).toBe(true)
+    expect(failed.wrapper.find('[role="alert"]').exists()).toBe(true)
     expect(mock.history.get).toHaveLength(2)
 
     mock.onGet(url('s1')).replyOnce(200, { items: [exam(1)], total: 1 })
