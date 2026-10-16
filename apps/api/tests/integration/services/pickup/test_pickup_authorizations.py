@@ -6,6 +6,7 @@
 - BACKEND-523：regenerate_code（家長重新產生接送碼）。
 - BACKEND-425：complete_via_authorization（核銷後完成授權與接送請求）。
 - BACKEND-426：verify_code（核對接送碼，連錯 5 次鎖定、原子累計）。
+- BACKEND-562：verify_code 錯碼累計（含鎖定）後推播 pickup.authorization_updated（只送 admin）。
 - BACKEND-427：confirm_visual_match（員工目視核對確認核銷，照片為輔助、寫 audit）。
 - BACKEND-428：override_complete（主管強制完成代理接送，寫 audit）。
 - BACKEND-555：authorization_out / staff_authorization_out（公開組裝函式；close_out 不再匯入
@@ -46,7 +47,7 @@ from app.models.parents import ParentAccount
 from app.models.pickup import PickupAuthorization, PickupRequest
 from app.notifications import outbox_jobs
 from app.realtime import publish as publish_module
-from app.realtime.publish import admin_topic_channel
+from app.realtime.publish import admin_topic_channel, student_channel
 from app.repositories.students import student_brief_map
 from app.schemas.pickup import (
     PickupAuthorizationCreateIn,
@@ -1211,6 +1212,131 @@ def test_verify_code_concurrent_attempts_without_row_lock(
     assert (error.status, error.code) == (409, "pickup_code_locked")
     row = _fresh(committing_db_session, auth.id)
     assert (row.status, row.code_attempts, row.code_locked_at) == ("active", 5, clock.now())
+
+
+# --- BACKEND-562 verify_code 錯碼 / 鎖定推播 ---
+
+_AUTH_UPDATED = "pickup.authorization_updated"
+
+
+def _auth_updates(published: list[Call]) -> list[dict[str, Any]]:
+    return [
+        m
+        for channels, m in published
+        if channels == [admin_topic_channel("pickup")] and m["type"] == _AUTH_UPDATED
+    ]
+
+
+def test_verify_code_mismatch_broadcasts_update(
+    db_session: Session, kick_off: None, published: list[Call]
+) -> None:
+    clock = FakeClock(_CLOCK_NOW)
+    ming = make_student(db_session)
+    _parent_of(db_session, ming)
+    staff = make_staff(db_session, permissions=["pickup:operate"])
+    auth = make_pickup_authorization(db_session, ming, service_date=_TODAY, code="123456")
+
+    outcome = verify_code(
+        db_session, auth.id, _WRONG_CODE, actor=_current_staff(staff), clock=clock
+    )
+    assert _auth_updates(published) == []  # commit 之後才送
+    db_session.commit()
+
+    assert (outcome.ok, outcome.remaining_attempts, outcome.locked) == (False, 4, False)
+    [message] = _auth_updates(published)
+    assert message["data"]["id"] == str(auth.id)
+    assert message["data"]["status"] == "active"
+    assert message["data"]["student_id"] == str(ming.id)
+    assert "code_hash" not in message["data"]
+    assert _WRONG_CODE not in json.dumps(message)
+    # 只送 admin:pickup：家長端（student 頻道）收不到
+    assert [m for channels, m in published if channels == [student_channel(ming.id)]] == []
+    assert {tuple(channels) for channels, _ in published} == {(admin_topic_channel("pickup"),)}
+
+
+def test_verify_code_lock_broadcasts_update(
+    db_session: Session, kick_off: None, published: list[Call]
+) -> None:
+    clock = FakeClock(_CLOCK_NOW)
+    ming = make_student(db_session)
+    staff = make_staff(db_session, permissions=["pickup:operate"])
+    auth = make_pickup_authorization(db_session, ming, service_date=_TODAY, code="123456")
+    actor = _current_staff(staff)
+
+    outcomes = []
+    for _ in range(5):
+        outcomes.append(verify_code(db_session, auth.id, _WRONG_CODE, actor=actor, clock=clock))
+        db_session.commit()
+
+    assert [o.remaining_attempts for o in outcomes] == [4, 3, 2, 1, 0]
+    assert outcomes[-1].locked is True
+    messages = _auth_updates(published)
+    assert len(messages) == 5
+    assert {m["data"]["id"] for m in messages} == {str(auth.id)}
+    row = _fresh(db_session, auth.id)
+    assert (row.code_attempts, row.code_locked_at) == (5, clock.now())
+
+
+def test_verify_code_after_lock_does_not_broadcast(
+    db_session: Session,
+    kick_off: None,
+    published: list[Call],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = FakeClock(_CLOCK_NOW)
+    ming = make_student(db_session)
+    staff = make_staff(db_session, permissions=["pickup:operate"])
+    auth = make_pickup_authorization(
+        db_session, ming, service_date=_TODAY, code="123456", code_attempts=5
+    )
+    actor = _current_staff(staff)
+    db_session.commit()
+
+    with pytest.raises(AppError) as rejected:
+        verify_code(db_session, auth.id, _WRONG_CODE, actor=actor, clock=clock)
+    db_session.commit()
+
+    assert (rejected.value.status, rejected.value.code) == (409, "pickup_code_locked")
+    assert _auth_updates(published) == []
+
+    # 模擬漏鎖：載入放行已鎖定的授權，由 UPDATE 的 WHERE 守衛擋下（沒有更新任何列）也不推播
+    real_load = authorizations_module.load_verifiable_authorization
+
+    def load_allowing_locked(
+        session: Session, auth_id: UUID, *, clock: FakeClock, allow_locked: bool = False
+    ) -> PickupAuthorization:
+        return real_load(session, auth_id, clock=clock, allow_locked=True)
+
+    monkeypatch.setattr(
+        authorizations_module, "load_verifiable_authorization", load_allowing_locked
+    )
+    with pytest.raises(AppError) as guarded:
+        verify_code(db_session, auth.id, _WRONG_CODE, actor=actor, clock=clock)
+    db_session.commit()
+
+    assert (guarded.value.status, guarded.value.code) == (409, "pickup_code_locked")
+    assert _auth_updates(published) == []
+    assert _fresh(db_session, auth.id).code_attempts == 5
+
+
+def test_verify_code_success_broadcasts_once(
+    db_session: Session, kick_off: None, published: list[Call]
+) -> None:
+    clock = FakeClock(datetime(2026, 9, 10, 9, 0, tzinfo=UTC))  # 台北 17:00
+    ming = make_student(db_session)
+    _parent_of(db_session, ming)
+    staff = make_staff(db_session, permissions=["pickup:operate"])
+    make_attendance(db_session, ming, service_date=_TODAY, status="present")
+    auth = make_pickup_authorization(
+        db_session, ming, service_date=_TODAY, code="123456", code_attempts=2
+    )
+
+    outcome = verify_code(db_session, auth.id, "123456", actor=_current_staff(staff), clock=clock)
+    db_session.commit()
+
+    assert outcome.ok is True
+    [message] = _auth_updates(published)
+    assert (message["data"]["id"], message["data"]["status"]) == (str(auth.id), "completed")
 
 
 # --- BACKEND-427 confirm_visual_match ---
