@@ -83,9 +83,11 @@ function verifyResult(method: 'code' | 'visual_match' | 'override'): VerifyResul
 
 let mock: MockAdapter
 
+/** 元件的聚焦排在 setTimeout 0（要排在 el-dialog focus trap 之後），所以多等一個短的真實 timer */
 async function settle(): Promise<void> {
   await nextTick()
   await flushPromises()
+  await new Promise((resolve) => setTimeout(resolve, 20))
   await nextTick()
 }
 
@@ -395,6 +397,33 @@ describe('AuthorizationVerifyDialog', () => {
     expect(footerButton('核驗接送碼').exists()).toBe(true)
   })
 
+  it('AuthorizationVerifyDialog submits once while verifying', async () => {
+    let release: (value: [number, VerifyResult]) => void = () => undefined
+    mock.onPost(VERIFY_URL).reply(
+      () =>
+        new Promise<[number, VerifyResult]>((resolve) => {
+          release = resolve
+        }),
+    )
+    const wrapper = await mountDialog()
+    await paste(0, '123456')
+    expect(mock.history.post).toHaveLength(1)
+    expect(dialogText()).toContain('核驗中…')
+    expect(digitInputs()[0]?.attributes('disabled')).toBeDefined()
+
+    // 送出中格子與 footer 都已停用；就算事件仍送達（這裡直接派發 paste 與 Enter）也不重複送
+    expect(footerButton('核驗接送碼').attributes('disabled')).toBeDefined()
+    await paste(5, '9')
+    digitInputs()[5]!.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await settle()
+    expect(mock.history.post).toHaveLength(1)
+
+    release([200, verifyResult('code')])
+    await settle()
+    expect(dialogText()).toContain('已完成接送')
+    expect(wrapper.emitted('verified')).toHaveLength(1)
+  })
+
   it('AuthorizationVerifyDialog shows backend message for other errors', async () => {
     mock.onPost(VERIFY_URL).reply(409, {
       error: { code: 'authorization_not_active', message: '此代理接送授權已完成或已取消', details: null },
@@ -418,12 +447,28 @@ describe('AuthorizationVerifyDialog', () => {
     const wrapper = await mountDialog()
     await paste(0, '000000')
     expect(dialogText()).toContain('接送碼錯誤，還可嘗試 4 次')
+    expect(dialogText()).toContain('已錯誤 1 次，還可嘗試 4 次')
     await switchTab('目視核對')
+    await fillTextarea('例如：已核對身分證', '已核對身分證')
 
+    // 關閉再開同一張授權：錯誤、分頁、輸入都重頭開始（props 尚未更新時以 props 的錯誤次數顯示）
     await wrapper.setProps({ modelValue: false })
     await settle()
+    await wrapper.setProps({ modelValue: true })
+    await settle()
+    await settle()
+    expect(activeTab()).toBe('接送碼')
+    expect(dialogText()).not.toContain('接送碼錯誤')
+    expect(dialogText()).toContain('尚無錯誤')
+    expect(digitValues()).toEqual(['', '', '', '', '', ''])
+    expect(document.activeElement).toBe(digitInputs()[0]?.element)
+
+    await paste(0, '000000')
+    expect(dialogText()).toContain('接送碼錯誤，還可嘗試 4 次')
+    await switchTab('目視核對')
+
+    // 開著時換成另一張授權：同樣重設
     await wrapper.setProps({
-      modelValue: true,
       authorization: makeAuthorization({ id: 'pa2', proxy_name: '林阿姨', code_last4: '1185' }),
     })
     await settle()
@@ -434,13 +479,14 @@ describe('AuthorizationVerifyDialog', () => {
     expect(dialogText()).not.toContain('接送碼錯誤')
     expect(dialogText()).toContain('尚無錯誤')
     expect(digitValues()).toEqual(['', '', '', '', '', ''])
+    expect(dialog().findAll('textarea').every((t) => t.element.value === '')).toBe(true)
   })
 
   it('AuthorizationVerifyDialog keeps touch sizes for code boxes and tabs', async () => {
     // happy-dom 不計算版面：以原始碼斷言接送碼格 52×60、分頁 48px、關閉鈕 44px
     expect(dialogSource).toMatch(/\.code-box\s*{[^}]*width:\s*52px/)
     expect(dialogSource).toMatch(/\.code-box\s*{[^}]*height:\s*60px/)
-    expect(dialogSource).toMatch(/\.vd-tabs[^{]*\.el-tabs__item\s*{[^}]*height:\s*48px/)
+    expect(dialogSource).toMatch(/\.vd-tabs[^{]*\.el-tabs__item\)?\s*{[^}]*height:\s*48px/)
     expect(dialogSource).toMatch(/\.vd-close[^{]*{[^}]*min-height:\s*44px/)
     await mountDialog()
     expect(dialog().findAll('.code-box.is-gap')).toHaveLength(1)
