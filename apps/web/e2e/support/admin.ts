@@ -1,7 +1,7 @@
 // FRONTEND-290：後台 e2e 共用工具（FRONTEND-291~293）。接真實後端（本機 just up），種子資料一律經 API 建立：
 // - loginAsAdmin：走 UI 登入（/#/login），帳密讀 E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD。
 // - adminApi：以 API 登入，cookie 留在傳入的 APIRequestContext，之後的呼叫都帶員工 cookie。
-// - seedBasic / cleanup：建立「E2E班-{runId}」與學生、監護人；結束後封存學生再封存班級（失敗只記 log）。
+// - seedBasic / cleanup：建立「E2E班-{runId}」與學生、監護人；結束後依序封存監護人、學生、班級（失敗只記 log）。
 // 型別在這裡自行宣告最小欄位（e2e 走 tsconfig.node，不引用 src 的 @/ 路徑）。
 import type { APIRequestContext, APIResponse, Page } from '@playwright/test'
 
@@ -109,8 +109,15 @@ export async function seedBasic(api: AdminApi, opts: { students?: number } = {})
   return seed
 }
 
-/** 封存學生後封存班級；任何一步失敗只記 log，不讓 afterAll 蓋掉測試本身的結果 */
+/** 依序封存監護人、學生、班級；任何一步失敗只記 log，不讓 afterAll 蓋掉測試本身的結果 */
 export async function cleanup(api: AdminApi, seed: SeedResult): Promise<void> {
+  for (const id of seed.guardianIds) {
+    try {
+      await api.delete(`/api/admin/guardians/${id}`)
+    } catch (err) {
+      console.warn(`[e2e cleanup] 封存監護人 ${id} 失敗：${String(err)}`)
+    }
+  }
   for (const id of seed.studentIds) {
     try {
       await api.post(`/api/admin/students/${id}/archive`)
