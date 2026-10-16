@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 158,
-  "last_updated": "2026-10-16T06:23:10Z",
+  "version": 159,
+  "last_updated": "2026-10-16T12:58:02Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2857,7 +2857,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/LeavesView.vue",
       "source_ref": "FE:src/parent/views/LeavesView.vue::cancelTitle",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -2906,9 +2906,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。16 條 red_case 皆有同名測試且斷言具體（請求 url / params / POST body、li 數、snackbar 訊息 + tone + action、sheet 與對話框文字、Esc 不關閉、上傳進度文字）；tdd.run 40 綠，-t 選到每條。24cd97d（測試）先於 f2e8e2b（實作）。實作 commit 修改 spec 的部分：新增 4 條測試（空頁停止、下拉時丟棄進行中的載入更多、建立送出當下選中的小孩、今天開始的整筆取消）；唯一改寫的斷言是 sticky 規則由 bottom: 0 改為 bottom: calc(-1 * var(--sheet-body-pad))，並加斷包裝元素 margin-bottom，隨實作手法改寫，不是放寬。重點核對：列表只依 children.selectedId 載入，不讀 route 參數；切換小孩重置分頁、關閉詳情並以序號丟棄過期回應（兩條測試）；建立時 student_id 取送出當下的 selectedId（s2 測試，寫死 s1 的突變轉紅）；送出到附件上傳結束 sheet 不可關閉；附件一次上傳一個並顯示進度；部分失敗 snackbar 附「查看」並開啟該筆詳情；取消依 start_date 與 today 決定文案，從詳情取消時詳情保持開啟。sticky 按鈕列（kickoff 待驗項）：390×844 Chromium 實測申請 sheet（fullHeight，高 788）在初始、捲到中間、捲到底三種狀態，按鈕列都在 763～844、與 sheet 底緣距離 0；加滿 3 個附件讓內容更長後，三種狀態同樣是 0；捲到底時最後一段說明文字完整露在按鈕列上方，按鈕列底下沒有內容露出。另以注入樣式重現稿的手法：bottom: 0、不補償，內容區保留 ParentBottomSheet 的 24px 底部內距（LeavesView 的 scoped 樣式改不到 teleport 出去的 .sheet__body），按鈕列停在底緣上方 24px，證實實作者說法。實作與稿的渲染結果相同（稿 763 / 81px / 底緣 0、內容捲動 745 / 704 與實作一致），偏離的只是實作手法、不是外觀，description 的改寫合理。與 ParentBottomSheet 內容區 class 與 24px 的耦合已寫進 risk_notes。3051140 的其他補述皆合理：children.load() 與沒有小孩時的骨架 / 錯誤 / 空狀態且「申請請假」停用，與 PARENT-153 / 154 / 132 一致；下一頁空陣列即停止載入更多；補上傳其他錯誤「附件上傳失敗，請稍後再試」；取消遇網路 / 5xx 保留對話框可直接重按。這些稿與原規格都沒定義，不與稿衝突，且各有測試。對照 parent-page-leaves.html 頁面 decisions 9 條逐條符合：版面（Chromium 實測身分卡、申請請假、小標、卡片、各列位置與稿完全相同）；清單三態與切換小孩；載入更多 id 去重；申請 sheet、為誰申請、送出鎖定、進度、sticky 按鈕列；申請結果 snackbar 與「查看」8 秒；建立錯誤橫幅、捲回頂端、各錯誤碼文案；取消對話框文案與目標列、409 重抓；補上傳文案取自 limits；層級沿用元件。突變共 18 處，17 處轉紅：送出寫死小孩、切換不關詳情、拿掉首頁序號檢查、去重、dismissible、其他取消錯誤關閉對話框、409 不重抓、拿掉「查看」、overlap 文案、不捲回頂端、sticky 改回 bottom 0、申請鈕不停用、413 文案寫死、取消文案改 >、附件改並行上傳、不套用 limits、共 N 筆不加 1。還原後 git diff 乾淨。web-lint 乾淨；web-typecheck exit 2 的唯一錯誤在他人未提交的 composables/usePickupBoard.spec.ts（TS2305），本檔 0 錯；圖示皆在子集。 殘留：送出期間若選中的小孩被換掉就不插入目前清單的保護沒有測試（拿掉不轉紅；正常操作下 fullHeight sheet 擋住身分卡，換不了小孩）；小孩清單尚未載入時，localStorage 的 selectedId 讓申請鈕可按，表單「為 … 申請請假」會短暫沒有姓名（children store 的既有行為）。"
       }
     },
     {
