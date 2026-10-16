@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 302,
-  "last_updated": "2026-10-16T15:43:36Z",
+  "version": 303,
+  "last_updated": "2026-10-16T15:45:31Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5409,7 +5409,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": "FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5420,7 +5420,7 @@
         "FRONTEND-296"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "「缺」勾選沿用 component-exams.html 的 small checkbox（約 24px 高，低於 44px 觸控建議）；平板上可在輸入框輸入「缺」或「-」標記缺考，要放大需改元件稿與 FRONTEND-236。\n【review-r10-f4 打回】examId 變更時，前一場考試尚未送出 / 等待選擇 / 失敗的格子會以新的 examId 送出並顯示在新考試的成績格：ScoreGrid 監看 examId 重新載入，但 useScoreAutosave 的 dirty / error 格子在 initial 換掉時保留，送出時才讀 examId。反例（vitest 探針重現）：(1) 草稿 eA 王小明國語輸入 88 後 800ms 內把 examId 改成 eB → PUT /admin/exams/eB/scores 帶 s1/sub1=88，eB 的格子顯示 88；(2) 已發布 eA 尚未選擇通知時輸入 88、Esc 關掉 dialog（格子等待中），改 examId 為草稿 eB → notifyParents 變 false 立即 PUT /admin/exams/eB/scores 帶 eA 的 88。考試頁 /exams/:id 換參數時元件會沿用（RouterView 沒有 key），FRONTEND-234 的離開保護只寫了離開路由，參數變更不會觸發。驗收：examId 由 e1 改成 e2 後，不得有帶 e1 格子的 PUT /admin/exams/e2/scores，e2 的成績格只顯示 e2 的資料；e1 未送出的格子要嘛先以 e1 送出，要嘛由考試頁在參數變更前比照離開路由處理（flush → 仍未儲存則確認），不得靜默寫進 e2；補測試涵蓋上面兩個反例。",
+      "risk_notes": "「缺」勾選沿用 component-exams.html 的 small checkbox（約 24px 高，低於 44px 觸控建議）；平板上可在輸入框輸入「缺」或「-」標記缺考，要放大需改元件稿與 FRONTEND-236。\n換考試（examId 變更）時，前一場尚未送出 / 等待通知選擇 / 儲存失敗的格子在本元件一律丟棄；不遺失的保證來自考試頁 FRONTEND-234 在參數變更與離開路由前先 flush、仍未儲存再確認放棄，其他使用本元件的地方換 examId 前也要比照。表格最後一格按 Tab 會先停在該格的「缺」勾選，再按一次才離開表格（要改 ScoreCell 的 Tab 順序，屬 FRONTEND-236 / 296）。換考試當下 RenotifyChoiceDialog 正開著的情境沒有測試保護（dialog 是 modal，只有瀏覽器上一頁 / 下一頁會發生）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/exams/ScoreGrid.spec.ts",
@@ -5449,9 +5449,9 @@
         "notes": "表格 height 為 100%：ScoreGrid 根元素是高度 100% 的 flex 欄，由考試頁（FRONTEND-234）給定內容區剩餘高度，表頭固定、只捲表格本體。RenotifyChoiceDialog 以本元件自己的計時器（與 useScoreAutosave 同一個 DEFAULT_DEBOUNCE_MS）在格子變更後到期時檢查 awaitingNotifyChoice 開啟；換考試或發布狀態改變時重新決定 notifyParents（已發布 null、草稿 false），同一場已發布考試重新載入時維持本次選擇。重新載入（reload）保留畫面上的表格直到新資料回來，只有第一次載入顯示 skeleton。happy-dom 不會在卸載有焦點的輸入框時觸發 blur（Chromium 會），Esc 案例在 keydown 之後、重新渲染之前補派 blur 模擬，拿掉「忽略卸載時的 change」會轉紅。點格子空白處時缺考格聚焦「缺」勾選（與鍵盤導覽一致）；輸入法組字中的 Enter 不換格。整組 timeout 上限 30 秒（共用 CPU 高負載時避免假紅，不影響斷言）。真實 Chromium 驗證：高度填滿、表頭固定、列高 ≥ 48、科目欄 140、Tab 換列與被固定欄遮住的格子捲到可見、Esc 還原不送出、點備註圖示焦點在編輯框、點空白處聚焦該格。 換考試：每場考試各一個 useScoreAutosave（detached effect scope），丟棄時把該 session 的 notifyParents 設 null 讓送出迴圈停下並停止 scope；停止 scope 只是清掉計時器與 watcher（丟棄後殘留的 debounce 到期也因 null 不會送出），沒有可觀察的行為差異。renders 案例以 ?raw 原始碼斷言 scroll-padding-left: 306px（happy-dom 不算版面）。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f4",
-        "notes": "打回（1 項，見 risk_notes）。其餘通過：tdd.run 實跑 12/12 綠，名稱與 12 條 red_case 一一對應；測試 87fa320 早於實作 175cec3，實作 commit 對 spec 的改動只加嚴（Enter 補組字中斷言、Esc 案例補派 blur 模擬 Chromium 卸載時的 blur、describe timeout 30 秒），未放寬斷言。突變 14 處，13 處轉紅：不忽略卸載 blur 的 change、Tab 不換列、→ 不看游標、缺考格不改聚焦「缺」、組字中 Enter 也換格、dialog 只開第一次、點備註圖示也聚焦分數框、不 emit dirty-change、Esc 不還焦、已發布也預設 false、重試不呼叫 retryFailed、Shift+Enter 改往下、邊界不停在原格；reload 一律顯示 skeleton 不轉紅（tdd.notes 的補充行為，沒有 red_case）。scroll-padding-left 以 Chromium 突變驗證：拿掉後 Tab 換列到第一科時該格被固定欄蓋住（cellLeft 77 < 固定欄右緣 323），還原後正常。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（420px 高的父層、16 列 × 6 科）實測：高度填滿父層、表頭固定只捲表格本體、列高 ≥ 48、科目欄 140；已不在名單的固定欄底色不透明、只有 .cell 淡化 0.55；最後一科 Tab → 下一列第一科並捲到固定欄右邊、Tab 到最右科可見；Enter 到缺考格聚焦「缺」；Esc 還原為 95、2.5 秒內沒有 PUT、焦點留在同格全選；88 + Enter 只送一次、一格；連續 Tab 輸入合併送出；Shift+F2 開備註、Enter 確定後焦點回同格並送出分數與備註；點格子空白處聚焦分數框、缺考格聚焦「缺」；已發布第一次自動儲存跳 dialog 且不送出、Esc 後工具列「尚未選擇」「1 格尚未儲存」、在工具列選「關」立即送出 notify_parents false。核可稿 page-exam-detail.html decisions 5~11 逐條一致（表格 height 100% 改由考試頁給定高度，已寫進 FRONTEND-234；點缺考格空白處聚焦「缺」、組字中 Enter 不換格屬合理補充）；格子外觀與備註互動沿用已核可的 ScoreCell。web-lint 乾淨；web-typecheck 的錯誤全在他人進行中的檔案。殘留（不擋）：表格最後一格按 Tab 會先到該格的「缺」勾選，再按一次才離開表格（與稿的示範程式相同）；reload 保留舊表格與 scroll-padding 沒有單元測試保護。"
+        "notes": "複審通過（只核對 review-r10-f4 的打回項：examId 變更時前一場考試的未送出格子寫進新考試）。紅燈 ba8003a（換考試三案例在 PUT /admin/exams/e2/scores 轉紅）早於修正 6a285e0；6a285e0 對 spec 只加嚴（換考試載入期間有 skeleton、沒有分數輸入框）。tdd.run 實跑 16/16 綠（原 12 條 + 換考試 3 條 + reload 保留表格 1 條），scroll-padding-left 306px 以 ?raw 斷言。修法：每場考試各一個 examId 固定的 useScoreAutosave（detached effect scope）；換考試時把前一場 session 的 notifyParents 設 null 並停止 scope，進行中的請求照原考試完成後不再送出，新考試載入前顯示 skeleton、關閉 dialog。我的兩個反例探針（草稿 800ms 內換考試、已發布等待選擇時換到草稿）加第三個（換到已發布再選「開」）全部沒有任何 PUT、新考試格子為空。突變 8 處：沿用舊 session、丟棄只停 scope 不設 null、不清 exam、不呼叫 discard、reload 一律 skeleton —— 轉紅；丟棄只設 null 不停 scope（殘留 debounce 到期也因 null 不送出，等價）、session examId 改跟 props（丟棄後舊 session 不再送出，等價；固定 examId 是多一層保護）、換考試不關 dialog（測試在換考試前已用 Esc 關閉）不轉紅，列入殘留。還原後 cmp 與 git diff 皆乾淨。驗收 (2)：元件層丟棄 + 考試頁 FRONTEND-234（ae675ca：description 與 red_case 寫明 onBeforeRouteUpdate 比照離開路由先 flush、仍未儲存就確認放棄、選「繼續編輯」不換考試）合起來滿足「不得靜默寫進 e2」，前一場的未儲存格子不會在使用者不知情下消失。真實 Chromium 回歸（420px 父層、16 列 × 6 科）重跑全數通過：高度填滿、表頭固定、列高 ≥ 48、科目欄 140、已不在名單固定欄不透明、Tab 換列捲到可見、Enter 到缺考格聚焦「缺」、Esc 還原不送出、88 + Enter 只送一次、連續 Tab 合併送出、Shift+F2 備註、點空白處聚焦、已發布 dialog / 尚未選擇 / 工具列選擇。web-lint 乾淨；web-typecheck 全專案 0 錯誤。harness 用 scratchpad 內獨立 vite 設定（沒有 unplugin），未動 components.d.ts。"
       }
     },
     {
