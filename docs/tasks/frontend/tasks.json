@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 278,
-  "last_updated": "2026-10-16T15:07:21Z",
+  "version": 279,
+  "last_updated": "2026-10-16T15:07:50Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4908,11 +4908,11 @@
     {
       "id": "FRONTEND-197",
       "title": "實作 components/pickup/PickupReplyDialog.vue：回覆預計可接送時間（覆寫自動回覆，可同時確認）",
-      "description": "建立 `apps/web/src/components/pickup/PickupReplyDialog.vue`（domain_spec M7 流程 3：員工可覆寫回覆，`reply_source = staff`，並按「確認」→ acknowledged；BACKEND-407 / 408）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`modelValue`、`request: PickupRequest`、`board: Pick<ReturnType<typeof usePickupBoard>, 'reply' | 'acknowledge'>`；emits `update:modelValue`、`done(req)`。\n**內容**\n- 摘要（淡灰底）：學生（班級）；家長抵達（「預計 HH:MM 到（約 n 分後）」，arrived 時「家長已到・已等 n 分（HH:MM 到達）」，都沒有時「家長未指定抵達時間」）；目前作業狀態（current_homework_status）與「作業預計 {current_ready_eta} 完成」（沒有 current_ready_eta 且作業未完成時「尚未設定作業預計完成時間」）；目前回覆（reply_message +「系統自動回覆」/「{replied_by_name} 回覆」）。`requested_by_type` 不是 parent 時摘要下方灰字「員工代建的請求，回覆不會通知家長。」\n- 預計可接送時間：el-time-select（步進 5 分）；預設值 = reply_ready_eta ?? current_ready_eta ?? 空；快捷「+10 分 / +20 分 / +30 分」一列（44px），提示文字在下一列。\n- 給家長的訊息（≤200）：預設空，placeholder 以目前選的時間顯示「預計 {HH:MM} 可接送」（留空時後端自動組字）；reply_source 為 staff 時帶入原訊息。\n- 時間欄下方固定提示「將同步更新作業看板的預計可接送時間」（BACKEND-407：回覆帶 reply_ready_eta 時後端同交易寫回 homework_daily_progress.ready_eta 並推送作業看板 ws；只填訊息時不影響作業看板）。作業看板經既有 `homework.progress_updated` 事件更新（FRONTEND-152），本元件不另外呼叫作業 API。\n- `request.status === 'pending'` 時顯示「同時確認此請求」checkbox（預設勾選）；送出鈕文字：勾選時「回覆並確認」，否則「送出回覆」。\n- 兩欄都空 →「請填寫預計時間或訊息」。\n- 送出：`board.reply(id, {reply_ready_eta?, reply_message?})`（只送有值的欄位）→ 勾選確認時再 `board.acknowledge(id)` → `ElMessage.success(requested_by_type === 'parent' ? '已回覆家長' : '已更新回覆')` → emit done。reply 成功但 acknowledge 失敗：上方 warning「已回覆，但確認失敗：{message}」，dialog 保持開啟、表單鎖住（不可再改時間與訊息），送出鈕改為「重試確認」，按下只重送 `board.acknowledge(id)`，成功後同樣 ElMessage.success 並 emit done。\n- 錯誤由 board 處理 409 後關閉 dialog；其他錯誤顯示在表單上方。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/pickup/PickupReplyDialog.vue`（domain_spec M7 流程 3：員工可覆寫回覆，`reply_source = staff`，並按「確認」→ acknowledged；BACKEND-407 / 408）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`modelValue`、`request: PickupRequest`、`board: Pick<ReturnType<typeof usePickupBoard>, 'reply' | 'acknowledge'>`；emits `update:modelValue`、`done(req)`。\n**內容**\n- 摘要（淡灰底）：學生（班級）；家長抵達（「預計 HH:MM 到（約 n 分後）」，arrived 時「家長已到・已等 n 分（HH:MM 到達）」，都沒有時「家長未指定抵達時間」）；目前作業狀態（current_homework_status）與「作業預計 {current_ready_eta} 完成」（沒有 current_ready_eta 且作業未完成時「尚未設定作業預計完成時間」）；目前回覆（reply_message +「系統自動回覆」/「{replied_by_name} 回覆」）。`requested_by_type` 不是 parent 時摘要下方灰字「員工代建的請求，回覆不會通知家長。」\n- 預計可接送時間：el-time-select（步進 5 分）；預設值 = reply_ready_eta ?? current_ready_eta ?? 空；快捷「+10 分 / +20 分 / +30 分」一列（44px），提示文字在下一列。\n- 給家長的訊息（≤200）：預設空，placeholder 以目前選的時間顯示「預計 {HH:MM} 可接送」（留空時後端自動組字）；reply_source 為 staff 時帶入原訊息。\n- 時間欄下方固定提示「將同步更新作業看板的預計可接送時間」（BACKEND-407：回覆帶 reply_ready_eta 時後端同交易寫回 homework_daily_progress.ready_eta 並推送作業看板 ws；只填訊息時不影響作業看板）。作業看板經既有 `homework.progress_updated` 事件更新（FRONTEND-152），本元件不另外呼叫作業 API。\n- `request.status === 'pending'` 時顯示「同時確認此請求」checkbox（預設勾選）；送出鈕文字：勾選時「回覆並確認」，否則「送出回覆」。\n- 兩欄都空 →「請填寫預計時間或訊息」。\n- 送出：`board.reply(id, {reply_ready_eta?, reply_message?})`（只送有值的欄位）→ 勾選確認時再 `board.acknowledge(id)` → `ElMessage.success(requested_by_type === 'parent' ? '已回覆家長' : '已更新回覆')` → emit done。reply 成功但 acknowledge 失敗：上方 warning「已回覆，但確認失敗：{message}」，dialog 保持開啟、表單鎖住（不可再改時間與訊息），送出鈕改為「重試確認」，按下只重送 `board.acknowledge(id)`，成功後同樣 ElMessage.success 並 emit done。\n- 錯誤：`board.reply` / `board.acknowledge` 在 404 / 409 時已由 board 提示並重新整理、resolve `null` → dialog 直接關閉（emit `update:modelValue(false)`、不 emit done、不顯示成功訊息）；其他錯誤（reject）以 error alert 顯示在表單上方，dialog 保持開啟。\n- **實作細節**：表單在每次開啟時依 request 重置（預設時間、訊息、勾選、警告與錯誤）。時間選單起點是「開啟當下」的現在時間進位到 5 分，到 21:00；快捷鈕以「點擊當下」為基準進位到 5 分（上限 23:55）。reply 回傳的請求狀態已不是 pending（送出期間別人已確認或家長已到）時，即使勾選「同時確認此請求」也不再送確認（避免 409），直接視為成功。成功時 emit `done(最後一次回傳的請求)` 後 emit `update:modelValue(false)`。訊息去頭尾空白，空白只算未填。dirty（與開啟時不同）時關閉會先確認（FormDialog）；只剩重試確認時不算 dirty。送出中 FormDialog 的送出鈕 loading，防止重複送出。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupReplyDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
@@ -4936,7 +4936,11 @@
           "PickupReplyDialog hides acknowledge option when already acknowledged：request.status 'acknowledged' → 沒有 '同時確認此請求'",
           "PickupReplyDialog shows homework sync notice without extra api call：開啟 dialog → 文字含 '將同步更新作業看板的預計可接送時間'；送出 reply 後 mock.history.put 中沒有 '/admin/homework/progress/' 開頭的請求",
           "PickupReplyDialog retries only acknowledge after partial failure：reply 200、acknowledge 第一次回 500 → 送出鈕文字 '重試確認'、時間欄 disabled；點 '重試確認'（acknowledge 回 200）→ reply 請求總數仍為 1、acknowledge 請求數 2，emitted('done') 長度 1",
-          "PickupReplyDialog submit label follows acknowledge option：status pending 預設 → 送出鈕文字 '回覆並確認'；取消勾選 '同時確認此請求' → '送出回覆'；status acknowledged → '送出回覆'"
+          "PickupReplyDialog submit label follows acknowledge option：status pending 預設 → 送出鈕文字 '回覆並確認'；取消勾選 '同時確認此請求' → '送出回覆'；status acknowledged → '送出回覆'",
+          "PickupReplyDialog skips acknowledge when the request is no longer pending：reply 回傳 status acknowledged → 不送 acknowledge、emitted('done') 長度 1",
+          "PickupReplyDialog closes without done when the board handled a conflict：board.reply resolve null → emitted('update:modelValue') 為 [[false]]、done 為 undefined、acknowledge 未被呼叫",
+          "PickupReplyDialog shows other errors above the form and stays open：reply 回 422 → .el-alert--error 含後端訊息、dialog 不關、沒有 acknowledge",
+          "PickupReplyDialog quick buttons add minutes from now：台北 17:12 → +10 分 17:25、+20 分 17:35、+30 分 17:45，placeholder 隨之為「預計 17:45 可接送」"
         ],
         "run": "just web-test src/components/pickup/PickupReplyDialog.spec.ts -t \"PickupReplyDialog\"",
         "notes": ""
