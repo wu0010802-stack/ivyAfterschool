@@ -8,6 +8,8 @@
 // - 「我已經到了」捷徑建立的請求（直接 arrived、expected_arrival_at 為 null）：不顯示預計抵達那一行，直接顯示等候時間。
 // - 急迫色（FRONTEND-184）：已等 3~7 分 urgency-warning、8 分以上 urgency-critical，套在根元素。
 // - 根元素 id="qc-{item.id}"，供 QueuePanel（FRONTEND-194）定位與閃爍（is-flash）。
+// - busy（FRONTEND-194 改寫）：送出中「確認」顯示 loading、其餘操作鈕停用（Element Plus 的 disabled / loading 按鈕
+//   不會 emit click），防止連點送出兩次。
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { PickupRequest } from '@/api/pickupRequests'
 import type { PosQueueItem } from '@/composables/useDismissalPosQueue'
@@ -25,12 +27,17 @@ import type { PickupRequestStatus } from '@/shared/types/api'
 import { formatTime } from '@/shared/utils/datetime'
 import CountdownBar from './CountdownBar.vue'
 
-const props = defineProps<{
-  item: PosQueueItem
-  /** 供等候分鐘 / ETA 相對文字計算「現在」（父層傳 useNowClock 的 now） */
-  now: number
-  canOperate: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    item: PosQueueItem
+    /** 供等候分鐘 / ETA 相對文字計算「現在」（父層傳 useNowClock 的 now） */
+    now: number
+    canOperate: boolean
+    /** 這張卡的請求正在送出（父層的 busyIds 含 item.id）：操作鈕 loading / 停用 */
+    busy?: boolean
+  }>(),
+  { busy: false },
+)
 
 const emit = defineEmits<{
   reply: [request: PickupRequest]
@@ -284,23 +291,29 @@ const bodyStyle = computed(() => ({ transform: `translateX(${swipe.dragX.value}p
           <template v-if="request.status === 'pending'">
             <el-button
               :type="request.needs_reply ? 'primary' : 'default'"
+              :disabled="busy"
               @click="emit('reply', request)"
             >
               回覆時間
             </el-button>
             <el-button
               :type="request.needs_reply ? 'default' : 'primary'"
+              :loading="busy"
               @click="emit('acknowledge', request)"
             >
               確認
             </el-button>
           </template>
           <template v-else-if="request.status === 'acknowledged'">
-            <el-button @click="emit('reply', request)">
+            <el-button
+              :disabled="busy"
+              @click="emit('reply', request)"
+            >
               修改回覆
             </el-button>
             <el-button
               type="primary"
+              :disabled="busy"
               @click="emit('complete', request)"
             >
               完成交付
@@ -310,11 +323,15 @@ const bodyStyle = computed(() => ({ transform: `translateX(${swipe.dragX.value}p
             <el-button
               class="is-main"
               type="primary"
+              :disabled="busy"
               @click="emit('complete', request)"
             >
               完成交付
             </el-button>
-            <el-button @click="emit('reply', request)">
+            <el-button
+              :disabled="busy"
+              @click="emit('reply', request)"
+            >
               修改回覆
             </el-button>
           </template>

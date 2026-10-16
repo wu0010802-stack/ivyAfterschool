@@ -2,7 +2,8 @@
 // FRONTEND-194：接送 POS 右欄佇列（進行中 / 今日已結束）。設計稿：docs/mockups/page-pickup-pos.html（QueuePanel 段）。
 // 移植 ivy FE:src/components/dismissal/pos/DismissalPosQueuePanel.vue 的 TransitionGroup 進出場動畫與 useNowClock 提供 now
 // 給子卡；新增進行中 / 已結束分區。本元件不打 API：items 由 useDismissalPosQueue（FRONTEND-185）排好序傳入，事件原樣轉發。
-// 送出中防連點（例如連點「確認」）不在這裡處理，由 board 層（FRONTEND-188 / 189）負責。
+// 送出中防連點：父層（FRONTEND-190）在 acknowledge / cancel 呼叫 API 前後把 item.id 加入 / 移出 busyIds，
+// 這裡傳給 QueueCard 的 busy（「確認」loading、其餘操作鈕停用、點擊不 emit）。
 import { ArrowDown, ArrowUp, Back } from '@element-plus/icons-vue'
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
 import type { PickupRequest } from '@/api/pickupRequests'
@@ -16,6 +17,8 @@ const props = withDefaults(
     /** staging → active → closed（順序由 useDismissalPosQueue 決定，這裡只分區、不重排） */
     items: PosQueueItem[]
     canOperate: boolean
+    /** 送出中的 item.id */
+    busyIds: ReadonlySet<string>
     /** 第一次載入中：3 張骨架卡、計數顯示「—」 */
     loading?: boolean
   }>(),
@@ -70,7 +73,7 @@ async function focus(requestId: string): Promise<boolean> {
   await nextTick()
   const el = root.value?.querySelector<HTMLElement>(`[id="qc-${target.id}"]`)
   if (!el) return false
-  el.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'nearest' })
+  el.scrollIntoView({ behavior: reducedMotion() ? 'instant' : 'smooth', block: 'nearest' })
   void el.offsetWidth
   flashId.value = target.id
   flashTimer = setTimeout(() => {
@@ -132,6 +135,7 @@ defineExpose({ focus })
           :item="item"
           :now="now"
           :can-operate="canOperate"
+          :busy="busyIds.has(item.id)"
           @reply="(r) => emit('reply', r)"
           @acknowledge="(r) => emit('acknowledge', r)"
           @complete="(r) => emit('complete', r)"
