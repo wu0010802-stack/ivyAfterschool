@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 180,
-  "last_updated": "2026-10-16T04:58:01Z",
+  "version": 181,
+  "last_updated": "2026-10-16T04:59:00Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2303,11 +2303,11 @@
     {
       "id": "FRONTEND-071",
       "title": "實作 views/settings/RolesView.vue：角色權限頁（角色卡 + 詳情面板）",
-      "description": "建立 `apps/web/src/views/settings/RolesView.vue`（路由 `/settings/roles`，`roles:read`）。移植 ivy `FE:src/views/settings/SettingsRolesView.vue` 的左右兩欄、`route.query.role` 記住選中角色、`useUnsavedChangesGuard`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n- 同時載入 `listRoles()` 與 `fetchPermissionCatalog()`；左 `RoleCardsGrid`（showStaffCount）、右 `RoleDetailPanel`。預設選 `query.role`，否則第一個。\n- 有 `roles:write` 顯示「新增角色」→ `RoleCreateDialog`，建立後選中新角色。\n- 切換角色時若詳情 `isDirty` → `confirmDiscardChanges`。\n- saved / deleted 後重新載入角色清單（deleted 後選第一個）。\n- 載入失敗 EmptyState error + 重試。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/RolesView.vue')`。\n\n**驗收標準**\n- 預設選取與 query 同步；未儲存切換提示；新增與刪除後清單更新。",
+      "description": "建立 `apps/web/src/views/settings/RolesView.vue`（路由 `/settings/roles`，`roles:read`）。移植 ivy `FE:src/views/settings/SettingsRolesView.vue` 的左右兩欄、`route.query.role` 記住選中角色（值為角色 `code`，與已核可稿的 `?role={code}` 及 ivy 一致；code 建立後不可修改）、`useUnsavedChangesGuard`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n- 同時載入 `listRoles()` 與 `fetchPermissionCatalog()`；左 `RoleCardsGrid`（showStaffCount，280px、捲動時固定在上方，上方灰字「角色（N）」）、右 `RoleDetailPanel`。預設選 `query.role` 對應的角色，沒帶或不存在時選排序第一（與 RoleCardsGrid 同序：admin → director → clerk → tutor，其餘依名稱）。\n- 有 `roles:write` 顯示「新增角色」→ `RoleCreateDialog`，建立後選中新角色。\n- 切換角色（點卡片、瀏覽器上一頁 / 下一頁改 `?role=`）或離開路由時若詳情 `isDirty` → `confirmDiscardChanges`（以 `onBeforeRouteUpdate` / `onBeforeRouteLeave` 統一處理；「繼續編輯」→ 停在原角色）。\n- saved / created / deleted 後重新載入角色清單（不顯示骨架；created 後選新角色、deleted 後選第一個）。\n- 載入中：左欄 5 張卡骨架 + 右側段落骨架，「新增角色」停用；載入失敗 EmptyState error「無法載入角色」+ 重試。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/RolesView.vue')`。\n\n**驗收標準**\n- 預設選取與 query 同步；未儲存切換 / 離開提示；新增、儲存與刪除後清單更新；viewLoaders 接上本頁。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/RolesView.vue",
       "source_ref": "FE:src/views/settings/SettingsRolesView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-067",
@@ -2325,10 +2325,18 @@
           "vitest"
         ],
         "red_cases": [
-          "RolesView selects role from query：initialRoute '/settings/roles?role=r-clerk' → 詳情面板名稱 input 值為 '行政'；無 query → 選中排序第一的 '管理員'",
-          "RolesView updates query when selecting：點 '課輔老師' 卡 → router query.role === 'r-tutor'",
-          "RolesView guards unsaved changes on switch：在 clerk 詳情改名稱後點 '課輔老師' → body 出現 '尚未儲存的變更將會遺失'；點 '繼續編輯' → query.role 仍為 'r-clerk'",
-          "RolesView reloads after create：點 '新增角色' 建立成功（回 id 'r-new'）→ GET /admin/roles 再次被呼叫且 query.role === 'r-new'"
+          "RolesView selects role from query：initialRoute '/settings/roles?role=clerk' → 選中卡片與詳情面板名稱 input 值皆為 '行政'",
+          "RolesView defaults to first sorted role：無 query → 卡片依序 ['管理員','主任','行政','課輔老師','週六支援老師']，選中 '管理員'；push '?role=nope' → 仍選 '管理員'",
+          "RolesView updates query when selecting：點 '課輔老師' 卡 → router query.role === 'tutor'，詳情名稱為 '課輔老師'",
+          "RolesView guards unsaved changes on switch：在 clerk 詳情改名稱後點 '課輔老師' → body 出現 '尚未儲存的變更將會遺失'；點 '繼續編輯' → query.role 仍為 'clerk'、名稱保留修改值；再點選 '放棄變更' → query.role === 'tutor'",
+          "RolesView guards unsaved changes on route leave：詳情有變更時 router.push('/students') → 出現確認，'繼續編輯' → path 仍為 /settings/roles",
+          "RolesView reloads after create：點 '新增角色' 建立成功（回 code 'senior_tutor'）→ GET /admin/roles 再次被呼叫且 query.role === 'senior_tutor'、選中 '資深老師'",
+          "RolesView reloads after save：clerk 改名稱後儲存 → PATCH body 深等於 {name:'資深行政'}，GET /admin/roles 再次被呼叫、卡片含新名稱、query.role 仍為 'clerk'",
+          "RolesView reloads after delete and selects first role：在 weekend_helper 刪除角色並確認 → DELETE 一次、GET /admin/roles 再次被呼叫、卡片不含 '週六支援老師'、query.role === 'admin'",
+          "RolesView hides create button without roles write：權限只有 roles:read → 沒有 '新增角色'，詳情顯示 '你只有檢視權限'；標題與副標符合稿",
+          "RolesView shows skeleton while loading：GET 尚未回應 → '角色（—）'、2 個 .el-skeleton、沒有角色卡、'新增角色' disabled；回應後 '角色（5）'",
+          "RolesView shows retry on load failure：GET /admin/roles 回 500 → 文字含 '無法載入角色'；點 '重試' 且第二次回 200 → 顯示 5 張角色卡",
+          "RolesView is wired in view loaders：(await VIEW_LOADERS.RolesView()).default === RolesView"
         ],
         "run": "just web-test src/views/settings/RolesView.spec.ts -t \"RolesView\"",
         "notes": ""
