@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 296,
-  "last_updated": "2026-10-16T15:34:39Z",
+  "version": 297,
+  "last_updated": "2026-10-16T15:35:34Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2758,7 +2758,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentDetailPanel.vue",
       "source_ref": "FE:src/components/student/StudentDetailPanel.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
@@ -2791,12 +2791,12 @@
           "StudentDetailPanel cancel archive keeps student：封存確認框選 '取消' → 沒有 POST、沒有 emit changed",
           "StudentDetailPanel edits via form dialog：點 '編輯' → StudentFormDialog modelValue true、student 為目前詳情；dialog emit saved（改名 / 改年級）→ header 更新、emitted('changed') 一次",
           "StudentDetailPanel emits changed after photo upload：StudentPhotoUploader emit uploaded(url) → photoUrl prop 更新、emitted('changed') 一次",
-          "StudentDetailPanel passes guardians and refreshes count after change：GuardianManager props {studentId:'s1',studentName:'王小明',initial:[g1],readonly:false}；emit change → 再 GET 詳情一次、分頁標題 '監護人（2）'、不顯示骨架",
+          "StudentDetailPanel passes guardians and refreshes count after change：GuardianManager props {studentId:'s1',studentName:'王小明',initial:[g1],readonly:false}；emit change → 第二次 GET 以可控 Promise 暫不回應，回應前沒有 .el-skeleton、GuardianManager 仍是同一實例（替身掛載次數維持 1）；放行後 GET 共 2 次、分頁標題 '監護人（2）'、掛載次數仍為 1",
           "StudentDetailPanel guardians readonly when archived：已封存且 ?tab=guardians → 作用中分頁為監護人、GuardianManager readonly true",
           "StudentDetailPanel syncs tab with query：點 '監護人' → query.tab 'guardians'（保留 query.student）；push ?tab=exams → 作用中為 '成績紀錄'",
           "StudentDetailPanel falls back to basic tab without exam permission：沒有 exams:read 且 ?tab=exams → 作用中為 '基本資料'",
           "StudentDetailPanel shows retry on load failure：GET 500 → '無法載入學生資料'；'重試' 回 200 → 顯示王小明",
-          "StudentDetailPanel reloads and emits changed after purge：永久刪除 dialog 輸入學號送出 → POST purge、再 GET 詳情一次並顯示新資料、emitted('changed') 一次"
+          "StudentDetailPanel reloads and emits changed after purge：永久刪除 dialog 輸入學號送出 → POST purge；重抓詳情以可控 Promise 暫不回應，回應前沒有 .el-skeleton 且 header 仍顯示原姓名；放行後 GET 共 2 次、header 顯示新資料、emitted('changed') 一次"
         ],
         "run": "just web-test src/components/student/StudentDetailPanel.spec.ts -t \"StudentDetailPanel\"",
         "notes": "StudentPhotoUploader / GuardianManager / StudentExamHistoryTab / StudentFormDialog 以 vi.mock 替身驗證傳入的 props 與完成事件（各自已有完整測試；避免它們各自發請求與多個 el-select 拖慢 happy-dom）；StudentSensitiveFields 與 StudentPurgeDialog 用真實元件。"
