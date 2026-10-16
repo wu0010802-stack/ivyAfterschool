@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 188,
-  "last_updated": "2026-10-16T05:04:08Z",
+  "version": 189,
+  "last_updated": "2026-10-16T05:05:16Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2761,8 +2761,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentSensitiveFields.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081"
       ],
@@ -2796,8 +2796,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentFormDialog.vue",
       "source_ref": "FE:src/components/student/StudentEditDialog.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-083",
@@ -2839,8 +2839,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPhotoUploader.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-006"
@@ -3070,8 +3070,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentSelect.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081"
       ],
@@ -3224,8 +3224,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPurgeDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-040",
@@ -4322,8 +4322,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalPosQueue.ts",
       "source_ref": "FE:src/composables/useDismissalPosQueue.ts::useDismissalPosQueue",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
         "FRONTEND-182",
@@ -4440,8 +4440,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePickupBoard.ts",
       "source_ref": "FE:src/views/DismissalQueueView.vue::handleWsEvent",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
         "FRONTEND-181",
@@ -4572,8 +4572,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/ClassroomRail.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosClassroomRail.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-182"
       ],
@@ -4641,8 +4641,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentCard.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
         "FRONTEND-005"
@@ -4716,8 +4716,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/QueueCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosQueueCard.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-184",
         "FRONTEND-186",
@@ -4957,8 +4957,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationVerifyDialog.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::submitVerify",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
         "FRONTEND-040"
@@ -4996,8 +4996,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationCard.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::recordSummary",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
         "FRONTEND-184",
@@ -6058,8 +6058,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreCell.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-236"
       ],
