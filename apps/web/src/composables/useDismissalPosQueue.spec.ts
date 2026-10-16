@@ -60,6 +60,13 @@ function makeQueue(open: PickupRequest[] = [], closed: PickupRequest[] = []): Pi
 
 const STUDENT = { id: 's1', name: '王小明', className: '低年級A班' }
 
+function permutations<T>(items: T[]): T[][] {
+  if (items.length <= 1) return [items]
+  return items.flatMap((item, i) =>
+    permutations([...items.slice(0, i), ...items.slice(i + 1)]).map((rest) => [item, ...rest]),
+  )
+}
+
 type Queue = ReturnType<typeof useDismissalPosQueue>
 
 let mock: MockAdapter
@@ -135,6 +142,31 @@ describe('useDismissalPosQueue', () => {
     expect(itemOf(q, 'r9').request?.status).toBe('acknowledged')
   })
 
+  it('useDismissalPosQueue drops local copy once queue catches up', async () => {
+    const created = makeRequest({ id: 'r9', source: 'staff' })
+    mock.onPost(CREATE_URL).reply(201, created)
+    const queue = ref<PickupQueue | null>(makeQueue())
+    const q = setup(queue)
+    q.addToQueue(STUDENT)
+    await vi.advanceTimersByTimeAsync(STAGING_DURATION_MS)
+    expect(itemOf(q, 'r9').phase).toBe('active')
+    // 本地樂觀版本仍是進行中：擋住重複代建
+    expect(q.addToQueue(STUDENT)).toBe(false)
+
+    // ws 追上：外部清單出現 r9（進行中）
+    queue.value = makeQueue([created])
+    await nextTick()
+    expect(q.addToQueue(STUDENT)).toBe(false)
+
+    // 家長取消：r9 移到 closed → 本地樂觀版本已移除，不可再擋住該生代建
+    queue.value = makeQueue([], [{ ...created, status: 'cancelled', cancelled_at: '2026-10-02T09:03:00Z' }])
+    await nextTick()
+    expect(q.items.value.map((i) => `${i.phase}:${i.id}`)).toEqual(['closed:r9'])
+    expect(q.addToQueue(STUDENT)).toBe(true)
+    // 倒數中：該生稍早已結束的 r9 讓位，只剩倒數卡
+    expect(q.items.value.map((i) => i.id)).toEqual(['staging:s1'])
+  })
+
   it('useDismissalPosQueue rejects duplicates', async () => {
     const queue = ref<PickupQueue | null>(makeQueue([makeRequest({ id: 'r2', studentId: 's2', studentName: '陳小美' })]))
     const q = setup(queue)
@@ -166,13 +198,23 @@ describe('useDismissalPosQueue', () => {
 
   it('useDismissalPosQueue sorts active and hides superseded closed', async () => {
     const pending1730 = makeRequest({ id: 'rA', studentId: 'sA', expected_arrival_at: '17:30', created_at: '2026-10-02T08:00:00Z' })
+    // 家長已到的兩筆：預計抵達都比 pending 晚（18:00 / 未填）、建立也較晚，只有「arrived 在前」能解釋它們排前面；
+    // 兩筆之間只有 arrived_at 能解釋 rF（09:02 到）排在 rB（09:05 到）前
     const arrived = makeRequest({
       id: 'rB',
       studentId: 'sB',
       status: 'arrived',
       arrived_at: '2026-10-02T09:05:00Z',
-      expected_arrival_at: '17:00',
+      expected_arrival_at: '18:00',
       created_at: '2026-10-02T08:30:00Z',
+    })
+    const arrivedEarlier = makeRequest({
+      id: 'rF',
+      studentId: 'sF',
+      status: 'arrived',
+      arrived_at: '2026-10-02T09:02:00Z',
+      expected_arrival_at: null,
+      created_at: '2026-10-02T08:45:00Z',
     })
     const pendingNull = makeRequest({ id: 'rC', studentId: 'sC', expected_arrival_at: null, created_at: '2026-10-02T07:00:00Z' })
     const s1Completed = makeRequest({
@@ -189,20 +231,31 @@ describe('useDismissalPosQueue', () => {
       cancelled_at: '2026-10-02T08:50:00Z',
       created_at: '2026-10-02T07:40:00Z',
     })
-    const queue = ref<PickupQueue | null>(makeQueue([pending1730, arrived, pendingNull], [s1Completed, s9Cancelled]))
+    const queue = ref<PickupQueue | null>(
+      makeQueue([pending1730, arrived, pendingNull, arrivedEarlier], [s1Completed, s9Cancelled]),
+    )
     const q = setup(queue)
 
     q.addToQueue(STUDENT)
 
     const ids = q.items.value.map((i) => i.id)
     expect(ids[0]).toBe('staging:s1')
-    expect(q.items.value.filter((i) => i.phase === 'active').map((i) => i.id)).toEqual(['rB', 'rA', 'rC'])
+    expect(q.items.value.filter((i) => i.phase === 'active').map((i) => i.id)).toEqual(['rF', 'rB', 'rA', 'rC'])
     expect(ids).not.toContain('rD')
     expect(q.items.value.filter((i) => i.phase === 'closed').map((i) => i.id)).toEqual(['rE'])
 
     // 倒數取消後，s1 已結束的紀錄重新出現，依結束時間新到舊
     await q.cancel(itemOf(q, 'staging:s1'))
     expect(q.items.value.filter((i) => i.phase === 'closed').map((i) => i.id)).toEqual(['rE', 'rD'])
+
+    // 排序與外部清單的順序無關：每一種輸入順序都得到同樣結果（比較函式不一致時某些順序會排錯）
+    const open = [pending1730, arrived, pendingNull, arrivedEarlier]
+    for (const perm of permutations(open)) {
+      queue.value = makeQueue(perm, [s1Completed, s9Cancelled])
+      await nextTick()
+      const order = q.items.value.filter((i) => i.phase === 'active').map((i) => i.id)
+      expect(order, `輸入順序 ${perm.map((r) => r.id).join(',')}`).toEqual(['rF', 'rB', 'rA', 'rC'])
+    }
   })
 
   it('useDismissalPosQueue handles conflict on submit', async () => {

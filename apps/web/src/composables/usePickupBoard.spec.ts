@@ -10,7 +10,7 @@ import type { StaffAuthorization } from '@/api/pickupAuthorizations'
 import type { PickupQueue, PickupRequest, PickupRoster, RosterStudent } from '@/api/pickupRequests'
 import { useAdminWsStore } from '@/stores/adminWs'
 import { createApiMock } from '@/test/helpers'
-import { usePickupBoard } from './usePickupBoard'
+import { usePickupBoard, type AuthorizationEvent } from './usePickupBoard'
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = []
@@ -139,6 +139,25 @@ function makeAuthorization(overrides: Partial<StaffAuthorization> = {}): StaffAu
     code_attempts: 0,
     locked: false,
     verified_by_name: null,
+    ...overrides,
+  }
+}
+
+/** ws pickup.authorization_updated 的 data：後端 PickupAuthorizationOut（BACKEND-420），沒有 student / photo_url / code_attempts / locked / verified_by_name */
+function makeAuthorizationEvent(overrides: Partial<AuthorizationEvent> = {}): AuthorizationEvent {
+  return {
+    id: 'pa1',
+    student_id: 's1',
+    service_date: DATE,
+    pickup_person_id: null,
+    proxy_name: '陳阿姨',
+    proxy_phone: '0912-000-456',
+    code_last4: '4821',
+    status: 'active',
+    effective_status: 'active',
+    verified_at: null,
+    verification_method: null,
+    created_at: '2026-10-02T00:00:00Z',
     ...overrides,
   }
 }
@@ -278,8 +297,11 @@ describe('usePickupBoard', () => {
   it('usePickupBoard ws update moves request to closed and patches roster', async () => {
     const r1 = makeRequest()
     const s1 = makeStudent({ open_request: { id: 'r1', status: 'pending', expected_arrival_at: '17:30', needs_reply: true } })
-    mockAll(makeQueue([r1]), makeRoster([s1]))
+    // 已結束清單原本就有一筆：新的終態要放最前
+    const r0 = makeRequest({ id: 'r0', studentId: 's0', status: 'completed', completed_at: '2026-10-02T08:30:00Z' })
+    mockAll(makeQueue([r1], [r0]), makeRoster([s1]))
     const { board } = await mountBoard({ withRoster: true })
+    expect(board.queue.value?.closed.map((r) => r.id)).toEqual(['r0'])
 
     socket().serverMessage('pickup.request_updated', {
       ...r1,
@@ -293,11 +315,30 @@ describe('usePickupBoard', () => {
     await settle()
 
     expect(openIds(board)).not.toContain('r1')
-    expect(board.queue.value?.closed[0]?.id).toBe('r1')
+    expect(board.queue.value?.closed.map((r) => r.id)).toEqual(['r1', 'r0'])
     expect(board.queue.value?.closed[0]?.status).toBe('completed')
     expect(rosterStudent(board, 's1')?.open_request).toBeNull()
     expect(rosterStudent(board, 's1')?.attendance_status).toBe('left')
     expect(board.counts.value).toEqual({ pending: 0, acknowledged: 0, arrived: 0, needs_reply: 0 })
+  })
+
+  it('usePickupBoard keeps newer open request on roster when an older request ends', async () => {
+    const r2 = makeRequest({ id: 'r2', created_at: '2026-10-02T08:30:00Z' })
+    const s1 = makeStudent({ open_request: { id: 'r2', status: 'pending', expected_arrival_at: '17:30', needs_reply: true } })
+    mockAll(makeQueue([r2]), makeRoster([s1]))
+    const { board } = await mountBoard({ withRoster: true })
+
+    // 同一學生稍早那筆（不在佇列）的終態晚到：只收進 closed，不可清掉名單上較新的進行中請求
+    socket().serverMessage(
+      'pickup.request_updated',
+      makeRequest({ id: 'r1', status: 'cancelled', cancelled_at: '2026-10-02T08:50:00Z', created_at: '2026-10-02T07:00:00Z' }),
+    )
+    await settle()
+
+    expect(board.queue.value?.closed.map((r) => r.id)).toEqual(['r1'])
+    expect(openIds(board)).toEqual(['r2'])
+    expect(rosterStudent(board, 's1')?.open_request?.id).toBe('r2')
+    expect(rosterStudent(board, 's1')?.attendance_status).toBe('present')
   })
 
   it('usePickupBoard upserts open request into queue and roster', async () => {
@@ -617,29 +658,154 @@ describe('usePickupBoard', () => {
     expect(gets(QUEUE_URL)).toHaveLength(1)
   })
 
-  it('usePickupBoard applies authorization and recomputes roster count', async () => {
+  it('usePickupBoard refetches authorizations on authorization event', async () => {
+    const pa1 = makeAuthorization()
+    const pa1Done = makeAuthorization({
+      status: 'completed',
+      effective_status: 'completed',
+      verification_method: 'code',
+      verified_by_name: '張主任',
+      verified_at: '2026-10-02T09:05:00Z',
+    })
+    const pa2 = makeAuthorization({ id: 'pa2', proxy_name: '林阿姨', code_last4: '1185', photo_url: 'https://storage/p.jpg', code_attempts: 1 })
+    const pa4 = makeAuthorization({ id: 'pa4', proxy_name: '吳伯伯', code_last4: '5531', locked: true, code_attempts: 5 })
+    mock.onGet(QUEUE_URL).reply(200, makeQueue())
+    mock.onGet(ROSTER_URL).reply(200, makeRoster([makeStudent({ active_authorization_count: 1 })]))
+    mock
+      .onGet(AUTH_URL)
+      .replyOnce(200, [pa1])
+      .onGet(AUTH_URL)
+      .replyOnce(200, [pa1Done, pa2, pa4])
+    const { board } = await mountBoard({ withRoster: true, withAuthorizations: true })
+    expect(gets(AUTH_URL)).toHaveLength(1)
+    expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(1)
+
+    // 另一台平板核驗成功：後端推的是家長端形狀（沒有 student / photo_url / code_attempts / locked / verified_by_name）
+    socket().serverMessage(
+      'pickup.authorization_updated',
+      makeAuthorizationEvent({ status: 'completed', effective_status: 'completed', verification_method: 'code', verified_at: '2026-10-02T09:05:00Z' }),
+    )
+    await settle()
+
+    expect(gets(AUTH_URL)).toHaveLength(2)
+    expect((gets(AUTH_URL)[1]?.params as { date?: string }).date).toBe(DATE)
+    // 清單只採用 436 的回應：學生摘要、照片、錯誤次數、鎖定、核驗人都齊，沒有被事件物件取代
+    expect(board.authorizations.value.map((a) => a.id)).toEqual(['pa1', 'pa2', 'pa4'])
+    expect(board.authorizations.value.every((a) => a.student?.name === '王小明')).toBe(true)
+    expect(board.authorizations.value[0]?.effective_status).toBe('completed')
+    expect(board.authorizations.value[0]?.verified_by_name).toBe('張主任')
+    expect(board.authorizations.value[1]?.photo_url).toBe('https://storage/p.jpg')
+    expect(board.authorizations.value[1]?.code_attempts).toBe(1)
+    expect(board.authorizations.value[2]?.locked).toBe(true)
+    // roster 以新清單重算：pa2、pa4 為 active
+    expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(2)
+    expect(gets(ROSTER_URL)).toHaveLength(1)
+
+    // 非今天的授權事件忽略
+    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent({ id: 'pa3', service_date: '2026-10-03' }))
+    await settle()
+    expect(gets(AUTH_URL)).toHaveLength(2)
+  })
+
+  it('usePickupBoard keeps latest authorization list when refetch responses arrive out of order', async () => {
+    mock.onGet(QUEUE_URL).reply(200, makeQueue())
+    const gates: Record<number, () => void> = {}
+    let calls = 0
+    mock.onGet(AUTH_URL).reply(async () => {
+      const n = ++calls
+      if (n === 1) return [200, [makeAuthorization()]]
+      await new Promise<void>((resolve) => {
+        gates[n] = resolve
+      })
+      return [200, [makeAuthorization({ code_attempts: n })]]
+    })
+    const { board } = await mountBoard({ withAuthorizations: true })
+    expect(board.authorizations.value[0]?.code_attempts).toBe(0)
+
+    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent())
+    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent())
+    await settle()
+    expect(gets(AUTH_URL)).toHaveLength(3)
+
+    // 較新的那次先回
+    gates[3]?.()
+    await settle()
+    expect(board.authorizations.value[0]?.code_attempts).toBe(3)
+
+    // 較舊的那次晚到：不覆蓋
+    gates[2]?.()
+    await settle()
+    expect(board.authorizations.value[0]?.code_attempts).toBe(3)
+  })
+
+  it('usePickupBoard refetches roster on authorization event when authorizations are not loaded', async () => {
+    mock.onGet(QUEUE_URL).reply(200, makeQueue())
+    mock
+      .onGet(ROSTER_URL)
+      .replyOnce(200, makeRoster([makeStudent({ active_authorization_count: 0 })]))
+      .onGet(ROSTER_URL)
+      .replyOnce(200, makeRoster([makeStudent({ active_authorization_count: 1 })]))
+      .onGet(ROSTER_URL)
+      .replyOnce(200, makeRoster([makeStudent({ active_authorization_count: 0 })]))
+    mock.onGet(AUTH_URL).reply(200, [makeAuthorization()])
+    const first = await mountBoard({ withRoster: true })
+    const { board } = first
+    expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(0)
+
+    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent())
+    await settle()
+
+    expect(gets(ROSTER_URL)).toHaveLength(2)
+    expect(gets(AUTH_URL)).toHaveLength(0)
+    expect(board.authorizations.value).toEqual([])
+    expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(1)
+
+    // HTTP 核驗結果同樣不寫進未載入的清單，改重抓名單
+    board.applyAuthorization(makeAuthorization({ status: 'completed', effective_status: 'completed' }))
+    await settle()
+    expect(board.authorizations.value).toEqual([])
+    expect(gets(ROSTER_URL)).toHaveLength(3)
+    expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(0)
+    first.wrapper.unmount()
+
+    // 兩者皆未載入：事件忽略，不寫進清單也不重抓
+    const bare = await mountBoard()
+    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent({ id: 'pa9' }))
+    await settle()
+    expect(bare.board.authorizations.value).toEqual([])
+    expect(gets(ROSTER_URL)).toHaveLength(3)
+    expect(gets(AUTH_URL)).toHaveLength(0)
+  })
+
+  it('usePickupBoard applies verified authorization and recomputes roster count', async () => {
     const pa1 = makeAuthorization()
     mockAll(makeQueue(), makeRoster([makeStudent({ active_authorization_count: 1 })]), [pa1])
     const { board } = await mountBoard({ withRoster: true, withAuthorizations: true })
 
-    socket().serverMessage('pickup.authorization_updated', makeAuthorization({ id: 'pa2', proxy_name: '林阿姨', code_last4: '1185' }))
+    // 本機核驗結果（B437~439 回傳的完整 StaffAuthorization）：就地 upsert，不重抓
+    board.applyAuthorization({
+      ...pa1,
+      status: 'completed',
+      effective_status: 'completed',
+      verification_method: 'visual_match',
+      verified_by_name: '陳老師',
+      verified_at: '2026-10-02T09:10:00Z',
+    })
+    await settle()
+    expect(board.authorizations.value).toHaveLength(1)
+    expect(board.authorizations.value[0]?.effective_status).toBe('completed')
+    expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(0)
+
+    board.applyAuthorization(makeAuthorization({ id: 'pa2', proxy_name: '林阿姨', code_last4: '1185' }))
     await settle()
     expect(board.authorizations.value.map((a) => a.id)).toEqual(['pa1', 'pa2'])
-    expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(2)
-
-    socket().serverMessage('pickup.authorization_updated', { ...pa1, code_attempts: 3 })
-    await settle()
-    expect(board.authorizations.value).toHaveLength(2)
-    expect(board.authorizations.value.find((a) => a.id === 'pa1')?.code_attempts).toBe(3)
-
-    socket().serverMessage('pickup.authorization_updated', { ...pa1, status: 'cancelled', effective_status: 'cancelled' })
-    await settle()
     expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(1)
 
     // 非今天的授權忽略
-    socket().serverMessage('pickup.authorization_updated', makeAuthorization({ id: 'pa3', service_date: '2026-10-03' }))
+    board.applyAuthorization(makeAuthorization({ id: 'pa3', service_date: '2026-10-03' }))
     await settle()
     expect(board.authorizations.value.map((a) => a.id)).toEqual(['pa1', 'pa2'])
+    expect(gets(AUTH_URL)).toHaveLength(1)
   })
 
   it('usePickupBoard reloads for the new day after midnight', async () => {
