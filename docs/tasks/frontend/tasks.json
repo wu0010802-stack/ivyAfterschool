@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 193,
-  "last_updated": "2026-10-16T05:23:01Z",
+  "version": 194,
+  "last_updated": "2026-10-16T05:23:56Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4327,7 +4327,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalPosQueue.ts",
       "source_ref": "FE:src/composables/useDismissalPosQueue.ts::useDismissalPosQueue",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
@@ -4352,7 +4352,7 @@
           "useDismissalPosQueue clears timers on dispose：addToQueue 後 scope.stop()，10 秒後 mock.history.post.length === 0"
         ],
         "run": "just web-test src/composables/useDismissalPosQueue.spec.ts -t \"useDismissalPosQueue\"",
-        "notes": ""
+        "notes": "紅燈 commit da42e55、實作 commit a9e60fa。除 7 條 red_cases 外另有 4 條：其他 submit 錯誤顯示後端訊息並可再次發起、cancel active 打 API 並移除本地版本（失敗回 false、closed 直接 false 不打 API）、WS 先於 HTTP 回應時以 studentId 去重、finally 只刪自己那次的 staging entry。fake timers 只 fake Date / setTimeout / setInterval（保留 setImmediate 給 flushPromises）。突變自檢：拿掉 finally 身分比對、拿掉 staging 與 active 去重、拿掉 closed 隱藏規則各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
@@ -4445,11 +4445,11 @@
     {
       "id": "FRONTEND-188",
       "title": "實作 composables/usePickupBoard.ts：接送 POS 資料擁有者（佇列、名單、授權、ws 合併與操作）",
-      "description": "建立 `apps/web/src/composables/usePickupBoard.ts`，接送 POS（FRONTEND-189）與代理核驗頁（FRONTEND-200）共用。參考 ivy `FE:src/views/DismissalQueueView.vue` 的 loadCalls 序號防護、handleWsEvent upsert、WS 斷線 15 秒輪詢；改為本專案三種資料與 ws 事件（`docs/tasks/api_index.md` §15）。\n\n**介面**\n```ts\nexport function usePickupBoard(opts?: { withRoster?: boolean; withAuthorizations?: boolean }): {\n  queue: Ref<PickupQueue | null>; roster: Ref<PickupRoster | null>; authorizations: Ref<StaffAuthorization[]>\n  counts: ComputedRef<{ pending; acknowledged; arrived; needs_reply }>   // 由 queue.open 重算\n  loading; error; reload(): Promise<void>\n  reply(id, body): Promise<PickupRequest>; acknowledge(id): Promise<PickupRequest>\n  complete(id, body): Promise<PickupRequest>; create(body): Promise<PickupRequest>\n  applyRequest(req: PickupRequest): void; applyAuthorization(a: StaffAuthorization): void\n  onArrived(fn: (req) => void): () => void; onNewRequest(fn: (req) => void): () => void\n  wsStatus; wsDenied\n}\n```\n- 日期固定為 `todayTaipei()`；跨午夜（每分鐘檢查）時自動 reload 新的一天。\n- `applyRequest(req)`：req.service_date 非今天忽略；open 狀態 → upsert 到 queue.open（移出 closed）；終態 → 移出 open、upsert 到 closed 最前；同步 roster 中該生的 `open_request`（終態設 null；completed 時 attendance_status 設 'left'）。狀態從非 arrived 變 arrived → 觸發 onArrived；新出現的 pending（原本不在 open）→ 觸發 onNewRequest。家長可用「我已經到了」捷徑直接建立 arrived 的請求（B440 `arrived: true`，未經 pending、`expected_arrival_at` 為 null、`arrived_at` 有值）：第一次看到的請求就是 arrived 時只觸發 onArrived（不觸發 onNewRequest）。\n- mutation 回 404 `pickup_request_not_found` → `ElMessage.warning('此接送請求已不存在，已重新整理')` 並 reload（不 rethrow）。\n- mutation 成功後以回傳值 applyRequest；409 `invalid_pickup_status` → ElMessage.warning(`此請求狀態已變更（目前：{label}）`) 並 reload；其他錯誤 rethrow 給 dialog 顯示。\n- ws：`useAdminWsTopic('pickup', { 'pickup.request_updated': applyRequest, 'pickup.authorization_updated': applyAuthorization }, { resync: reload })`；withRoster 時另訂閱 `attendance`（`attendance.updated` → patchRosterStudent attendance_status / 時間）與 `homework`（`homework.progress_updated` → homework_status / ready_eta），對應 topic 被拒（deniedTopics）時改為每 60 秒重抓 roster。\n- `applyAuthorization`：upsert；roster 中該生 active_authorization_count 以 authorizations 中該生 effective_status active 數量重算。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/usePickupBoard.ts`，接送 POS（FRONTEND-189）與代理核驗頁（FRONTEND-200）共用。參考 ivy `FE:src/views/DismissalQueueView.vue` 的 loadCalls 序號防護、handleWsEvent upsert、WS 斷線 15 秒輪詢；改為本專案三種資料與 ws 事件（`docs/tasks/api_index.md` §15）。\n\n**介面**\n```ts\nexport function usePickupBoard(opts?: { withRoster?: boolean; withAuthorizations?: boolean }): {\n  queue: Ref<PickupQueue | null>; roster: Ref<PickupRoster | null>; authorizations: Ref<StaffAuthorization[]>\n  counts: ComputedRef<{ pending; acknowledged; arrived; needs_reply }>   // 由 queue.open 重算\n  loading; error; reload(): Promise<void>\n  reply(id, body): Promise<PickupRequest | null>; acknowledge(id): Promise<PickupRequest | null>\n  complete(id, body): Promise<PickupRequest | null>; create(body): Promise<PickupRequest | null>   // null = 404 / 409 已提示並 reload，呼叫端關閉 dialog 即可\n  applyRequest(req: PickupRequest): void; applyAuthorization(a: StaffAuthorization): void\n  onArrived(fn: (req) => void): () => void; onNewRequest(fn: (req) => void): () => void\n  wsStatus; wsDenied\n}\n```\n- 日期固定為 `todayTaipei()`；跨午夜（每分鐘檢查）時自動 reload 新的一天。\n- `applyRequest(req)`：req.service_date 非今天忽略；open 狀態 → upsert 到 queue.open（移出 closed）；終態 → 移出 open、upsert 到 closed 最前；同步 roster 中該生的 `open_request`（終態設 null；completed 時 attendance_status 設 'left'）。狀態從非 arrived 變 arrived → 觸發 onArrived；新出現的 pending（原本不在 open）→ 觸發 onNewRequest。家長可用「我已經到了」捷徑直接建立 arrived 的請求（B440 `arrived: true`，未經 pending、`expected_arrival_at` 為 null、`arrived_at` 有值）：第一次看到的請求就是 arrived 時只觸發 onArrived（不觸發 onNewRequest）。\n- mutation 回 404 `pickup_request_not_found` → `ElMessage.warning('此接送請求已不存在，已重新整理')` 並 reload（不 rethrow，resolve null）。\n- 多來源更新守衛：依狀態機順序 pending(0) → acknowledged(1) → arrived(2) → completed / cancelled / expired(3)，同一 id 收到順序較小的狀態一律忽略（終態不會被較晚到的 open 訊息蓋回去，arrived 也不會被遲到的 acknowledged 倒退）。終態同步 roster 時只在該生 `open_request` 為 null 或 id 相同時才清空，避免舊請求的終態清掉新的進行中請求。\n- mutation 成功後以回傳值 applyRequest；409 `invalid_pickup_status` → ElMessage.warning(`此請求狀態已變更（目前：{label}）`) 並 reload（resolve null）；其他錯誤 rethrow 給 dialog 顯示。\n- ws：`useAdminWsTopic('pickup', { 'pickup.request_updated': applyRequest, 'pickup.authorization_updated': applyAuthorization }, { resync: reload })`；withRoster 時另訂閱 `attendance`（`attendance.updated` → patchRosterStudent attendance_status / 時間）與 `homework`（`homework.progress_updated` → homework_status / ready_eta），對應 topic 被拒（deniedTopics）時改為每 60 秒重抓 roster。\n- `applyAuthorization`：service_date 非今天忽略；upsert；withAuthorizations 時 roster 中該生 active_authorization_count 以 authorizations 中該生 effective_status active 數量重算，未載入授權清單（withRoster 但無 withAuthorizations）時改重抓 roster。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePickupBoard.ts",
       "source_ref": "FE:src/views/DismissalQueueView.vue::handleWsEvent",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
@@ -4478,7 +4478,7 @@
           "usePickupBoard handles request not found：acknowledge('r1') 回 404 {error:{code:'pickup_request_not_found',message:'找不到接送請求'}} → body 含 '此接送請求已不存在，已重新整理'，GET /admin/pickup/queue 請求數 +1，promise 不 reject"
         ],
         "run": "just web-test src/composables/usePickupBoard.spec.ts -t \"usePickupBoard\"",
-        "notes": ""
+        "notes": "紅燈 commit f5df1dc、實作 commit ab28700。除 9 條 red_cases 外另有 10 條：未指定 withRoster / withAuthorizations 時只抓佇列、open 狀態 upsert 與非今天忽略、遲到的 acknowledged 不倒退 arrived、mutation 成功套用回傳值（reply / acknowledge / create / complete）、其他錯誤 rethrow、attendance.updated / batch_updated / bulk_updated 與 homework.progress_updated 就地更新名單、topic 未被拒時不輪詢、authorization upsert 與計數重算、跨午夜重抓新的一天、載入失敗保留資料。fake timers 只 fake Date / setTimeout / setInterval（保留 setImmediate 給 flushPromises）；ws 用 FakeWebSocket。突變自檢：拿掉狀態機守衛、arrived 去重、今天過濾、404 分支、被拒輪詢各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
