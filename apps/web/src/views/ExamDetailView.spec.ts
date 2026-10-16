@@ -19,6 +19,8 @@ const grid = vi.hoisted(() => ({
   reloadCalls: 0,
   mounts: 0,
   examIds: [] as string[],
+  /** 目前掛載的 stub 的狀態，測試可直接改 */
+  instance: null as null | { hasUnsaved: { value: boolean }; failedCount: { value: number } },
 }))
 
 vi.mock('@/components/exams/ScoreGrid.vue', async () => {
@@ -32,6 +34,7 @@ vi.mock('@/components/exams/ScoreGrid.vue', async () => {
         grid.examIds.push(props.examId)
         const hasUnsaved = ref(grid.hasUnsaved)
         const failedCount = ref(grid.failedCount)
+        grid.instance = { hasUnsaved, failedCount }
         expose({
           hasUnsaved,
           failedCount,
@@ -196,6 +199,7 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
       reloadCalls: 0,
       mounts: 0,
       examIds: [],
+      instance: null,
     })
   })
 
@@ -444,8 +448,7 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
     grid.afterFlush = { hasUnsaved: true, failedCount: 1 }
     grid.mounts = 0
     // 讓目前的 stub 也進入「仍有未儲存」狀態
-    const stub = wrapper.findComponent({ name: 'ScoreGrid' })
-    ;(stub.vm as unknown as { hasUnsaved: boolean }).hasUnsaved = true
+    grid.instance!.hasUnsaved.value = true
     wrapper.findComponent(ExamFormDialog).vm.$emit('saved', renamed)
     await settle()
     await settle()
