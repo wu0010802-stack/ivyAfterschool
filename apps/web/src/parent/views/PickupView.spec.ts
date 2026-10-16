@@ -131,6 +131,7 @@ interface Setup {
   today?: Reply[]
   detail?: Record<string, Reply[]>
   homework?: Record<string, Reply[]>
+  pinia?: Record<string, unknown>
 }
 
 let mock: MockAdapter
@@ -154,7 +155,7 @@ async function mountPickup(setup: Setup = {}): Promise<MountedApp> {
     serve(homeworkUrl(k.id), setup.homework?.[k.id] ?? [[200, homework(k.id)]])
   }
   if (setup.selected) localStorage.setItem(SELECTED_KEY, setup.selected)
-  mounted = await mountWithApp(PickupView)
+  mounted = await mountWithApp(PickupView, { piniaInitialState: setup.pinia })
   return mounted
 }
 
@@ -429,7 +430,8 @@ describe('PickupView', () => {
   it('PickupView shows window closed error in form', async () => {
     const { wrapper } = await mountPickup()
     mock.onPost(CREATE_URL).replyOnce(409, apiError('pickup_window_closed', '目前不在可發起接送的時段（15:00~19:00）'))
-    mock.onPost(CREATE_URL).replyOnce(201, request('r1'))
+    const second = deferredReply()
+    mock.onPost(CREATE_URL).replyOnce(second.reply)
 
     await click(button(wrapper, '通知安親班'))
 
@@ -445,9 +447,11 @@ describe('PickupView', () => {
     expect(snackbar()).toEqual([])
     expect(gets(TODAY_URL)).toBe(1)
 
-    // 下次送出時清除
+    // 下次送出時（回應前）就清除
     await click(button(wrapper, '通知安親班'))
     expect(wrapper.text()).not.toContain('目前不在可發起接送的時段')
+    second.resolve([201, request('r1')])
+    await flushPromises()
   })
 
   it('PickupView existing request conflict syncs', async () => {
@@ -668,8 +672,12 @@ describe('PickupView', () => {
 
   it('PickupView skeleton until can_pickup known', async () => {
     const pending = deferredReply()
-    const { wrapper } = await mountPickup({ detail: { s1: [pending.reply] } })
+    const { wrapper } = await mountPickup({
+      detail: { s1: [pending.reply] },
+      today: [[200, [request('r0', { status: 'cancelled', cancelled_at: '2026-10-07T08:12:00Z', can_cancel: false, can_mark_arrived: false })]]],
+    })
 
+    expect(wrapper.text()).not.toContain('今日紀錄')
     const sk = skeletons(wrapper)
     expect(sk).toHaveLength(1)
     expect(sk[0]!.findAll('.skeleton-card')).toHaveLength(2)
@@ -681,6 +689,7 @@ describe('PickupView', () => {
 
     expect(skeletons(wrapper)).toHaveLength(0)
     expect(hasButton(wrapper, '通知安親班')).toBe(true)
+    expect(wrapper.get('.pk-section').text()).toBe('今日紀錄')
   })
 
   it('PickupView skeleton until today requests load', async () => {
@@ -897,6 +906,62 @@ describe('PickupView', () => {
     await click(entry.element)
 
     expect(router.currentRoute.value.path).toBe('/pickup/proxy')
+  })
+
+  it('PickupView ignores a stale stored child that is no longer listed', async () => {
+    const { wrapper } = await mountPickup({ kids: [child('s1', '王小明')], selected: 's9' })
+
+    expect(gets(childUrl('s9'))).toBe(0)
+    expect(gets(homeworkUrl('s9'))).toBe(0)
+    expect(gets(childUrl('s1'))).toBe(1)
+    expect(wrapper.get('.cch__name').text()).toBe('王小明')
+    expect(hasButton(wrapper, '通知安親班')).toBe(true)
+  })
+
+  it('PickupView arrive now resets the chosen arrival time', async () => {
+    const { wrapper } = await mountPickup({
+      today: [
+        [200, []],
+        // 老師端取消（回到前景重抓）：畫面回到表單
+        [200, [request('r8', { status: 'cancelled', cancelled_at: '2026-10-07T09:23:00Z', can_cancel: false, can_mark_arrived: false })]],
+      ],
+    })
+    mock.onPost(CREATE_URL).reply(201, request('r8', { status: 'arrived', can_mark_arrived: false }))
+
+    const chip = Array.from(root(wrapper).querySelectorAll('button')).find((b) => b.textContent?.includes('約 10 分鐘後'))
+    await click(chip)
+    await click(button(wrapper, '我已經到了'))
+    await confirmDialog('我到了')
+    expect(formCardExists(wrapper)).toBe(false)
+    await becomeVisible()
+
+    const selected = Array.from(formCard(wrapper).element.querySelectorAll('.m3-chip[aria-pressed="true"]'))
+    expect(selected.map(buttonLabel)).toEqual(['不指定'])
+  })
+
+  it('PickupView refetches today requests on mount even when the store is already loaded', async () => {
+    const { wrapper } = await mountPickup({
+      pinia: { parentPickupRequests: { loaded: true, items: [request('r1')] } },
+      today: [[200, [request('r1', { status: 'acknowledged', reply_message: '老師已確認', reply_source: 'staff' })]]],
+    })
+
+    expect(gets(TODAY_URL)).toBe(1)
+    expect(wrapper.get('.pk-req .status-pill').text()).toBe(PICKUP_REQUEST_STATUS_META.acknowledged.label)
+  })
+
+  it('PickupView ignores a late child detail response', async () => {
+    const first = deferredReply()
+    const { wrapper } = await mountPickup({ detail: { s1: [first.reply, [200, detail('s1', false)]] } })
+
+    await switchChild(wrapper, '王小華')
+    await switchChild(wrapper, '王小明')
+    expect(wrapper.get('.empty-state').text()).toContain('您沒有這位小孩的接送權限')
+
+    first.resolve([200, detail('s1', true)])
+    await flushPromises()
+
+    expect(wrapper.get('.empty-state').text()).toContain('您沒有這位小孩的接送權限')
+    expect(hasButton(wrapper, '通知安親班')).toBe(false)
   })
 
   it('PickupView shows the empty state without children', async () => {
