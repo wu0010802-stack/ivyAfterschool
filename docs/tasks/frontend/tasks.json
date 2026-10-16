@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 272,
-  "last_updated": "2026-10-16T15:01:40Z",
+  "version": 273,
+  "last_updated": "2026-10-16T15:01:51Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4024,7 +4024,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-154",
@@ -4048,7 +4048,7 @@
           "HomeworkStudentCard eta row opens dialog when writable today：canWrite、isToday、student.name '王小明' → 點 [aria-label='設定 王小明 的預計可接送時間'] → emitted('edit-eta')[0][0].student_id === 's1'；isToday false 或 canWrite false → 不存在該 aria-label 的元素，點預計可接送那一列無 emit"
         ],
         "run": "just web-test src/components/homework/HomeworkStudentCard.spec.ts -t \"HomeworkStudentCard\"",
-        "notes": ""
+        "notes": "紅燈測試 1f72acf、實作 00a3190。除 7 條 red_cases 外另有 2 條：項目列依 sort_order、pending 轉圈只在對應項目、set-status(item, status) / edit-item / remove-item / add-item 轉發；⋮ 44×44、預計可接送列與「＋ 新增作業」高 44px、淡化 55%（?raw 原始碼斷言）。手動標記沿用 FRONTEND-152 的 deriveOverallStatus（無項目卻標 done 也算手動）。卡片與項目列都有 ⋮，測試以觸發鈕的 aria-controls 找對應選單。出勤 chip 只在 expected / left / leave / absent 顯示，請假 / 缺席淡化、已離班不淡化（稿 decisions 第 8 條）。突變自檢：手動標記改成「有項目未完成」、徽章不看 isToday、預計列按鈕不看 isToday、已離班也淡化、present 也顯示 chip、done 也顯示「標記整體完成」、選單的預計時間不看 isToday、項目不依 sort_order、改回依項目判斷送 done、唯讀仍顯示新增作業 各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
