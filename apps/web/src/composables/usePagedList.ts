@@ -2,8 +2,15 @@
 // 移植 ivy FE:src/composables/useTableFilters.ts::useTableFilters 的 page / filters 與序號防護；
 // 搜尋框的 debounce 由使用端處理後呼叫 setFilters。
 // 每次請求帶遞增序號，只有最新一次請求可以改 items / total / error / loading（慢回應不覆蓋快回應）。
+// syncQuery 寫回網址時只改列表自己的參數（篩選、page、page_size），其他參數（例如學生工作台的 student、tab）原樣保留。
 import { reactive, ref, shallowRef, type Ref } from 'vue'
-import { useRoute, useRouter, type LocationQuery, type LocationQueryRaw } from 'vue-router'
+import {
+  useRoute,
+  useRouter,
+  type LocationQuery,
+  type LocationQueryRaw,
+  type LocationQueryValue,
+} from 'vue-router'
 import type { Page } from '@/shared/types/api'
 import { errorMessage } from '@/shared/utils/errorMessage'
 
@@ -60,6 +67,17 @@ function convertQueryValue(raw: string, initial: unknown): unknown {
     return undefined
   }
   return raw
+}
+
+/**
+ * 非列表參數只保留字串值：vue-router 解析 `__proto__=x&constructor=y` 這類網址時，
+ * constructor 會變成 [Array 建構子, 'y']，原樣寫回會把函式原始碼放進網址。
+ */
+function keptQueryValue(v: unknown): LocationQueryValue | LocationQueryValue[] | undefined {
+  if (typeof v === 'string' || v === null) return v
+  if (!Array.isArray(v)) return undefined
+  const values = v.filter((x): x is LocationQueryValue => typeof x === 'string' || x === null)
+  return values.length > 0 ? values : undefined
 }
 
 function parsePage(raw: string | null): number {
@@ -119,7 +137,13 @@ export function usePagedList<T, F extends Record<string, unknown>>(
 
   function writeQuery(): void {
     if (!router || !route) return
+    const owned = new Set([...Object.keys(opts.initialFilters), ...Object.keys(filters), 'page', 'page_size'])
     const query: LocationQueryRaw = {}
+    for (const [k, v] of Object.entries(route.query)) {
+      if (owned.has(k)) continue
+      const kept = keptQueryValue(v)
+      if (kept !== undefined) query[k] = kept
+    }
     for (const [k, v] of Object.entries(cleanFilters(filters))) query[k] = String(v)
     query.page = String(page.value)
     void router.replace({ path: route.path, query })
