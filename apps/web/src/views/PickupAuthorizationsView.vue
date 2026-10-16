@@ -5,12 +5,16 @@
 // 去掉歷史區間（改為日期選擇）、手機卡片欄位設定，寫入權限改為 pickup:operate。
 // - 今天的清單由 usePickupBoard（FRONTEND-188）擁有：推播到了重抓清單（序號防護），核驗結果以回傳的授權寫回。
 //   過去日期直接呼叫 listPickupAuthorizations({ date })，不收推播、只能查看。
+// - 「今天」每分鐘檢查跨日（與 board 同週期）：跨過午夜時可選範圍跟著移動，原本在看今天就跟到新的一天；
+//   今天的清單只取 service_date 為今天的授權，board 換日重抓完成前不會把前一天的資料當成今天顯示。
 // - 狀態計數算在該日（有「只顯示」時為該生）全部授權上，不受搜尋與狀態篩選影響；active 排前，其餘依核驗 / 建立時間新到舊。
-// - 核驗 dialog 以 id 從今天的清單取「現值」傳入（推播重抓後錯誤次數、鎖定即時反映），清單暫時找不到時沿用最後一份。
+// - 核驗 dialog 以 id 從今天的清單取「現值」傳入，清單暫時找不到時沿用最後一份。後端錯碼 / 鎖定不推播
+//   （另一台平板的同步見 BACKEND-562），dialog 關閉時（不論結果）一律重抓清單（board.reload，序號防護），
+//   卡片與之後重開的 dialog 即反映最新的錯誤次數與鎖定；開著時的錯誤次數由 dialog 自己顯示。
 // - route.query.verify：今天的清單第一次載入後，該授權有效且可核驗就自動開啟，並從網址移除（只用一次）。
 // - 平板為主：工具列、狀態分段、卡片「核驗」≥ 44px。
 import { Search } from '@element-plus/icons-vue'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router'
 import { listPickupAuthorizations, type StaffAuthorization, type VerifyResult } from '@/api/pickupAuthorizations'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -28,6 +32,8 @@ type DataState = 'loading' | 'error' | 'data'
 
 /** 可回看的天數 */
 const HISTORY_DAYS = 30
+/** 跨午夜檢查週期（與 usePickupBoard 相同） */
+const DAY_CHECK_INTERVAL_MS = 60_000
 const STATUS_KEYS: AuthorizationEffectiveStatus[] = ['active', 'completed', 'cancelled', 'expired']
 const SKELETON_COUNT = 4
 
@@ -36,12 +42,11 @@ const router = useRouter()
 const { can } = usePermission()
 const board = usePickupBoard({ withAuthorizations: true })
 
-const today = todayTaipei()
-const minDate = addDays(today, -HISTORY_DAYS)
-
 // ---- 日期與資料 ----
-const date = ref<ISODate>(today)
-const isToday = computed(() => date.value === today)
+const today = ref<ISODate>(todayTaipei())
+const minDate = computed(() => addDays(today.value, -HISTORY_DAYS))
+const date = ref<ISODate>(today.value)
+const isToday = computed(() => date.value === today.value)
 const dateLabel = computed(() => formatDateWithWeekday(date.value))
 
 /** 今天的清單是否成功載入過（之後的重新整理失敗仍保留畫面） */
@@ -72,9 +77,20 @@ async function loadPast(target: ISODate): Promise<void> {
 }
 
 watch(date, (value) => {
-  if (value === today) pastSeq += 1
+  if (value === today.value) pastSeq += 1
   else void loadPast(value)
 })
+
+/** 跨過午夜：原本在看今天就跟到新的一天（board 自己會以新的一天重抓），看過去日期的維持不動 */
+function checkDayChange(): void {
+  const now = todayTaipei()
+  if (now === today.value) return
+  const followToday = date.value === today.value
+  today.value = now
+  if (followToday) date.value = now
+}
+const dayTimer = setInterval(checkDayChange, DAY_CHECK_INTERVAL_MS)
+onBeforeUnmount(() => clearInterval(dayTimer))
 
 const pastState = computed<DataState>(() => {
   if (pastError.value !== null) return 'error'
@@ -82,14 +98,13 @@ const pastState = computed<DataState>(() => {
 })
 const dataState = computed<DataState>(() => (isToday.value ? todayState.value : pastState.value))
 const errorText = computed(() => (isToday.value ? board.error.value : pastError.value) ?? '')
-const dayItems = computed<StaffAuthorization[]>(() =>
-  isToday.value ? board.authorizations.value : (pastItems.value ?? []),
-)
+const todayItems = computed(() => board.authorizations.value.filter((a) => a.service_date === today.value))
+const dayItems = computed<StaffAuthorization[]>(() => (isToday.value ? todayItems.value : (pastItems.value ?? [])))
 
 function isOutOfRange(d: Date): boolean {
   const pad = (n: number) => String(n).padStart(2, '0')
   const ymd = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-  return ymd < minDate || ymd > today
+  return ymd < minDate.value || ymd > today.value
 }
 
 function onDateChange(value: ISODate | null): void {
@@ -183,6 +198,11 @@ function onVerified(result: VerifyResult): void {
   verifySnapshot.value = result.authorization
   board.applyAuthorization(result.authorization)
 }
+
+// 錯碼與鎖定後端不推播：關閉時重抓，讓卡片與下次開啟的 dialog 拿到最新的錯誤次數與鎖定
+watch(verifyOpen, (open, wasOpen) => {
+  if (!open && wasOpen) void board.reload()
+})
 
 /** 從 POS 完成交付導過來：今天的清單第一次載入後自動開啟，網址參數只用一次 */
 const pendingVerifyId = typeof route.query.verify === 'string' && route.query.verify !== '' ? route.query.verify : null
