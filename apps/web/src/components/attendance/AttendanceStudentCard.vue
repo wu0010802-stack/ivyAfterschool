@@ -104,7 +104,7 @@ function onCardClick(): void {
     class="acard"
     :class="[`tone-${meta.tone}`, { 'is-selectable': isSelectable, 'is-selected': isSelectable && selected }]"
     :role="isSelectable ? 'checkbox' : undefined"
-    :aria-checked="isSelectable ? String(selected) : undefined"
+    :aria-checked="isSelectable ? selected : undefined"
     :tabindex="isSelectable ? 0 : undefined"
     @click="onCardClick"
     @keydown.space.prevent="onCardClick"
