@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 320,
-  "last_updated": "2026-10-16T19:38:48Z",
+  "version": 321,
+  "last_updated": "2026-10-16T19:39:33Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4598,12 +4598,12 @@
     {
       "id": "FRONTEND-189",
       "title": "實作 views/PickupPosView.vue：接送 POS 頁（頂部狀態列、靜音、代建、POS 三欄）",
-      "description": "建立 `apps/web/src/views/PickupPosView.vue`（路由 `/pickup`，`pickup:read`，meta.tablet）。移植 ivy `FE:src/views/DismissalQueueView.vue` 的頁面骨架（連線狀態、POS board 容器、建立 dialog）；**去掉** PageHeader（頁名「接送」只在外框頂欄，同今日出勤 / 作業看板）、歷史篩選分頁、手機卡片列表、娃娃車、教師端連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**內容**\n- 頂部工具列（44px，不放 PageHeader）：今天日期（formatDateWithWeekday，例如「10/07（三）」），沒有 `pickup:operate` 時日期旁加「僅檢視」tag；計數 chip「待回覆 {needs_reply}」danger、「等待確認 {pending}」warning、「已確認 {acknowledged}」info、「家長已到 {arrived}」danger（數字為 0 時改中性灰 plain；載入中 / 載入失敗時數字顯示「–」；needs_reply 由後端計算，員工代建的請求在自動回覆沒有預計時間時也會計入）；連線膠囊（固定寬度：open 綠點「即時」、其他黃點「重新連線中」，tooltip「即時連線中斷，畫面每 15 秒自動更新」；完整句子不放進膠囊，斷線超過 5 秒另由外框整寬橫幅提示）；靜音切換（FRONTEND-187 muted，icon + 文字「提示音：開 / 關」，關時 warning plain）；「代理接送核驗」連結 → `/pickup/authorizations`；有 `pickup:operate` 時「代建接送請求」→ `PickupCreateDialog`（FRONTEND-199，未預選學生；中欄選了班級時帶 `classFilter`，全部班級時不帶）。平板 1024 寬度下任何狀態（載入中 / 失敗、斷線、兩位數計數）工具列都維持一列，寬度 < 900 才換行。\n- 主體 `DismissalPosBoard`（FRONTEND-190），傳入 `usePickupBoard({withRoster: true, withAuthorizations: true})`（FRONTEND-188）的資料與操作。\n- 提示音：`board.onArrived(chime.onArrived)`、`board.onNewRequest(chime.onNewRequest)`；頁面第一次 pointerdown 時 `chime.unlock()`；並訂閱 `useNotificationsStore().onTransient`（`pickup.arrived` 以 request_id 去重，不重播）。家長到達時，佇列卡移到最前並閃爍、提示音（未靜音時）與 FRONTEND-034 全域的 ElNotification「{姓名} 家長已抵達」同時出現，本頁不另外抑制 ElNotification。\n- 本機 `board.create` 建立的請求不播「新請求」提示音（核可稿只在 ws 收到其他人建立的新請求時播單音）；FRONTEND-188 目前 create 成功也會觸發 `onNewRequest`，若要改 `usePickupBoard` 才能做到，在本 task description 寫明改寫 188 的範圍並補 188 的 red_case。\n- 第一次進入且尚未 unlock 時顯示提示條「點一下畫面以啟用提示音」，unlock 後消失。\n- 載入失敗 EmptyState error + 重試。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/PickupPosView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/views/PickupPosView.vue`（路由 `/pickup`，`pickup:read`，meta.tablet）。移植 ivy `FE:src/views/DismissalQueueView.vue` 的頁面骨架（連線狀態、POS board 容器、建立 dialog）；**去掉** PageHeader（頁名「接送」只在外框頂欄，同今日出勤 / 作業看板）、歷史篩選分頁、手機卡片列表、娃娃車、教師端連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**內容**\n- 頂部工具列（44px，不放 PageHeader）：今天日期（formatDateWithWeekday，例如「10/07（三）」），沒有 `pickup:operate` 時日期旁加「僅檢視」tag；計數 chip「待回覆 {needs_reply}」danger、「等待確認 {pending}」warning、「已確認 {acknowledged}」info、「家長已到 {arrived}」danger（數字為 0 時改中性灰 plain；載入中 / 載入失敗時數字顯示「–」；needs_reply 由後端計算，員工代建的請求在自動回覆沒有預計時間時也會計入）；連線膠囊（固定寬度：open 綠點「即時」、其他黃點「重新連線中」，tooltip「即時連線中斷，畫面每 15 秒自動更新」；完整句子不放進膠囊，斷線超過 5 秒另由外框整寬橫幅提示）；靜音切換（FRONTEND-187 muted，icon + 文字「提示音：開 / 關」，關時 warning plain）；「代理接送核驗」連結 → `/pickup/authorizations`；有 `pickup:operate` 時「代建接送請求」→ `PickupCreateDialog`（FRONTEND-199，未預選學生；中欄選了班級時帶 `classFilter`，全部班級時不帶）。平板 1024 寬度下任何狀態（載入中 / 失敗、斷線、兩位數計數）工具列都維持一列，寬度 < 900 才換行。\n- 主體 `DismissalPosBoard`（FRONTEND-190），傳入 `usePickupBoard({withRoster: true, withAuthorizations: true})`（FRONTEND-188）的資料與操作。\n- 提示音：`board.onArrived(chime.onArrived)`、`board.onNewRequest(chime.onNewRequest)`；頁面第一次 pointerdown 時 `chime.unlock()`；並訂閱 `useNotificationsStore().onTransient`（`pickup.arrived` 以 request_id 去重，不重播）。家長到達時，佇列卡移到最前並閃爍、提示音（未靜音時）與 FRONTEND-034 全域的 ElNotification「{姓名} 家長已抵達」同時出現，本頁不另外抑制 ElNotification。\n- 本機 `board.create` 建立的請求不播「新請求」提示音（核可稿只在 ws 收到其他人建立的新請求時播單音）；FRONTEND-188 目前 create 成功也會觸發 `onNewRequest`，若要改 `usePickupBoard` 才能做到，在本 task description 寫明改寫 188 的範圍並補 188 的 red_case。\n- 第一次進入且尚未 unlock 時顯示提示條「點一下畫面以啟用提示音」，unlock 後消失。\n- 載入失敗 EmptyState error + 重試。\n- 家長到達時（`board.onArrived` 與 transient `pickup.arrived`，以 request_id 去重）呼叫 `DismissalPosBoard`（FRONTEND-190）expose 的 `focusRequest(request.id)`，佇列卡定位並閃爍（窄版會先開抽屜，由 190 處理）。\n- 部分改寫 FRONTEND-024 的測試：本頁接線後 `VIEW_LOADERS` 已沒有指向 PlaceholderView 的後台頁，`apps/web/src/router/routes.spec.ts` 的「admin routes use placeholder loaders by default」改寫為「每個 VIEW_LOADERS 都載入真正的 view（不是 PlaceholderView）」，並在 024 description 同步這句。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/PickupPosView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupPosView.vue",
       "source_ref": "FE:src/views/DismissalQueueView.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
         "FRONTEND-187",
@@ -4630,7 +4630,8 @@
           "PickupPosView chimes for request created directly as arrived：unlock 後 ws 送出 queue 中原本不存在的 r5（status arrived、expected_arrival_at null）→ speech.speak 收到 '低年級A班 王小明 家長到了' 一次；同時收到 notification.transient pickup.arrived（payload.request_id 'r5'）→ speak 仍只 1 次",
           "PickupPosView shows connection capsule：adminWs status 'open' → 文字含 '即時'；status 'reconnecting' → 文字含 '重新連線中' 且不含 '每 15 秒更新'",
           "PickupPosView shows count placeholders and neutral zero chips：GET queue 尚未回應 → 文字含 '待回覆 –'、'家長已到 –'；回應 counts 全為 0 → 含 '待回覆 0' 的 chip class 含 'el-tag--info' 與 'el-tag--plain'",
-          "PickupPosView does not chime for locally created request：unlock 後經 PickupCreateDialog 建立 r9 成功（POST 回 pending）→ 新請求提示音播放 0 次；之後 ws 推來 queue 中不存在的 pending r10 → 播放 1 次"
+          "PickupPosView does not chime for locally created request：unlock 後經 PickupCreateDialog 建立 r9 成功（POST 回 pending）→ 新請求提示音播放 0 次；之後 ws 推來 queue 中不存在的 pending r10 → 播放 1 次",
+          "PickupPosView focuses queue card on parent arrival：unlock 後 ws pickup.request_updated r1 由 pending 變 arrived → DismissalPosBoard stub 的 focusRequest 以 'r1' 呼叫 1 次；同時收到 notification.transient pickup.arrived（request_id 'r1'）→ 仍只 1 次"
         ],
         "run": "just web-test src/views/PickupPosView.spec.ts -t \"PickupPosView\"",
         "notes": ""
