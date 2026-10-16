@@ -3,11 +3,15 @@
 // 從 view 抽到 store；本專案改由後端 `arrived: true` 一次建立並抵達，409 時才對既有請求呼叫「我到了」。
 //
 // - 只保留 service_date 為台北今日（FRONTEND-003）的資料：ws 事件與回應的跨日資料一律忽略。
-// - 寫入互斥：進行中再呼叫任何寫入動作直接回傳進行中的 promise（防連點）。
+// - 寫入互斥：同時只有一個寫入在途。同一動作且同參數的重複呼叫共用進行中的 promise（防連點）；
+//   不同動作或不同參數排在進行中的寫入之後依序送出，各自回傳自己的結果（不得以別的寫入結果 resolve）。
 // - pickup_request_exists / invalid_pickup_status / 404 pickup_request_not_found → 先 load(true) 同步最新狀態再 rethrow 原錯誤。
+// - clear()（登出 / 換人）之後：在途寫入的回應不寫回 store、需同步的失敗不再 load(true)，呼叫端的 promise 照常 resolve / reject；
+//   排隊中尚未送出的寫入不送出，以 ApiError(0, 'write_cancelled') reject。
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import {
+  ApiError,
   PICKUP_OPEN_STATUSES,
   isApiError,
   type HHMM,
@@ -28,6 +32,9 @@ const LOAD_ERROR = '接送狀態載入失敗'
 const RESYNC_CODES = new Set(['pickup_request_exists', 'invalid_pickup_status', 'pickup_request_not_found'])
 
 export type PickupAction = 'create' | 'markArrived' | 'cancel' | 'arriveNow'
+
+/** clear() 之後才輪到送出的寫入：不送出，以此錯誤碼 reject */
+export const WRITE_CANCELLED_CODE = 'write_cancelled'
 
 const OPEN: ReadonlySet<PickupRequestStatus> = new Set(PICKUP_OPEN_STATUSES)
 
@@ -68,7 +75,12 @@ export const usePickupRequestsStore = defineStore('parentPickupRequests', () => 
   // 每次 load / clear 遞增；較舊請求的回應一律丟棄（ivy listSeq）
   let listSeq = 0
   let pendingLoad: Promise<void> | null = null
-  let pendingWrite: Promise<ParentPickupRequest> | null = null
+  // 寫入：clear() 遞增世代，世代不同的寫入不寫回 store；writeTail 是依序執行的尾巴（writeDepth > 0 表示有寫入在途或排隊）；
+  // inflightWrites 依 key 共用 promise
+  let writeGeneration = 0
+  let writeTail: Promise<unknown> = Promise.resolve()
+  let writeDepth = 0
+  const inflightWrites = new Map<string, Promise<ParentPickupRequest>>()
 
   const openFor = computed(() => (childId: string): ParentPickupRequest | null => {
     const open = items.value.filter((r) => r.student_id === childId && isOpen(r)).sort(byCreatedDesc)
@@ -126,41 +138,61 @@ export const usePickupRequestsStore = defineStore('parentPickupRequests', () => 
     return request
   }
 
-  /** 寫入失敗：需要同步的錯誤先 load(true) 再 rethrow 原錯誤 */
-  async function failWrite(e: unknown): Promise<never> {
-    if (needsResync(e)) await load(true)
-    throw e
-  }
-
-  /** 同時只允許一個寫入；進行中再呼叫直接回傳進行中的 promise */
-  function runWrite(action: PickupAction, fn: () => Promise<ParentPickupRequest>): Promise<ParentPickupRequest> {
-    if (pendingWrite) return pendingWrite
-    pendingAction.value = action
-    const write: Promise<ParentPickupRequest> = fn()
-      .then((r) => {
-        upsert(r)
+  /**
+   * 同時只允許一個寫入在途。key = 動作 + 參數：相同 key 的重複呼叫共用進行中（或排隊中）的 promise；
+   * 其他寫入排在尾巴之後依序送出，各自回傳自己的結果。成功以回應 upsert；需要同步的錯誤先 load(true) 再 rethrow。
+   * 寫入開始前記下世代：clear() 之後世代不同 → 尚未送出的不送出（write_cancelled），已送出的結果不寫回、不再同步。
+   */
+  function runWrite(action: PickupAction, key: string, fn: () => Promise<ParentPickupRequest>): Promise<ParentPickupRequest> {
+    const shared = inflightWrites.get(key)
+    if (shared) return shared
+    const generation = writeGeneration
+    const run = async (): Promise<ParentPickupRequest> => {
+      if (generation !== writeGeneration) throw new ApiError(0, WRITE_CANCELLED_CODE, '操作已取消，請重新操作')
+      pendingAction.value = action
+      try {
+        const r = await fn()
+        if (generation === writeGeneration) upsert(r)
         return r
-      }, failWrite)
-      .finally(() => {
-        if (pendingWrite === write) {
-          pendingWrite = null
-          pendingAction.value = null
-        }
-      })
-    pendingWrite = write
+      } catch (e) {
+        if (generation === writeGeneration && needsResync(e)) await load(true)
+        throw e
+      } finally {
+        if (generation === writeGeneration) pendingAction.value = null
+      }
+    }
+    // 沒有寫入在途時立刻開始（請求在同一個 tick 送出）；否則排在尾巴之後，不論前一筆成功或失敗都接著執行
+    const write: Promise<ParentPickupRequest> = writeDepth === 0 ? run() : writeTail.then(run, run)
+    writeDepth += 1
+    writeTail = write.then(
+      () => undefined,
+      () => undefined,
+    )
+    inflightWrites.set(key, write)
+    const settle = (): void => {
+      writeDepth -= 1
+      if (inflightWrites.get(key) === write) inflightWrites.delete(key)
+    }
+    write.then(settle, settle)
     return write
   }
 
+  function writeKey(action: PickupAction, ...params: (string | null | undefined)[]): string {
+    return `${action}:${JSON.stringify(params.map((p) => p ?? null))}`
+  }
+
   function create(childId: string, expectedArrivalAt: HHMM | null): Promise<ParentPickupRequest> {
-    return runWrite('create', () => createPickupRequest({ student_id: childId, expected_arrival_at: expectedArrivalAt }))
+    return runWrite('create', writeKey('create', childId, expectedArrivalAt), () =>
+      createPickupRequest({ student_id: childId, expected_arrival_at: expectedArrivalAt }),
+    )
   }
 
   function markArrived(id: string): Promise<ParentPickupRequest> {
-    return runWrite('markArrived', () => markPickupArrived(id))
+    return runWrite('markArrived', writeKey('markArrived', id), () => markPickupArrived(id))
   }
 
   function cancel(id: string, reason?: string): Promise<ParentPickupRequest> {
-    return runWrite('cancel', () => cancelPickupRequest(id, reason))
+    return runWrite('cancel', writeKey('cancel', id, reason), () => cancelPickupRequest(id, reason))
   }
 
   /**
@@ -168,7 +200,7 @@ export const usePickupRequestsStore = defineStore('parentPickupRequests', () => 
    * → 改對該請求呼叫「我到了」並以其結果回傳；該次再失敗照一般規則（需要同步的先 load(true)）rethrow。
    */
   function arriveNow(childId: string): Promise<ParentPickupRequest> {
-    return runWrite('arriveNow', async () => {
+    return runWrite('arriveNow', writeKey('arriveNow', childId), async () => {
       try {
         return await createPickupRequest({ student_id: childId, arrived: true })
       } catch (e) {
@@ -179,10 +211,12 @@ export const usePickupRequestsStore = defineStore('parentPickupRequests', () => 
     })
   }
 
+  /** 登出 / 換人：在途與排隊中的寫入自此世代失效（見 runWrite），之後的新寫入照常 */
   function clear(): void {
     listSeq += 1
     pendingLoad = null
-    pendingWrite = null
+    writeGeneration += 1
+    inflightWrites.clear()
     pendingAction.value = null
     items.value = []
     loaded.value = false
