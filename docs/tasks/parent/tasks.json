@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 149,
-  "last_updated": "2026-10-16T06:06:53Z",
+  "version": 150,
+  "last_updated": "2026-10-16T06:10:09Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2378,7 +2378,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/AuthorizationListItem.vue",
       "source_ref": "FE:src/parent/views/PickupView.vue::askRegenerate",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -2404,9 +2404,9 @@
         "notes": "M3Button 沒有 danger 變體，「取消授權」的 error 色以本元件 scoped class `.auth__cancel` 覆寫，spec 以 ?raw 斷言該規則。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。3 條 red_case 皆有同名測試且斷言具體（姓名、10/03（六）、接送碼末四碼 8213、有效、emit 次數與 payload；已過期無按鈕；17:35 已完成交接）；tdd.run 9 綠。c78a679（測試）先於 a606a52（實作），實作 commit 未改 spec。不得顯示完整接送碼：props 型別 ParentAuthorization 只有 code_last4，完整碼只在 AuthorizationWithCode.code，元件沒有任何可顯示完整碼的欄位；Chromium 實測整列文字中 5 位以上數字只有電話。狀態膠囊以 effective_status 查 AUTHORIZATION_STATUS_META（active 有效 success、其餘 info），操作只看 effective_status === active（status active 但已過期不顯示按鈕有測試）。對照 parent-component-authorization-list-item.html decisions 8 條逐條符合：姓名單行省略 + 膠囊、MM/DD（X） · 電話、pin + 末四碼 500 字重、how_to_reg + 台北 HH:MM 已完成交接；膠囊 tone；active 才有兩個 text 按鈕右對齊，重新產生 primary、取消授權 error（Chromium 實測 rgb(186,26,26) = --m3-error）；非 active 姓名 on-surface-variant（實測）；不顯示完整碼；清單容器屬 PARENT-104；去掉 batch_key；不顯示核驗方式。突變（操作不看 active、active 改看 status、交接時間改 UTC、膠囊改看 status、兩個 emit 對調）各有測試轉紅，還原後 git diff 乾淨。圖示 pin / how_to_reg / autorenew / block 在子集，icons.spec 綠；web-lint 乾淨；web-typecheck exit 2 的唯一錯誤在他人未提交的 parent/stores/pickupRequests.ts（TS6133），本批檔案 0 錯。 殘留：稿把 .auth__meta / .auth__line 的 2px / 6px 上距寫在元件 CSS 裡，但稿的 .m3-card p { margin: 0 } 以較高權重蓋掉，稿面渲染是 0；實作照稿寫的 CSS 保留 2 / 6px，所以每列比稿高 8px（active 列 156 對 148）。實作 M3Card 是 scoped，不會重設 slot 內 p 的 margin，屬稿件框架造成的差異，建議日後修稿或統一。「取消授權」的 error 色靠同權重 scoped 規則覆寫 M3Button 的 text 色，依賴 CSS 載入順序（目前子元件樣式先載入，實測生效）。"
       }
     },
     {
@@ -2589,7 +2589,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/AttendanceView.vue",
       "source_ref": "FE:src/parent/views/AttendanceView.vue::prevMonth",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -2628,9 +2628,9 @@
         "notes": "red_case「含 '上課日 21'」以 `.att-stat` 的 dt / dd 文字組成「上課日 21」斷言（dl 的 textContent 沒有空格）；系統時間以 `vi.useFakeTimers({ toFake: ['Date'] })` + `vi.setSystemTime('2026-10-02T01:00:00Z')` 固定。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。9 條 red_case 皆有同名測試且斷言具體（請求 url 與 params、統計五欄 dt + dd 文字、明細文字與膠囊、disabled、snackbar store 的 message + tone）；tdd.run 18 綠，-t 選到每條，系統時間以 fake Date 固定 2026-10-02。9d7feb0（測試）先於 d8090f4（實作）。d73e22c 修改「等待小孩清單」測試不是放寬：原斷言 GET 總數為 0，與掛載時呼叫 children.load() 衝突；改為小孩清單回來前只有 /parent/children、沒有出勤請求，並新增清單回來後才以 s1 請求且顯示統計的斷言，「沒選到小孩不打出勤 API」的核心保留且更強。規格核對：domain_spec M4 與第 10 輪裁定都已落實，月曆與明細只照出勤列顯示，未來請假日沒有出勤列，明細就是「這天沒有出勤紀錄」；in_stats 為 true 且 status 為 null、或今天以前仍是 expected，都顯示「未登記」與「老師沒有登記這天的到班情形」，判斷與 AttendanceCalendar（PARENT-194）同一套；今天的 expected 顯示「預計到班」與到 / 離班時間；統計小字在今天是營業日、status 為 expected 或 null 時接「先算在未登記」。api：getChildAttendance(children.selectedId, month)，只用 children store 的選中小孩，不讀 route 參數。risk_notes 補的邊界判定合理：小孩清單載入完成但沒有小孩時顯示 calendar_month「目前沒有出勤紀錄」且不打 API，清單載入失敗沿用 error + 重試（重抓小孩清單），與 PARENT-153 / 154 處理一致，稿與規格都沒有定義，文案不與「這個月沒有出勤紀錄」混用。對照 parent-page-attendance.html decisions 10 條逐條符合：版面順序、16 / 24 內距、12px 間距、PullToRefresh 包整頁；月份列 ‹ 標題 ›、本月，本月時 › 與本月 disabled，標題固定寬 aria-live；統計卡 5 欄 dl、小字三種情況；明細卡在月曆上方、固定兩行高、今天標記、各狀態文案；換月份與換小孩的選取規則；載入骨架 card ×2 + 360px、失敗 error + 重試、月份列可操作；下拉保留內容、失敗 snackbar；申請請假 tonal 全寬導向 /leaves 只在有資料時顯示。390×844 Chromium 實測（時鐘固定 2026-10-22，與稿相同）本月與上個月兩種狀態，和稿逐元素位置與尺寸完全相同（月份列 y=100、統計卡 109 / 72px、明細卡 92px、月曆格 44×52、申請請假 y=812），無水平溢出；今天 expected 時小字換行為兩行、其餘不變。突變：拿掉 in_stats 未登記、今天以前 expected 未登記、小字 null 判斷、小字只限本月、首頁序號檢查、換月份選取規則、› disabled、下拉失敗改錯誤頁、service_days 0 小字、換小孩重設選取、children.load()，共 11 處各有測試轉紅。拿掉 load 開頭的 data.value = null 不轉紅，屬等價突變：載入中與錯誤時不渲染 data。還原後 git diff 乾淨。圖示皆在子集，icons.spec 綠；web-lint 乾淨；web-typecheck exit 2 的唯一錯誤在他人未提交的 parent/stores/pickupRequests.ts（TS6133），本批檔案 0 錯。 殘留：沒有小孩的空狀態與小孩清單失敗後重試沒有測試（行為在 description 之外、risk_notes 已記，與 ExamsView 相同寫法且該處有測試）；「今天」在進頁時取一次，頁面跨午夜不會更新（註解已說明）。"
       }
     },
     {
