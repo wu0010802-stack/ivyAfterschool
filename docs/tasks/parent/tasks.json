@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 176,
-  "last_updated": "2026-10-16T14:30:59Z",
+  "version": 177,
+  "last_updated": "2026-10-16T14:31:15Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1291,8 +1291,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/parent/composables/useParentLogout.ts",
       "source_ref": "FE:src/parent/composables/useParentLogout.ts::performParentLogout",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-008",
         "PARENT-009",
@@ -1336,8 +1336,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/MoreView.vue",
       "source_ref": "FE:src/parent/views/MeView.vue::doLogout",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-005",
         "PARENT-009",
