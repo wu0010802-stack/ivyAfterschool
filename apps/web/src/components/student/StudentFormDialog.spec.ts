@@ -83,7 +83,11 @@ const DatePickerStub = defineComponent({
   name: 'DatePickerStub',
   // 父層的 type="date" 等屬性不可落到原生 input，否則 input 變成原生日期欄
   inheritAttrs: false,
-  props: { modelValue: { type: String, default: null } },
+  props: {
+    modelValue: { type: String, default: null },
+    /** 只為了讓測試讀到生日欄的 disabled-date */
+    disabledDate: { type: Function, default: undefined },
+  },
   emits: ['update:modelValue', 'change'],
   setup(props, { emit }) {
     return () =>
@@ -550,5 +554,101 @@ describe('StudentFormDialog', { timeout: 20_000 }, () => {
 
     expect(messageBoxText()).toBe('')
     expect(body('patch')).toEqual({ status: 'active' })
+  })
+
+  it('StudentFormDialog keeps current class and school outside options', async () => {
+    await mountDialog({
+      student: student({
+        class: { id: 'k1', name: '去年的班' },
+        school: { id: 'sc9', name: '臺北市第三國民小學', short_name: '第三國小' },
+      }),
+    })
+
+    // k1 是 114 學年度的班，選單只列 115；學生目前的班級與國小仍要顯示名稱並列在下拉
+    expect(selectedText('安親班班級（115 學年度）')).toBe('去年的班')
+    expect(selectedText('就讀國小')).toBe('第三國小')
+    const item = formItem('安親班班級（115 學年度）')
+    const listId = item.find('input').attributes('aria-controls')
+    const labels = Array.from(document.getElementById(listId!)?.querySelectorAll('.el-select-dropdown__item') ?? []).map(
+      (o) => o.textContent?.trim(),
+    )
+    expect(labels).toEqual(['低年級A班', '中年級班', '去年的班'])
+  })
+
+  it('StudentFormDialog keeps current class and school outside options: school without short name', async () => {
+    await mountDialog({
+      student: student({ school: { id: 'sc9', name: '臺北市第三國民小學', short_name: null } }),
+    })
+
+    expect(selectedText('就讀國小')).toBe('臺北市第三國民小學')
+  })
+
+  it('StudentFormDialog reports lookup load failure', async () => {
+    mock.resetHandlers()
+    mock.onGet('/admin/schools').reply(200, SCHOOLS)
+    mock.onGet('/admin/classes').reply(500, {
+      error: { code: 'internal_error', message: '班級資料暫時無法讀取', details: null },
+    })
+    await mountDialog()
+
+    expect(document.body.textContent).toContain('班級資料暫時無法讀取')
+  })
+
+  it('StudentFormDialog reports lookup load failure: fallback message', async () => {
+    mock.resetHandlers()
+    mock.onGet('/admin/classes').reply(200, CLASSES)
+    mock.onGet('/admin/schools').reply(500, { error: { code: 'internal_error', message: '', details: null } })
+    await mountDialog()
+
+    expect(document.body.textContent).toContain('無法載入學校與班級選項')
+  })
+
+  it('StudentFormDialog rejects future birthday', async () => {
+    const wrapper = await mountDialog()
+
+    await fill('學號', 'S1002')
+    await fill('姓名', '林小華')
+    await choose('年級', '二年級')
+    await typeDate('生日', '2026/10/03')
+    await save()
+    await settleErrors()
+
+    expect(formItem('生日').find('.el-form-item__error').text()).toBe('生日不可晚於今天')
+    expect(mock.history.post).toHaveLength(0)
+
+    // 日期選單：明天以後不可選，今天可選
+    const picker = wrapper
+      .findAllComponents(DatePickerStub)
+      .find((c) => typeof c.props('disabledDate') === 'function')
+    const disabledDate = picker?.props('disabledDate') as ((d: Date) => boolean) | undefined
+    expect(disabledDate?.(new Date(2026, 9, 3))).toBe(true)
+    expect(disabledDate?.(new Date(2026, 9, 2))).toBe(false)
+  })
+
+  it('StudentFormDialog confirms discarding dirty changes', async () => {
+    const wrapper = await mountDialog({ student: student() })
+
+    await fill('姓名', '王大明')
+    const cancel = dialog()
+      .findAll('.el-dialog__footer button')
+      .find((b) => b.text() === '取消')
+    await cancel!.trigger('click')
+    await settle()
+
+    expect(messageBoxText()).toContain('尚未儲存的變更將會遺失')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('StudentFormDialog confirms discarding dirty changes: clean form closes directly', async () => {
+    const wrapper = await mountDialog({ student: student() })
+
+    const cancel = dialog()
+      .findAll('.el-dialog__footer button')
+      .find((b) => b.text() === '取消')
+    await cancel!.trigger('click')
+    await settle()
+
+    expect(messageBoxText()).toBe('')
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 })
