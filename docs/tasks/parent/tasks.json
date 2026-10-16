@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 139,
-  "last_updated": "2026-10-16T05:24:03Z",
+  "version": 140,
+  "last_updated": "2026-10-16T05:26:17Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2665,7 +2665,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveForm.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveForm.vue::update",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -2697,9 +2697,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。7 條 red_case 皆有對應測試且斷言具體（emit payload 逐欄與 File 同一物件、min / max 屬性值、錯誤文案、aria-invalid、檔名清單）；tdd.run 22 綠（LeaveForm 21 + M3TextField forwards min and max 1，-t 確實選到每條；「加滿 3 個後新增 input 不存在」在 hides the add control 測試）。13c8b11（測試）先於 289d9dd（實作）；實作 commit 只追加「只改開始日也清除日期錯誤」測試，未改既有斷言。909ce0b 把 aria-label 改以 v-bind 物件傳 ariaLabel（vue-tsc），radiogroup 的 aria-label 仍為「假別」有測試。M3TextField（已 done）：min / max 預設 undefined、只綁原生 input（textarea 不綁），未給時不輸出屬性；M3TextField.spec 全檔、PickupPersonForm.spec、ArrivalTimePicker.spec 皆綠，其他使用處沒有傳 min / max，既有行為不變。b92b048 補述（attachmentRules 抽共用、取消停用 + fieldset 鎖定、事由 trim 空白送空字串）皆為稿 decisions 6 / 8 / 9 與 135 稿 decision 6 已寫而原 description 漏寫，判定為補成與稿一致，非遷就實作。對照 parent-component-leave-form.html decisions 10 條逐條符合：1 順序 / 區塊間距 20px / title-small 標題；2 三段假別預設病假、aria-label 假別；3 M3TextField min / max；4 上下排列、「可選 09/02～12/01」、開始晚於結束時結束跟隨；5 送出才驗、各欄錯誤 + aria-invalid、改任一日期清除兩欄；6 textarea label / placeholder / 0/200 計數 / trim；7 已選數 / 上限、56px 列、PDF error 色、移除鈕、達上限隱藏並顯示「已達 3 個附件上限」；8 選檔當下驗證、role=alert、下次選檔或移除時清除、說明文字取自 limits；9 按鈕列等寬、送出中轉圈 aria-busy、取消 disabled、fieldset disabled 不淡化；10 建立錯誤不屬本元件。390 寬 Chromium 實測（預設 / 3 附件 / 檔案過大 / 日期超出 / 送出中）與稿逐元素相對位置與尺寸完全相同、無水平溢出；display: contents 的 fieldset disabled 下 date / textarea / file / 三個 segment 皆為 :disabled、opacity 1。圖示 image、picture_as_pdf、close、attach_file、error、send 皆在子集，icons.spec 綠。突變（拿掉 trim、max 改用 past_days、拿掉結束跟隨、拿掉 submitting 守衛、附件上限改 <=、拿掉結束早於開始檢查、M3TextField 拿掉 :min、大小比較改 >=）各有測試轉紅，還原後 git diff 乾淨。web-lint 乾淨；web-typecheck exit 2 的 3 個錯誤都在他人進行中的未提交檔（components/exams/ExamSubjectsEditor.vue TS6133、parent/components/ConnectionBanner.spec.ts TS2304 ×2），本批檔案 0 錯。 殘留：tdd.run 未選 attachmentRules.spec.ts（description 有點名，另跑 5 綠）；HEIC 以 file.type 判斷見 risk_notes，屬實機待驗。"
       }
     },
     {
@@ -2709,7 +2709,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveAttachmentList.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveAttachments.vue::onFileChange",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-014",
@@ -2735,9 +2735,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。5 條 red_case 皆有同名測試且斷言具體（img src / loading / alt、PDF 文字、href / target / rel、emit 的檔名、文案、aria-label）；tdd.run 16 綠。77b6bed（測試）先於 a7c0131（實作）；實作 commit 只把轉圈 selector 由 .m3-spinner 改 .att-spinner（M3Button 的 .m3-spinner 是 scoped 樣式無法共用），斷言強度不變。b92b048 補述：縮圖載入失敗退回為稿 decision 5、共用 attachmentRules 為稿 decision 6，屬補成與稿一致；「失敗以網址記錄、拿到新網址重新載入」比稿（以 id 記錄）更符合短效網址的情境，且有測試。對照 parent-component-leave-attachment-list.html decisions 11 條與 parent-page-leaves.html 的 url 為 null 磚逐條符合：3 欄方形磚、8px 間距（左右 24px 內距下 Chromium 實測每格 109px）；圖片 cover / lazy / alt 空、可及名稱在連結上；PDF error 色圖示 +「PDF 文件 · 1.2 MB」+ 視覺隱藏「，在新分頁開啟」；a target=_blank rel=noopener noreferrer + open_in_new 徽章 + focus-visible；載入失敗 image_not_supported +「無法預覽 / 點開查看」連結照常（Chromium 實測 abort 的網址正確退回）；大小格式共用 util；新增磚虛線 add_photo_alternate、label 包 input、選檔後清空 value；驗證錯誤 role=alert 不 emit；uploading 轉圈 +「上傳中…」+ input disabled + aria-busy；說明文字三態；不可編輯空清單「沒有附件」。url 為 null：span role=img、沒有 a / img / 徽章，兩種 aria-label 皆有測試。圖示皆在子集，icons.spec 綠。突變（拿掉 url null 判斷、canAdd 改 <=、縮圖失敗改成不分網址、maxMb 寫死 10）各有測試轉紅，還原後 git diff 乾淨。web-lint 乾淨；web-typecheck exit 2 的 3 個錯誤都在他人進行中的未提交檔（components/exams/ExamSubjectsEditor.vue TS6133、parent/components/ConnectionBanner.spec.ts TS2304 ×2），本批檔案 0 錯。 殘留：無。"
       }
     },
     {
@@ -2747,7 +2747,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveListItem.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveListCard.vue::emit",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -2774,9 +2774,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。5 條 red_case 皆有同名測試（today 固定 2026-10-02），斷言期間文字、狀態文字、按鈕文字與 emit payload（open / cancel 互不觸發）；tdd.run 14 綠。94e411f（測試）先於 6125dc6（實作），實作 commit 未改 spec。對照 parent-component-leave-list-item.html decisions 7 條逐條符合：li 內主按鈕與取消按鈕並列不巢狀（有測試）；40px 假別圖示 sick / event_busy / event_note、三行內容、事由單行省略與附件數（視覺隱藏「個附件」）、無事由無附件時沒有第三行、最小高 72px、列間分隔線由列自己畫；tone 請假中 warning / 已排定 info / 已結束與已取消 neutral、已取消淡化不加刪除線；期間全形「～」；取消鈕 text 變體、Chromium 實測高 48px、左縮排 72px；state layer 與 focus-visible；空清單 / 載入屬 LeavesView。cancelled 優先於日期、start = today 為「取消請假」皆有測試。圖示皆在子集。突變（cancelled 判斷移到日期之後、start_date >= 改 >）各有測試轉紅，還原後 git diff 乾淨。web-lint 乾淨；web-typecheck exit 2 的 3 個錯誤都在他人進行中的未提交檔（components/exams/ExamSubjectsEditor.vue TS6133、parent/components/ConnectionBanner.spec.ts TS2304 ×2），本批檔案 0 錯。 殘留：事由取「第一個非空白行」，稿為 split 後第 0 行（事由以換行開頭時稿顯示空白、實作顯示下一行），屬合理強化。"
       }
     },
     {
@@ -2998,7 +2998,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamsView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-010",
@@ -3032,9 +3032,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。7 條 red_case 皆有同名測試且斷言具體（請求 url 與 params、li 數、名稱、exam_id 不重複、snackbar store 的 message + tone）；tdd.run 20 綠。80549ae（測試）先於 a5a1534（實作）；實作 commit 追加兩條下拉重新整理競態測試，909ce0b 只把 get(...).exists() 改 find（型別），斷言不變。api：listChildExams(selectedId, page) 預設 page_size 20，與 PARENT-150 / BACKEND-479 一致；只用 children.selectedId、不讀 route 參數，選小孩只經 children.select（有成員檢查），沒有繞過選中邏輯。b92b048 補述（掛載時 children.load()、沒有選中小孩時的骨架 / 錯誤 / 空狀態、下一頁空陣列停止載入更多）稿未涵蓋、原規格沒寫到，屬深層連結與防呆的合理補述，不與稿衝突，且各有測試與突變驗證。對照 parent-page-exams.html decisions 8 條逐條符合：1 本頁左右 16 / 底 24 內距、區塊間距 12px、PullToRefresh 包整頁（頂部列與底部導覽屬 ParentLayout / 路由 meta）；2 只有清單、無標題與筆數；3 卡內空狀態 grading 無按鈕；4 卡內 row × 4 骨架、失敗整卡換 error +「重試」、重試回骨架；5 載入更多 outlined 全寬、轉圈、exam_id 去重、失敗 snackbar 並保留按鈕；6 切換小孩重置分頁、骨架、序號丟棄過期回應；7 下拉保留內容、失敗 snackbar、載入中停用；8 元件照各自稿。390 寬 Chromium 實測與稿逐元素位置一致（標頭 16,8 358×84、卡片 y=104、列 76 / 77px、載入更多 48px、空 / 錯誤 / 骨架三態，無水平溢出）。突變（拿掉去重、拿掉首頁序號檢查、下拉失敗改錯誤頁、拿掉空頁停止、載入更多失敗改錯誤頁、拿掉 children.load()）各有測試轉紅，還原後 git diff 乾淨。web-lint 乾淨；web-typecheck exit 2 的 3 個錯誤都在他人進行中的未提交檔（components/exams/ExamSubjectsEditor.vue TS6133、parent/components/ConnectionBanner.spec.ts TS2304 ×2），本批檔案 0 錯。 殘留：骨架列 72px、ExamListItem 單行名稱實測 76px，載入完成卡片約 +19px；稿 decision 4 寫「同為 72px、載入完成不跳動」，但稿本身渲染同樣是 76 對 72（Chromium 實測稿與實作相同），屬稿面錯誤，kickoff 已列為 chore（可改 SkeletonBlock height 76px 並修正 decision 文字）。小孩清單載入失敗時下拉重新整理不會重抓小孩清單（只有「重試」會）。"
       }
     },
     {
@@ -3044,7 +3044,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamDetailView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -3075,9 +3075,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。4 條 red_case 皆有同名測試且斷言具體（請求 url、名稱與備註文字、tbody 列數、404 文案與 currentRoute、切換後 path 且未再請求）；tdd.run 19 綠。c62e5f3（測試）先於 d24aa8e（實作），實作 commit 未改 spec。api：getChildExam(children.selectedId, route examId)，examId 經 encodeURIComponent（有測試）；小孩一律取自 children store，route 只提供 examId，他人或未公布考試由後端回 404（BACKEND-480）、前端顯示「找不到」，沒有以 route 參數繞過選中邏輯。b92b048 補述：「回成績列表」與切換小孩用 replace 為稿 decision 7 的延伸；children.load()、沒有小孩時同 404 畫面、examId 變更重載並丟棄過期回應、目前小孩從清單消失被改選時回列表、首次選到小孩不算切換，為原規格未寫到的深層連結 / 路由情境，合理且各有測試。對照 parent-page-exam-detail.html decisions 8 條逐條符合：1 左右 16 / 底 24 內距、12px 間距、無下拉；2 標頭卡 title-large 可換行、tertiary 類型標籤（同 ExamListItem 樣式）、YYYY/MM/DD（X）、備註分隔線 + pre-line、無備註整段不顯示、不顯示公布時間；3 成績卡 padding none 包 ExamScoreTable；4 card + 卡內 row × 4 骨架；5 404 search_off + tonal「回成績列表」；6 其他錯誤 error +「重試」、重試回骨架；7 切換小孩 router.replace（router.back 不回明細有測試）；8 元件照各自稿。390 寬 Chromium 實測與稿逐元素位置一致（標頭卡名稱 33,121、meta 列 y=157、類型標籤 41×24、成績列 49 / 67px，無水平溢出）。突變（replace 改 push、404 一律當錯誤、首次選到小孩也回列表、拿掉 examId 序號檢查）各有測試轉紅，還原後 git diff 乾淨。web-lint 乾淨；web-typecheck exit 2 的 3 個錯誤都在他人進行中的未提交檔（components/exams/ExamSubjectsEditor.vue TS6133、parent/components/ConnectionBanner.spec.ts TS2304 ×2），本批檔案 0 錯。 殘留：非 UUID 的 examId 後端回 422，畫面為「成績載入失敗 + 重試」（重試不會成功；依 description「其他錯誤」行為正確，可另議改顯示找不到）；「回成績列表」用 replace 沒有獨立測試（與切換小孩共用 goList，push 突變會被切換小孩的測試抓到）；.exam-type 樣式複製自 ExamListItem（已在 risk_notes）。"
       }
     },
     {
