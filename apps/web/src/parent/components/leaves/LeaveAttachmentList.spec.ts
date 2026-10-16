@@ -256,7 +256,7 @@ describe('LeaveAttachmentList', () => {
     const add = w.get('.att-tile--add')
     expect(add.attributes('aria-busy')).toBe('true')
     expect(add.text()).toContain('上傳中…')
-    expect(add.find('.m3-spinner').exists()).toBe(true)
+    expect(add.find('.att-spinner').exists()).toBe(true)
     expect(add.text()).not.toContain('新增附件')
     expect(w.get<HTMLInputElement>('input[type="file"]').attributes('disabled')).toBeDefined()
     // 其他磚不受影響
@@ -268,6 +268,6 @@ describe('LeaveAttachmentList', () => {
 
     expect(w.get('.att-tile--add').attributes('aria-busy')).toBeUndefined()
     expect(w.get<HTMLInputElement>('input[type="file"]').attributes('disabled')).toBeUndefined()
-    expect(w.find('.m3-spinner').exists()).toBe(false)
+    expect(w.find('.att-spinner').exists()).toBe(false)
   })
 })
