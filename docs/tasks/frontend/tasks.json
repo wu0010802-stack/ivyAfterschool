@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 210,
-  "last_updated": "2026-10-16T05:46:59Z",
+  "version": 211,
+  "last_updated": "2026-10-16T05:47:04Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -1798,7 +1798,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/SystemSettingsView.vue",
       "source_ref": "FE:src/components/settings/SettingsLineTab.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-057",
@@ -1807,7 +1807,7 @@
         "FRONTEND-024"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f1 打回】瀏覽器上一頁 / 下一頁（hash router）時未儲存變更確認失效：確認框被 hashchange 立即關掉、守衛 Promise 不 settle，網址已變而畫面停在原頁、沒有提示。反例（Chromium）：/students → push /settings/system?tab=pickup → 改 auto_expire_minutes → 按上一頁 → #/students 但仍顯示系統設定、無確認框；同樣發生在只改 ?tab= 的上一頁 / 下一頁。根因：onBeforeRouteUpdate / onBeforeRouteLeave 在 popstate 期間呼叫 confirmDiscardChanges()，ElMessageBox 預設 closeOnHashChange: true，緊接著的 hashchange 事件把剛開的確認框關掉；以 hashchange 關閉時 Element Plus 不送 action（message-box index.vue 的 doClose），Promise 永遠不 settle，導航一直卡住。站內導覽（router.push / replace 不觸發 hashchange）正常，所以 happy-dom 測試驗不出來。修法建議：確認框帶 closeOnHashChange: false。最小改動在 FRONTEND-046 的 confirmDiscardChanges（FormDialog 也共用，改該檔請先經協調者同意），或由本頁守衛自帶選項。reviewer 已在 harness 以替身驗證：上一頁 → 出現確認 → 繼續編輯（網址回到原頁、值保留）→ 再上一頁 → 放棄變更（離開）。驗收：補 red_case（例如「SystemSettingsView keeps asking when browser back fires hashchange」：有變更時 router.push('/students')（另一案改 ?tab=line）後派發 window hashchange 事件 → 仍有可點的確認框；「繼續編輯」→ push 的 Promise 完成且路徑 / query.tab 不變、值仍為 90；「放棄變更」→ 離開）。現行實作在 happy-dom 已可重現為紅（push 的 Promise 不 settle）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/settings/SystemSettingsView.spec.ts",
@@ -1832,9 +1832,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f1",
+        "notes": "打回（review-r10-f1）。tdd.run 實跑 12 passed，12 條 red_case 逐條對應同名測試，斷言具體；歷史 b5996e3 / 764018b（測試）先於 8e75678（實作）。b69ca00 的 description 改動：補「只改 ?tab=（上一頁 / 下一頁）也要確認」、骨架與 ?tab= 不認得退回第一組，都來自已核可稿 decisions #2 #3 #13 或屬加嚴；移除「resolve(false) 擋不住」是正確更正（element-plus 2.14.7 tabs 以 await 結果 !== false 判斷，reject 與 resolve(false) 都會擋下，突變把 reject 改成 resolve(false) 仍綠屬等價）。不是放寬。稿 decisions 中屬本 task 的 #1（PageHeader → el-tabs → 卡片、最寬 880）、#2（分頁順序與未知分組）、#13（分頁列骨架 + 兩張卡片骨架、錯誤 EmptyState + 重試）在 Chromium 實測符合（寬 880、tabs header margin 16、卡片間距 16、骨架 6 個分頁項 + 2 張卡）；#3（切換分頁 / 離開路由確認）站內操作符合，但瀏覽器上一頁 / 下一頁不符，見打回項。#4~#12 屬 055 / 057。突變 9 種中 8 種轉紅（拿掉 reset、拿掉 onBeforeRouteUpdate、拿掉 onBeforeRouteLeave、分組順序、未知分組標題、?tab= 退回值、重試未清錯誤、不寫 ?tab=）；還原後 cmp 與 git diff 乾淨。web-lint exit 0；web-typecheck 本批檔案零錯誤。打回項：真實瀏覽器（hash router）按上一頁 / 下一頁時，未儲存變更的確認框被立即關掉、導航卡住，違反 description「只改 ?tab=（瀏覽器上一頁 / 下一頁）或離開路由時…提示」。Chromium 反例：/students → push /settings/system?tab=pickup → 改接送卡 → 上一頁 → 網址變 #/students、畫面仍是系統設定、沒有確認框。根因：onBeforeRouteUpdate / onBeforeRouteLeave 在 popstate 期間呼叫 confirmDiscardChanges()，ElMessageBox 預設 closeOnHashChange: true，緊接著的 hashchange 事件把剛開的確認框關掉；以 hashchange 關閉時 Element Plus 不送 action（message-box index.vue 的 doClose），Promise 永遠不 settle，導航一直卡住。站內導覽（router.push / replace 不觸發 hashchange）正常，所以 happy-dom 測試驗不出來。修法建議：確認框帶 closeOnHashChange: false。最小改動在 FRONTEND-046 的 confirmDiscardChanges（FormDialog 也共用，改該檔請先經協調者同意），或由本頁守衛自帶選項。reviewer 已在 harness 以替身驗證：上一頁 → 出現確認 → 繼續編輯（網址回到原頁、值保留）→ 再上一頁 → 放棄變更（離開）。"
       }
     },
     {
@@ -2002,7 +2002,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/ReferenceDataView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-059",
@@ -2032,9 +2032,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f1",
+        "notes": "通過（review-r10-f1）。tdd.run 實跑 5 passed，5 條 red_case 逐條對應同名測試；e093b0e（測試）先於 089542b（實作）。a1e95e9 補的 description（?tab= 沒帶或不認得時為科目、分頁放在白底面板內）出自已核可稿 page-settings-reference.html decision #1，新增的 red_case（標題 / 副標 / 四個分頁、viewLoaders 接線）屬加嚴，不是放寬。稿 decisions 屬本 task 的只有 #1，Chromium 實測符合（白底面板 rgb(255,255,255) 內含 el-tabs、副標正確）；#2~#11 屬 059~062；lookups 失效由表格元件負責、本頁不重複呼叫，與 description 一致（測試以真實 SubjectTable 新增後 subjectsLoaded 變 false 驗證）。突變 4 種（拿掉 lazy、?tab= 退回值、不寫 ?tab=、副標）皆轉紅，還原後乾淨。web-lint exit 0；web-typecheck 本批零錯誤（現存錯誤只在他人的 src/components/student/StudentSelect.spec.ts）。"
       }
     },
     {
@@ -2089,7 +2089,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/StaffUserFormDialog.vue",
       "source_ref": "FE:src/components/settings/SettingsAccountsTab.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-052",
@@ -2098,7 +2098,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f1 打回】7712e03 補進 description 的規則沒有測試，突變後 tdd.run 仍全綠，屬未驗收。請各補 red_case 與測試（下列突變都要轉紅）：1) 權限沒變時不送 extra / revoked（updateBody 的 permsChanged 守衛）：拿掉守衛仍綠。反例：自己編輯自己（user.id === auth.user.id），角色行政已含 leaves:write，存的 extra_permissions ['leaves:write']、revoked_permissions ['pickup:override'] 已冗餘，effective 與角色預設相同 → 只改姓名卻送出 extra_permissions: []、revoked_permissions: [] → 後端 409 cannot_modify_self_permissions，自己改不了姓名。建議 red_case「StaffUserFormDialog does not resend redundant adjustments」：上述 user 只把姓名改為「林行政二」→ PATCH body 深等於 {display_name:'林行政二'}。2) 編輯成功 ElMessage.success「已更新」：拿掉仍綠。建議在 edits only changed fields 斷言 .el-message 文字含「已更新」。3) 帳號須以英數開頭：USERNAME_RE 改回 /^[a-z0-9._-]{3,30}$/ 仍綠。建議：帳號 '.tutor'、姓名與角色已填 → 點「建立」顯示格式錯誤且沒有 POST。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/settings/StaffUserFormDialog.spec.ts",
@@ -2122,9 +2122,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f1",
+        "notes": "打回（review-r10-f1）。tdd.run 實跑 11 passed，11 條 red_case 逐條對應同名測試；dfb8328 / 0503671（測試）先於 451d0e1（實作），f6bf459 只改 aria-expanded 型別。7712e03 的 description 改動逐處判斷：帳號「以英數開頭」對齊後端 USERNAME_PATTERN（^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$）與 DB CHECK，是加嚴；無法授出提示排除目標原本就有的碼，與稿的 notGrantable（before 集合）及後端 BACKEND-090「新有效權限中原本沒有的碼」一致；權限沒變時不送 extra / revoked 對應稿 decision「角色或勾選有變才送」，並避免自己編輯基本資料時送出冗餘權限欄位而被 409 cannot_modify_self_permissions；成功 ElMessage「已更新」出自稿的程式。皆為更正，不是放寬。介面：RoleCardsGrid（roles / modelValue / disabled）、PermissionPicker（grantable 只限新增、已勾可取消）、FormDialog（dirty / submitDisabled）、後端 PATCH 未送的 extra / revoked 沿用原值（staff_user_service.update_staff_user），用法正確。安全：自己編輯時角色卡與勾選器 disabled、不送權限欄位；cannot_grant_permissions 展開調整區並列中文名稱；沒有密碼欄位。Chromium 實測（稿 decisions #11~#18 屬本 task）：dialog 寬 800、帳號 / 姓名 / 電話 / Email 兩欄、角色卡在 dialog 內三欄、調整區新增時收合且未選角色 disabled、編輯有調整時預設展開、自己編輯顯示 info alert、受限操作者選主任時角色卡下方橘字提示；輸入 Tutor02 轉為 tutor02。突變 16 種中 12 種轉紅；以下 4 種仍綠：權限沒變仍送 extra / revoked、拿掉「已更新」、帳號允許以 . 開頭、無法授出提示不排除原有碼。reviewer 寫的 probe 測試在現行實作全過、對應突變各自轉紅。打回項：前三條是 description 寫明、行為可觀測卻沒有測試的規則（未驗收），詳見 risk_notes。web-lint exit 0；web-typecheck 本批零錯誤。殘留（不擋）：1) 無法授出提示排除原有碼也沒有測試，但可管理的目標其有效權限必為操作者權限子集合，實際流程觀測不到差異，建議順手補；2) 帳號上限 30（後端 32）、姓名上限 30（後端 50）、Email 要求網域含「.」（後端只要 @ 兩側非空），皆依已核可稿、前端較嚴；3) 帳號以 . _ - 開頭時錯誤訊息仍是「3~30 碼，只能使用小寫英文、數字與 . _ -」，沒有說明開頭規則。"
       }
     },
     {
@@ -2317,7 +2317,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/RolesView.vue",
       "source_ref": "FE:src/views/settings/SettingsRolesView.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-067",
@@ -2327,7 +2327,7 @@
         "FRONTEND-042"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f1 打回】瀏覽器上一頁 / 下一頁（hash router）時未儲存變更確認失效，與 FRONTEND-058 同因。反例（Chromium）：/students → push /settings/roles?role=clerk → 改名稱 → 按上一頁 → #/students 但仍顯示角色權限、無確認框、名稱仍為修改值；只改 ?role= 的上一頁 / 下一頁同樣。根因：onBeforeRouteUpdate / onBeforeRouteLeave 在 popstate 期間呼叫 confirmDiscardChanges()，ElMessageBox 預設 closeOnHashChange: true，緊接著的 hashchange 事件把剛開的確認框關掉；以 hashchange 關閉時 Element Plus 不送 action（message-box index.vue 的 doClose），Promise 永遠不 settle，導航一直卡住。站內導覽（router.push / replace 不觸發 hashchange）正常，所以 happy-dom 測試驗不出來。修法建議：確認框帶 closeOnHashChange: false。最小改動在 FRONTEND-046 的 confirmDiscardChanges（FormDialog 也共用，改該檔請先經協調者同意），或由本頁守衛自帶選項。reviewer 已在 harness 以替身驗證：上一頁 → 出現確認 → 繼續編輯（網址回到原頁、值保留）→ 再上一頁 → 放棄變更（離開）。驗收：補 red_case（例如「RolesView keeps asking when browser back fires hashchange」：詳情有變更時 router.push('/students')（另一案改 ?role=tutor）後派發 window hashchange → 仍有可點的確認框；「繼續編輯」→ push 完成且停在 clerk、名稱保留；「放棄變更」→ 離開）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/settings/RolesView.spec.ts",
@@ -2352,9 +2352,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f1",
+        "notes": "打回（review-r10-f1）。tdd.run 實跑 12 passed，12 條 red_case 逐條對應同名測試；4e5f6cf（測試）先於 c0fd0cd（實作）。0be552b 把 ?role= 由 id 改成 code：已核可稿 page-settings-roles.html 明寫 ?role={code}（decision #12 與網址列示意）、ivy SettingsRolesView 以 code 寫 query、後端 RoleUpdateIn 沒有 code（建立後不可改），屬原規格與稿不一致的更正，不是放寬；原 red_case 的條件都保留並加嚴（排序、骨架、儲存後重載、無寫入權限、viewLoaders）。稿 decisions 屬本 task 的 #1（左 280、捲動固定、右詳情、新增角色僅 roles:write）與 #12 在 Chromium 實測符合（左欄寬 280，main 捲動 600 後左欄從 y=86 黏在 y=20；「角色（5）」）；#2~#11 屬 067~070。突變 10 種中 9 種轉紅（以 id 找角色、拿掉兩個守衛、刪除後不選第一個、建立後不選新角色、儲存後不重載、未排序取第一個、載入中可按新增、canWrite 恆真）；selectCode 相同 code 不導航的捷徑拿掉仍綠屬等價。還原後乾淨。web-lint exit 0；web-typecheck 本批零錯誤。打回項：與 FRONTEND-058 同因——真實瀏覽器（hash router）按上一頁離開本頁或改 ?role= 時，確認框被 hashchange 立即關掉、導航卡住。Chromium 反例：/students → push /settings/roles?role=clerk → 改名稱為「資深行政」→ 上一頁 → 網址變 #/students、畫面仍是角色權限、沒有確認框。根因：onBeforeRouteUpdate / onBeforeRouteLeave 在 popstate 期間呼叫 confirmDiscardChanges()，ElMessageBox 預設 closeOnHashChange: true，緊接著的 hashchange 事件把剛開的確認框關掉；以 hashchange 關閉時 Element Plus 不送 action（message-box index.vue 的 doClose），Promise 永遠不 settle，導航一直卡住。站內導覽（router.push / replace 不觸發 hashchange）正常，所以 happy-dom 測試驗不出來。修法建議：確認框帶 closeOnHashChange: false。最小改動在 FRONTEND-046 的 confirmDiscardChanges（FormDialog 也共用，改該檔請先經協調者同意），或由本頁守衛自帶選項。reviewer 已在 harness 以替身驗證：上一頁 → 出現確認 → 繼續編輯（網址回到原頁、值保留）→ 再上一頁 → 放棄變更（離開）。殘留：在詳情有未儲存變更時用「新增角色」建立成功，reloadRoles 讓 RoleDetailPanel 的 watch(role) 直接 resetTo，變更不經確認就被丟棄（與稿的 onCreated 行為相同，不擋）。"
       }
     },
     {
