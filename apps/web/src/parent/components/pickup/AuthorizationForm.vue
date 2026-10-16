@@ -36,6 +36,8 @@ const props = withDefaults(
 const emit = defineEmits<{ submit: [input: AuthorizationCreateInput]; cancel: [] }>()
 
 const PHONE_PATTERN = /^0\d{8,9}$/
+// vue-tsc 不把 template 的 aria-label 對應到 ariaLabel prop，改以物件展開（同 LeaveForm）
+const SOURCE_SEGMENT_ATTRS = { ariaLabel: '接送人來源' }
 
 const groupLabelId = useId()
 
@@ -174,7 +176,7 @@ function onSubmit(): void {
         <M3SegmentedButton
           :model-value="source"
           :items="sourceItems"
-          aria-label="接送人來源"
+          v-bind="SOURCE_SEGMENT_ATTRS"
           @update:model-value="onSourceChange"
         />
 
