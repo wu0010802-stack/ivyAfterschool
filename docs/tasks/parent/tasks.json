@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 194,
-  "last_updated": "2026-10-16T15:18:08Z",
+  "version": 195,
+  "last_updated": "2026-10-16T15:18:13Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -468,11 +468,11 @@
     {
       "id": "PARENT-013",
       "title": "實作 parent/main.ts：建立家長端 app（Pinia、Router、樣式、401 導回登入）",
-      "description": "取代 INFRA-005 的佔位檔 `apps/web/src/parent/main.ts`：\n```ts\nexport function createParentApp(): { app: App; router: Router; pinia: Pinia }\n// 檔尾：if (!import.meta.env.VITEST) createParentApp().app.mount('#app')\n```\n- import `./styles/m3-tokens.css`、`./styles/base.css`、`./styles/icons.css`（PARENT-001、PARENT-014）。\n- `createApp(ParentLayout)`（PARENT-024）、`createPinia()`、`createParentRouter()`（PARENT-012；view 尚未實作時載入其佔位檔，app shell 可先跑起來）。\n- `setUnauthenticatedHandler`（PARENT-004）：`parentAuth.clear()`、`children.clear()`（PARENT-010）、`parentWs.disconnect()`（PARENT-173）；目前路由非 public 時 `router.replace({ path: '/login', query: { redirect: currentRoute.fullPath } })`。\n- 不得 import element-plus 或後台目錄（INFRA-005 eslint、INFRA-029 bundle 檢查）。\n\n移植 ivy `FE:src/parent/main.ts` 的掛載順序；**去掉** tenant boot、Sentry、theme / a11y 初始化、離線佇列 flush、chunkSelfHeal、publicLiffTarget 跳轉。\n\n**驗收標準**：每一條對應 red_case；另外 `pnpm exec vite build && node scripts/check_parent_bundle.mjs` 通過（INFRA-029）。",
+      "description": "取代 INFRA-005 的佔位檔 `apps/web/src/parent/main.ts`：\n```ts\nexport interface ParentAppOptions { history?: RouterHistory }   // 預設 hash history；測試傳 createMemoryHistory()\nexport function createParentApp(opts?: ParentAppOptions): { app: App; router: Router; pinia: Pinia }\nexport function mountParentApp(target: string | Element, opts?: ParentAppOptions): Promise<{ app; router; pinia }>\n// 檔尾：if (!import.meta.env.VITEST) void mountParentApp('#app')\n```\n- `mountParentApp`：`await router.isReady()` 後才 `app.mount`（第一次導航完成前目前路由是 START_LOCATION、沒有 meta，ParentLayout 會先畫出頂部列與底部導覽再收起）；第一次導航失敗（isReady reject，例如 lazy view 的 chunk 載入失敗）也照樣掛載，不留白頁。\n- import `./styles/m3-tokens.css`、`./styles/base.css`、`./styles/icons.css`（PARENT-001、PARENT-014）。\n- `createApp(ParentLayout)`（PARENT-024）、`createPinia()`、`createParentRouter()`（PARENT-012；view 尚未實作時載入其佔位檔，app shell 可先跑起來）。\n- `setUnauthenticatedHandler`（PARENT-004，在 `app.use(router)` 之前註冊：安裝 router 就會開始第一次導航，守衛的探測可能就 401）：`parentAuth.clear()`、`children.clear()`（PARENT-010）、`parentWs.disconnect()`（PARENT-173）；目前路由非 public 時 `router.replace({ path: '/login', query: { redirect: currentRoute.fullPath } })`。第一次導航還沒完成（`currentRoute.value === START_LOCATION`）時只清狀態、交給 PARENT-012 守衛導向（才會帶原本要去的路徑，也避免兩個導航互相取消；同 FRONTEND-028）；已發出、尚未完成的導向登入期間（/login 守衛的探測也 401）不再導向第二次，導向完成後恢復。\n- 不得 import element-plus 或後台目錄（INFRA-005 eslint、INFRA-029 bundle 檢查）。\n\n移植 ivy `FE:src/parent/main.ts` 的掛載順序；**去掉** tenant boot、Sentry、theme / a11y 初始化、離線佇列 flush、chunkSelfHeal、publicLiffTarget 跳轉。\n\n**驗收標準**：每一條對應 red_case；另外 `pnpm exec vite build && node scripts/check_parent_bundle.mjs` 通過（INFRA-029）。",
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/main.ts",
       "source_ref": "FE:src/parent/main.ts::ensureSessionProbed",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-001",
@@ -486,7 +486,7 @@
         "INFRA-029"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "沒有 session 時直接開 `/login`，第一次導航時 unauthenticated handler 看到的目前路由是起始位置 `/`（非 public），網址會變成 `/login?redirect=/`；無害，實作時可判斷 router 尚未完成第一次導航（`currentRoute.value === START_LOCATION`）就不附 redirect。",
+      "risk_notes": "main.spec 的第一個測試要 lazy import 真實的 LoginView / LeavesView（vite 轉譯），容器負載高時超過預設 5 秒，spec 的 describe 逾時設為 20 秒、等 handler 發起的導向用 vi.waitFor（10 秒）。ParentLayout 在 START_LOCATION 會畫出頂部列與底部導覽（沒有 meta）；正式入口經 mountParentApp 等第一次導航完成才掛載，直接 createParentApp().app.mount() 的呼叫端（目前只有 spec）仍會看到這一瞬間。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/main.spec.ts",
@@ -497,7 +497,13 @@
           "parentMain redirects to login on unauthenticated：createParentApp() 後 router.push('/leaves') 時 /parent/me 200；之後 GET /parent/children/s1/leaves 401 且 refresh 401 → router.currentRoute.fullPath === '/login?redirect=/leaves'，parentAuth.isAuthed === false，children.items.length === 0",
           "parentMain does not redirect from public route：目前在 '/login'，觸發 unauthenticated handler → currentRoute.path 仍為 '/login'（無多餘 query）",
           "parentMain mounts layout with router view：createParentApp().app.mount(div)，/parent/me 200 → 等待 router.isReady 後 div 內含底部導覽 nav 元素",
-          "parentMain keeps bind pending through first bind：createParentApp() 停在 '/login'，GET /parent/me 401（refresh 401）；parentAuth.markBindPending('王媽媽') 後 router.push('/bind') → currentRoute.path === '/bind'、parentAuth.bindPending.nameHint === '王媽媽'"
+          "parentMain keeps bind pending through first bind：createParentApp() 停在 '/login'，GET /parent/me 401（refresh 401）；parentAuth.markBindPending('王媽媽') 後 router.push('/bind') → currentRoute.path === '/bind'、parentAuth.bindPending.nameHint === '王媽媽'",
+          "parentMain sends a first visit without session to login with the original path：從 '/leaves' 開始、/parent/me 401（refresh 401）→ router.isReady 後 fullPath === '/login?redirect=/leaves'，/parent/me 只請求 1 次",
+          "parentMain redirects only once while the login probe also fails：已登入在 '/exams'，API 401（refresh 401）且 /login 守衛的探測也 401 → fullPath === '/login?redirect=/exams'，之後的 afterEach 只觸發 1 次",
+          "parentMain redirects again after logging back in：第一次 401 導向 '/login?redirect=/exams' 後 setParent 並回到 '/exams'，再一次 401 → 再導向 '/login?redirect=/exams'",
+          "parentMain disconnects the websocket on unauthenticated：parentWs.connect() 後 API 401（refresh 401）→ parentWs.enabled === false、status 'idle'",
+          "parentMain mounts only after the first navigation：mountParentApp(div) 時 /login 守衛的 /parent/me 尚未回應 → div 仍為空；回應 401 後 div 內有 .parent-layout.is-tabbar-hidden、沒有 nav 與 .app-header",
+          "parentMain still mounts when the first navigation fails：LoginView 的 lazy import 失敗 → mountParentApp 仍 resolve，div 內有 .parent-layout"
         ],
         "run": "just web-test src/parent/main.spec.ts -t \"parentMain\"",
         "notes": ""
