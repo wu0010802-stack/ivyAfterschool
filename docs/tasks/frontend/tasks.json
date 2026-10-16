@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 185,
-  "last_updated": "2026-10-16T05:02:55Z",
+  "version": 186,
+  "last_updated": "2026-10-16T05:03:24Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2473,7 +2473,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/students.ts",
       "source_ref": "FE:src/api/students.ts::getStudents",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
@@ -2511,9 +2511,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 7 條皆有同名測試（另有 get/create/archive、id 編碼、preview_stale 3 條），tdd.run 10 綠、名稱清單逐條對上；79ea94a（紅，students.ts 尚不存在）→ 6aa32dd。逐 endpoint 對照 BACKEND-159~166 / 531 / 533 與 app/schemas/students.py、app/api/admin/students.py：路徑與方法、body（promote-grade 的 dry_run / expected_total / withdrawn_on；import multipart file / academic_year / dry_run；photo multipart file；purge confirm_student_no）、回傳型別（StudentListItemOut / StudentDetailOut / PhotoUploadOut / PromotionPreviewOut / PromotionResultOut / ImportPreviewOut / ImportResultOut / StudentPurgeOut；template 回完整 AxiosResponse<Blob>）、錯誤碼（409 import_has_errors / preview_stale、422 purge_confirmation_mismatch）一致；路徑 id 一律 encodeURIComponent。突變（拿掉 encode、import dry_run 顛倒、promotion body 漏 withdrawn_on、PATCH 過濾 null、template 不帶 responseType blob）皆轉紅。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。殘留：路徑 id 為 \".\" / \"..\" 時 encodeURIComponent 不編碼（kickoff 已列 FRONTEND chore，後台與家長端 api client 一起處理）。"
       }
     },
     {
@@ -3797,7 +3797,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/homework.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
@@ -3826,9 +3826,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 4 條皆有同名測試（另有 create、subject_id null、id 編碼、invalid_service_date 4 條），tdd.run 8 綠；36db142 / 013264b（紅，homework.ts 尚不存在；013264b 只把 create / update 的 item 改非 null 存取）→ ac6411f。對照 BACKEND-371 / 383 / 385~390 與 app/schemas/homework.py：board（date / class_id，BoardOut 含 window）、POST items 201 與 items/batch 201、PATCH / DELETE items/{id}（DELETE 200 回 {item:null, progress}）、PUT progress/{student_id}（overall done|auto、ready_eta / note 給 null 原樣保留）的路徑、body 與回傳型別一致；422 no_students / invalid_service_date 以 ApiError 拋出；item id 與 student_id 皆 encodeURIComponent。突變（PUT 過濾 null、batch 路徑錯、progress 不 encode）皆轉紅。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。殘留：HomeworkItemUpdate / HomeworkProgressUpdate 型別允許空物件（後端 422「至少一個欄位」），只在型別層；student_not_in_class 沒有獨立測試（與 no_students 同一條 ApiError 路徑）。"
       }
     },
     {
@@ -4168,7 +4168,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/pickupAuthorizations.ts",
       "source_ref": "FE:src/api/pickupAuthorizations.ts::verifyPickupAuthorization",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
@@ -4194,9 +4194,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 3 條皆有同名測試（另有 status 篩選、409 三種錯誤碼、id 編碼 3 條），tdd.run 6 綠；ab3054f（紅）→ 85b2bca。對照 BACKEND-436~439 與 app/api/admin/pickup.py、app/schemas/pickup.py：GET authorizations（date / status）回 list[StaffAuthorizationOut]（欄位含 student、photo_url、code_attempts、locked、verified_by_name，與型別逐欄一致）；verify 送 {code}（去除空白與 \"-\"）、confirm-visual-match 無 note 送 \"{}\"、override-complete 送 {note}，三者回 AuthorizationCompleteOut；400 pickup_code_mismatch（details.remaining_attempts）與 409 pickup_code_locked / authorization_not_active / authorization_not_today 以 ApiError 拋出；id 一律 encodeURIComponent。ivy 來源只有 list / verify / override / confirmVisualMatch 四個薄函式，分組已保留。突變（正規化只去空白、visual match 一律帶 note、不 encode）皆轉紅。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。殘留：confirmVisualMatch 的 note 全為空白時也送 \"{}\"（比 description 寬，後端 strip 後等價，無害）。"
       }
     },
     {
@@ -4206,7 +4206,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalRoster.ts",
       "source_ref": "FE:src/composables/useDismissalRoster.ts::buildRoster",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
@@ -4231,9 +4231,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 5 條皆有同名測試（另有請假 / 缺席計入 total 與 label 備援、空名單、清除 open_request 3 條），tdd.run 8 綠；efe02c9 / a152efd（紅，實作尚不存在；a152efd 把 fixture 改成 red_case 的兩班數字）→ 37babc6。實作與設計稿 docs/mockups/page-pickup-pos.html 的稿內 buildClassRail / matchStudent 一致（第一項「全部班級」、key = class_id ?? 'unassigned'、total 為該班人數、openCount / arrivedCount），排序交由 FRONTEND-192。883c89d 的 description 補述判斷：total 原文「不含請假 / 缺席者另計入 total」自相矛盾，改為「也計入」與稿的 list.length 一致；matchStudent 對姓名 / 學號也去空白，結果集是稿（只去 query 空白）的超集；label 備援「未分班」、key 找不到回空陣列、openRequestStudentIds 參數型別對齊 red_case 的 {status, student:{id}}——皆屬規格澄清，不是遷就實作。突變（total 排除請假、比對分大小寫、就地修改、open id 不濾狀態、找不到 key 回全部）皆轉紅。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。殘留：fixture 沒有 acknowledged 的學生，突變 arrivedCount 改計 status !== 'pending' 仍綠（實作正確；之後補一位 acknowledged 學生即可）。"
       }
     },
     {
@@ -4243,7 +4243,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useStudentPosStatus.ts",
       "source_ref": "FE:src/composables/useStudentPosStatus.ts::useStudentPosStatus",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
@@ -4267,9 +4267,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 4 條皆有同名測試（另有無請求時 detail、arrived 無預計抵達 2 條），tdd.run 6 綠；b8c308f（紅）→ ecf435a。優先權、sortWeight、POS_STATUS_META 的 label / tone 與設計稿 page-pickup-pos.html 的稿內 useStudentPosStatus 及學生卡 decision 完全一致（arrived > open request > left > leave / absent > present > 其他）。883c89d 補述的 detail 取值（leaveType 直接取 leave_type 代碼、無請求時 expectedArrival null 且 requestId / requestStatus / needsReply 為 undefined、requestStatus 型別 PickupOpenStatus）與稿內複本相同，屬澄清。突變（left 先於請求、on_leave 權重 4、expected 當在班、leaveType 丟失、tone 錯、無請求仍給 needsReply）皆轉紅。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。"
       }
     },
     {
@@ -4279,7 +4279,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalUrgency.ts",
       "source_ref": "FE:src/composables/useDismissalUrgency.ts::urgencyLevel",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -4303,9 +4303,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 4 條皆有同名測試（另有 ETA 含秒、台北日期、格式錯誤、預設 30 秒 4 條），tdd.run 8 綠；5e670a2（紅）→ 933f374。門檻 3 / 8、waitedMinutes 只算 arrived（minutesSince 向下取整、下限 0）、formatWaited、etaRelativeText（台北日期 + HH:MM、毫秒差、|差| < 1 分「現在」、其餘四捨五入）與設計稿的稿內複本及「等候急迫色」decision 一致。883c89d 補述（ETA 含秒、60 分寫「1 小時 0 分」、arrived_at 無法解析回 null、useNowClock 建立即取值且只在 effectScope 內註冊 onScopeDispose）都與稿一致或屬澄清；ivy 原版 formatWaited / etaRelativeText 文案與取整不同，依本專案稿改寫正確。突變（門檻 4、critical 用 <=、不檢查 status、ETA 截斷分鐘、用 UTC 日期、整點格式、取第一字、不清 interval、延後取值）皆轉紅。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。殘留：vitest 環境 TZ 固定 Asia/Taipei，「uses taipei time not local time」只分得出 UTC 日期與台北日期，分不出改用裝置本地時區的寫法（環境限制，現行實作以 +08:00 計算不受影響）；monogramOf 會把英文字尾轉大寫（無害）。"
       }
     },
     {
@@ -4395,14 +4395,14 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalChime.ts",
       "source_ref": "FE:src/composables/useDismissalChime.ts::drawChimeTones",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
         "INFRA-012"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f2 打回】unlock 前的提示音會在第一次手勢時補播：onArrived / onNewRequest 在 unlock 前就以 audioContextFactory 建立 context（未經使用者手勢 → suspended）並呼叫 resume()。Web Audio 規範（context 未獲允許啟動時，resume() 的 promise 放進 pending resume promises、不 reject，之後被允許啟動時一併 resolve）與 Chromium 都是這個行為，所以 playTone 的 Promise.resolve(audioCtx.resume()).then(drawSafely, ...) 會在 POS 頁第一次 pointerdown 呼叫 unlock() 時，把之前所有「略過」的音一次畫出。反例（reviewer 以符合規範的 fake 實測）：fake AudioContext 的 resume() 在允許前回傳 pending promise、允許後 state 轉 running 並 resolve 全部 pending；unlock 前 onArrived(r1)、onNewRequest(r2)、60 秒後 onArrived(r3)（期間 createOscillator 0 次）→ unlock() + flushPromises 後 createOscillator 被呼叫 5 次（兩次雙音 + 一次單音同時響起）。第一次手勢若是按「提示音：關」，同樣會在剛靜音時響。這與 description「AudioContext 尚未 unlock 時靜默略過」、設計稿 docs/mockups/page-pickup-pos.html 提示音 decision（未 unlock 前只顯示「點一下畫面以啟用提示音」、不播放）、FRONTEND-189 的 unlock 流程，以及 playTone 註解「避免日後解鎖時補播舊音」都不符。驗收：以上述 pending-resume fake 新增測試——unlock 前的 onArrived / onNewRequest 在 unlock() + flushPromises 後 createOscillator 仍為 0；unlock 之後的新 onArrived 照常產生 2 個 oscillator；resume 在靜音之後才 resolve 的音也不得播出；既有 resume reject 系列測試維持綠。修正方式由實作者決定（例如 unlock 前不呼叫 resume、直接略過；或 resume resolve 當下已超過批次視窗 / 已靜音就丟棄），並改寫 description「實作細節」中「AudioContext 非 running 時先 resume，resume 失敗（尚未解鎖）略過該次雙音並重置視窗」一句，使其涵蓋 resume 一直 pending 的情境。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useDismissalChime.spec.ts",
@@ -4421,9 +4421,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f2",
+        "notes": "打回 1 項（見 risk_notes【review-r10-f2 打回】）：unlock 前的提示音在第一次手勢時補播。其餘檢查通過：red_cases 6 條皆有同名測試（另有 15 條：無班名語音、靜音後不補響、storage 不可用、新請求去重、視窗外再響、resume 成功 / 失敗後重試、新請求後到達、跨台北午夜、unlock、zh-TW voice 選擇、無中文 voice 不播、voice 未載入退化、無 speechSynthesis），tdd.run 21 綠；e7abba5（紅）→ 16bc1a1。ivy 移植保留了 triangle 包絡、C5 單音、zh-TW → zh 前綴 voice 選擇、清單已載入但沒有中文 voice 不播、清單未載入帶 lang 退化、無聲 utterance 預熱、speechSupported 偵測；雙音依 red_case 改為 C5 → G5 兩個 oscillator。突變 11 項（新請求不看 arrivedIds、arrived 不去重、批次視窗 0、靜音不記 id、suspended 直接畫、不跨日清空、不寫 localStorage、語音缺班名、失敗不重置視窗、錯語系 voice 照播、resume reject 未處理）皆轉紅。883c89d 的 description 補述（雙音組成、批次視窗自雙音起算、onNewRequest 去重＝稿「同一請求只播一次」、靜音仍記 id、ChimeRequest 參數型別）屬澄清；「AudioContext 非 running 時先 resume，resume 失敗略過」一句沒有涵蓋 resume 一直 pending 的情境，需隨本次修正改寫。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。"
       }
     },
     {
