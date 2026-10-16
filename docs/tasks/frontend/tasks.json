@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 177,
-  "last_updated": "2026-10-16T04:49:40Z",
+  "version": 178,
+  "last_updated": "2026-10-16T04:49:49Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -1789,11 +1789,11 @@
     {
       "id": "FRONTEND-058",
       "title": "實作 views/settings/SystemSettingsView.vue：系統設定頁（依分組分頁顯示設定卡）",
-      "description": "建立 `apps/web/src/views/settings/SystemSettingsView.vue`（路由 `/settings/system`，`settings:read`）。參考 ivy `FE:src/components/settings/SettingsLineTab.vue` 的「讀取 → 表單 → 儲存」流程。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-system.html`（此稿尚未建立；FRONTEND-055、057、058 共用這一張頁面稿，`preview-tasks` 必須同時列入 FRONTEND-055、FRONTEND-057、FRONTEND-058），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：各分組表單、secret 欄位（已設定 / 未設定 / 修改中）、欄位驗證錯誤、只有 settings:read 時的唯讀樣式、儲存中與儲存成功。\n\n**內容**\n- `PageHeader` 標題「系統設定」。載入 `listSettings()`；依 `group` 分頁（el-tabs），分頁由 API 回傳的 group 動態產生（registry 驅動，BACKEND-106：`leave.window` → leave、`pickup.window` / `pickup.authorization` / `pickup.persons` → pickup、`homework.defaults` / `homework.window` → homework，新 key 自動出現在對應分組，不需改前端）：已知分組依序顯示中文標題 org「安親班資料」、pickup「接送」、homework「作業進度」、leave「請假」、notification「通知」、line「LINE 串接」，未知分組排在最後並以 group 原字串為標題；每頁內依 API 回傳順序放 `SettingCard`（FRONTEND-057）。分頁以 `route.query.tab` 記住。\n- 欄位中文標籤與說明直接取後端 `json_schema` 的 `title` / `description`（`notification.toggles` 用 `x-labels`，BACKEND-106），由 JsonSchemaForm（FRONTEND-055）渲染；本頁不維護標籤對照表。\n- 載入中 skeleton；載入失敗 `EmptyState` error + 「重試」。\n- 切換分頁或離開路由時，有任一卡片 `isDirty` → `confirmDiscardChanges()`（FRONTEND-046）；選「放棄變更」→ 對有變更的卡片呼叫 `reset()` 後才切換，選「繼續編輯」→ 留在原分頁（el-tabs `before-leave` 回傳的 Promise 要 reject 才會擋下，resolve(false) 擋不住）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/SystemSettingsView.vue')`。\n\n**驗收標準**\n- 依分組顯示卡片；tab 與 query 同步。\n- 未儲存變更離開時提示；載入失敗可重試。",
+      "description": "建立 `apps/web/src/views/settings/SystemSettingsView.vue`（路由 `/settings/system`，`settings:read`）。參考 ivy `FE:src/components/settings/SettingsLineTab.vue` 的「讀取 → 表單 → 儲存」流程。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-system.html`（此稿尚未建立；FRONTEND-055、057、058 共用這一張頁面稿，`preview-tasks` 必須同時列入 FRONTEND-055、FRONTEND-057、FRONTEND-058），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：各分組表單、secret 欄位（已設定 / 未設定 / 修改中）、欄位驗證錯誤、只有 settings:read 時的唯讀樣式、儲存中與儲存成功。\n\n**內容**\n- `PageHeader` 標題「系統設定」。載入 `listSettings()`；依 `group` 分頁（el-tabs），分頁由 API 回傳的 group 動態產生（registry 驅動，BACKEND-106：`leave.window` → leave、`pickup.window` / `pickup.authorization` / `pickup.persons` → pickup、`homework.defaults` / `homework.window` → homework，新 key 自動出現在對應分組，不需改前端）：已知分組依序顯示中文標題 org「安親班資料」、pickup「接送」、homework「作業進度」、leave「請假」、notification「通知」、line「LINE 串接」，未知分組排在最後並以 group 原字串為標題；每頁內依 API 回傳順序放 `SettingCard`（FRONTEND-057）。分頁以 `route.query.tab` 記住。\n- 欄位中文標籤與說明直接取後端 `json_schema` 的 `title` / `description`（`notification.toggles` 用 `x-labels`，BACKEND-106），由 JsonSchemaForm（FRONTEND-055）渲染；本頁不維護標籤對照表。\n- 載入中 skeleton；載入失敗 `EmptyState` error + 「重試」。\n- 切換分頁、只改 `?tab=`（瀏覽器上一頁 / 下一頁）或離開路由時，有任一卡片 `isDirty` → `confirmDiscardChanges()`（FRONTEND-046）；選「放棄變更」→ 對有變更的卡片呼叫 `reset()` 後才切換，選「繼續編輯」→ 留在原分頁 / 原路由（el-tabs `before-leave` 回傳 reject 的 Promise 擋下切換；路由以 `onBeforeRouteUpdate` / `onBeforeRouteLeave` 回傳 false 擋下）。\n- 載入中顯示分頁列骨架 + 兩張卡片骨架；`?tab=` 不是現有分組時顯示第一個分組。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/SystemSettingsView.vue')`。\n\n**驗收標準**\n- 依分組顯示卡片；tab 與 query 同步。\n- 未儲存變更切換分頁 / 改 ?tab= / 離開路由時提示；載入失敗可重試；viewLoaders 接上本頁。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/SystemSettingsView.vue",
       "source_ref": "FE:src/components/settings/SettingsLineTab.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-057",
@@ -1815,7 +1815,13 @@
           "SystemSettingsView warns before leaving with unsaved changes：在接送卡修改欄位後點 '通知' tab → body 出現 '尚未儲存的變更將會遺失'；點 '繼續編輯' → 仍停在接送 tab",
           "SystemSettingsView shows retry on load failure：GET 回 500 → 文字含 '無法載入系統設定'，點 '重試' 且第二次回 200 → 顯示卡片",
           "SystemSettingsView shows unknown group last：回應另含 group 'beta' 的 key → 最後一個 tab 標題為 'beta' 且內含該卡",
-          "SystemSettingsView discards changes when confirmed：在接送卡把 auto_expire_minutes 改為 90 後點 '通知' tab → 點 '放棄變更' → 目前為通知 tab；再點 '接送' → auto_expire_minutes 為 120、沒有 '未儲存'"
+          "SystemSettingsView discards changes when confirmed：在接送卡把 auto_expire_minutes 改為 90 後點 '通知' tab → 點 '放棄變更' → 目前為通知 tab；再點 '接送' → auto_expire_minutes 為 120、沒有 '未儲存'",
+          "SystemSettingsView restores tab from query：initialRoute '/settings/system?tab=homework' → 作用中分頁為 '作業進度'；push '?tab=nope' → 作用中分頁為第一個 '安親班資料'",
+          "SystemSettingsView guards route leave with unsaved changes：接送卡改 auto_expire_minutes 後 router.push('/students') → 出現 '尚未儲存的變更將會遺失'，'繼續編輯' → path 仍為 /settings/system；再 push 選 '放棄變更' → path === '/students'",
+          "SystemSettingsView guards tab query change with unsaved changes：有未儲存變更時 router.push('/settings/system?tab=line') → 出現確認，'繼續編輯' → query.tab 仍為 'pickup'、欄位值仍為 90",
+          "SystemSettingsView leaves without prompt when clean：沒有變更時 router.push('/students') → 直接離開、沒有 .el-message-box",
+          "SystemSettingsView shows skeleton while loading：GET 尚未回應 → 至少 2 個 .el-skeleton、沒有 .el-tabs；回應後顯示 9 張設定卡",
+          "SystemSettingsView is wired in view loaders：(await VIEW_LOADERS.SystemSettingsView()).default === SystemSettingsView"
         ],
         "run": "just web-test src/views/settings/SystemSettingsView.spec.ts -t \"SystemSettingsView\"",
         "notes": ""
