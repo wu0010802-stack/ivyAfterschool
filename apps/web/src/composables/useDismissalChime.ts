@@ -12,6 +12,8 @@ const MUTE_STORAGE_KEY = 'pickup.chimeMuted'
 
 /** 這個時間內的多筆 arrived 合併為一次雙音（語音仍每筆各播） */
 export const ARRIVED_BATCH_WINDOW_MS = 2000
+/** unlock 之後 context 又被暫停時，resume 要在這麼短的時間內完成才補響；逾時視為過期的提示，丟棄 */
+export const RESUME_STALE_MS = 2000
 
 export const SOFT_CHIME_FREQ = 523.25 // C5 單音
 export const SOFT_CHIME_GAIN = 0.06
@@ -175,6 +177,8 @@ export function useDismissalChime(opts: DismissalChimeOptions = {}): DismissalCh
   // 雙音的批次視窗起點；null = 目前沒有進行中的視窗
   let toneWindowStart: number | null = null
   let ctx: AudioContext | null = null
+  // 是否已經過第一次使用者手勢（unlock 被呼叫過）
+  let unlocked = false
 
   function rollDay(): void {
     const today = todayTaipei()
@@ -194,7 +198,14 @@ export function useDismissalChime(opts: DismissalChimeOptions = {}): DismissalCh
     return ctx
   }
 
-  /** 已解鎖（running）直接畫；尚未解鎖先 resume，成功才畫、失敗靜默略過（不排進 suspended 的 context，避免日後解鎖時補播舊音） */
+  /**
+   * 只有 context 是 running 才畫音。
+   * - 尚未 unlock：直接略過，不呼叫 resume()。依 Web Audio 規範，context 未獲允許啟動前 resume() 不會 reject 而是一直 pending，
+   *   等第一次手勢時一併 resolve，.then 會把先前略過的音全部補播（連按「提示音：關」的那次手勢也會響）。
+   * - 已 unlock 但 context 又被瀏覽器暫停（例如平板休眠後）：resume() 此時會很快完成；完成當下已靜音或已超過
+   *   RESUME_STALE_MS 就丟棄，不補響過期的提示。
+   * onSkipped：這次沒有畫音（讓呼叫端重置批次視窗）。
+   */
   function playTone(draw: (audioCtx: AudioContext) => void, onSkipped?: () => void): void {
     const audioCtx = getContext()
     if (!audioCtx) {
@@ -212,8 +223,22 @@ export function useDismissalChime(opts: DismissalChimeOptions = {}): DismissalCh
       drawSafely()
       return
     }
+    if (!unlocked) {
+      onSkipped?.()
+      return
+    }
+    const requestedAt = Date.now()
     try {
-      Promise.resolve(audioCtx.resume()).then(drawSafely, () => onSkipped?.())
+      Promise.resolve(audioCtx.resume()).then(
+        () => {
+          if (muted.value || Date.now() - requestedAt > RESUME_STALE_MS) {
+            onSkipped?.()
+            return
+          }
+          drawSafely()
+        },
+        () => onSkipped?.(),
+      )
     } catch {
       onSkipped?.()
     }
@@ -224,7 +249,8 @@ export function useDismissalChime(opts: DismissalChimeOptions = {}): DismissalCh
     if (toneWindowStart !== null && now - toneWindowStart < ARRIVED_BATCH_WINDOW_MS) return
     toneWindowStart = now
     playTone(drawChimeTones, () => {
-      toneWindowStart = null
+      // 只重置自己開的視窗；期間若已有後來的視窗不要動它
+      if (toneWindowStart === now) toneWindowStart = null
     })
   }
 
@@ -242,6 +268,7 @@ export function useDismissalChime(opts: DismissalChimeOptions = {}): DismissalCh
   }
 
   function unlock(): void {
+    unlocked = true
     const audioCtx = getContext()
     if (audioCtx && audioCtx.state !== 'running') {
       try {
