@@ -7,6 +7,9 @@
 //   不在清單中的列依班級（沿用清單既有的班級順序）與學號插入。
 // - ws（FRONTEND-038）：attendance.updated / batch_updated 依上述條件合併；bulk_updated 的 dates 含目前日期時重抓。
 //   改判過去日期也會推播，所以不論 date 是否為今天都訂閱。
+// - reload 晚到不倒退（FRONTEND-304）：以本機異動序號判斷、不依賴伺服器時間。每次套用列記 touched[student_id] = ++touchClock，
+//   reload 發出時記 startedAt = touchClock；回應到達時 touched > startedAt 的列保留目前值（回應沒有的也保留），其餘取回應值。
+//   篩選鍵改變時清空 touched；resync（ws 重連補抓）走同一個 reload。
 import { ElMessage } from 'element-plus'
 import { ref, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
 import {
@@ -92,6 +95,10 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
   let seq = 0
   /** data 對應的篩選；載入失敗時若篩選已換，就不再顯示別的篩選的舊資料 */
   let loadedKey: string | null = null
+  /** 本機異動序號：student_id → 最後一次套用列時的 touchClock；touchedKey 為這份紀錄對應的篩選 */
+  let touchClock = 0
+  const touched = new Map<string, number>()
+  let touchedKey: string | null = null
 
   const currentClassId = (): string | null => classId.value || null
   const filterKey = (): string => `${date.value}|${currentClassId() ?? ''}`
@@ -101,11 +108,17 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     const key = filterKey()
     const cls = currentClassId()
     const query: DailyAttendanceParams = cls ? { date: date.value, class_id: cls } : { date: date.value }
+    if (touchedKey !== key) {
+      touched.clear()
+      touchedKey = key
+    }
+    const startedAt = touchClock
     loading.value = true
     try {
       const res = await fetchDailyAttendance(query)
       if (mySeq !== seq) return
-      data.value = { ...res, summary: summarize(res.items) }
+      const items = mergeTouched(res.items, startedAt, key)
+      data.value = { ...res, items, summary: summarize(items) }
       loadedKey = key
       error.value = null
     } catch (err) {
@@ -118,6 +131,21 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     } finally {
       if (mySeq === seq) loading.value = false
     }
+  }
+
+  /** 回應列與目前資料合併：startedAt 之後在本機套用過的列保留目前值（回應沒有的依班級、學號插入） */
+  function mergeTouched(responseItems: AttendanceRow[], startedAt: number, key: string): AttendanceRow[] {
+    const current = data.value
+    if (!current || loadedKey !== key) return responseItems
+    const newer = current.items.filter((r) => (touched.get(r.student_id) ?? 0) > startedAt)
+    if (!newer.length) return responseItems
+    const items = [...responseItems]
+    for (const row of newer) {
+      const index = items.findIndex((r) => r.student_id === row.student_id)
+      if (index >= 0) items[index] = row
+      else items.splice(insertionIndex(items, row), 0, row)
+    }
+    return items
   }
 
   function matchesFilter(row: AttendanceRow): boolean {
@@ -135,6 +163,7 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
       const index = items.findIndex((r) => r.student_id === row.student_id)
       if (index >= 0) items[index] = row
       else items.splice(insertionIndex(items, row), 0, row)
+      touched.set(row.student_id, ++touchClock)
       changed = true
     }
     if (changed) data.value = { ...current, items, summary: summarize(items) }
