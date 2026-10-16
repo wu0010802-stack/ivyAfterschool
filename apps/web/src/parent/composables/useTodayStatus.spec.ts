@@ -232,6 +232,31 @@ describe('useTodayStatus', () => {
     expect(status.today.value?.attendance.status).toBe('absent')
   })
 
+  it('useTodayStatus switch child clears today immediately', async () => {
+    let releaseS2!: () => void
+    mock.onGet(todayUrl('s1')).reply(200, childToday('s1'))
+    mock.onGet(todayUrl('s2')).reply(
+      () =>
+        new Promise<[number, unknown]>((resolve) => {
+          releaseS2 = () => resolve([200, childToday('s2')])
+        }),
+    )
+    const { status, childId } = await mountStatus('s1')
+    expect(status.today.value?.student_id).toBe('s1')
+
+    childId.value = 's2'
+    await nextTick()
+
+    // 切換當下就清空（頁面顯示骨架），不會先顯示上一位小孩的資料
+    expect(status.today.value).toBeNull()
+    expect(status.loading.value).toBe(true)
+
+    releaseS2()
+    await flushPromises()
+    expect(status.today.value?.student_id).toBe('s2')
+    expect(status.loading.value).toBe(false)
+  })
+
   it('useTodayStatus applies attendance ws event', async () => {
     mock.onGet(todayUrl('s1')).reply(200, childToday('s1'))
     const { status } = await mountStatus('s1')
