@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 189,
-  "last_updated": "2026-10-16T15:07:31Z",
+  "version": 190,
+  "last_updated": "2026-10-16T15:09:58Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2352,7 +2352,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/AuthorizationForm.vue",
       "source_ref": "FE:src/parent/views/PickupCreateView.vue::canSubmit",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -2389,9 +2389,9 @@
         "notes": "red_case「date input disabled」：happy-dom 不會把 disabled fieldset 傳給子欄位的 :disabled，spec 以「日期欄與接送人清單在 disabled 的 fieldset.af-lock 內」斷言（同 LeaveForm spec）；真實 Chromium 以 Playwright 驗證日期欄、接送人列與來源分段都 :disabled，且欄位不淡化（opacity 1）。按鈕列等寬以 grid 兩欄實作（flex 1 1 0 時送出中的 loading 按鈕少 8px 左內距會變窄），spec 以 ?raw 樣式規則斷言、寬度由 Playwright 量測（兩種狀態皆 167px）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。11 條 red_case 皆有同名測試（另有只送目前來源欄位、空白 / 過去日期、切來源清錯誤留值、新清單仍含已選者、取消不驗證、radio 列與頭像、臨時欄位屬性、按鈕等寬、說明框與 novalidate 9 條）；tdd.run 20/20 綠，verbose 名稱清單含全部 11 條。commit 順序 658fd23（紅，當時 AuthorizationForm.vue 不存在）→ a21a004（測試修正，仍在實作之前）→ 709f01b（實作）→ d1767a5 / 3b009e0（等寬：測試 → 修正）→ 732895c（vue-tsc）。a21a004 判斷：把「日期欄 :disabled」改成「在 disabled 的 fieldset.af-lock 內」是 happy-dom 限制的必要調整，不是放寬——reviewer 實測 happy-dom 對 disabled fieldset 內的 input / button 回 matches(\":disabled\") = false；同 commit 另補「不經送出鈕的 form submit 也不 emit」，反而更嚴；突變「fieldset 不鎖」仍轉紅。reviewer 以 Chromium（Playwright，390×844，scratchpad 的 Vite harness，不在 repo 建檔）驗證送出中：日期欄、兩列接送人、來源分段都 :disabled，欄位不淡化（opacity 1，與稿相同），取消 disabled、建立鈕 aria-busy，強制點接送人與建立鈕都不改選取、不 emit。按鈕列：實作改 grid 兩欄，閒置與送出中兩顆都是 167px（sheet 內表單寬 342）；同條件量稿：閒置 167 / 167，送出中「取消」171、「建立代理接送」163，違反稿自己的「等寬並排」決定，屬稿的 CSS 瑕疵，實作做法正確——稿需同步修 CSS（parent-component-authorization-form.html 與 parent-page-pickup-proxy.html 的複本，.af-actions 都還是 flex 1 1 0）。稿 parent-component-authorization-form.html 已 approved，decisions 11 條逐條核對；Chromium 截圖對照送出中、無常用接送人與臨時填寫錯誤態，版面、區塊間距（日期 → 接送人 96px、說明 → 按鈕列 84px 與稿相同）、列高 64px 一致。「這一天的代理接送已達上限」不在本元件呈現（description 與稿：建立錯誤由 PARENT-104 處理）；PARENT-104 description 的 authorization_limit_reached 文案與 domain_spec 家長端頁面表 /pickup/proxy 一致。突變 32 個殺 30：存活「不檢查空日期」為等價突變（空字串小於 today 仍判錯），「電話規則放寬成 /^\\d{8,10}$/」沒有測試（只測 7 碼，見殘留）；還原後 git diff 乾淨。web-lint 乾淨；web-typecheck 4 個錯誤在他人進行中的檔案（LeaveFormDialog.vue、PickupCompleteDialog.vue、parent/main.ts、MoreView.vue），不在本 task。殘留（不擋）：(1) 臨時電話沒有「不是 0 開頭」的反例測試（實作的 /^0\\d{8,9}$/ 正確）。(2) today prop 跨午夜改變時，預設日期仍是掛載時的 today，送出會得到日期錯誤提示，需家長改日期；規格未要求。"
       }
     },
     {
