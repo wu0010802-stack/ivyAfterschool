@@ -156,6 +156,24 @@ describe('parentMain', { timeout: 20_000 }, () => {
     expect(meRequests()).toBe(2)
   })
 
+  it('parentMain redirects again after logging back in', async () => {
+    mock.onGet('/parent/me').replyOnce(200, ME).onGet('/parent/me').reply(401, UNAUTHORIZED)
+    refreshMock.onPost('/parent/auth/refresh').reply(401, UNAUTHORIZED)
+    mock.onGet('/parent/children').reply(401, UNAUTHORIZED)
+    const { router, pinia } = createParentApp({ history: historyAt('/exams') })
+    await settle(router)
+    await expect(parentHttp.get('/parent/children')).rejects.toMatchObject({ status: 401 })
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/exams'), { timeout: 10_000 })
+
+    // 重新登入（例如 LoginView 的 liff-login 成功）後回到成績頁，之後又一次 401：要再導向一次
+    useParentAuthStore(pinia).setParent(ME)
+    await router.push('/exams')
+    expect(router.currentRoute.value.fullPath).toBe('/exams')
+    await expect(parentHttp.get('/parent/children')).rejects.toMatchObject({ status: 401 })
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/exams'), { timeout: 10_000 })
+    expect(useParentAuthStore(pinia).isAuthed).toBe(false)
+  })
+
   it('parentMain disconnects the websocket on unauthenticated', async () => {
     mock.onGet('/parent/me').reply(200, ME)
     mock.onGet('/parent/children').reply(401, UNAUTHORIZED)
