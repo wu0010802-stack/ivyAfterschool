@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 137,
-  "last_updated": "2026-10-16T05:17:14Z",
+  "version": 138,
+  "last_updated": "2026-10-16T05:18:11Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2354,8 +2354,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/AuthorizationListItem.vue",
       "source_ref": "FE:src/parent/views/PickupView.vue::askRegenerate",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
         "FRONTEND-005",
@@ -2565,8 +2565,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/AttendanceView.vue",
       "source_ref": "FE:src/parent/views/AttendanceView.vue::prevMonth",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-010",
