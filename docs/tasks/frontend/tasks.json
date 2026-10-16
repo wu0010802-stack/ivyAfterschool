@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 255,
-  "last_updated": "2026-10-16T14:28:23Z",
+  "version": 256,
+  "last_updated": "2026-10-16T14:28:27Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4691,7 +4691,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentGrid.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentGrid.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
@@ -4712,7 +4712,7 @@
           "StudentGrid empty states：students [] 且 query 有值（非空白）→ '找不到符合的學生'；query 為空 且 groupByClass false → '此班級今天沒有學生'；query 為空 且 groupByClass true → '目前沒有在學學生'"
         ],
         "run": "just web-test src/components/pickup/pos/StudentGrid.spec.ts -t \"StudentGrid\"",
-        "notes": ""
+        "notes": "規格 75ac600（補 rosterClasses / query 兩個 props：RosterStudent 沒有班級欄位，groupByClass 無從分組；red_case 的空狀態依 query 判斷但原 props 沒有 query；同步 FRONTEND-190 的一行接線）、紅燈測試 f6c741f（修正 ff7a594：多張卡的 ⋮ 選單都留在 body，改以觸發鈕的 aria-controls 找對應選單）、實作 a250e79。除 4 條 red_cases 外另有 3 條：查不到班級或班級為 null 的學生歸「未分班」、staging / canOperate 正確傳給卡片（倒數中卡片不可派發、唯讀者無 ⋮ 但可定位請求）、卡片最小寬 148px 的 auto-fill grid（?raw 原始碼斷言）。標題列、搜尋框與載入骨架依 190 description 由頁面負責，不在本元件。突變自檢：不依權重排序、同權重不依學號、空組也顯示、查不到班級的學生被丟掉、staging 不傳、create-request 不轉發、空狀態不看 query、空白 query 視為有搜尋 各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
