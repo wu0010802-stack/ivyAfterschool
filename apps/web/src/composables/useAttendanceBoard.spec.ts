@@ -433,4 +433,64 @@ describe('useAttendanceBoard', () => {
     expect(statusOf(board, 's4')).toBe('present')
     expect(board.data.value?.summary).toEqual({ total: 1, expected: 0, present: 1, left: 0, absent: 0, leave: 0 })
   })
+
+  it('useAttendanceBoard clears error on success and ignores results of another date', async () => {
+    const PAST = '2026-10-01'
+    const gates: Record<string, () => void> = {}
+    let failFirst = true
+    mock.onGet(DAILY_URL).reply(async (config: AxiosRequestConfig) => {
+      const day = (config.params as { date: string }).date
+      if (failFirst) {
+        failFirst = false
+        return [500, { error: { code: 'internal_error', message: '伺服器忙碌中' } }]
+      }
+      await new Promise<void>((resolve) => {
+        gates[day] = resolve
+      })
+      return [200, daily([{ ...S1, service_date: day, status: day === PAST ? 'left' : 'expected' }], day)]
+    })
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mock.onPost('/admin/attendance/s1/check-in').reply(async () => {
+      await gate
+      return [200, { ...S1, status: 'present' }]
+    })
+    const date = ref(DATE)
+    const { board } = await mountBoard(date)
+    expect(board.error.value).toBe('伺服器忙碌中')
+
+    const reloading = board.reload()
+    await settle()
+    gates[DATE]?.()
+    await reloading
+    expect(board.error.value).toBeNull()
+    expect(statusOf(board, 's1')).toBe('expected')
+
+    // 到班回應前切到過去日期（過去日期的清單尚未回來）：2026-10-02 的回傳列不再套用
+    const pending = board.checkIn(S1)
+    date.value = PAST
+    await settle()
+    release()
+    await pending
+    await settle()
+    expect(board.data.value?.date).toBe(DATE)
+    expect(statusOf(board, 's1')).toBe('expected')
+
+    gates[PAST]?.()
+    await settle()
+    expect(board.data.value?.date).toBe(PAST)
+
+    // 切回今天、今天的清單尚未回來時收到今天的 ws 列：不套用到畫面上過去日期的清單
+    date.value = DATE
+    await settle()
+    socket().serverMessage('attendance.updated', { ...S2, status: 'present' })
+    await settle()
+    expect(board.data.value?.date).toBe(PAST)
+    expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s1'])
+    gates[DATE]?.()
+    await settle()
+    expect(board.data.value?.date).toBe(DATE)
+  })
 })
