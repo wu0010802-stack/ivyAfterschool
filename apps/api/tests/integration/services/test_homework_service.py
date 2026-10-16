@@ -658,6 +658,42 @@ def test_homework_board_includes_window(
     assert changed.window.model_dump() == {"past_days": 10, "future_days": 3}
 
 
+# --- BACKEND-564 progress_view ---
+
+
+def test_progress_view_matches_board_progress(
+    db_session: Session, fake_clock: FakeClock, fresh_settings: None
+) -> None:
+    class_a = make_class(db_session)
+    ming = make_student(db_session, name="王小明", class_=class_a)
+    teacher = make_staff(db_session, display_name="林老師")
+    progress = make_homework_progress(
+        db_session, ming, service_date=_DAY, overall_status="in_progress", ready_eta=time(17, 30)
+    )
+    progress.eta_updated_by = teacher.id
+    db_session.flush()
+
+    view = homework_service.progress_view(db_session, progress)
+    board = get_board(db_session, BoardQuery(date=_DAY, class_id=class_a.id), clock=fake_clock)
+
+    assert view.model_dump() == _card(board, ming.id).progress.model_dump()
+    assert view.ready_eta == "17:30"
+    assert view.eta_updated_by_name == "林老師"
+
+
+def test_progress_view_without_eta_editor(db_session: Session) -> None:
+    ming = make_student(db_session)
+    progress = make_homework_progress(db_session, ming, service_date=_DAY)
+    db_session.flush()
+    assert progress.eta_updated_by is None
+
+    view = homework_service.progress_view(db_session, progress)
+
+    assert view.eta_updated_by_name is None
+    assert view.ready_eta is None
+    assert (view.student_id, view.service_date) == (ming.id, _DAY)
+
+
 # --- BACKEND-376 handle_homework_done / BACKEND-382 set_ready_eta_and_note ---
 
 _NOW = datetime(2026, 9, 1, 7, 0, tzinfo=UTC)  # 台北 15:00，_DAY 當天

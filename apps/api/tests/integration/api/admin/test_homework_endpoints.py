@@ -20,11 +20,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from app.api.admin import homework as homework_api
 from app.models.account import StaffUser
 from app.models.homework import HomeworkDailyProgress, HomeworkItem
 from app.models.notifications import Notification
 from app.models.reference import Subject
 from app.notifications import outbox_jobs
+from app.services import homework_service
 from app.services.settings_service import clear_settings_cache
 from tests.support.factories import (
     make_attendance,
@@ -360,6 +362,23 @@ def test_admin_homework_progress_overall_auto(
     assert resp.status_code == 200
     assert resp.json()["overall_status"] == "in_progress"
     assert _progress_rows(db_session, ming.id)[_DAY].overall_status == "in_progress"
+
+
+def test_admin_homework_progress_response_uses_service_view(
+    staff_client: StaffClientFactory, db_session: Session
+) -> None:
+    """BACKEND-564：單筆回應由 service 的 progress_view 組裝，router 不另做一份。"""
+    ming = make_student(db_session)
+    client, _ = staff_client(permissions=["homework:write"], display_name="林老師")
+
+    resp = client.put(_progress_url(ming.id), json={"ready_eta": "17:45"})
+
+    assert resp.status_code == 200
+    row = _progress_rows(db_session, ming.id)[_DAY]
+    expected = homework_service.progress_view(db_session, row).model_dump(mode="json")
+    assert resp.json() == expected
+    assert (expected["ready_eta"], expected["eta_updated_by_name"]) == ("17:45", "林老師")
+    assert hasattr(homework_api, "_progress_out") is False
 
 
 # --- BACKEND-386：POST /api/admin/homework/items -------------------------------------------------
