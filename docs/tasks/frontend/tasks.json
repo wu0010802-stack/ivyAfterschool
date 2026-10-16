@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 214,
-  "last_updated": "2026-10-16T05:55:38Z",
+  "version": 215,
+  "last_updated": "2026-10-16T06:03:02Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2805,7 +2805,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentFormDialog.vue",
       "source_ref": "FE:src/components/student/StudentEditDialog.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
@@ -2830,7 +2830,11 @@
           "StudentFormDialog maps duplicate errors：POST 回 409 student_no_taken → 學號欄文字 '學號已被使用'；回 409 id_number_duplicate → 身分證欄文字 '此身分證字號已有學生使用'",
           "StudentFormDialog validates id number format：身分證輸入 'a12345' → 欄位錯誤 '身分證字號格式不正確'；輸入 'a123456789' → 值自動轉為 'A123456789'",
           "StudentFormDialog confirms before suspending or withdrawing：student.status 'active' → 狀態改 '退班'、退班日 2026-10-02 後點 '儲存' → body 出現 '確認將 王小明 改為退班' 與 '取消今天進行中的接送請求與有效的代理接送授權、刪除今天起尚未登記的出勤、取消未來的請假'；點 '取消' → mock.history.patch.length === 0 且表單仍開啟；再次儲存並確認 → PATCH body 含 {status:'withdrawn',withdrawn_on:'2026-10-02'}",
-          "StudentFormDialog skips status confirm when not deactivating：只改姓名 → 無確認框直接 PATCH；新增學生選狀態 '暫停' → 無確認框直接 POST"
+          "StudentFormDialog skips status confirm when not deactivating：只改姓名 → 無確認框直接 PATCH；新增學生選狀態 '暫停' → 無確認框直接 POST",
+          "StudentFormDialog keeps current class and school outside options：fake now 2026-10-02（115 學年度）、編輯 student.class {id:'k1',name:'去年的班'}（114 學年度，選單只列 115）、student.school {id:'sc9',short_name:'第三國小'} 不在 GET /admin/schools 回應內 → 安親班班級欄顯示 '去年的班' 且下拉選項為 ['低年級A班','中年級班','去年的班']，就讀國小欄顯示 '第三國小'；short_name 為 null 時顯示 name",
+          "StudentFormDialog reports lookup load failure：GET /admin/classes 回 500 {error:{message:'班級資料暫時無法讀取'}} → body 含 '班級資料暫時無法讀取'；GET /admin/schools 回 500 且 message 為空 → body 含 '無法載入學校與班級選項'",
+          "StudentFormDialog rejects future birthday：fake now 2026-10-02、生日填 2026/10/03 → 生日欄 '生日不可晚於今天'，mock.history.post 為 0；生日欄的 disabled-date 對 2026-10-03 回 true、對 2026-10-02 回 false",
+          "StudentFormDialog confirms discarding dirty changes：編輯時改姓名後按 '取消' → 出現 '尚未儲存的變更將會遺失' 確認框且未 emit update:modelValue；未改任何欄位按 '取消' → 無確認框、emitted('update:modelValue') 深等於 [[false]]"
         ],
         "run": "just web-test src/components/student/StudentFormDialog.spec.ts -t \"StudentFormDialog\"",
         "notes": "el-date-picker 在 happy-dom 每個約 0.6 秒且隨數量超線性變慢：除「creates student with defaults」與「confirms before suspending or withdrawing」用真實日期元件外，其餘案例以 stub（顯示 YYYY/MM/DD、change 回 YYYY-MM-DD）取代；describe 逾時放寬為 20 秒。"
@@ -2844,11 +2848,11 @@
     {
       "id": "FRONTEND-090",
       "title": "實作 components/student/StudentPhotoUploader.vue：學生照片顯示與上傳",
-      "description": "建立 `apps/web/src/components/student/StudentPhotoUploader.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`studentId: string`、`photoUrl: string | null`、`name: string`、`editable: boolean`；emits `uploaded(photoUrl: string)`。\n- 顯示 96×96 圓角照片；無照片顯示姓名首字頭像（monogram）。照片 URL 為短效簽名 URL，載入失敗（onerror）改顯示 monogram。\n- `editable`（父層依 students:write 與未封存決定）：hover 顯示「更換照片」，點擊開檔案選擇（accept `image/jpeg,image/png,image/webp`）。\n- 選檔後 `checkUpload(file, PHOTO_RULE)`（FRONTEND-006）不通過 → ElMessage.error(message) 不送出；通過 → 本地預覽（objectURL）並 `uploadStudentPhoto` → 成功以回傳 photo_url 取代預覽、emit uploaded、ElMessage.success('已更新照片')；失敗還原舊照片並顯示 `errorMessage`（413 / 415 / 502 storage_unavailable 用後端 message）。上傳中顯示 loading 遮罩。\n\n**驗收標準**\n- monogram fallback；前端檢查擋下不合法檔；上傳成功 / 失敗行為正確。",
+      "description": "建立 `apps/web/src/components/student/StudentPhotoUploader.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`studentId: string`、`photoUrl: string | null`、`name: string`、`editable: boolean`；emits `uploaded(photoUrl: string)`。\n- 顯示 96×96 圓角照片；無照片顯示姓名最後一字頭像（monogram）。照片 URL 為短效簽名 URL，載入失敗（onerror）改顯示 monogram。\n- `editable`（父層依 students:write 與未封存決定）：hover 顯示「更換照片」，點擊開檔案選擇（accept `image/jpeg,image/png,image/webp`）。\n- 選檔後 `checkUpload(file, PHOTO_RULE)`（FRONTEND-006）不通過 → ElMessage.error(message) 不送出；通過 → 本地預覽（objectURL）並 `uploadStudentPhoto` → 成功以回傳 photo_url 取代預覽、emit uploaded、ElMessage.success('已更新照片')；失敗還原舊照片並顯示 `errorMessage`（413 / 415 / 502 storage_unavailable 用後端 message）。上傳中顯示 loading 遮罩。\n\n**驗收標準**\n- monogram fallback；前端檢查擋下不合法檔；上傳成功 / 失敗行為正確。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPhotoUploader.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
@@ -2865,7 +2869,7 @@
         "red_cases": [
           "StudentPhotoUploader shows monogram without photo：photoUrl null、name '王小明' → [data-test=monogram] 文字 '明'（取最後一字）且沒有 img；img 觸發 error 事件 → 改顯示 monogram",
           "StudentPhotoUploader rejects invalid file before upload：editable、選擇 application/pdf 檔 → body 含 '只接受 JPG / PNG / WEBP'，mock.history.post.length === 0",
-          "StudentPhotoUploader uploads and emits new url：選擇 1 MB image/png → POST /admin/students/s1/photo 回 {photo_url:'https://storage/new.png'} → img.src === 'https://storage/new.png'、emitted('uploaded')[0] 深等於 ['https://storage/new.png']",
+          "StudentPhotoUploader uploads and emits new url：選擇 1 MB image/png → POST /admin/students/s1/photo 回 {photo_url:'https://storage/new.png'} → img.src === 'https://storage/new.png'、emitted('uploaded')[0] 深等於 ['https://storage/new.png']、body 含 '已更新照片'",
           "StudentPhotoUploader restores old photo on failure：原 photoUrl 'https://storage/old.png'、POST 回 502 {error:{code:'storage_unavailable',message:'照片儲存服務暫時無法使用'}} → img.src === 'https://storage/old.png'，body 含 '照片儲存服務暫時無法使用'",
           "StudentPhotoUploader readonly when not editable：editable false → 沒有 input[type=file] 與 '更換照片'"
         ],
