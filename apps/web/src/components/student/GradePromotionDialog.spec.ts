@@ -32,6 +32,11 @@ function preview(overrides: Partial<PromotionPreview> = {}): PromotionPreview {
   }
 }
 
+/** 不需要大量資料的案例用小名單，避免 80 列表格在高負載下拖慢測試 */
+function smallPreview(overrides: Partial<PromotionPreview> = {}): PromotionPreview {
+  return preview({ promote: items(2, 3, 'p'), graduate: items(1, 6, 'g'), total: 3, ...overrides })
+}
+
 let mock: MockAdapter
 
 async function settle(): Promise<void> {
@@ -131,7 +136,7 @@ describe('GradePromotionDialog', () => {
   })
 
   it('GradePromotionDialog cancel confirmation sends nothing', async () => {
-    mock.onPost(URL_PROMOTE).reply(200, preview())
+    mock.onPost(URL_PROMOTE).reply(200, smallPreview())
     await mountDialog()
 
     await openConfirmAndType('確認升級')
@@ -142,7 +147,7 @@ describe('GradePromotionDialog', () => {
   })
 
   it('GradePromotionDialog disables execute when already promoted', async () => {
-    mock.onPost(URL_PROMOTE).reply(200, preview({ already_promoted: true }))
+    mock.onPost(URL_PROMOTE).reply(200, smallPreview({ already_promoted: true }))
     await mountDialog()
 
     expect(mainDialog().text()).toContain('此學年度已執行過升級')
@@ -152,13 +157,13 @@ describe('GradePromotionDialog', () => {
   it('GradePromotionDialog re-previews on stale preview', async () => {
     mock
       .onPost(URL_PROMOTE)
-      .replyOnce(200, preview())
+      .replyOnce(200, smallPreview())
       .onPost(URL_PROMOTE)
       .replyOnce(409, {
-        error: { code: 'preview_stale', message: '名單已變動', details: { expected_total: 96, total: 97 } },
+        error: { code: 'preview_stale', message: '名單已變動', details: { expected_total: 3, total: 4 } },
       })
       .onPost(URL_PROMOTE)
-      .replyOnce(200, preview({ promote: items(81, 3, 'p'), total: 97 }))
+      .replyOnce(200, smallPreview({ promote: items(3, 3, 'p'), total: 4 }))
     const wrapper = await mountDialog()
 
     await openConfirmAndType('確認升級')
@@ -168,18 +173,18 @@ describe('GradePromotionDialog', () => {
     expect(mainDialog().text()).toContain('名單在預覽後有變動，已重新預覽，請再次確認')
     expect(bodies()).toHaveLength(3)
     expect(bodies()[2]).toEqual({ from_academic_year: 114, dry_run: true })
-    expect(mainDialog().text()).toContain('升級 81 位')
+    expect(mainDialog().text()).toContain('升級 3 位')
     expect(wrapper.emitted('promoted')).toBeUndefined()
   })
 
   it('GradePromotionDialog re-previews when already promoted on execute', async () => {
     mock
       .onPost(URL_PROMOTE)
-      .replyOnce(200, preview())
+      .replyOnce(200, smallPreview())
       .onPost(URL_PROMOTE)
       .replyOnce(409, { error: { code: 'already_promoted', message: '114 學年度已執行過升級' } })
       .onPost(URL_PROMOTE)
-      .replyOnce(200, preview({ already_promoted: true }))
+      .replyOnce(200, smallPreview({ already_promoted: true }))
     await mountDialog()
 
     await openConfirmAndType('確認升級')
@@ -195,7 +200,7 @@ describe('GradePromotionDialog', () => {
   it('GradePromotionDialog re-previews when year changes', async () => {
     mock.onPost(URL_PROMOTE).reply((config) => {
       const year = (JSON.parse(config.data as string) as { from_academic_year: number }).from_academic_year
-      return [200, preview({ from_academic_year: year, to_academic_year: year + 1 })]
+      return [200, smallPreview({ from_academic_year: year, to_academic_year: year + 1 })]
     })
     await mountDialog()
 
