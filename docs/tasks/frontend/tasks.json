@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 251,
-  "last_updated": "2026-10-16T14:25:27Z",
+  "version": 252,
+  "last_updated": "2026-10-16T14:25:41Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4884,8 +4884,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupReplyDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
         "FRONTEND-040",
@@ -4926,8 +4926,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupCompleteDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
         "FRONTEND-082",
@@ -4964,8 +4964,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupCreateDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-188",
         "FRONTEND-096",
@@ -5002,8 +5002,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupAuthorizationsView.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-188",
         "FRONTEND-181",
