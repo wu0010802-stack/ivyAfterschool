@@ -432,7 +432,7 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     await settle()
 
     expect(JSON.parse(mock.history.post[0]?.data as string)).toEqual({ code: '123456' })
-    expect(openDialog()?.text()).toContain('已完成接送：王小明 由 陳阿姨 接走（接送碼）')
+    expect(openDialog()?.text()).toContain('已完成接送：王小明 由 陳阿姨 接走（接送碼核驗）')
     expect(chipTexts(wrapper)).toEqual(['全部 3', '有效 1', '已接送 2', '已取消 0', '已過期 0'])
     expect(cardNames(wrapper)).toEqual(['黃阿姨', '陳阿姨', '林叔叔'])
     expect(verifyButtons(wrapper)).toHaveLength(1)
