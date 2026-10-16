@@ -745,8 +745,8 @@ label.m3-button input { position: absolute; width: 1px; height: 1px; opacity: 0;
 .af-help { margin: 0; padding: 0 4px; color: var(--m3-on-surface-variant); }
 .af-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 12px 16px; border-radius: var(--m3-shape-medium); background: var(--m3-surface-container); color: var(--m3-on-surface-variant); }
 .af-note .material-symbols-rounded { margin-top: 1px; }
-.af-actions { display: flex; gap: 8px; padding-top: 4px; }
-.af-actions > * { flex: 1 1 0; }
+/* 兩欄等寬：grid 而非 flex 1 1 0（flex-basis 0 仍受按鈕內容最小寬影響，送出中轉圈會讓兩顆差 8px） */
+.af-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 4px; }
 
 /* ============================================================
    本稿頁面：PickupProxyView（PARENT-104）

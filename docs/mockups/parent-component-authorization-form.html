@@ -544,8 +544,8 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
 .af-help { margin: 0; padding: 0 4px; color: var(--m3-on-surface-variant); }
 .af-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 12px 16px; border-radius: var(--m3-shape-medium); background: var(--m3-surface-container); color: var(--m3-on-surface-variant); }
 .af-note .material-symbols-rounded { margin-top: 1px; }
-.af-actions { display: flex; gap: 8px; padding-top: 4px; }
-.af-actions > * { flex: 1 1 0; }
+/* 兩欄等寬：grid 而非 flex 1 1 0（flex-basis 0 仍受按鈕內容最小寬影響，送出中轉圈會讓兩顆差 8px） */
+.af-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 4px; }
 
 /* ---- 本稿宿主（示意 PARENT-104 的「新增代理接送」sheet；頁面版面以 parent-page-pickup-proxy.html 為準） ---- */
 .m3-navigation-bar { position: relative; z-index: 5; }
