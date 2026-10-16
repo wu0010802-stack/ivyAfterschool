@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 230,
-  "last_updated": "2026-10-16T12:59:07Z",
+  "version": 231,
+  "last_updated": "2026-10-16T12:59:27Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -615,7 +615,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/App.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-026",
@@ -641,9 +641,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 6 條皆有同名測試（另有 single router view、first navigation fails 2 條），tdd.run 8 綠；e0a1e86（紅，App.vue 尚不存在，spec 之後未再改）→ 8d15bdc → a2d4877（components.d.ts 只多 ElConfigProvider 一行 Element Plus 型別）→ 21d89a7。FRONTEND-029 的前提「blank layout 必須真的卸載 AdminLayout」：reviewer 自行突變——改成 v-show（AdminLayout 以 v-show 隱藏、RouterView 依 blank 切換）→ blank for login、real route table、unmounts AdminLayout 三條轉紅；改成 <KeepAlive> 包住 AdminLayout / RouterView 的切換 → 只有「unmounts AdminLayout and stops ws」轉紅，確認這條（真實 AdminLayout + 真實路由表，驗側欄 / 頂欄不在 DOM、socket CLOSED、adminWs idle、通知 store 清空、導回後重新掛載）是唯一防線。其他突變（ready 預設 true、isReady reject 不離開 loading、loading 只在 blank 時顯示、blank 判斷失效、拿掉 locale、loading 拿掉 role）皆轉紅，還原後 git diff 乾淨。路由 ready 前只渲染全頁 loading（不渲染 AdminLayout 與 RouterView）、第一次導航失敗離開 loading 皆有測試；zh-tw 斷言以 zhTw.el.pagination.total 組字、不寫死，並排除簡中與英文。21d89a7 的 description 補述（loading 的 data-test / role / aria-label、版面切換一律 v-if / v-else 並說明理由、補 4 條驗收標準）與先行的測試一致，且把 029 的卸載前提寫成 027 的規格，合理。命令式 ElMessageBox 的語系：以 Chromium（scratchpad 內 Vite harness 掛真正的 App.vue，用完已關）實測，App 的 el-config-provider 掛載後，不傳按鈕文字的 confirm / prompt 也顯示「取消 / 確定」、關閉鈕 aria-label「關閉此對話框」、輸入錯誤「輸入的資料不符合規定!」（第一個 config-provider 會設定 Element Plus 的全域設定），實作者在 vitest 觀察到的現象不出現在瀏覽器，不構成未驗收；現有 12 處 confirm 也都顯式傳了按鈕文字。web-lint 乾淨；web-typecheck 的錯誤都在他人進行中的檔案（ScoreCell.vue、usePickupBoard.spec.ts）。殘留：App 掛載前（例如路由守衛內）呼叫的命令式訊息框不會套到繁中（目前沒有這種呼叫）；第一次導航失敗時 route 仍是起始位置，畫面會是 AdminLayout 加空白內容並啟動 ws 與通知預載（規格只要求離開 loading，錯誤由 router.onError 處理）。"
       }
     },
     {
