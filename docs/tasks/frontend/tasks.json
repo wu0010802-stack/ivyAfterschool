@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 314,
-  "last_updated": "2026-10-16T19:23:48Z",
+  "version": 315,
+  "last_updated": "2026-10-16T19:28:15Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4642,11 +4642,11 @@
     {
       "id": "FRONTEND-190",
       "title": "實作 components/pickup/pos/DismissalPosBoard.vue：三欄 POS 容器（班級欄、學生卡、佇列）",
-      "description": "建立 `apps/web/src/components/pickup/pos/DismissalPosBoard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosBoard.vue` 的三欄組裝與 selectedClassroomId 只影響中欄的設計；**去掉** 娃娃車 / 請假補登（runMark）、reservation chime。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`board: ReturnType<typeof usePickupBoard>`、`canOperate: boolean`、`canOverride: boolean`。\n**行為**\n- 版面：三欄貼齊內容區（左 148px、中彈性、右 320px；桌機 160 / 340），各欄各自捲動。\n- 左 `ClassroomRail`（FRONTEND-191）：`buildClassRail(roster)`（FRONTEND-182），預設選 `all`，選取存 `route.query.class`；只影響中欄，右欄佇列永遠是全部班級。\n- 中 `StudentGrid`（FRONTEND-192）：students = `studentsForRail(roster, selected, query)`、rosterClasses = `roster.classes`、query、groupByClass = 選取 `all`。中欄頂部固定一列：「{班級}（{n} 人）」標題 + 搜尋框（姓名 / 學號，44px）；搜尋框只過濾中欄，放在中欄頂部（不放班級欄）。\n- 右 `QueuePanel`（FRONTEND-194）：`useDismissalPosQueue(board.queue)`（FRONTEND-185）的 items。\n- 學生卡 `quick-dispatch`（canOperate 且狀態 waiting / not_arrived）→ `addToQueue`。\n- 學生卡 `focus-request` → 右欄捲到並閃爍該請求卡。\n- 學生卡 `create-request`（⋮「代建接送請求…」）→ `PickupCreateDialog`（FRONTEND-199，預選學生）。\n- 送出中防連點：維護 `busyIds`（reactive `Set<string>`），佇列卡 `acknowledge` 與 `cancel` 呼叫 API 前加入該請求 id、promise 結束（成功或失敗）後移除，傳給 QueuePanel 的 `busyIds`（FRONTEND-194）；busy 中的請求再收到同一動作時忽略。`reply` / `complete` 由各自 dialog 的送出中狀態處理。\n- 佇列卡 `reply` → `PickupReplyDialog`（FRONTEND-197）；`acknowledge` → `board.acknowledge`；`complete` → `PickupCompleteDialog`（FRONTEND-198）；`cancel` → `ElMessageBox.prompt('取消原因（選填，家長發起的請求會通知家長）', '取消接送請求')` → queue.cancel(item, reason)。\n- `PickupCompleteDialog` emit `verify-authorization(auth)` → 導到 `/pickup/authorizations?verify={auth.id}`。\n- 寬度 < 900：右欄改為底部抽屜（高約 70%，點遮罩或「收合」關閉）；中欄右下浮動按鈕「佇列（N）」，有家長已到時加紅色數字徽章；學生卡 `focus-request` 時先打開抽屜再定位閃爍。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/pickup/pos/DismissalPosBoard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosBoard.vue` 的三欄組裝與 selectedClassroomId 只影響中欄的設計；**去掉** 娃娃車 / 請假補登（runMark）、reservation chime。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`board: PosBoardSource`（本元件 export，`Pick<PickupBoard, 'queue' | 'roster' | 'authorizations' | 'reload' | 'reply' | 'acknowledge' | 'complete' | 'create'>`；頁面直接傳 `usePickupBoard(...)` 的回傳值）、`canOperate: boolean`、`canOverride: boolean`；沒有 emits。`defineExpose({ focusRequest(requestId): Promise<boolean> })`：頁面（FRONTEND-189）在家長到達時呼叫，與學生卡 `focus-request` 同一流程（窄版先打開抽屜），找不到該請求回 false。\n**行為**\n- 版面：三欄貼齊內容區（左 148px、中彈性、右 320px；桌機 160 / 340），各欄各自捲動。\n- 左 `ClassroomRail`（FRONTEND-191）：`buildClassRail(roster)`（FRONTEND-182），預設選 `all`，選取存 `route.query.class`；只影響中欄，右欄佇列永遠是全部班級。\n- 中 `StudentGrid`（FRONTEND-192）：students = `studentsForRail(roster, selected, query)`、rosterClasses = `roster.classes`、query、groupByClass = 選取 `all`。中欄頂部固定一列：「{班級}（{n} 人）」標題 + 搜尋框（姓名 / 學號，44px）；搜尋框只過濾中欄，放在中欄頂部（不放班級欄）。\n- 右 `QueuePanel`（FRONTEND-194）：`useDismissalPosQueue(board.queue)`（FRONTEND-185）的 items。\n- 學生卡 `quick-dispatch`（canOperate 且狀態 waiting / not_arrived）→ `addToQueue`。\n- 學生卡 `focus-request` → 右欄捲到並閃爍該請求卡。\n- 學生卡 `create-request`（⋮「代建接送請求…」）→ `PickupCreateDialog`（FRONTEND-199，預選學生）。\n- 送出中防連點：維護 `busyIds`（reactive `Set<string>`），佇列卡 `acknowledge` 與 `cancel` 呼叫 API 前加入該請求 id、promise 結束（成功或失敗）後移除，傳給 QueuePanel 的 `busyIds`（FRONTEND-194）；busy 中的請求再收到同一動作時忽略。`reply` / `complete` 由各自 dialog 的送出中狀態處理。\n- 佇列卡 `reply` → `PickupReplyDialog`（FRONTEND-197）；`acknowledge` → `board.acknowledge`；`complete` → `PickupCompleteDialog`（FRONTEND-198）；`cancel` → `ElMessageBox.prompt('取消原因（選填，家長發起的請求會通知家長）', '取消接送請求')` → queue.cancel(item, reason)。\n- `PickupCompleteDialog` emit `verify-authorization(auth)` → 導到 `/pickup/authorizations?verify={auth.id}`。\n- 寬度 < 900：右欄改為底部抽屜（高約 70%，點遮罩或「收合」關閉）；中欄右下浮動按鈕「佇列（N）」，有家長已到時加紅色數字徽章；學生卡 `focus-request` 時先打開抽屜再定位閃爍。\n- **實作細節**\n  - `route.query.class` 不在名單裡（換日、班級停用）時視為全部班級；選回全部班級時移除 `query.class`（`router.replace`）。中欄標題為班級欄該項的「{label}（{total} 人）」。\n  - 快速代建與代建 dialog 的班級名稱由 `roster.classes` 查（RosterStudent 沒有班級欄位）；從學生卡代建時 `PickupCreateDialog` 帶 `presetStudent`（學生唯讀），不帶 `classFilter`。\n  - 取消：倒數卡直接移除、不開 prompt；請求卡的 prompt 按鈕「取消請求」/「返回」、placeholder「例如：家長改明天接」、最多 200 字。原因去頭尾空白，空白視為未填（body `{}`）；按「返回」不送。成功 `ElMessage.success('已取消 {姓名} 的接送請求')` 後 `board.reload()`；失敗由 useDismissalPosQueue 顯示錯誤、不重新整理。busy 從送出持續到 reload 結束。\n  - 確認：`board.acknowledge` reject 時（404 / 409 已由 board 提示並重新整理）以 `ElMessage.error` 顯示後端訊息，沒有訊息時「確認失敗：{姓名}」。busy 中的請求再收到確認或取消都忽略（不開 prompt、不送 API）。\n  - 首次載入（`board.roster` / `board.queue` 仍為 null）：班級欄 5 列 56px 骨架、中欄 9 張卡片骨架、QueuePanel `loading`；之後 `board.reload` 不閃骨架（`board.loading` 每次重新整理都會變 true，不用它判斷）。\n  - 版面：平板 148 / 彈性 / 320；寬度 ≥ 1025（與 AdminLayout 外框 padding 斷點一致）160 / 彈性 / 340。中欄 padding `0 12px 16px`、標題列 sticky；搜尋框 200px 寬、44px 高、可清除。\n  - 窄版：el-drawer `direction=\"btt\"`、`size=\"70%\"`、append-to-body，標題「接送佇列」+「收合」（44px）；浮動按鈕 48px 高、距右下 20px，N = 倒數 + 進行中（不含已結束），徽章為家長已到筆數；中欄底部 padding 84px，捲到底時最後一列卡片與 ⋮ 不被按鈕蓋住。寬度回到 900 以上時收起抽屜；卸載時移除 resize 監聽。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/DismissalPosBoard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosBoard.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-185",
@@ -4658,7 +4658,7 @@
         "FRONTEND-199"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "FRONTEND-185 殘留（review-r10-f6）：`queue.cancel(active)` 只回 boolean、board 沒有 cancel，取消成功後卡片要等 ws 推播才移到已結束；本元件 cancel 成功後呼叫 `board.reload()` 讓畫面立即更新。倒數到 0、POST 已送出後再取消，請求仍會建立（185 已知行為）。\nFRONTEND-192 殘留（review-r10-f7）：中欄含 64px 收合側欄時 grid 寬 468px，一列 3 張只剩 4px 餘裕（需 464px）；桌機若是非覆蓋式捲軸（約 15px）會掉成 2 欄，平板覆蓋式捲軸不受影響。本元件排版時留意中欄 padding 與捲軸。",
+      "risk_notes": "FRONTEND-185 殘留（review-r10-f6）：`queue.cancel(active)` 只回 boolean、board 沒有 cancel，取消成功後卡片要等 ws 推播才移到已結束；本元件 cancel 成功後呼叫 `board.reload()` 讓畫面立即更新。倒數到 0、POST 已送出後再取消，請求仍會建立（185 已知行為）。\nFRONTEND-192 殘留（review-r10-f7）：中欄含 64px 收合側欄時 grid 寬 468px，一列 3 張只剩 4px 餘裕（需 464px）；桌機若是非覆蓋式捲軸（約 15px）會掉成 2 欄，平板覆蓋式捲軸不受影響。本元件排版時留意中欄 padding 與捲軸。\nChromium 實測（impl-frontend-r10b，含 64px 收合側欄）：1024×768 三欄 148 / 492 / 320、中欄一列 3 張（無頭預設的覆蓋式捲軸）；改用傳統 15px 捲軸量測時中欄卡片區 453px，一列掉成 2 張（FRONTEND-192 殘留的情況成立），1280 寬一列 4 張不受影響。依核可稿維持中欄 padding 12px、未另做補償；桌機 1024 寬也要維持 3 張需調整欄寬或卡片最小寬（設計決策）。800×1024：中欄 588px、一列 3 張，抽屜高 70%、「收合」44px、點遮罩關閉，點家長已到的學生卡先開抽屜並定位閃爍。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/pos/DismissalPosBoard.spec.ts",
@@ -4672,7 +4672,20 @@
           "DismissalPosBoard cancel prompts for reason：點佇列卡左滑後的 '取消'，在 prompt 輸入 '家長改明天' 確認 → POST /admin/pickup/requests/r1/cancel body 深等於 {reason:'家長改明天'}",
           "DismissalPosBoard readonly ignores taps：canOperate false → 點 '王小明' 卡後右欄沒有倒數卡、無 POST",
           "DismissalPosBoard narrow width uses bottom drawer：視窗寬 800、queue.open 2 筆 → 沒有右欄，有 '佇列（2）' 按鈕；點擊後抽屜內有 2 張請求卡",
-          "DismissalPosBoard marks card busy while acknowledging：queue.open 有 r1（pending）、POST /admin/pickup/requests/r1/acknowledge 延遲回應 → 點 r1「確認」後該鈕 class 含 'is-loading'、同卡「回覆時間」disabled；再點一次「確認」→ acknowledge POST 只有 1 次；回應後 loading 消失"
+          "DismissalPosBoard marks card busy while acknowledging：queue.open 有 r1（pending）、POST /admin/pickup/requests/r1/acknowledge 延遲回應 → 點 r1「確認」後該鈕 class 含 'is-loading'、同卡「回覆時間」disabled；再點一次「確認」→ acknowledge POST 只有 1 次；回應後 loading 消失",
+          "DismissalPosBoard restores class selection from the route：初始路由 /pickup?class=c2 → '中年級B班' is-active、中欄只有 c2 學生；?class=zz → '全部班級' is-active、中欄 4 人",
+          "DismissalPosBoard cancel can be dismissed or sent without a reason：prompt 按 '返回' → 沒有 cancel POST、reload 未呼叫；原因只填空白 → body 深等於 {}",
+          "DismissalPosBoard cancel failure keeps the card and does not reload：cancel 回 500 → reload 未呼叫、沒有 '已取消 林小華 的接送請求'、右欄仍有 qc-r1",
+          "DismissalPosBoard staging cancel does not prompt：倒數卡點 '取消' → 沒有 .el-message-box、倒數卡消失，5 秒後沒有 POST",
+          "DismissalPosBoard narrow fab hides the badge when nobody has arrived：寬 800、queue.open 只有 pending r1 → '佇列（1）'、徽章不顯示",
+          "DismissalPosBoard clears busy and reports acknowledge failures：acknowledge 回 500 → 文字含後端訊息、'確認' 不再 is-loading",
+          "DismissalPosBoard marks card busy while cancelling：cancel POST 延遲 → r1 '確認' is-loading、reload 未呼叫；此時 QueuePanel 再 emit cancel / acknowledge → 不開新 prompt、POST 只有 cancel 一筆；回應後 reload 1 次、loading 消失",
+          "DismissalPosBoard focus request scrolls and flashes the queue card：點接送中的 '林小華' 卡 → scrollIntoView 只對 qc-r1 呼叫、qc-r1 class 含 is-flash",
+          "DismissalPosBoard narrow focus opens the drawer first：寬 800、點家長已到的 '張語晴' 卡 → ElDrawer modelValue true、抽屜內 qc-r2 含 is-flash；expose focusRequest('r1') 回 true、focusRequest('nope') 回 false",
+          "DismissalPosBoard opens reply and complete dialogs from queue cards：r1 '回覆時間' → dialog 標題 '回覆預計可接送時間：林小華'；r2 '完成交付' → '完成交付：張語晴'，選代理授權 pa1 按 '前往核驗' → 路由 /pickup/authorizations?verify=pa1",
+          "DismissalPosBoard create request preselects the student：'王小明' ⋮ → '代建接送請求…' → dialog 的 [data-test=preset-student] 為 '王小明（S1001・低年級A班）'",
+          "DismissalPosBoard shows skeletons until the first load：roster / queue 為 null → 班級欄 5 個、中欄 9 個 el-skeleton、右欄 '進行中（—）'；資料到位後沒有骨架、中欄 4 人、'進行中（1）'",
+          "DismissalPosBoard layout follows the approved mockup：原始碼含 148px minmax(0, 1fr) 320px、@media (min-width: 1025px) 160px minmax(0, 1fr) 340px、is-narrow 148px minmax(0, 1fr)、搜尋框 min-height 44px、浮動按鈕 min-height 48px、窄版中欄 padding-bottom 84px"
         ],
         "run": "just web-test src/components/pickup/pos/DismissalPosBoard.spec.ts -t \"DismissalPosBoard\"",
         "notes": ""
