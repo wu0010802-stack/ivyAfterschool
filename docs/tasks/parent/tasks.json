@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 179,
-  "last_updated": "2026-10-16T14:47:54Z",
+  "version": 180,
+  "last_updated": "2026-10-16T14:56:36Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2352,7 +2352,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/AuthorizationForm.vue",
       "source_ref": "FE:src/parent/views/PickupCreateView.vue::canSubmit",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -2365,7 +2365,7 @@
         "PARENT-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "核可稿 parent-component-authorization-form.html（與 parent-page-pickup-proxy.html 的複本）的 .af-actions 仍是 flex 1 1 0，送出中兩顆按鈕會差 8px；實作已改 grid 兩欄以符合稿的「等寬並排」，稿的 CSS 未改（不在本 task 可改檔案內），需要時由協調者同步。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/pickup/AuthorizationForm.spec.ts",
@@ -2386,7 +2386,7 @@
           "AuthorizationForm follows configured days ahead：maxDaysAhead=7 → max === '2026-10-09'；輸入 '2026-10-10' 送出 → 含「日期需在今天起 7 天內」"
         ],
         "run": "just web-test src/parent/components/pickup/AuthorizationForm.spec.ts -t \"AuthorizationForm\"",
-        "notes": ""
+        "notes": "red_case「date input disabled」：happy-dom 不會把 disabled fieldset 傳給子欄位的 :disabled，spec 以「日期欄與接送人清單在 disabled 的 fieldset.af-lock 內」斷言（同 LeaveForm spec）；真實 Chromium 以 Playwright 驗證日期欄、接送人列與來源分段都 :disabled，且欄位不淡化（opacity 1）。按鈕列等寬以 grid 兩欄實作（flex 1 1 0 時送出中的 loading 按鈕少 8px 左內距會變窄），spec 以 ?raw 樣式規則斷言、寬度由 Playwright 量測（兩種狀態皆 167px）。"
       },
       "review": {
         "status": "pending",
