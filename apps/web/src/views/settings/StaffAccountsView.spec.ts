@@ -162,22 +162,24 @@ async function click(root: VueWrapper | DOMWrapper<Element>, text: string): Prom
   await settle()
 }
 
+/** el-dropdown 的選單預先渲染在 body（每列一份，以 v-show 隱藏），只看目前顯示中的那一份 */
+function visibleMenuItems(): HTMLElement[] {
+  const poppers = Array.from(document.body.querySelectorAll<HTMLElement>('.el-dropdown__popper')).filter(
+    (p) => p.style.display !== 'none',
+  )
+  return poppers.flatMap((p) => Array.from(p.querySelectorAll<HTMLElement>('.el-dropdown-menu__item')))
+}
+
 /** 打開某列的「更多」下拉，回傳可見選單的項目文字 */
 async function openMore(wrapper: VueWrapper, displayName: string): Promise<string[]> {
   await click(opsCell(wrapper, displayName), '更多')
   await advance()
-  const menu = Array.from(document.body.querySelectorAll<HTMLElement>('.el-dropdown-menu')).at(-1)
-  return Array.from(menu?.querySelectorAll<HTMLElement>('.el-dropdown-menu__item') ?? []).map(
-    (i) => i.textContent?.trim() ?? '',
-  )
+  return visibleMenuItems().map((i) => i.textContent?.trim() ?? '')
 }
 
 async function chooseMore(wrapper: VueWrapper, displayName: string, text: string): Promise<void> {
   await openMore(wrapper, displayName)
-  const menu = Array.from(document.body.querySelectorAll<HTMLElement>('.el-dropdown-menu')).at(-1)
-  const item = Array.from(menu?.querySelectorAll<HTMLElement>('.el-dropdown-menu__item') ?? []).find(
-    (i) => i.textContent?.trim() === text,
-  )
+  const item = visibleMenuItems().find((i) => i.textContent?.trim() === text)
   if (!item) throw new Error(`${displayName} 的「更多」沒有「${text}」`)
   item.click()
   await advance()
@@ -219,7 +221,8 @@ async function chooseFilter(wrapper: VueWrapper, label: string, option: string):
   await settle()
 }
 
-describe('StaffAccountsView', () => {
+// 每列都有 el-dropdown / el-tooltip，且新增 / 編輯用真實 StaffUserFormDialog：happy-dom 下單一測試可能超過預設 5 秒
+describe('StaffAccountsView', { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     mock = createApiMock(adminHttp)
@@ -368,7 +371,10 @@ describe('StaffAccountsView', () => {
     expect(document.body.textContent).toContain('已停用 陳老師')
     expect(await openMore(wrapper, '陳老師')).toEqual(['重新啟用'])
 
-    await chooseMore(wrapper, '陳老師', '重新啟用')
+    visibleMenuItems()
+      .find((i) => i.textContent?.trim() === '重新啟用')!
+      .click()
+    await advance()
     expect(lastMessageBox().textContent).toContain(
       '重新啟用後會產生新的臨時密碼，陳老師 登入後必須先修改密碼。確定要重新啟用嗎？',
     )
@@ -467,7 +473,7 @@ describe('StaffAccountsView', () => {
     // 「重設密碼」「停用」在「更多」下拉裡：下拉停用，點了也打不開
     await button(director, '更多')!.trigger('click')
     await advance()
-    expect(document.body.querySelector('.el-dropdown-menu__item')).toBeNull()
+    expect(visibleMenuItems()).toEqual([])
 
     await director.find('.acct-ops').trigger('mouseenter')
     await advance()
