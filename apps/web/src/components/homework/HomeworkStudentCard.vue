@@ -4,7 +4,8 @@
 // - 整體狀態 tag；整體 done 但依項目推導（FRONTEND-152 deriveOverallStatus）不是 done → 手動標記，tag 旁灰字「手動標記」。
 // - 預計可接送列：canWrite 且 isToday 時整列是按鈕（≥ 44px、右側箭頭），點擊 = ⋮「設定預計可接送時間」；否則純顯示。
 // - 項目：HomeworkItemRow（FRONTEND-154）依 sort_order；無項目「今天沒有作業項目」。
-// - canWrite：「＋ 新增作業」與 ⋮（設定預計可接送時間［只有今天］／標記整體完成［非 done］／改回依項目判斷［手動標記］）。
+// - canWrite：「＋ 新增作業」與 ⋮（設定預計可接送時間［只有今天］／標記整體完成［非 done］／改回依項目判斷［手動標記］）；
+//   三個選項都不適用（例如非今天且整體已依項目推導為 done）時不渲染 ⋮。
 // - 整體完成且今天：右上「可接送」綠色徽章，框線轉成功色淡色。
 import { AlarmClock, ArrowRight, CircleCheck, MoreFilled, Plus, RefreshLeft } from '@element-plus/icons-vue'
 import { computed } from 'vue'
@@ -53,6 +54,7 @@ const isDone = computed(() => overallStatus.value === 'done')
 const isManualDone = computed(() => isDone.value && deriveOverallStatus(props.student.items) !== 'done')
 const ready = computed(() => isDone.value && props.isToday)
 const etaClickable = computed(() => props.canWrite && props.isToday)
+const hasMenu = computed(() => props.canWrite && (props.isToday || !isDone.value || isManualDone.value))
 const etaLabel = computed(() => `設定 ${props.student.name} 的預計可接送時間`)
 
 function onCommand(command: MenuCommand): void {
@@ -106,7 +108,7 @@ function onEtaClick(): void {
         </div>
       </div>
       <el-dropdown
-        v-if="canWrite"
+        v-if="hasMenu"
         trigger="click"
         @command="onCommand"
       >
