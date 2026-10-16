@@ -295,7 +295,7 @@ NFC 管理權限碼 `nfc:manage`（預設只有 admin）在 NFC 解除 blocked �
 | `/more` | 更多（通知、出勤、請假、接送人、登出入口） | — |
 | `/homework` | 今日作業明細 | 新做 |
 | `/pickup` | 我要來接 / 我到了 / 回覆訊息 / 取消 | `FE:src/parent/views/PickupNoticeView.vue` |
-| `/pickup/proxy` | 常用接送人 + 代理接送碼 | `FE:src/parent/views/PickupView.vue`、`PickupCreateView.vue` |
+| `/pickup/proxy` | 常用接送人 + 代理接送碼（同一學生同一天 active 授權達上限時提示「這一天的代理接送已達上限」，不顯示數字） | `FE:src/parent/views/PickupView.vue`、`PickupCreateView.vue` |
 | `/attendance` | 月出勤日曆 | `FE:src/parent/views/AttendanceView.vue` |
 | `/leaves` | 請假申請 / 紀錄 / 取消 | `FE:src/parent/views/LeavesView.vue`、`components/leaves/*` |
 | `/exams`、`/exams/:examId` | 成績列表、單次明細 | 新做 |

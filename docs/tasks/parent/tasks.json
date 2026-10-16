@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 165,
-  "last_updated": "2026-10-16T14:03:13Z",
+  "version": 166,
+  "last_updated": "2026-10-16T14:03:51Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1208,7 +1208,8 @@
         "PARENT-032",
         "INFRA-013",
         "PARENT-005",
-        "PARENT-035"
+        "PARENT-035",
+        "PARENT-004"
       ],
       "suggested_model": "fable-5",
       "risk_notes": "",
@@ -1346,7 +1347,10 @@
         "PARENT-033",
         "PARENT-172",
         "INFRA-013",
-        "PARENT-035"
+        "PARENT-035",
+        "PARENT-028",
+        "PARENT-029",
+        "PARENT-051"
       ],
       "suggested_model": "sonnet-5",
       "risk_notes": "",
