@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 188,
-  "last_updated": "2026-10-16T15:06:26Z",
+  "version": 189,
+  "last_updated": "2026-10-16T15:07:31Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3758,7 +3758,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/services/liff.ts",
       "source_ref": "FE:src/parent/services/liff.ts::initLiff",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-008",
