@@ -18,7 +18,7 @@ import { useFormDirty } from '@/composables/useFormDirty'
 import { ATTENDANCE_STATUS_META } from '@/shared/constants/statusLabels'
 import type { AttendanceStatus, HHMM } from '@/shared/types/api'
 import { formatTime, hhmmToUtcIso, utcIsoToHHMM } from '@/shared/utils/datetime'
-import { errorCode, errorMessage, validationFieldErrors } from '@/shared/utils/errorMessage'
+import { errorCode, errorMessage } from '@/shared/utils/errorMessage'
 
 const props = defineProps<{
   modelValue: boolean
@@ -147,11 +147,6 @@ function showError(err: unknown): void {
   }
   if (code === 'attendance_managed_by_leave') {
     ElMessage.error('請假中的出勤請到請假頁取消請假')
-    return
-  }
-  const reasonError = validationFieldErrors(err).reason
-  if (reasonError) {
-    errors.reason = reasonError
     return
   }
   ElMessage.error(errorMessage(err, '改判失敗，請稍後再試'))
