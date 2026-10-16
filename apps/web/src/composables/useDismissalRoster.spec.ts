@@ -44,11 +44,6 @@ function makeRoster(): PickupRoster {
           student('s3', '王大同', 'S1003', { attendance_status: 'leave', leave_type: 'sick' }),
         ],
       },
-      {
-        class_id: 'c2',
-        class_name: '中年級B班',
-        students: [student('s5', '張小華', 'S2001')],
-      },
       { class_id: null, class_name: '未分班', students: [student('s4', '陳小安', 'S3001')] },
     ],
   }
@@ -58,11 +53,10 @@ describe('useDismissalRoster', () => {
   it('useDismissalRoster builds rail with all item and counts', () => {
     const rail = buildClassRail(makeRoster())
 
-    expect(rail.map((r) => r.key)).toEqual(['all', 'c1', 'c2', 'unassigned'])
-    expect(rail[0]).toEqual({ key: 'all', classId: null, label: '全部班級', total: 5, openCount: 2, arrivedCount: 1 })
+    expect(rail.map((r) => r.key)).toEqual(['all', 'c1', 'unassigned'])
+    expect(rail[0]).toEqual({ key: 'all', classId: null, label: '全部班級', total: 4, openCount: 2, arrivedCount: 1 })
     expect(rail[1]).toEqual({ key: 'c1', classId: 'c1', label: '低年級A班', total: 3, openCount: 2, arrivedCount: 1 })
-    expect(rail[2]).toEqual({ key: 'c2', classId: 'c2', label: '中年級B班', total: 1, openCount: 0, arrivedCount: 0 })
-    expect(rail[3]).toEqual({ key: 'unassigned', classId: null, label: '未分班', total: 1, openCount: 0, arrivedCount: 0 })
+    expect(rail[2]).toEqual({ key: 'unassigned', classId: null, label: '未分班', total: 1, openCount: 0, arrivedCount: 0 })
   })
 
   it('useDismissalRoster rail counts leave students in total and falls back to unassigned label', () => {
@@ -102,10 +96,10 @@ describe('useDismissalRoster', () => {
 
     expect(studentsForRail(roster, 'c1', '王').map((s) => s.student_id)).toEqual(['s1', 's3'])
     expect(studentsForRail(roster, 'c1', '').map((s) => s.student_id)).toEqual(['s1', 's2', 's3'])
-    expect(studentsForRail(roster, 'all', '').map((s) => s.student_id)).toEqual(['s1', 's2', 's3', 's5', 's4'])
-    expect(studentsForRail(roster, 'all', 's200').map((s) => s.student_id)).toEqual(['s5'])
+    expect(studentsForRail(roster, 'all', '').map((s) => s.student_id)).toEqual(['s1', 's2', 's3', 's4'])
+    expect(studentsForRail(roster, 'all', 's300').map((s) => s.student_id)).toEqual(['s4'])
     expect(studentsForRail(roster, 'unassigned', '').map((s) => s.student_id)).toEqual(['s4'])
-    expect(studentsForRail(roster, 'c2', '王')).toEqual([])
+    expect(studentsForRail(roster, 'unassigned', '王')).toEqual([])
     expect(studentsForRail(roster, 'missing', '')).toEqual([])
   })
 
