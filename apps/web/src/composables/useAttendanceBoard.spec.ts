@@ -369,4 +369,68 @@ describe('useAttendanceBoard', () => {
     expect(dailyGets()).toHaveLength(2)
     expect(statusOf(board, 's2')).toBe('leave')
   })
+
+  it('useAttendanceBoard ignores operation result outside current class filter', async () => {
+    const C2_S1 = makeRow({ id: 'a1', student_id: 's1', student_no: 'S11301', class_id: 'c2', class_name: '低年級 B 班' })
+    const C1_S4 = makeRow({ id: 'a4', student_id: 's4', student_no: 'S11304', class_id: 'c1', class_name: '低年級 A 班' })
+    mock.onGet(DAILY_URL).reply((config: AxiosRequestConfig) => {
+      const classId = (config.params as { class_id?: string }).class_id
+      return [200, classId === 'c1' ? daily([C1_S4]) : daily([C1_S4, C2_S1])]
+    })
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mock.onPost('/admin/attendance/s1/check-in').reply(async () => {
+      await gate
+      return [200, { ...C2_S1, status: 'present', check_in_at: '2026-10-02T06:05:00Z' }]
+    })
+    const classId = ref<string | null>(null)
+    const { board } = await mountBoard(ref(DATE), classId)
+
+    // 全部班級下對 c2 的 s1 按到班，回應前改選 c1：c1 的清單先回來、到班回應才到
+    const pending = board.checkIn(C2_S1)
+    classId.value = 'c1'
+    await settle()
+    expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s4'])
+    release()
+    await pending
+    await settle()
+
+    expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s4'])
+    expect(board.data.value?.summary).toEqual({ total: 1, expected: 1, present: 0, left: 0, absent: 0, leave: 0 })
+    expect(board.busyIds.value.has('s1')).toBe(false)
+  })
+
+  it('useAttendanceBoard ignores batch result outside current class filter', async () => {
+    const C2_S1 = makeRow({ id: 'a1', student_id: 's1', student_no: 'S11301', class_id: 'c2', class_name: '低年級 B 班' })
+    const C1_S4 = makeRow({ id: 'a4', student_id: 's4', student_no: 'S11304', class_id: 'c1', class_name: '低年級 A 班' })
+    mock.onGet(DAILY_URL).reply((config: AxiosRequestConfig) => {
+      const classId = (config.params as { class_id?: string }).class_id
+      return [200, classId === 'c1' ? daily([C1_S4]) : daily([C1_S4, C2_S1])]
+    })
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mock.onPost('/admin/attendance/batch-check-in').reply(async () => {
+      await gate
+      return [200, { succeeded: [{ ...C2_S1, status: 'present' }, { ...C1_S4, status: 'present' }], skipped: [] }]
+    })
+    const classId = ref<string | null>(null)
+    const { board } = await mountBoard(ref(DATE), classId)
+
+    const pending = board.batchCheckIn(['s1', 's4'])
+    classId.value = 'c1'
+    await settle()
+    release()
+    const result = await pending
+    await settle()
+
+    // 回傳值照原樣交給呼叫端；清單只套用屬於目前篩選（c1）的列
+    expect(result.succeeded.map((r) => r.student_id)).toEqual(['s1', 's4'])
+    expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s4'])
+    expect(statusOf(board, 's4')).toBe('present')
+    expect(board.data.value?.summary).toEqual({ total: 1, expected: 0, present: 1, left: 0, absent: 0, leave: 0 })
+  })
 })
