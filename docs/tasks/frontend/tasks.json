@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 184,
-  "last_updated": "2026-10-16T05:01:13Z",
+  "version": 185,
+  "last_updated": "2026-10-16T05:02:55Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5117,7 +5117,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamFormDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5157,7 +5157,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSubjectsEditor.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5181,7 +5181,7 @@
           "ExamSubjectsEditor conflict and invalid subject：PUT 回 409 {error:{code:'exam_published',message:'考試已發布，請先取消發布再修改'}} → 文字含該 message、emitted('conflict') 長度 1、emitted('saved') 為 undefined；另一次 subjectOptions 不含 sub5、exam.subjects 含社會 → 社會列含 '已停用'，國語滿分改 120 後儲存、PUT 回 422 {error:{code:'invalid_subject',message:'科目不存在或已停用',details:{subject_ids:['sub5']}}} → 文字含 '科目不存在或已停用'，社會列 class 含 is-error-subject"
         ],
         "run": "just web-test src/components/exams/ExamSubjectsEditor.spec.ts -t \"ExamSubjectsEditor\"",
-        "notes": ""
+        "notes": "「blocks empty list and caps at twenty」掛載 20 列 × 20 個 el-option，在共用 CPU 下可能超過 vitest 預設 5 秒，該案例設 20 秒 timeout。"
       },
       "review": {
         "status": "pending",
@@ -5331,7 +5331,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useScoreAutosave.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5357,7 +5357,7 @@
           "useScoreAutosave edits note with or without score：initial s1/sub1 {score:80, is_absent:false, note:'遲到'}；edit(s1,sub1,{score:80,is_absent:false,note:'補考'}) → 該格 'dirty'，800ms 後 PUT cells[0] 深等於 {student_id:'s1',subject_id:'sub1',score:80,is_absent:false,note:'補考'}；成功後 cellValue(s1,sub1).note === '補考'；再 edit(s1,sub1,{score:85,is_absent:false})（省略 note）→ 下一個 PUT 的 note 仍為 '補考'；edit(s1,sub1,{score:85,is_absent:false,note:null}) → PUT 的 note 為 null"
         ],
         "run": "just web-test src/composables/useScoreAutosave.spec.ts -t \"useScoreAutosave\"",
-        "notes": ""
+        "notes": "序列化以單一 running promise 實作；請求結束後若仍有 dirty（進行中的編輯、422 後的重送）立即再送、不等 debounce。awaitingNotifyChoice = notifyParents === null && hasUnsaved。422 整批退回的「重送一次」以每格 retriedAfterInvalid 旗標實作，再次被退回才標「儲存失敗，請重試」，不會無限重送。"
       },
       "review": {
         "status": "pending",
@@ -5408,7 +5408,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSummaryTable.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230"
@@ -5428,7 +5428,7 @@
           "ExamSummaryTable error and retry：GET /admin/exams/e1/summary 回 500 → 文字含 '無法載入各科平均'，點 '重試' → GET summary 請求數 2"
         ],
         "run": "just web-test src/components/exams/ExamSummaryTable.spec.ts -t \"ExamSummaryTable\"",
-        "notes": ""
+        "notes": "平均欄的得分率小字依核可稿顯示為「得分率 82%」。"
       },
       "review": {
         "status": "pending",
