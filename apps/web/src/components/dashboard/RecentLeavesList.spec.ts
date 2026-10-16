@@ -101,6 +101,18 @@ describe('RecentLeavesList', () => {
     expect(future!.find('.rl__type .el-tag').classes()).toContain('el-tag--info')
   })
 
+  it('RecentLeavesList renders rows with today tag: Taipei midnight boundary', async () => {
+    // UTC 2026-10-01 16:30 = 台北 2026-10-02 00:30：「今天」以台北日期判斷
+    vi.setSystemTime(new Date('2026-10-01T16:30:00Z'))
+    const { wrapper } = await mountList({
+      items: [rl(), rl({ id: 'l0', start_date: '2026-10-01', end_date: '2026-10-01' })],
+    })
+
+    const [today, yesterday] = rows(wrapper)
+    expect(today!.find('.rl__period').text()).toBe('2026-10-02今天')
+    expect(yesterday!.find('.rl__period').text()).toBe('2026-10-01')
+  })
+
   it('RecentLeavesList limits to eight and links by permission', async () => {
     const ten = Array.from({ length: 10 }, (_, i) => rl({ id: `l${i}`, student_id: `s${i}`, student_name: `學生${i}` }))
     const { wrapper, router } = await mountList({ items: ten })
