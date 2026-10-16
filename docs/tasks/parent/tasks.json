@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 154,
-  "last_updated": "2026-10-16T06:13:51Z",
+  "version": 155,
+  "last_updated": "2026-10-16T06:14:54Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1301,7 +1301,8 @@
         "PARENT-093",
         "PARENT-172",
         "PARENT-173",
-        "INFRA-013"
+        "INFRA-013",
+        "PARENT-196"
       ],
       "suggested_model": "opus-5",
       "risk_notes": "",
@@ -1315,7 +1316,8 @@
           "useParentLogout clears state and goes to login：parentAuth.parent、children.items=[s1]、notifications.unreadCount=3 已設定；POST /parent/auth/logout 200 → logout() 後 parentAuth.isAuthed === false、children.items.length === 0、localStorage 'parent_selected_child_v1' 為 null、notifications.unreadCount === 0、currentRoute.fullPath === '/login?logged_out=1'",
           "useParentLogout continues when api fails：logout API 回 500 → 仍導向 '/login?logged_out=1' 且 parentAuth.isAuthed === false",
           "useParentLogout ends LINE session：fake liff isLoggedIn=true → fake.logout 被呼叫且最終導向登入頁；initLiff reject → 仍導向登入頁",
-          "useParentLogout ignores concurrent call：連續呼叫 logout() 兩次 → POST /parent/auth/logout 恰 1 次"
+          "useParentLogout ignores concurrent call：連續呼叫 logout() 兩次 → POST /parent/auth/logout 恰 1 次",
+          "useParentLogout keeps logged_out flag through the login guard：以真實 createParentRouter（PARENT-012 / 196）與 PARENT-013 規格的 unauthenticated handler，停在 '/more'、GET /parent/me 之後一律 401（refresh 401）；logout() 完成後 currentRoute.fullPath === '/login?logged_out=1'，且登出之後 /parent/me 請求 0 次"
         ],
         "run": "just web-test src/parent/composables/useParentLogout.spec.ts -t \"useParentLogout\"",
         "notes": ""
@@ -3666,6 +3668,39 @@
           "parentRouter scroll behavior restores saved position：呼叫 (to, from, { left: 0, top: 480 }) → 深等於 { left: 0, top: 480 }"
         ],
         "run": "just web-test src/parent/router.spec.ts -t \"parentRouter scroll behavior\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-196",
+      "title": "家長端 /login 守衛：帶 logged_out 時不探測 session（避免登出旗標被 401 handler 洗掉）",
+      "description": "修改 `apps/web/src/parent/router.ts`（PARENT-012 的產物）的 `installParentGuards` 第 1 條（`meta.public` 的 `/login`）：`to.query.logged_out` 有值時直接放行、**不呼叫** `ensureSession()`；其餘情況照原規則（已登入導向 `resolveSafeRedirect(to.query.redirect)`）。\n\n理由：PARENT-033 登出後 `router.replace({ path: '/login', query: { logged_out: '1' } })`。若 `/login` 守衛先探測 `/parent/me`，會得到 401 → refresh 401 → PARENT-013 的 unauthenticated handler 看到目前路由（仍是登出前的 `/more`，非 public）執行 `router.replace('/login?redirect=/more')`，取消原導航，`logged_out=1` 遺失；PARENT-030 在 LINE 內看不到 logged_out 就會自動再登入，等於登出無效。登出後的 session 必然已失效，不需要探測。\n另外：`router.spec.ts` 的「lazy routes resolve placeholder views」會載入真實 view，負載高時超過 vitest 預設 5 秒，給該案例明確 timeout（30_000）。\n\n**驗收標準**\n- `/login?logged_out=1` 不探測 `/parent/me`、停在 `/login` 且 query 保留 `logged_out=1`。\n- 沒有 logged_out 時原規則不變（已登入導回 redirect）。",
+      "granularity_unit": "method",
+      "target_path": "apps/web/src/parent/router.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-012"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/router.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "parentRouter logged out login skips session probe：GET /parent/me 設為 401（refresh 401），從 '/more'（已登入狀態快取被清除）push({ path: '/login', query: { logged_out: '1' } }) → currentRoute.fullPath === '/login?logged_out=1'，mock.history.get 中 /parent/me 為 0 次",
+          "parentRouter logged out login keeps redirect rule otherwise：GET /parent/me 200 → push('/login?redirect=/exams') → path === '/exams'（原規則不變）"
+        ],
+        "run": "just web-test src/parent/router.spec.ts -t \"parentRouter logged out\"",
         "notes": ""
       },
       "review": {
