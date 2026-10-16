@@ -10,7 +10,7 @@
 - BACKEND-458：``set_exam_subjects``（以清單取代科目設定；移除科目連帶刪成績）。
 - BACKEND-459：``get_score_grid``（成績輸入格：學生對科目）。
 - BACKEND-462：``unpublish_exam``（取消發布，寫 audit）。
-- BACKEND-463：``get_exam_summary``（各科平均，不做排名）。
+- BACKEND-463 / 559：``get_exam_summary``（各科平均，不做排名；只計目前應考名單）。
 - BACKEND-456：``update_exam``（已發布只可改名稱、日期、備註）。
 - BACKEND-460：``upsert_scores``（批次登分；發布後修改寫 audit、可選重新通知）。
 - BACKEND-461：``publish_exam``（條件式發布、通知應考家長）。
@@ -547,9 +547,13 @@ def unpublish_exam(
 
 
 def get_exam_summary(session: Session, exam_id: UUID) -> ExamSummaryOut:
-    """每科 scored / absent / missing 計數與平均（2 位小數）、最高、最低；缺考與未登分不計入平均。
+    """每科 scored / absent / missing 計數與平均（2 位小數）、最高、最低；只計目前應考名單。
 
-    成績統計為單一 GROUP BY 查詢。
+    - 統計範圍與 ``resolve_exam_roster`` 相同：名單外學生（考後退班 / 封存 / 範圍變更）的成績列照樣
+      保留，但不列入任何統計，也不抵掉未填數。
+    - ``missing_count`` = 名單人數 - 已填 - 缺考：沒有成績列、或清空過分數且未標缺考的格子都算未填，
+      因此每科 ``scored + absent + missing == roster_count``。缺考不算未填、不計入平均。
+    - 查詢數固定：考試（含科目）、名單人數、各科統計單一 GROUP BY（join students 套名單條件）。
     """
     exam = get_exam_or_404(session, exam_id)
     roster_count = _roster_counts(session, [exam.id]).get(exam.id, 0)
@@ -558,19 +562,19 @@ def get_exam_summary(session: Session, exam_id: UUID) -> ExamSummaryOut:
             ExamScore.subject_id,
             func.count(ExamScore.score),
             func.count().filter(ExamScore.is_absent.is_(True)),
-            func.count(),
             func.round(func.avg(ExamScore.score), 2),
             func.max(ExamScore.score),
             func.min(ExamScore.score),
         )
-        .where(ExamScore.exam_id == exam.id)
+        .join(Student, Student.id == ExamScore.student_id)
+        .where(ExamScore.exam_id == exam.id, _student_in_roster(exam))
         .group_by(ExamScore.subject_id)
     )
     stats = {row[0]: row[1:] for row in rows}
     subjects = []
     for subject in exam.subjects:
-        scored, absent, with_row, average, highest, lowest = stats.get(
-            subject.subject_id, (0, 0, 0, None, None, None)
+        scored, absent, average, highest, lowest = stats.get(
+            subject.subject_id, (0, 0, None, None, None)
         )
         subjects.append(
             SubjectSummaryOut(
@@ -579,7 +583,7 @@ def get_exam_summary(session: Session, exam_id: UUID) -> ExamSummaryOut:
                 full_score=subject.full_score,
                 scored_count=scored,
                 absent_count=absent,
-                missing_count=max(roster_count - with_row, 0),
+                missing_count=roster_count - scored - absent,
                 average=average,
                 max=highest,
                 min=lowest,
