@@ -203,6 +203,11 @@ function dialog(wrapper: VueWrapper, name: string): VueWrapper {
   return wrapper.findComponent({ name }) as VueWrapper
 }
 
+/** 替身把 modelValue 畫在 data-open */
+function isOpen(wrapper: VueWrapper, name: string): boolean {
+  return dialog(wrapper, name).attributes('data-open') === 'true'
+}
+
 describe('StudentListPanel', () => {
   beforeEach(() => {
     // el-dropdown 以 setTimeout 開關；Date 固定讓「目前學年度」為 115
@@ -341,7 +346,7 @@ describe('StudentListPanel', () => {
 
     await clickIn(wrapper.find('[data-test=toolbar-actions]'), '新增學生')
     const form = dialog(wrapper, 'StudentFormDialog')
-    expect(form.props('modelValue')).toBe(true)
+    expect(isOpen(wrapper, 'StudentFormDialog')).toBe(true)
 
     form.vm.$emit('saved', { ...student({ id: 's9', name: '新同學' }) })
     await settle()
@@ -355,13 +360,13 @@ describe('StudentListPanel', () => {
     const { wrapper } = await mountPanel()
 
     await chooseBatch(wrapper, '匯入 Excel')
-    expect(dialog(wrapper, 'StudentImportDialog').props('modelValue')).toBe(true)
+    expect(isOpen(wrapper, 'StudentImportDialog')).toBe(true)
     dialog(wrapper, 'StudentImportDialog').vm.$emit('imported', { created: 3 })
     await settle()
     expect(listParams()).toHaveLength(2)
 
     await chooseBatch(wrapper, '學年升級')
-    expect(dialog(wrapper, 'GradePromotionDialog').props('modelValue')).toBe(true)
+    expect(isOpen(wrapper, 'GradePromotionDialog')).toBe(true)
     dialog(wrapper, 'GradePromotionDialog').vm.$emit('promoted', { promoted: 10, graduated: 2 })
     await settle()
     expect(listParams()).toHaveLength(3)
