@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 229,
-  "last_updated": "2026-10-16T12:58:44Z",
+  "version": 230,
+  "last_updated": "2026-10-16T12:59:07Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3594,11 +3594,11 @@
     {
       "id": "FRONTEND-127",
       "title": "實作 views/AttendanceMonthlyView.vue：月出勤報表與匯出",
-      "description": "建立 `apps/web/src/views/AttendanceMonthlyView.vue`（路由 `/attendance/monthly`，`attendance:read`）。移植 ivy `FE:src/views/StudentAttendanceView.vue` 的 fetchMonthly + downloadFile 匯出流程；**去掉** 圖表、學期、連缺告警、出席率卡與前端姓名搜尋。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-monthly.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：月份與班級篩選、日期 × 學生格狀表（狀態符號與顏色、非營業日灰底、今天標示）、每生統計欄與合計列、匯出按鈕、空清單、載入中。\n\n**內容**（外觀以設計稿 `docs/mockups/page-attendance-monthly.html` 的 decisions 為準）\n- `PageHeader`「月出勤報表」，副標「每位學生每天的出勤狀態與本月統計」；actions「匯出 Excel」。整頁只需 `attendance:read`（月報與匯出同權限），頁內沒有其他權限差異。\n- 篩選列沿用 AdminListToolbar 的版面樣式（本頁沒有關鍵字搜尋，不使用該元件）：月份（el-date-picker type month，顯示「YYYY 年 M 月」，預設 `monthOf(todayTaipei())`，不可清空，今天所在月份之後的月份 disabled，存 `query.month`）、班級（「全部」+ lookups classOptions，存 `query.class_id`，預設全部）；右側「共 N 位學生」。改任一篩選立即重抓，重抓期間保留舊表格並蓋 loading。\n- 資料 `fetchMonthlyAttendance({month, class_id?})` → `MonthlyAttendanceGrid`（FRONTEND-128）；選了班級時傳 `hideClassColumn`。\n- 本月合計列（表格上方；`totals` 是全部學生 stats 的加總）：「營業日 {N} 天」（N = `days` 中 `is_service_day` 為 true 的天數；看今天所在月份時接「（統計到 {MM/DD}，已過 {M} 天）」，M = 不晚於今天的營業日數）、「應出勤 {totals.service_days} 人次」（旁邊 ? tooltip「每位學生在本月（到今天為止、入班日之後）的營業日數加總；出席 + 缺席 + 請假 + 未登記 = 應出勤」）、「出席 {attended} 人次」（success）、「缺席 {absent} 人次」（> 0 danger）、「請假 {leave} 人次」、「未登記 {unrecorded} 人次」（> 0 warning）。`totals.service_days` 是應出勤人次，不可當成營業日數顯示。\n- 「匯出 Excel」：`exportMonthlyAttendance({month, class_id?})` → `saveBlobResponse(res, '出勤月報_{class_name|全部}_{month}.xlsx')`（FRONTEND-007，以 Content-Disposition 檔名為準）；匯出中按鈕 loading、文字「匯出中…」；成功不另跳訊息；失敗 `ElMessage.error(errorMessage(err, '匯出失敗，請稍後再試'))`（blob JSON 錯誤已由 FRONTEND-001 正規化）。首次載入、載入失敗、重抓中或沒有學生時按鈕 disabled。\n- 首次載入：合計列與表格位置顯示 skeleton。空清單（`students` 為空）：EmptyState（Calendar icon）「此月份沒有出勤資料」+「{班級名稱|全部班級}在 {YYYY 年 M 月}沒有學生與出勤紀錄」，不顯示合計列與表格。載入失敗：EmptyState error「無法載入出勤月報」+「重試」。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/AttendanceMonthlyView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/views/AttendanceMonthlyView.vue`（路由 `/attendance/monthly`，`attendance:read`）。移植 ivy `FE:src/views/StudentAttendanceView.vue` 的 fetchMonthly + downloadFile 匯出流程；**去掉** 圖表、學期、連缺告警、出席率卡與前端姓名搜尋。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-monthly.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：月份與班級篩選、日期 × 學生格狀表（狀態符號與顏色、非營業日灰底、今天標示）、每生統計欄與合計列、匯出按鈕、空清單、載入中。\n\n**內容**（外觀以設計稿 `docs/mockups/page-attendance-monthly.html` 的 decisions 為準）\n- `PageHeader`「月出勤報表」，副標「每位學生每天的出勤狀態與本月統計」；actions「匯出 Excel」。整頁只需 `attendance:read`（月報與匯出同權限），頁內沒有其他權限差異。\n- 篩選列沿用 AdminListToolbar 的版面樣式（本頁沒有關鍵字搜尋，不使用該元件）：月份（el-date-picker type month，顯示「YYYY 年 M 月」，預設 `monthOf(todayTaipei())`，不可清空，今天所在月份之後的月份 disabled，存 `query.month`；網址的 month 格式不對或晚於本月時改用本月，寬 150px）、班級（「全部」+ lookups `classOptions()` 的全部未封存班級，存 `query.class_id`，預設全部；選「全部」時移除 class_id；lookups 載入失敗時只剩「全部」，報表照常）；右側「共 N 位學生」。改任一篩選立即重抓（序號防護，只採用最新回應），重抓期間保留舊表格並蓋 loading。\n- 資料 `fetchMonthlyAttendance({month, class_id?})` → `MonthlyAttendanceGrid`（FRONTEND-128）；選了班級時傳 `hideClassColumn`。\n- 本月合計列（表格上方；`totals` 是全部學生 stats 的加總）：「營業日 {N} 天」（N = `days` 中 `is_service_day` 為 true 的天數；看今天所在月份時接「（統計到 {MM/DD}，已過 {M} 天）」，M = 不晚於今天的營業日數）、「應出勤 {totals.service_days} 人次」（旁邊 ? tooltip「每位學生在本月（到今天為止、入班日之後）的營業日數加總；出席 + 缺席 + 請假 + 未登記 = 應出勤」）、「出席 {attended} 人次」（success）、「缺席 {absent} 人次」（> 0 danger）、「請假 {leave} 人次」、「未登記 {unrecorded} 人次」（> 0 warning）。`totals.service_days` 是應出勤人次，不可當成營業日數顯示。\n- 「匯出 Excel」：`exportMonthlyAttendance({month, class_id?})` → `saveBlobResponse(res, '出勤月報_{class_name|全部}_{month}.xlsx')`（選了班級時 class_name 取回應的 class_name，回應未帶到時查 lookups）（FRONTEND-007，以 Content-Disposition 檔名為準）；匯出中按鈕 loading、文字「匯出中…」；成功不另跳訊息；失敗 `ElMessage.error(errorMessage(err, '匯出失敗，請稍後再試'))`（blob JSON 錯誤已由 FRONTEND-001 正規化）。首次載入、載入失敗、重抓中或沒有學生時按鈕 disabled。\n- 首次載入：合計列與表格位置顯示 skeleton。空清單（`students` 為空）：EmptyState（Calendar icon）「此月份沒有出勤資料」+「{班級名稱|全部班級}在 {YYYY 年 M 月}沒有學生與出勤紀錄」，不顯示合計列與表格。載入失敗：EmptyState error「無法載入出勤月報」（說明為 `errorMessage(err, '請稍後再試一次')`）+「重試」，匯出 disabled。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/AttendanceMonthlyView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/AttendanceMonthlyView.vue",
       "source_ref": "FE:src/views/StudentAttendanceView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
@@ -3618,12 +3618,17 @@
           "vitest"
         ],
         "red_cases": [
-          "AttendanceMonthlyView loads current month by default：fake now 2026-10-02 → GET /admin/attendance/monthly params 深等於 {month:'2026-10'}；改班級 c1 → 最後一次 params {month:'2026-10',class_id:'c1'} 且 router query.class_id === 'c1'",
-          "AttendanceMonthlyView renders totals：fake now 2026-10-02、initialRoute '/attendance/monthly?month=2026-09'、回 days 為 2026-09 的 30 天（is_service_day 為 true 的 21 天）、totals {service_days:420,attended:398,absent:6,leave:12,unrecorded:4} → 文字含 '營業日 21'、'應出勤 420'、'出席 398'、'缺席 6'、'請假 12'、'未登記 4'，不含 '已過'",
+          "AttendanceMonthlyView loads current month by default：fake now 2026-10-02 → GET /admin/attendance/monthly params 深等於 {month:'2026-10'}；改班級 c1 → 最後一次 params {month:'2026-10',class_id:'c1'} 且 router query.class_id === 'c1'；選了班級時格狀表沒有「班級」欄；再選「全部」→ 最後一次 params {month:'2026-10'} 且 query 沒有 class_id",
+          "AttendanceMonthlyView renders totals：fake now 2026-10-02、initialRoute '/attendance/monthly?month=2026-09'、回 days 為 2026-09 的 30 天（is_service_day 為 true 的 21 天）、totals {service_days:420,attended:398,absent:6,leave:12,unrecorded:4} → 文字含 '營業日 21'、'應出勤 420'、'出席 398'、'缺席 6'、'請假 12'、'未登記 4'，不含 '已過'；缺席值帶 tone-danger、未登記值帶 tone-warning",
           "AttendanceMonthlyView shows elapsed service days for current month：fake now 2026-10-02、回 days 為 2026-10 的 31 天（週一到週五 is_service_day 為 true，共 22 天）→ 文字含 '營業日 22 天' 與 '統計到 10/02，已過 2 天'",
           "AttendanceMonthlyView exports with server filename：點 '匯出 Excel' → GET /admin/attendance/monthly/export responseType 'blob'；攔截 anchor click 的 download === '出勤月報_全部_2026-09.xlsx'（取自 Content-Disposition）",
           "AttendanceMonthlyView shows export error message：export 回 404 json blob {error:{code:'class_not_found',message:'找不到班級'}} → body 含 '找不到班級'",
-          "AttendanceMonthlyView empty state：students [] → 文字含 '此月份沒有出勤資料'，'匯出 Excel' 按鈕 disabled"
+          "AttendanceMonthlyView empty state：students [] → 文字含 '此月份沒有出勤資料'，'匯出 Excel' 按鈕 disabled",
+          "AttendanceMonthlyView falls back to class name in export filename：initialRoute '/attendance/monthly?class_id=c1' → GET params {month:'2026-10',class_id:'c1'}；匯出回應沒有 Content-Disposition → export params {month:'2026-10',class_id:'c1'}、download '出勤月報_低年級A班_2026-10.xlsx'",
+          "AttendanceMonthlyView falls back to current month for invalid query：month=2027-01（未來）與 2026-13（格式錯）→ GET params 皆為 {month:'2026-10'}",
+          "AttendanceMonthlyView keeps table while refetching and retries after failure：換班級的重抓進行中 → 表格仍在、有 loading 遮罩、匯出 disabled；回 500 {message:'伺服器忙碌中'} → 文字含 '無法載入出勤月報' 與 '伺服器忙碌中'、匯出 disabled；點 '重試' 成功 → 表格回來",
+          "AttendanceMonthlyView uses latest response when filters change：依序選 c1、c2，c1 的回應較晚到 → 表格為 c2 的資料（不含 c1 的學生）",
+          "AttendanceMonthlyView is wired into view loaders：`VIEW_LOADERS.AttendanceMonthlyView()` 的 default 為本頁元件"
         ],
         "run": "just web-test src/views/AttendanceMonthlyView.spec.ts -t \"AttendanceMonthlyView\"",
         "notes": ""
