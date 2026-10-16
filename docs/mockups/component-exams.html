@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
-<meta name="preview-status" content="draft">
+<meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="FRONTEND-236,FRONTEND-238,FRONTEND-296">
 <meta name="preview-route" content="component:components/exams/{ScoreCell,RenotifyChoiceDialog}.vue">
 <meta name="preview-updated" content="2026-10-16">
@@ -182,11 +182,6 @@ kbd { padding: 0 5px; margin: 0 2px; font-family: inherit; font-size: 11px; line
         </div>
         <div class="demo-controls">
           <el-checkbox v-model="forceTouch" size="small">模擬平板（沒有滑鼠滑過：無備註圖示常駐、編輯框按鈕 44px）</el-checkbox>
-          <span class="text-secondary">點編輯框外面（待裁定 1）</span>
-          <el-radio-group v-model="outsideMode" size="small">
-            <el-radio-button value="confirm">A 視同確定</el-radio-button>
-            <el-radio-button value="cancel">B 視同取消</el-radio-button>
-          </el-radio-group>
         </div>
 
         <div class="demo-box">
@@ -250,15 +245,10 @@ kbd { padding: 0 5px; margin: 0 2px; font-family: inherit; font-size: 11px; line
         <h2 class="section-title">ScoreCell 每格備註<el-tag size="small" disable-transitions>FRONTEND-296</el-tag></h2>
         <p class="section-desc">新增 prop <code>note: string | null</code>；備註確定時 emit <code>change({score, is_absent, note})</code>（score / is_absent 帶 props 目前值）。
           備註最多 200 字、確定時 trim、空白視為沒有備註（null）；家長端成績明細顯示同一段文字。<br>
-          開啟：點分數輸入框與「缺」右邊的備註圖示，或聚焦分數輸入框 / 缺考格的「缺」時按 <kbd>Shift</kbd>+<kbd>F2</kbd>。編輯框內 <kbd>Enter</kbd> 確定、<kbd>Shift</kbd>+<kbd>Enter</kbd> 換行、<kbd>Esc</kbd> 取消；關閉後焦點回到同一格。
+          開啟：點分數輸入框與「缺」右邊的備註圖示，或聚焦分數輸入框 / 缺考格的「缺」時按 <kbd>Shift</kbd>+<kbd>F2</kbd>。編輯框內 <kbd>Enter</kbd> 確定、<kbd>Shift</kbd>+<kbd>Enter</kbd> 換行、<kbd>Esc</kbd> 取消；確定 / 取消後焦點回到同一格。點編輯框外面視同確定（超過 200 字時不關閉）。
           圖示鈕不在 Tab 順序裡，Enter / Tab / 方向鍵照舊只在分數輸入框之間移動。以下每格都可操作，下方灰字是最後一次 emit。</p>
         <div class="demo-controls">
           <el-checkbox v-model="forceTouch" size="small">模擬平板（沒有滑鼠滑過）</el-checkbox>
-          <span class="text-secondary">點編輯框外面（待裁定 1）</span>
-          <el-radio-group v-model="outsideMode" size="small">
-            <el-radio-button value="confirm">A 視同確定</el-radio-button>
-            <el-radio-button value="cancel">B 視同取消</el-radio-button>
-          </el-radio-group>
         </div>
         <div class="gallery">
           <div v-for="g in noteGallery" :key="g.title" class="gallery__item">
@@ -343,8 +333,6 @@ const fmt = (n) => (n === null || n === undefined ? '' : String(n))
    字數以 trim 後的字元（code point）計，與後端 ScoreCellIn.note max_length=200 一致。 */
 const NOTE_MAX = 200
 const noteLength = (s) => Array.from((s ?? '').trim()).length
-/** 稿用：待裁定 1「點編輯框外面」的兩個選項（confirm = A 視同確定、cancel = B 視同取消）；實作只會有核可的那一種 */
-const outsideMode = ref('confirm')
 let noteUid = 0
 
 /* 編輯框內容：ScoreCell 的 popover 裡用；狀態一覽也直接攤開 */
@@ -453,6 +441,7 @@ const ScoreCell = {
     const closeEditor = (returnFocus) => {
       editing.value = false
       document.removeEventListener('pointerdown', onOutside, true)
+      document.removeEventListener('focusin', onFocusGuard, true)
       if (returnFocus) nextTick(focusScore)
     }
     const confirmNote = (returnFocus = true) => {
@@ -464,22 +453,31 @@ const ScoreCell = {
       emit('change', { score: props.score, is_absent: props.isAbsent, note: next })
     }
     const cancelNote = () => closeEditor(true)
-    // 點編輯框外面（待裁定 1）：A 視同確定（超過 200 字時不關閉）/ B 視同取消；焦點留在使用者點的地方
+    // 點編輯框外面 = 確定：合法就送出並關閉，焦點留在使用者點的地方；超過 200 字時不關閉、焦點回到文字框
+    const popperEl = () => (panel.value && panel.value.$el ? panel.value.$el.closest('.el-popper') : null)
     function onOutside(e) {
       if (!editing.value) return
-      const pop = panel.value && panel.value.$el ? panel.value.$el.closest('.el-popper') : null
+      const pop = popperEl()
       if (pop && pop.contains(e.target)) return
       const btn = root.value ? root.value.querySelector('.score-cell__note') : null
       if (btn && btn.contains(e.target)) swallowClick = true    // 再點一次圖示 = 點外面，不要馬上又打開
-      if (outsideMode.value === 'cancel') { closeEditor(false); return }
       if (noteLength(draft.value) > NOTE_MAX) { setTimeout(() => panel.value && panel.value.focus(), 0); return }
       confirmNote(false)
+    }
+    // 超過 200 字時焦點一律留在編輯框：Element Plus popover 的 focus trap 釋放時會把焦點還給觸發鈕，
+    // 所以不能只在 pointerdown 後聚焦一次；焦點跑到編輯框外就拉回文字框
+    function onFocusGuard(e) {
+      if (!editing.value || noteLength(draft.value) <= NOTE_MAX) return
+      const pop = popperEl()
+      if (pop && pop.contains(e.target)) return
+      setTimeout(() => panel.value && panel.value.focus(), 0)
     }
     const openEditor = () => {
       if (editing.value) return
       draft.value = props.note ?? ''
       editing.value = true
       document.addEventListener('pointerdown', onOutside, true)
+      document.addEventListener('focusin', onFocusGuard, true)
       nextTick(() => requestAnimationFrame(() => panel.value && panel.value.focus()))
     }
     const onNoteClick = () => {
@@ -490,7 +488,10 @@ const ScoreCell = {
     const onRootKeydown = (e) => {
       if (e.key === 'F2' && e.shiftKey && !editing.value) { e.preventDefault(); openEditor() }
     }
-    onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, true))
+    onBeforeUnmount(() => {
+      document.removeEventListener('pointerdown', onOutside, true)
+      document.removeEventListener('focusin', onFocusGuard, true)
+    })
 
     return {
       text, localError, tip, commit, toggleAbsent, display,
@@ -601,15 +602,9 @@ const app = createApp({
       'readonly（只有 exams:read）：分數文字照舊置中；有備註時文字右側掛同一個主色圖示（絕對定位，不推動數字），圖示可聚焦（readonly 沒有格子鍵盤導覽，Tab 可逐一走到有備註的格子），滑過或聚焦顯示全文 tooltip；沒有備註不顯示圖示；沒有編輯入口。',
       '已不在名單的學生：格子內容（含備註圖示）跟著整列淡化 0.55，仍可開啟與編輯備註；編輯框在 body 上，不淡化。',
       '觸控：圖示視覺 18×32px，可點範圍以透明區延伸到約 28×40px（往右延伸進儲存格內距，左邊只延伸 2px、不蓋到「缺」）。140px 欄寬放不下 44×44，與既有「缺」勾選同級、高於 WCAG 2.5.8 的 24×24；開啟後的編輯框按鈕在平板撐到 44px。',
-      '點編輯框外面：見待裁定 1；稿照推薦 A 畫（合法就確定並關閉，焦點留在使用者點的地方；超過 200 字時不關閉、焦點回到文字框），控制列可切到 B 試用。再點一次同一格的圖示視同點外面。',
+      '點編輯框外面視同確定：內容合法就依確定的規則送出並關閉，焦點留在使用者點的地方（同 Excel / Google 試算表的附註，直接點下一格不會遺失剛打的備註）；超過 200 字時不關閉、焦點回到文字框。再點一次同一格的圖示視同點外面（不會關閉後又立刻打開）。',
     ]
-    const openQuestions = [
-      {
-        question: '備註編輯框開著時，點編輯框外面（例如直接點下一格的分數）要怎麼處理？（確定 / 取消 / Esc 的行為已定，只有「點外面」規格沒寫）',
-        optionA: '（推薦，稿照此畫）視同確定：內容合法就送出並關閉，焦點留在使用者點的地方；超過 200 字時不關閉、焦點回到文字框。與 Excel / Google 試算表的附註相同，邊輸入分數邊寫備註時不會因為直接點下一格而遺失剛打的字。',
-        optionB: '視同取消：關閉、不送出，剛打的備註會消失。比較保守（家長看得到備註，不會因為誤觸就送出），但直接點下一格的習慣會讓備註白打。',
-      },
-    ]
+    const openQuestions = []
 
     const subjects = [
       { id: 'sub1', name: '國語', full: 100 },
@@ -724,7 +719,7 @@ const app = createApp({
       meta, decisions, openQuestions, roles: ROLES, viewAs, canWrite, notesOpen: ref(false),
       subjects, students, cell, edit, lastChange, examStatus, onStatusChange, notifyChoice, choose, dialogOpen, failNext,
       dirtyCount, failedCount, savingAny, retryFailed, gallery,
-      forceTouch, outsideMode, noteGallery, onNoteGalleryChange, editorStates,
+      forceTouch, noteGallery, onNoteGalleryChange, editorStates,
       standalone: reactive({ open: false, chosen: false, count: 3, result: '（尚未操作）' }),
     }
   },
