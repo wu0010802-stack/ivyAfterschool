@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 219,
-  "last_updated": "2026-10-16T06:10:51Z",
+  "version": 220,
+  "last_updated": "2026-10-16T06:10:59Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6116,7 +6116,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreCell.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-236"
@@ -6136,10 +6136,12 @@
           "ScoreCell score change keeps note：note '遲到'、setValue('88') 並 blur → emit {score:88,is_absent:false,note:'遲到'}；勾選 '缺' → emit {score:null,is_absent:true,note:'遲到'}",
           "ScoreCell note indicator and readonly view：note '遲到' → 有備註標記且全文 '遲到' 可在 title / tooltip 取得；readonly → 沒有備註編輯入口但仍可取得 '遲到'；note null → 沒有標記",
           "ScoreCell note outside click confirms：attachTo document.body，score 90、note null → 點 [data-test=note-trigger]、在 [data-test=note-input] 輸入 '補考'，再對編輯框外的 document.body 觸發 pointerdown → emitted('change') 最後一筆深等於 {score:90,is_absent:false,note:'補考'}、編輯框關閉；重新開啟並輸入 201 個字後對 document.body 觸發 pointerdown → 沒有新的 emit、編輯框仍開啟且 document.activeElement 為備註 textarea",
-          "ScoreCell note editor returns focus to the cell：attachTo document.body，score 90、note '遲到' → 分數 input 聚焦後按 Shift+F2 → document.activeElement 為備註 textarea；按 Esc → 編輯框關閉、沒有 emit、document.activeElement 為該格分數 input；isAbsent true、note '病假' → 「缺」勾選 input 聚焦後按 Shift+F2，內容不改直接按 Enter → 沒有 emit、document.activeElement 為「缺」勾選 input"
+          "ScoreCell note editor returns focus to the cell：attachTo document.body，score 90、note '遲到' → 分數 input 聚焦後按 Shift+F2 → document.activeElement 為備註 textarea；按 Esc → 編輯框關閉、沒有 emit、document.activeElement 為該格分數 input；isAbsent true、note '病假' → 「缺」勾選 input 聚焦後按 Shift+F2，內容不改直接按 Enter → 沒有 emit、document.activeElement 為「缺」勾選 input；以點圖示開啟（focus trap 的還焦對象不是分數輸入框）後按 Esc → activeElement 為分數 input；再以點圖示開啟、輸入後按 Enter → emit 且 activeElement 為分數 input 並全選",
+          "ScoreCell note trigger re-click leaves no stale swallow：attachTo document.body，score 90、note null → 開啟並輸入 '病假'，對 [data-test=note-trigger] 觸發 pointerdown（編輯框確定並關閉、emit note '病假'）、不派發 click → 再對圖示觸發 pointerdown + click → 編輯框開啟；內容不變時 pointerdown 關閉不 emit，之後 pointerdown + click 仍可開啟；緊接著那次 pointerdown 的 click 仍被吞掉（送出並關閉後不重開）",
+          "ScoreCell note over limit blocks other cell：attachTo document.body 掛兩格 a（note null）與 b（note '遲到'）→ a 開啟並輸入 201 字後對 b 的圖示觸發 pointerdown + click → [data-test=note-input] 只有 1 個且值為 a 的內容、activeElement 為 a 的 textarea、a 與 b 都沒有 emit；a 改成 '補考' 後再對 b 的圖示 pointerdown + click → a emit note '補考'，只剩 b 的編輯框（值 '遲到'）"
         ],
         "run": "just web-test src/components/exams/ScoreCell.spec.ts -t \"ScoreCell\"",
-        "notes": "el-tooltip 會以 cloneVNode 把自己的 aria-* 蓋到直接子節點，且對可聚焦的子節點移除 aria-expanded / aria-haspopup，所以分數輸入框與圖示鈕外各包一層 span（.score-cell__wrap）。關閉後的聚焦在 nextTick 之後執行，避開 popover focus trap 釋放時的還焦；超過 200 字時 focus trap 會因滑鼠 focusout 釋放，以 document focusin 守衛把焦點拉回文字框。happy-dom 不會在 pointerdown 後移動焦點，焦點相關行為另以 Playwright 在真實 Chromium 驗證過（確定 / Esc 回到分數輸入框並全選、點外面焦點留在點的位置、超過 200 字焦點拉回、再點圖示不重開、缺考格回「缺」）。"
+        "notes": "el-tooltip 會以 cloneVNode 把自己的 aria-* 蓋到直接子節點，且對可聚焦的子節點移除 aria-expanded / aria-haspopup，所以分數輸入框與圖示鈕外各包一層 span（.score-cell__wrap）。關閉後的聚焦在 nextTick 之後執行，避開 popover focus trap 釋放時的還焦；超過 200 字時 focus trap 會因滑鼠 focusout 釋放，以 document focusin 守衛把焦點拉回文字框。happy-dom 不會在 pointerdown 後移動焦點，焦點相關行為另以 Playwright 在真實 Chromium 驗證過（確定 / Esc 回到分數輸入框並全選、點外面焦點留在點的位置、超過 200 字焦點拉回、再點圖示不重開、缺考格回「缺」）。 打回修正：吞掉 click 的旗標綁定啟動它的 pointerdown 事件物件（document capture 先經過、再到圖示鈕的 @pointerdown），新的手勢一律先清掉舊旗標；超過 200 字時點外面另設 blockNextClick，由 document capture 的 click 監聽擋下緊接的那次 click，避免另一格編輯框同時開啟。"
       },
       "review": {
         "status": "concern",
