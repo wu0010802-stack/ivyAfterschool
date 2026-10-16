@@ -86,7 +86,7 @@ describe('homeworkApi', () => {
 
     const res = await createHomeworkItem(body)
 
-    expect(res.item?.id).toBe('h1')
+    expect(res.item.id).toBe('h1')
     expect(res.progress.overall_status).toBe('in_progress')
     expect(bodyOf(mock.history.post[0]?.data)).toEqual(body)
   })
@@ -105,7 +105,7 @@ describe('homeworkApi', () => {
     const deleted = await deleteHomeworkItem('h1')
 
     expect(bodyOf(mock.history.patch[0]?.data)).toEqual({ status: 'done' })
-    expect(updated.item?.status).toBe('done')
+    expect(updated.item.status).toBe('done')
     expect(updated.progress.overall_status).toBe('done')
     expect(deleted.item).toBeNull()
     expect(deleted.progress.overall_status).toBe('not_started')
