@@ -236,6 +236,21 @@ describe('authGuard', () => {
     expect(landingPath('/attendance', perms())).toBe('/forbidden')
   })
 
+  it('authGuard redirects authenticated user from login variants', async () => {
+    // vue-router 預設不分大小寫、不嚴格尾斜線：'/login/'、'/LOGIN' 也解析到登入路由
+    loginAs(['attendance:read', 'students:read'])
+    for (const variant of ['/login/', '/LOGIN']) {
+      expect(to(variant).name, variant).toBe('login')
+      expect(await authGuard(to(variant)), variant).toBe('/students')
+      expect(await authGuard(to(`${variant}?redirect=/attendance`)), variant).toBe('/attendance')
+    }
+
+    loginAs(['attendance:read', 'students:read'], { must_change_password: true })
+    for (const variant of ['/login/', '/LOGIN']) {
+      expect(await authGuard(to(variant)), variant).toBe('/change-password')
+    }
+  })
+
   it('authGuard safeRedirect rejects external urls', () => {
     expect(safeRedirect('/exams/1')).toBe('/exams/1')
     expect(safeRedirect('/students?class_id=c1&page=2')).toBe('/students?class_id=c1&page=2')

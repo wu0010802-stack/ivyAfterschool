@@ -127,17 +127,16 @@ describe('admin routes', () => {
     expect(routesSource).not.toMatch(/from\s+['"]@\/views/)
   })
 
-  it('every view loader loads a real view', { timeout: 60_000 }, async () => {
-    // 每個後台 view 都已實作：VIEW_LOADERS 不指向 PlaceholderView，且各自載入同名的 view 檔
+  it('admin routes every view loader loads a real view', { timeout: 60_000 }, async () => {
+    // 每個後台 view 都已實作：各自載入同名的 view 檔，且不再有佔位元件 PlaceholderView
+    expect(Object.keys(import.meta.glob('@/router/PlaceholderView.vue'))).toHaveLength(0)
     const actual = await vi.importActual<typeof import('@/router/viewLoaders')>('@/router/viewLoaders')
-    const placeholder = (await import('@/router/PlaceholderView.vue')).default
     const names = Object.keys(actual.VIEW_LOADERS)
     expect(names.sort()).toEqual(Object.keys(VIEW_LOADERS).sort())
 
     for (const [name, load] of Object.entries(actual.VIEW_LOADERS)) {
       const loaded = (await load()) as Component | { default: Component }
       const component = 'default' in loaded ? loaded.default : loaded
-      expect(component, name).not.toBe(placeholder)
       expect((component as { __file?: string }).__file, name).toMatch(new RegExp(`/views/(settings/)?${name}\\.vue$`))
     }
   })
