@@ -129,7 +129,9 @@ function dirtyChanges(wrapper: VueWrapper): unknown[][] {
   return wrapper.emitted('dirty-change') ?? []
 }
 
-describe('ScoreGrid', () => {
+// 每個案例都掛整張 el-table（含固定欄與每格 ScoreCell / 備註 popover）；多位 agent 共用 4 顆 CPU 時
+// 單一案例可能超過 vitest 預設的 5 秒，整組上限放寬到 30 秒（只影響逾時，不影響斷言）
+describe('ScoreGrid', { timeout: 30000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     mock = createApiMock(adminHttp)
@@ -169,6 +171,11 @@ describe('ScoreGrid', () => {
     const { wrapper } = await mountGrid({ attach: true })
     const wang = scoreInput(wrapper, 0, 0)
     wang.focus()
+
+    // 中文輸入法組字中（例如輸入「缺」）的 Enter 不換格
+    const composing = await press(wang, { key: 'Enter', isComposing: true })
+    expect(composing.defaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(wang)
 
     const event = await press(wang, { key: 'Enter' })
 
@@ -347,7 +354,13 @@ describe('ScoreGrid', () => {
     ;(input.element as HTMLInputElement).focus()
     await input.setValue('70')
 
-    await press(input.element, { key: 'Escape' })
+    // Chromium 在卸載仍有焦點的輸入框時會觸發 blur（happy-dom 不會）：keydown 之後、重新渲染之前補派 blur，
+    // 模擬舊的 ScoreCell 以 '70' commit；這次 change 必須被忽略
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    input.element.dispatchEvent(esc)
+    expect(esc.defaultPrevented).toBe(true)
+    input.element.dispatchEvent(new FocusEvent('blur'))
+    await tick()
 
     const after = scoreInput(wrapper, 0, 0)
     expect(after.value).toBe('95')
