@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 192,
-  "last_updated": "2026-10-16T15:13:26Z",
+  "version": 193,
+  "last_updated": "2026-10-16T15:16:27Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3410,7 +3410,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/NotificationsView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -3450,9 +3450,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。12 條 red_case 皆有同名測試且斷言具體（POST / GET url 與 params 深等、selectedId、currentRoute、篩選段文字、li 數、snackbar message + tone、按鈕 disabled）；tdd.run 26 綠，-t 選到每條。ddc3190（測試）先於 11bb52c（實作）；「retry keeps current filter」在測試 commit 就已存在，實作 commit 只追加 3 條測試（再點目前篩選不重載、載入更多 loading、無內容時更新失敗只顯示錯誤態），未改既有斷言。47cc573 的三處規格偏離都合理：(1) 錯誤態改為「error 有值且 items 為空或不是目前篩選成功載入的結果」——切到「未讀」失敗時 store 仍是「全部」的舊清單，原規格會把它顯示在「未讀」底下，是可構造的錯誤；改後有測試，拿掉 loadedFilter 條件或成功判斷的突變都轉紅。(2) 點通知時 markRead 先送出不等回應——與稿的 openItem（同步標已讀後導頁）及「失敗不阻擋導頁」一致，改成等 markRead 完成再導頁的突變轉紅。(3) 畫面已是錯誤態時下拉失敗不另跳 snackbar——錯誤態本身已告知，與稿不衝突，有測試。PARENT-172 殘留（本地未讀增減不取號）不擋：在 markRead / markAllRead 之前發出、之後才回來的 refreshUnread / load 會把「未讀 N」與「全部標為已讀」短暫恢復成舊值，下一次 refreshUnread（parentWs 輪詢、重新進頁）即更正；期間再按「全部標為已讀」只是再送一次冪等的 read-all。根因在 store，172 已以殘留通過，頁面層補不了正確數字。實作者標為語意等價的兩個突變確認存活且確實等價：拿掉 children.items 成員檢查——children.select 本身就忽略不在清單的 id；拿掉 markingAll 守衛——M3Button 在 loading 時 onClick 直接 return（「mark all read blocks double click」因此仍綠）。對照 parent-page-notifications.html decisions 10 條逐條符合；390×844 Chromium 用稿內同一組資料實測，篩選列、工具列兩鈕、卡片、5 列通知（72 / 91 / 73px）與「載入更多」的位置尺寸和稿完全相同；空狀態、錯誤態、骨架（row × 4）三態另外實測，無水平溢出。突變共 17 處皆轉紅（錯誤態只看空清單、不標已讀、等標已讀才導頁、不安全連結也導頁、不切換小孩、99+ 上限、未讀篩選不重載、全部已讀失敗不提示、錯誤態仍跳更新失敗、更新失敗不提示、載入更多失敗不提示、切換篩選不顯示骨架、重試改回全部、全部已讀不停用、不載入小孩清單、再點目前篩選也重載、成功判斷錯誤），還原後 git diff 乾淨。圖示皆在子集，icons.spec 綠；web-lint 乾淨；web-typecheck exit 2 的唯一錯誤在他人未提交的 views/AttendanceTodayView.vue（TS6133），本頁 0 錯。 殘留：上述 172 的未讀數短暫回彈（store 層，要改需另開 chore 讓本地增減參與取號）。"
       }
     },
     {
