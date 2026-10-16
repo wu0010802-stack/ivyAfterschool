@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 134,
-  "last_updated": "2026-10-16T05:02:40Z",
+  "version": 135,
+  "last_updated": "2026-10-16T05:04:12Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2661,11 +2661,11 @@
     {
       "id": "PARENT-134",
       "title": "移植 LeaveForm 元件：請假申請表單（假別、日期、事由、附件）",
-      "description": "建立 `apps/web/src/parent/components/leaves/LeaveForm.vue`：\n```ts\nprops: { today: string /* YYYY-MM-DD 台北 */; limits: ParentLimits /* PARENT-005，由 LeavesView 傳入 */; submitting?: boolean }\nemits: { submit: [input: { leave_type: LeaveType; start_date: string; end_date: string; reason: string; files: File[] }]; cancel: [] }\n```\n- 假別：PARENT-098 M3SegmentedButton（病假 sick / 事假 personal / 其他 other），預設 sick。\n- 開始 / 結束日期：以 PARENT-018 `M3TextField`（`type=\"date\"`）呈現。M3TextField 目前沒有 `min` / `max`，本 task 一併擴充 `apps/web/src/parent/components/m3/M3TextField.vue`：新增選填 `min?: string`、`max?: string` props，原樣綁到原生 input（未給時不輸出屬性），並在 `M3TextField.spec.ts` 補測試；min = today − `limits.leave_past_days` 天、max = today + `limits.leave_future_days` 天（FRONTEND-003 日期加減），預設皆為 today；改開始日晚於結束日時結束日自動跟著設為開始日；送出時再檢查：超出範圍 →「請假日期需在今天前 {leave_past_days} 天到後 {leave_future_days} 天內」、結束早於開始 →「結束日期不可早於開始日期」。\n- 事由：PARENT-018 textarea，選填，最多 200 字（計數）。\n- 附件：選填，最多 `limits.leave_max_attachments` 個；`accept=\"image/jpeg,image/png,image/webp,image/heic,application/pdf\"`；單檔 > `limits.leave_max_attachment_mb` MB →「{檔名} 超過 {leave_max_attachment_mb} MB」；格式不符 →「{檔名} 格式不支援」；已選檔案列出檔名、大小（KB / MB）與移除鈕；達上限時隱藏新增。數值一律來自 `limits` prop，元件內不寫死。\n- 送出鈕在 submitting 時 loading。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveForm.vue` 的 pastLimit / futureLimit 日期限制概念；**改為** 元件內部狀態、單一小孩（由頁面的選中小孩決定，不在表單選小孩）、附件併入表單（建立後由頁面依序上傳）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-leave-form.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：預設狀態、三種假別、日期錯誤、事由字數、已選 1~3 個附件、檔案過大 / 格式錯誤、送出中。可併入 `parent-page-leaves.html`。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/components/leaves/LeaveForm.vue`：\n```ts\nprops: { today: string /* YYYY-MM-DD 台北 */; limits: ParentLimits /* PARENT-005，由 LeavesView 傳入 */; submitting?: boolean }\nemits: { submit: [input: { leave_type: LeaveType; start_date: string; end_date: string; reason: string; files: File[] }]; cancel: [] }\n```\n- 假別：PARENT-098 M3SegmentedButton（病假 sick / 事假 personal / 其他 other），預設 sick。\n- 開始 / 結束日期：以 PARENT-018 `M3TextField`（`type=\"date\"`）呈現。M3TextField 目前沒有 `min` / `max`，本 task 一併擴充 `apps/web/src/parent/components/m3/M3TextField.vue`：新增選填 `min?: string`、`max?: string` props，原樣綁到原生 input（未給時不輸出屬性），並在 `M3TextField.spec.ts` 補測試；min = today − `limits.leave_past_days` 天、max = today + `limits.leave_future_days` 天（FRONTEND-003 日期加減），預設皆為 today；改開始日晚於結束日時結束日自動跟著設為開始日；送出時再檢查：超出範圍 →「請假日期需在今天前 {leave_past_days} 天到後 {leave_future_days} 天內」、結束早於開始 →「結束日期不可早於開始日期」。\n- 事由：PARENT-018 textarea，選填，最多 200 字（計數）。\n- 附件：選填，最多 `limits.leave_max_attachments` 個；`accept=\"image/jpeg,image/png,image/webp,image/heic,application/pdf\"`；單檔 > `limits.leave_max_attachment_mb` MB →「{檔名} 超過 {leave_max_attachment_mb} MB」；格式不符 →「{檔名} 格式不支援」；已選檔案列出檔名、大小（KB / MB）與移除鈕；達上限時隱藏新增。數值一律來自 `limits` prop，元件內不寫死。\n- 附件格式 / 大小驗證與大小顯示抽成 `apps/web/src/parent/components/leaves/attachmentRules.ts`（`validateAttachment`、`formatFileSize`、`ATTACHMENT_ACCEPT`），與 PARENT-135 共用（測試 `attachmentRules.spec.ts`）。\n- 送出鈕在 submitting 時 loading，取消鈕停用，全部欄位以 `<fieldset disabled>` 鎖定；事由送出時 trim，空白送 `\"\"`。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveForm.vue` 的 pastLimit / futureLimit 日期限制概念；**改為** 元件內部狀態、單一小孩（由頁面的選中小孩決定，不在表單選小孩）、附件併入表單（建立後由頁面依序上傳）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-leave-form.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：預設狀態、三種假別、日期錯誤、事由字數、已選 1~3 個附件、檔案過大 / 格式錯誤、送出中。可併入 `parent-page-leaves.html`。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveForm.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveForm.vue::update",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -2677,7 +2677,7 @@
         "PARENT-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "附件格式以 `file.type` 判斷（依規格，不以副檔名放行）：部分瀏覽器 / 作業系統對 .heic 回傳空字串或 image/heif，會顯示「格式不支援」（後端同樣只收 image/heic）；上線前以 LINE iOS / Android 實機確認 HEIC 可選。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/leaves/LeaveForm.spec.ts",
@@ -2705,11 +2705,11 @@
     {
       "id": "PARENT-135",
       "title": "移植 LeaveAttachmentList 元件：請假附件縮圖 / 檔案列與補上傳",
-      "description": "建立 `apps/web/src/parent/components/leaves/LeaveAttachmentList.vue`：\n```ts\nprops: { attachments: LeaveAttachment[]; editable?: boolean; uploading?: boolean; max: number; maxMb: number /* 由頁面以 PARENT-005 limits 的 leave_max_attachments / leave_max_attachment_mb 傳入 */ }\nemits: { upload: [file: File] }\n```\n- 圖片類（mime_type 開頭 image/）顯示縮圖（`url`，`loading=\"lazy\"`）；PDF 顯示文件圖示與「PDF 文件 · {大小}」。每項以 `<a target=\"_blank\" rel=\"noopener noreferrer\">` 開啟 `url`（後端簽發短效網址，不快取）。\n- `url` 為 null（後端簽名失敗，BACKEND-341 / 348 / 357；PARENT-133 型別 `string | null`）時，該格改為不可點的 `<span role=\"img\">`：類型圖示（圖片 `image_not_supported`、PDF `picture_as_pdf`，皆 on-surface-variant）+「暫時無法開啟」，沒有 `<a>`、`<img>`、state layer 與 open_in_new 徽章；`aria-label` 為「附件 {n}：圖片 {大小}，暫時無法開啟」或「附件 {n}：PDF 文件 {大小}，暫時無法開啟」。\n- `editable` 且數量 < max 時顯示「新增附件」file input（同 PARENT-134 的格式驗證；單檔 > maxMb MB →「{檔名} 超過 {maxMb} MB」），驗證通過 emit upload；`uploading` 時顯示轉圈並停用新增。下方說明：可新增時「還可新增 {max − 數量} 個，單檔 {maxMb} MB 以內（JPG、PNG、WEBP、HEIC、PDF）」；`editable` 但已達 max 時不顯示新增，改為「已達 {max} 個附件上限」；不可編輯時不顯示說明。\n- 空清單且不可編輯時顯示「沒有附件」。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveAttachments.vue::onFileChange`（input 清空重選技巧）；**去掉** 刪除附件（本專案無 endpoint）與 urlResolver（後端已回 url）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-leave-attachment-list.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：圖片 + PDF 混合、可補上傳、上傳中、已達上限、無附件。url 為 null 的「暫時無法開啟」磚見已核可稿 `docs/mockups/parent-page-leaves.html`（詳情「已結束：附件已滿 3/3（其中 1 個網址暫時失效）」）。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/components/leaves/LeaveAttachmentList.vue`：\n```ts\nprops: { attachments: LeaveAttachment[]; editable?: boolean; uploading?: boolean; max: number; maxMb: number /* 由頁面以 PARENT-005 limits 的 leave_max_attachments / leave_max_attachment_mb 傳入 */ }\nemits: { upload: [file: File] }\n```\n- 圖片類（mime_type 開頭 image/）顯示縮圖（`url`，`loading=\"lazy\"`）；PDF 顯示文件圖示與「PDF 文件 · {大小}」。每項以 `<a target=\"_blank\" rel=\"noopener noreferrer\">` 開啟 `url`（後端簽發短效網址，不快取）。圖片縮圖載入失敗（HEIC 在部分瀏覽器無法解碼、短效網址過期）→ 該格改顯示 `image_not_supported` 圖示 +「無法預覽 / 點開查看」，連結照常可點；失敗以網址記錄，重抓清單拿到新網址會重新嘗試載入。\n- `url` 為 null（後端簽名失敗，BACKEND-341 / 348 / 357；PARENT-133 型別 `string | null`）時，該格改為不可點的 `<span role=\"img\">`：類型圖示（圖片 `image_not_supported`、PDF `picture_as_pdf`，皆 on-surface-variant）+「暫時無法開啟」，沒有 `<a>`、`<img>`、state layer 與 open_in_new 徽章；`aria-label` 為「附件 {n}：圖片 {大小}，暫時無法開啟」或「附件 {n}：PDF 文件 {大小}，暫時無法開啟」。\n- `editable` 且數量 < max 時顯示「新增附件」file input（同 PARENT-134 的格式驗證，共用 `components/leaves/attachmentRules.ts`；單檔 > maxMb MB →「{檔名} 超過 {maxMb} MB」），驗證通過 emit upload；`uploading` 時顯示轉圈並停用新增。下方說明：可新增時「還可新增 {max − 數量} 個，單檔 {maxMb} MB 以內（JPG、PNG、WEBP、HEIC、PDF）」；`editable` 但已達 max 時不顯示新增，改為「已達 {max} 個附件上限」；不可編輯時不顯示說明。\n- 空清單且不可編輯時顯示「沒有附件」。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveAttachments.vue::onFileChange`（input 清空重選技巧）；**去掉** 刪除附件（本專案無 endpoint）與 urlResolver（後端已回 url）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-leave-attachment-list.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：圖片 + PDF 混合、可補上傳、上傳中、已達上限、無附件。url 為 null 的「暫時無法開啟」磚見已核可稿 `docs/mockups/parent-page-leaves.html`（詳情「已結束：附件已滿 3/3（其中 1 個網址暫時失效）」）。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveAttachmentList.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveAttachments.vue::onFileChange",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-014",
@@ -2747,7 +2747,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveListItem.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveListCard.vue::emit",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -2994,11 +2994,11 @@
     {
       "id": "PARENT-153",
       "title": "建立 ExamsView：成績列表（只有已發布的考試）",
-      "description": "建立 `apps/web/src/parent/views/ExamsView.vue`（路由 `/exams`，底部導覽「成績」）。版面與文案以已核可稿 `docs/mockups/parent-page-exams.html`（含其 decisions）為準。\n\n- 頂部 PARENT-050 ChildContextHeader；依 `children.selectedId` 呼叫 `listChildExams(id, 1)`（PARENT-150），依後端順序（考試日期新到舊）以 PARENT-151 列在卡片內的 `<ul role=\"list\">`，不另加區塊標題或筆數；整頁內容包在 PARENT-027 PullToRefresh 內。\n- `items.length < total` 顯示「載入更多」（outlined 全寬，載入中 loading）：取下一頁並以 `exam_id` 去重後附加；失敗 → PARENT-011 snackbar（error）「載入更多失敗，請稍後再試」，已載入的清單與按鈕保留。切換小孩重置分頁、顯示骨架並以序號丟棄過期回應。\n- 空 → ParentEmptyState（icon `grading`）「目前沒有已公布的成績」/「安親班公布考試成績後會通知您」。\n- 首次載入 SkeletonBlock（row × 4）；失敗 → ParentEmptyState error「成績載入失敗」+ 重試。PullToRefresh 重抓第一頁（重置分頁），期間保留內容；失敗時保留內容並以 snackbar（error）顯示「更新失敗，請稍後再試」；載入中停用下拉。\n\n新寫頁面（domain_spec §4 家長端 `/exams`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-exams.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：有多筆考試、載入更多、空清單、首次載入、載入失敗、多位小孩切換。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `ExamsView.vue`。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/views/ExamsView.vue`（路由 `/exams`，底部導覽「成績」）。版面與文案以已核可稿 `docs/mockups/parent-page-exams.html`（含其 decisions）為準。\n\n- 頂部 PARENT-050 ChildContextHeader；依 `children.selectedId` 呼叫 `listChildExams(id, 1)`（PARENT-150），依後端順序（考試日期新到舊）以 PARENT-151 列在卡片內的 `<ul role=\"list\">`，不另加區塊標題或筆數；整頁內容包在 PARENT-027 PullToRefresh 內。\n- `items.length < total` 顯示「載入更多」（outlined 全寬，載入中 loading）：取下一頁並以 `exam_id` 去重後附加；失敗 → PARENT-011 snackbar（error）「載入更多失敗，請稍後再試」，已載入的清單與按鈕保留；下一頁回空陣列時視為已無更多，不再顯示「載入更多」。切換小孩重置分頁、顯示骨架並以序號丟棄過期回應。\n- 小孩清單：掛載時呼叫 `children.load()`（PARENT-010；深層連結直接進入時尚未載入）。沒有選中的小孩時不呼叫 API：清單載入中顯示骨架、載入失敗顯示錯誤（重試重新載入小孩清單）、載入完成但沒有小孩視為沒有成績（空狀態）。\n- 空 → ParentEmptyState（icon `grading`）「目前沒有已公布的成績」/「安親班公布考試成績後會通知您」。\n- 首次載入 SkeletonBlock（row × 4）；失敗 → ParentEmptyState error「成績載入失敗」+ 重試。PullToRefresh 重抓第一頁（重置分頁），期間保留內容；失敗時保留內容並以 snackbar（error）顯示「更新失敗，請稍後再試」；載入中停用下拉。\n\n新寫頁面（domain_spec §4 家長端 `/exams`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-exams.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：有多筆考試、載入更多、空清單、首次載入、載入失敗、多位小孩切換。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `ExamsView.vue`。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamsView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-010",
@@ -3040,11 +3040,11 @@
     {
       "id": "PARENT-154",
       "title": "建立 ExamDetailView：單次考試成績明細",
-      "description": "建立 `apps/web/src/parent/views/ExamDetailView.vue`（路由 `/exams/:examId`）。版面與文案以已核可稿 `docs/mockups/parent-page-exam-detail.html`（含其 decisions）為準。\n\n- 頂部 PARENT-050 ChildContextHeader；以 `children.selectedId` 與 route param `examId` 呼叫 `getChildExam(childId, examId)`（PARENT-150）。\n- 標頭卡（PARENT-017 M3Card outlined）：考試名稱（可換行）、類型標籤（與 PARENT-151 同一個標籤樣式）、日期「YYYY/MM/DD（X）」；`note` 有值時分隔線下「備註：{note}」（保留換行），沒有就整段不顯示。下方 outlined 卡片包 PARENT-152 ExamScoreTable。\n- 404（未發布、不屬於該小孩或不存在）→ ParentEmptyState（icon `search_off`）「找不到這次考試的成績」/「可能尚未公布或不屬於目前選擇的小孩」+「回成績列表」→ `/exams`。其他錯誤 → ParentEmptyState error「成績載入失敗」+ 重試。\n- 在本頁切換小孩（ChildContextHeader）→ `router.replace('/exams')`（考試屬於特定小孩，切換後回列表）。\n- 載入中 SkeletonBlock（card + row × 4）。不提供下拉重新整理。\n\n新寫頁面。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-exam-detail.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：一般成績（含缺考 / 備註）、考試備註、找不到（404）、載入失敗、載入中。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `ExamDetailView.vue`。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/views/ExamDetailView.vue`（路由 `/exams/:examId`）。版面與文案以已核可稿 `docs/mockups/parent-page-exam-detail.html`（含其 decisions）為準。\n\n- 頂部 PARENT-050 ChildContextHeader；以 `children.selectedId` 與 route param `examId` 呼叫 `getChildExam(childId, examId)`（PARENT-150）。\n- 標頭卡（PARENT-017 M3Card outlined）：考試名稱（可換行）、類型標籤（與 PARENT-151 同一個標籤樣式）、日期「YYYY/MM/DD（X）」；`note` 有值時分隔線下「備註：{note}」（保留換行），沒有就整段不顯示。下方 outlined 卡片包 PARENT-152 ExamScoreTable。\n- 404（未發布、不屬於該小孩或不存在）→ ParentEmptyState（icon `search_off`）「找不到這次考試的成績」/「可能尚未公布或不屬於目前選擇的小孩」+「回成績列表」→ `/exams`。其他錯誤 → ParentEmptyState error「成績載入失敗」+ 重試。\n- 在本頁切換小孩（ChildContextHeader）→ `router.replace('/exams')`（考試屬於特定小孩，切換後回列表）。\n- 掛載時呼叫 `children.load()`（PARENT-010）。沒有選中的小孩時不呼叫 API：清單載入中顯示骨架、載入失敗顯示錯誤、載入完成但沒有小孩顯示與 404 相同的「找不到」。route `examId` 變更時重新載入並丟棄過期回應。「回成績列表」與切換小孩一樣用 `router.replace('/exams')`（返回鍵不會回到無效的明細）；目前小孩從清單消失而 `selectedId` 被改選時同樣回列表，首次選到小孩不算切換。\n- 載入中 SkeletonBlock（card + row × 4）。不提供下拉重新整理。\n\n新寫頁面。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-exam-detail.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：一般成績（含缺考 / 備註）、考試備註、找不到（404）、載入失敗、載入中。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `ExamDetailView.vue`。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamDetailView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -3058,7 +3058,7 @@
         "INFRA-013"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "考試類型標籤樣式（`.exam-type`）複製自 PARENT-151 ExamListItem 的 `.exam-item__type`（稿要求同一個標籤樣式）；改其中一處要同步另一處，或日後抽成共用元件。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/ExamDetailView.spec.ts",
