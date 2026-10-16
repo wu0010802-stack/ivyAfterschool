@@ -13,6 +13,8 @@ import { routes } from '@/router/routes'
 import { useAuthStore } from '@/stores/auth'
 
 const LOGIN_PATH = '/login'
+// 以路由名稱判斷登入頁：vue-router 預設不分大小寫、不嚴格尾斜線，'/login/'、'/LOGIN' 的 to.path 不等於 LOGIN_PATH
+const LOGIN_ROUTE_NAME = 'login'
 const CHANGE_PASSWORD_PATH = '/change-password'
 const FORBIDDEN_PATH = '/forbidden'
 
@@ -70,7 +72,7 @@ export async function authGuard(to: RouteLocationNormalized): Promise<true | Rou
   await auth.restore()
 
   if (to.meta.public) {
-    if (to.path !== LOGIN_PATH || !auth.isAuthenticated) return true
+    if (to.name !== LOGIN_ROUTE_NAME || !auth.isAuthenticated) return true
     if (auth.mustChangePassword) return CHANGE_PASSWORD_PATH
     return landingPath(to.query.redirect, auth.permissions)
   }
