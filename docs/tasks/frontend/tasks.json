@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 198,
-  "last_updated": "2026-10-16T05:26:52Z",
+  "version": 199,
+  "last_updated": "2026-10-16T05:29:11Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3190,7 +3190,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/classes/ClassStaffDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-080",
@@ -3198,7 +3198,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f3 打回】角色下拉沒有任何測試驗到：red_case「ClassStaffDialog saves full staff list」替新列選的「協助老師」正好是新列的預設角色（已有負責老師時新列預設協助老師，稿 decision），選了等於沒選；把角色 el-select 的 v-model=\"row.role\" 改成 :model-value=\"row.role\"（選了不寫回）後 tdd.run 12 條仍全綠。要求：改 red_case 1 或補一條測試，讓角色改成非預設值並斷言 PUT body（例：既有列 u3 由「負責老師」改「協助老師」，或新列改選「負責老師」→ body 對應列的 role 隨之改變），以上述突變確認轉紅後還原；實作本身正確，只需改 spec 並同步 tdd.red_cases 文字。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/classes/ClassStaffDialog.spec.ts",
@@ -3217,9 +3217,9 @@
         "notes": "20 列上限的測試以 stub 取代 el-select（happy-dom 渲染 40 個 el-select 需十幾秒，與元件無關）。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f3",
-        "notes": "review-r10-f3：打回 1 項（角色下拉未被任何測試驗到，見 risk_notes），其餘通過。tdd.run 12 綠，6 條 red_case 皆有同名測試；49376c1（測試）先於 e762b92（實作）。e762b92 對 spec 的改動只在非 red_case 的「limits rows to twenty」：改以 stub 下拉、初始 19 列並驗 19→20 的轉換與新增鈕停用，沒有放寬任何紅燈斷言（多驗一段轉換），MAX_ROWS 改 21 會轉紅。868c830「other errors show backend message」拿掉 ElMessage.error 會轉紅。3e80ad0 補的「成功 ElMessage.success「已更新負責老師」→ emit saved → 關閉」與「其他錯誤 ElMessage.error、保持開啟」是原規格沒寫到的路徑，與稿（成功訊息）及同頁 ClassFormDialog 對 class_archived 的處理一致，判定為合理補述而非遷就實作。api：setClassStaff → PUT /admin/classes/{id}/staff {items}、listStaffOptions → GET /admin/staff-users/options，invalid_staff 的 details.invalid 與後端 class_service（字串 id）一致。突變 10 項 9 項轉紅（takenByOther 恆 false、invalid_staff 不標列、其他錯誤不顯示、已停用不標示、canAdd 不看載入狀態、上限 21、不 emit saved、送出列內容、新列預設角色恆 lead），只有「角色下拉不寫回」不轉紅。稿 page-classes.html（approved）ClassStaffDialog 四條 decisions 逐條一致：(1) FormDialog md 560、標題「指派老師：{班級}」、上方說明文、員工可搜尋下拉 + 角色下拉 132px + 垃圾桶、下方「新增老師」+「N / 20」；(2) 已被其他列選走的 disabled、新列預設角色、沒選員工「請選擇員工」、無列時提示且仍送 {items: []}；(3) 開啟時 listStaffOptions、載入中下拉 loading 且儲存停用、失敗紅色 alert「無法載入員工清單」+「重試」且新增停用、重試成功恢復；(4) 已停用顯示「黃老師（已停用）」+ 紅色線框 tag、送出時該列紅框 +「此員工已停用，請移除或更換」不發請求、422 invalid_staff 頂端 alert + 標出 details 所在列。其餘 decisions 屬 097 / 098。Playwright（Chromium）實測 dialog 寬 560、角色欄 132。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：868c830 以 body 文字斷言錯誤訊息，分不出 ElMessage 與頂端 alert。"
+        "notes": "review-r10-f3：通過（複審）。初審的打回項是角色下拉沒有被任何測試驗到（red_case 1 選的「協助老師」正是新列預設角色），5d13c8d 只改「saves full staff list」：先斷言新列預設「協助老師」，再把新列改選「負責老師」、既有列 u3 改「協助老師」，PUT body 深等於 {items:[{u3, assistant},{u4, lead}]}；其餘斷言（emit saved、關閉、成功訊息）與其他測試未動，實作未改。3cebfe8 同步 red_case 1 文字。複審：tdd.run 12 綠；角色 el-select 由 v-model 改 :model-value（選了不寫回）突變轉紅，新列預設角色恆 lead 突變也轉紅，還原後 git diff 乾淨；spec web-lint 乾淨。初審其餘結論維持：6 條 red_case 皆有同名測試、49376c1 先於 e762b92；e762b92 對「limits rows to twenty」的改動未放寬紅燈斷言；3e80ad0 補的成功與其他錯誤處理是與稿一致的合理補述；api 用法與後端 details.invalid 一致；稿 page-classes.html ClassStaffDialog 四條 decisions 逐條一致，Playwright 實測 dialog 560、角色欄 132；web-typecheck 0 錯誤。殘留（不擋）：868c830 以 body 文字斷言錯誤訊息，分不出 ElMessage 與頂端 alert。"
       }
     },
     {
