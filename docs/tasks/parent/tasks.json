@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 173,
-  "last_updated": "2026-10-16T14:26:08Z",
+  "version": 174,
+  "last_updated": "2026-10-16T14:30:26Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1776,7 +1776,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/HomeworkView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -1792,7 +1792,7 @@
         "INFRA-013"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "規格未定義的邊界（實作者依 ExamsView 慣例補，若使用者另有裁定請調整）：小孩清單載入失敗（沒有任何小孩可選）→ 摘要與項目位置顯示 ParentEmptyState error「作業進度載入失敗」，重試改抓小孩清單；小孩清單已載入但沒有任何小孩 → 項目卡內「今天還沒有作業項目」空狀態、不打作業 API。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/HomeworkView.spec.ts",
@@ -1801,7 +1801,7 @@
         ],
         "red_cases": [
           "HomeworkView lists items with summary：GET /parent/children/s1/homework 回 3 項（1 項 done）、overall 'in_progress'、ready_eta '17:30'、note '國語生字訂正'、updated_at '2026-10-02T08:05:00Z' → 含 '已完成 1/3 項'、'進行中'、'預計 17:30 可接送'、'老師說明：國語生字訂正'、'最後更新 16:05'，li 數 === 3",
-          "HomeworkView shows eta fallback：回 2 項、overall 'in_progress'、ready_eta null、note null、updated_at null → 含「老師尚未提供預計時間」，不含「預計」、「老師說明」、「最後更新」",
+          "HomeworkView shows eta fallback：回 2 項、overall 'in_progress'、ready_eta null、note null、updated_at null → 含「老師尚未提供預計時間」，不含「預計 HH:MM 可接送」這一行、「老師說明」、「最後更新」",
           "HomeworkView loads children on mount：children store 未載入、GET /parent/children 回 [{id:'s1',name:'王小明',grade_level:3}] → 送出 GET /parent/children 1 次，之後送出 GET '/parent/children/s1/homework'",
           "HomeworkView switching child requests new id：選中 s1 後透過標頭切換 s2 → 送出 GET '/parent/children/s2/homework'，畫面顯示 s2 的資料",
           "HomeworkView shows cached child without skeleton：s1、s2 都載入過後切回 s1，且第二次 GET s1 尚未回應 → 立即含 s1 的 '已完成 1/3 項'，畫面沒有 aria-busy='true' 的元素",
