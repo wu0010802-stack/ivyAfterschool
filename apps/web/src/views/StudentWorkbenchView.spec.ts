@@ -295,7 +295,8 @@ describe('StudentWorkbenchView', { timeout: 20_000 }, () => {
     expect(router.currentRoute.value.query).toEqual({ status: 'all', page: '2' })
     expect(drawerVisible()).toBe(false)
 
-    // 關閉動畫結束後才卸載詳情（動畫期間不留白）
+    // 關閉動畫期間詳情仍在（抽屜不留白），動畫結束（closed）後才卸載
+    expect(detailName()).toContain('王小明')
     wrapper.findComponent({ name: 'ElDrawer' }).vm.$emit('closed')
     await settle()
     expect(detailName()).toBeNull()
