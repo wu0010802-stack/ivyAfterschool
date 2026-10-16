@@ -124,6 +124,7 @@ describe('StudentPhotoUploader', () => {
     expect(imgSrc(wrapper)).toBe('https://storage/new.png')
     expect(wrapper.find('.photo__loading').exists()).toBe(false)
     expect(wrapper.emitted('uploaded')?.[0]).toEqual(['https://storage/new.png'])
+    expect(document.body.textContent).toContain('已更新照片')
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview-1')
   })
 
@@ -137,6 +138,7 @@ describe('StudentPhotoUploader', () => {
 
     expect(imgSrc(wrapper)).toBe('https://storage/old.png')
     expect(document.body.textContent).toContain('照片儲存服務暫時無法使用')
+    expect(document.body.textContent).not.toContain('已更新照片')
     expect(wrapper.find('.photo__loading').exists()).toBe(false)
     expect(wrapper.emitted('uploaded')).toBeUndefined()
   })
