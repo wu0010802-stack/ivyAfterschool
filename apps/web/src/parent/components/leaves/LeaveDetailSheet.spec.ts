@@ -211,7 +211,7 @@ describe('LeaveDetailSheet', () => {
   it('LeaveDetailSheet shows the leave type icon', () => {
     const icon = (type: ParentLeave['leave_type'], label: string) => {
       mountSheet({ leave: leave({ leave_type: type, leave_type_label: label }) })
-      const result = dialog().get('.lds-summary .leave-item__icon').text()
+      const result = dialog().get('.lds-summary__icon').text()
       mounted.pop()?.unmount()
       document.body.innerHTML = ''
       return result
