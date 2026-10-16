@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 252,
-  "last_updated": "2026-10-16T14:25:41Z",
+  "version": 253,
+  "last_updated": "2026-10-16T14:27:14Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5170,7 +5170,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ExamsView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5196,10 +5196,11 @@
           "ExamsView navigates to detail on row click：點該列 → router path '/exams/e1'",
           "ExamsView create redirects to scores tab：exams:write → 建立考試成功（回 id 'e9'）→ router fullPath '/exams/e9?tab=scores'",
           "ExamsView delete only for drafts with permission：draft 列 ⋮ 有 '刪除'，published 列沒有；permissions ['exams:read'] → 沒有 '建立考試' 與 ⋮",
-          "ExamsView empty states：預設篩選下 GET /admin/exams 回 {items:[],total:0} → 文字含 '還沒有考試紀錄' 與 '預設只顯示近 90 天到未來 30 天的考試'；在搜尋框輸入 '期末' 並按 Enter 後回空 → 文字含 '沒有符合條件的考試'、不含 '還沒有考試紀錄'"
+          "ExamsView empty states：預設篩選下 GET /admin/exams 回 {items:[],total:0} → 文字含 '還沒有考試紀錄' 與 '預設只顯示近 90 天到未來 30 天的考試'；在搜尋框輸入 '期末' 並按 Enter 後回空 → 文字含 '沒有符合條件的考試'、不含 '還沒有考試紀錄'",
+          "ExamsView restores cleared date range from url：預設篩選空清單 → 清除日期區間（滑過日期框後點清除 icon）→ 最後一次 GET /admin/exams 不帶 date_from / date_to、日期框為空、文字含 '沒有符合條件的考試' 不含 '還沒有考試紀錄'，router fullPath 不是 '/exams?page=1'；以該 fullPath 重新掛載 → 第一次 GET 不帶 date_from / date_to、日期框為空、仍是 inline 空清單文案；以 '/exams?date_from=&page=1' 掛載 → 第一次 GET 不帶 date_from / date_to 且日期框為空"
         ],
         "run": "just web-test src/views/ExamsView.spec.ts -t \"ExamsView\"",
-        "notes": "每個案例都掛整頁（PageHeader + AdminListToolbar + el-table，部分再開 dialog / 下拉 / 確認框），在共用 CPU 下單一案例可能超過 vitest 預設 5 秒，整個 describe 設 20 秒 timeout。年級篩選在 filters 以字串存（usePagedList 依初始值型別還原網址 query），傳給工具列下拉與 API 時轉成數字。"
+        "notes": "「不限日期」在網址以 date_from=all&date_to=all 表示（不送 API；usePagedList 會把空值從 query 拿掉，空字串無法與預設區間區分）；兩端都是合法日期才算有日期區間，否則日期框與請求一律視為不限日期。每個案例都掛整頁（部分再開 dialog / 下拉 / 確認框，或重新掛載三次），共用 CPU 在 load average 20 以上時單一案例可達 20 秒，整個 describe 的 timeout 上限 60 秒（只影響逾時、不影響斷言）。年級篩選在 filters 以字串存（usePagedList 依初始值型別還原網址 query），傳給工具列下拉與 API 時轉成數字。"
       },
       "review": {
         "status": "concern",
