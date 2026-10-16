@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 462,
-  "last_updated": "2026-10-16T23:26:37Z",
+  "version": 463,
+  "last_updated": "2026-10-16T23:32:51Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -5719,7 +5719,7 @@
     {
       "id": "BACKEND-165",
       "title": "實作 POST /api/admin/students/promote-grade endpoint（預覽 + 執行）",
-      "description": "建立 `apps/api/app/api/admin/students.py`（`router = APIRouter(prefix='/students', tags=['admin-students'])`，掛到 admin_router）。注意路由順序：`/students/import` 與 `/students/promote-grade` 必須在 `/students/{student_id}` 之前註冊。\n- `POST /api/admin/students/promote-grade`，`require_permission(STUDENTS_WRITE)`，body `PromoteGradeIn`：`from_academic_year`（100~200）、`dry_run`（bool，預設 true）、`expected_total`（dry_run=false 時必填）、`withdrawn_on`（date，可空）。\n- dry_run=true → BACKEND-157 `preview` → 200 `PromotionPreviewOut`（不寫入）；dry_run=false → BACKEND-158 `execute` → commit → 200 `PromotionResultOut`。\n- 業務錯誤由 BACKEND-158 拋出、endpoint 不 commit：409 `already_promoted`；409 `preview_stale`（details `{expected_total, total}`）；422 `invalid_dates`（六年級 enrolled_on 晚於退班日，details `{withdrawn_on, students: [{id, student_no, name, enrolled_on}]}`，整批不動）。\n- `PromoteGradeIn`（`from_academic_year` 100~200、`dry_run` 預設 true、`expected_total` 0~100000 且 dry_run=false 時必填、`withdrawn_on` 可空）、`PromotionItemOut`（id、student_no、name、grade_from、grade_to、class_name）、`PromotionPreviewOut`（from_academic_year、to_academic_year、promote、graduate、total、already_promoted）、`PromotionResultOut`（promoted、graduated）定義在 `apps/api/app/schemas/students.py`。\n\n**驗收標準**\n- 預覽不寫入；執行後結果正確。\n- 422（dry_run=false 缺 expected_total；from_academic_year 超出 100~200）；401；403；409 already_promoted；409 preview_stale（details 以 service 實際回傳為準）；422 invalid_dates（列出學生、整批不動）。",
+      "description": "建立 `apps/api/app/api/admin/students.py`（`router = APIRouter(prefix='/students', tags=['admin-students'])`，掛到 admin_router）。注意路由順序：`/students/import` 與 `/students/promote-grade` 必須在 `/students/{student_id}` 之前註冊。\n- `POST /api/admin/students/promote-grade`，`require_permission(STUDENTS_WRITE)`，body `PromoteGradeIn`：`from_academic_year`（100~200）、`dry_run`（bool，預設 true）、`expected_total`（dry_run=false 時必填）、`withdrawn_on`（date，可空）。\n- dry_run=true → BACKEND-157 `preview` → 200 `PromotionPreviewOut`（不寫入）；dry_run=false → BACKEND-158 `execute` → commit → 200 `PromotionResultOut`。\n- 執行模式缺 `expected_total`：`PromoteGradeIn` 以 expected_total 的 field_validator（`validate_default=True`）擋下，422 `validation_error` 且 details[0].loc == `['body','expected_total']`；handler 另有明確檢查（BACKEND-568），驗證器被移除時仍回同形狀的 422、不會 500。\n- 業務錯誤由 BACKEND-158 拋出、endpoint 不 commit：409 `already_promoted`；409 `preview_stale`（details `{expected_total, total}`）；422 `invalid_dates`（六年級 enrolled_on 晚於退班日，details `{withdrawn_on, students: [{id, student_no, name, enrolled_on}]}`，整批不動）。\n- `PromoteGradeIn`（`from_academic_year` 100~200、`dry_run` 預設 true、`expected_total` 0~100000 且 dry_run=false 時必填、`withdrawn_on` 可空）、`PromotionItemOut`（id、student_no、name、grade_from、grade_to、class_name）、`PromotionPreviewOut`（from_academic_year、to_academic_year、promote、graduate、total、already_promoted）、`PromotionResultOut`（promoted、graduated）定義在 `apps/api/app/schemas/students.py`。\n\n**驗收標準**\n- 預覽不寫入；執行後結果正確。\n- 422（dry_run=false 缺 expected_total；from_academic_year 超出 100~200）；401；403；409 already_promoted；409 preview_stale（details 以 service 實際回傳為準）；422 invalid_dates（列出學生、整批不動）。",
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/admin/students.py",
       "source_ref": "BE:api/students.py::bulk_graduate_students",
@@ -9993,7 +9993,7 @@
     {
       "id": "BACKEND-390",
       "title": "實作 PUT /api/admin/homework/progress/{student_id} endpoint（overall / ready_eta / note）",
-      "description": "建立 / 沿用 `apps/api/app/api/admin/homework.py`（`router = APIRouter(prefix='/homework', tags=['admin-homework'])`，掛到 admin_router）。寫入型 handler 呼叫 service 後自行 `db.commit()`。\n- `PUT /api/admin/homework/progress/{student_id}`，`Depends(require_permission(Permission.HOMEWORK_WRITE))`，body `ProgressPutIn` → BACKEND-382 → commit → 200 `ProgressOut`。\n- handler：d = body.service_date or today；有給 overall → BACKEND-381 `set_overall_status`；有給 ready_eta / note → BACKEND-382（未給的欄位傳 UNSET；ready_eta 由 `HH:MM` 轉 `time`）；兩者皆給時先處理 overall 再處理 ETA，同一交易 commit。\n- 回應：有給 ready_eta / note 時回傳 BACKEND-382 的 `ProgressOut`；只給 overall 時以 BACKEND-381 回傳的 `ProgressChange.progress` 組 `ProgressOut`（欄位規則同 BACKEND-382：ready_eta 為 `HH:MM`、eta_updated_by_name 為最後修改 ETA 的員工 display_name，未設定過為 null）。\n\n**驗收標準**\n- 成功回應形狀如上；422；401；403（缺 homework:write）；業務錯誤碼如 red_cases。\n- 路由通過 BACKEND-073 route audit。",
+      "description": "建立 / 沿用 `apps/api/app/api/admin/homework.py`（`router = APIRouter(prefix='/homework', tags=['admin-homework'])`，掛到 admin_router）。寫入型 handler 呼叫 service 後自行 `db.commit()`。\n- `PUT /api/admin/homework/progress/{student_id}`，`Depends(require_permission(Permission.HOMEWORK_WRITE))`，body `ProgressPutIn` → BACKEND-382 → commit → 200 `ProgressOut`。\n- handler：d = body.service_date or today；有給 overall → BACKEND-381 `set_overall_status`；有給 ready_eta / note → BACKEND-382（未給的欄位傳 UNSET；ready_eta 由 `HH:MM` 轉 `time`）；兩者皆給時先處理 overall 再處理 ETA，同一交易 commit。\n- 回應：有給 ready_eta / note 時回傳 BACKEND-382 的 `ProgressOut`；只給 overall 時以 BACKEND-381 回傳的 `ProgressChange.progress` 經 BACKEND-564 `homework_service.progress_view` 組 `ProgressOut`（router 不另做組裝；欄位規則同 BACKEND-382：ready_eta 為 `HH:MM`、eta_updated_by_name 為最後修改 ETA 的員工 display_name，未設定過為 null）。\n\n**驗收標準**\n- 成功回應形狀如上；422；401；403（缺 homework:write）；業務錯誤碼如 red_cases。\n- 路由通過 BACKEND-073 route audit。",
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/admin/homework.py",
       "source_ref": null,
@@ -15319,7 +15319,7 @@
         ],
         "red_cases": [
           "test_promotion_execute_lock_blocks_on_target_student_row：外部連線對一位對象學生列 SELECT ... FOR KEY SHARE 持鎖，thread 呼叫 execute → 放鎖前未完成，放鎖後完成且兩位對象都升級、升級稽核一筆；拿掉對象列 FOR UPDATE → 轉紅（bulk update 只改非鍵欄位 grade_level，與 KEY SHARE 不衝突、立刻完成）",
-          "test_promotion_execute_lock_update_student_waits_and_sees_promoted_grade：A execute 鎖住對象列、重算 preview 後暫停（以 monkeypatch 包住 grade_promotion_service.preview 注入停頓；尚未 bulk update、未 commit），B 在 thread 呼叫 update_student(同一位對象學生，status=withdrawn) 被阻塞；A 放行並 commit 後 B 完成，該生最終 grade_level 為升級後的值、status 為 withdrawn、withdrawn_on 為當天，另一位照常升級；拿掉對象列 FOR UPDATE → 轉紅（A 停頓期間不持任何列鎖，B 立刻完成）",
+          "test_promotion_execute_lock_update_student_waits_and_sees_promoted_grade：A execute 鎖住對象列、重算 preview 後暫停（以 monkeypatch 包住 grade_promotion_service.preview 注入停頓；尚未 bulk update、未 commit），B 在 thread 呼叫 update_student(同一位對象學生，status=withdrawn) 被阻塞；A 放行並 commit 後 B 完成，B 的 update_student 回傳 grade_level 為升級後的值（不依賴時間的判別，BACKEND-567），該生最終 grade_level 為升級後的值、status 為 withdrawn、withdrawn_on 為當天，另一位照常升級；拿掉對象列 FOR UPDATE → 轉紅（A 停頓期間不持任何列鎖，B 立刻完成）",
           "test_promotion_execute_lock_stale_preview_409：B 以 update_student(status=withdrawn) 持有一位對象學生的列鎖未 commit，A 的 execute 被阻塞；B commit 後 A 的 FOR UPDATE 重新評估、該生已非對象，重算 preview 的總數與 expected_total 不符 → 409 preview_stale（details 含 expected_total 與 total），整批不動、沒有升級稽核；拿掉對象列 FOR UPDATE → 轉紅（A 以舊名單通過檢查，連已退班的學生一起升級）"
         ],
         "run": "just test-int apps/api/tests/integration/services/test_grade_promotion_service.py -k \"test_promotion_execute_lock_\"",
@@ -15689,11 +15689,11 @@
     {
       "id": "BACKEND-564",
       "title": "homework_service 公開進度組裝函式 progress_view，作業進度 endpoint 改用它",
-      "description": "修改 `apps/api/app/services/homework_service.py` 與 `apps/api/app/api/admin/homework.py`（部分改寫 BACKEND-390 與 homework_service 的看板組裝）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- `homework_service._progress_view(session, progress)` 改名公開為 `progress_view(session, progress) -> ProgressOut`（行為不變：ready_eta 為 `HH:MM`、eta_updated_by_name 以 `select(StaffUser.display_name)` 取得）；service 內原呼叫點改用新名稱。\n- `api/admin/homework.py` 的 `_progress_out` 刪除，`PUT /admin/homework/progress/{student_id}` 的回應改由 `homework_service.progress_view` 組裝（CLAUDE 慣例：單筆回應一律用 service 的組裝函式）。回應內容不變。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_admin_homework_progress_` 與 `test_broadcast_homework_snapshot_` 全綠且斷言不變。",
+      "description": "修改 `apps/api/app/services/homework_service.py` 與 `apps/api/app/api/admin/homework.py`（部分改寫 BACKEND-390 與 homework_service 的看板組裝）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- `homework_service._progress_view(session, progress)` 改名公開為 `progress_view(session, progress) -> ProgressOut`（行為不變：ready_eta 為 `HH:MM`、eta_updated_by_name 以 `select(StaffUser.display_name)` 取得）；service 內原呼叫點改用新名稱。\n- `api/admin/homework.py` 的 `_progress_out` 刪除，`PUT /admin/homework/progress/{student_id}` 的回應改由 `homework_service.progress_view` 組裝（CLAUDE 慣例：單筆回應一律用 service 的組裝函式）。回應內容不變。\n- `_publish_snapshot`（BACKEND-374 推播）有進度列時也改用 `progress_view` 組 progress，推播內容不變。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_admin_homework_progress_` 與 `test_broadcast_homework_snapshot_` 全綠且斷言不變。",
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/homework_service.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-390",
@@ -15764,7 +15764,7 @@
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/api/admin/test_homework_endpoints.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-388",
@@ -15794,11 +15794,11 @@
     {
       "id": "BACKEND-567",
       "title": "後端測試清理：committing 測試改用 seed 角色建員工、升級並發測試補 grade_level 斷言",
-      "description": "只改測試檔：\n- `apps/api/tests/integration/services/pickup/test_pickup_transitions.py::test_transition_request_concurrent` 與 `apps/api/tests/integration/services/test_class_service.py::_committed_staff`：committing 測試以 `make_staff(session)` 預設建立自訂 `test_*` 角色並 commit，被中斷會在 roles 留殘列。改為 `make_staff(session, role_code='tutor')`，並移除對 roles 的清理登記（只清 staff_users）。順帶盤點 `apps/api/tests/integration/` 其他 committing 測試（用 `committing_db_session` 且有 commit 的案例）中同樣寫法，一併改掉；非 committing 案例不動。\n- `apps/api/tests/integration/services/test_grade_promotion_service.py` 的 BACKEND-553 案例 2：補斷言 B 的 `update_student` 回傳值 `grade_level == 4`（有鎖時讀到升級後的值、缺鎖時是 3），提供不依賴時間的判別。\n\n**驗收標準**：每一條對應下列 red_case；被改的三個測試檔整檔全綠，跑完以 owner 唯讀查 roles 沒有 `test_*` 開頭的列、staff_users 沒有殘列。",
+      "description": "只改測試檔：\n- `apps/api/tests/integration/services/pickup/test_pickup_transitions.py::test_transition_request_concurrent` 與 `apps/api/tests/integration/services/test_class_service.py::_committed_staff`：committing 測試以 `make_staff(session)` 預設建立自訂 `test_*` 角色並 commit，被中斷會在 roles 留殘列。改為 `make_staff(session, role_code='tutor')`，並移除對 roles 的清理登記（只清 staff_users）。順帶盤點 `apps/api/tests/integration/` 其他 committing 測試（用 `committing_db_session` 且有 commit 的案例）中同樣寫法，一併改掉；非 committing 案例不動。盤點結果另改兩檔（需要的權限 tutor 沒有，改用含該權限的 seed 角色）：`test_binding_code_service.py` 兩條並發測試（guardians:write）→ `role_code='clerk'`、`test_settings_service.py::test_put_setting_invalidate_after_commit`（settings:write）→ `role_code='director'`，同樣移除 roles 清理。\n- `apps/api/tests/integration/services/test_grade_promotion_service.py` 的 BACKEND-553 案例 2：補斷言 B 的 `update_student` 回傳值 `grade_level == 4`（有鎖時讀到升級後的值、缺鎖時是 3），提供不依賴時間的判別。\n\n**驗收標準**：每一條對應下列 red_case；被改的三個測試檔整檔全綠，跑完以 owner 唯讀查 roles 沒有 `test_*` 開頭的列、staff_users 沒有殘列。",
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/services/test_class_service.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-553",
@@ -15829,11 +15829,11 @@
     {
       "id": "BACKEND-568",
       "title": "升年級 endpoint 以明確 422 取代 assert；get_owned_student_for_write docstring 補暫停",
-      "description": "修改 `apps/api/app/api/admin/students.py`（BACKEND-165 的 promote-grade handler）與 `apps/api/app/api/deps.py`（docstring）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- promote-grade handler 以 `assert` 依賴 schema 驗證器保證執行模式有 `expected_total`；驗證器若被移除會變 500。改成明確檢查：執行模式缺 `expected_total` 時拋 422 `validation_error`（形狀與 RequestModel 驗證錯誤一致，loc `['body','expected_total']`），schema 驗證器保留。\n- `get_owned_student_for_write` 的 docstring 寫「另對 withdrawn 學生 409」，補上暫停（suspended）同樣 409 `student_not_active`（BACKEND-557 已實作，行為不變）。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_admin_promote_` 全綠。",
+      "description": "修改 `apps/api/app/api/admin/students.py`（BACKEND-165 的 promote-grade handler）與 `apps/api/app/api/deps.py`（docstring）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- promote-grade handler 以 `assert` 依賴 schema 驗證器保證執行模式有 `expected_total`；驗證器若被移除會變 500。改成明確檢查：執行模式缺 `expected_total` 時拋 422 `validation_error`（形狀與 RequestModel 驗證錯誤一致，loc `['body','expected_total']`），schema 驗證器保留，但由 model_validator 改為 `expected_total` 的 field_validator（`validate_default=True`），讓 schema 擋下時 loc 同樣是 `['body','expected_total']`（原為 `['body']`），兩條路徑回應同形狀；錯誤訊息抽成 `schemas/students.py::EXPECTED_TOTAL_REQUIRED_MESSAGE` 共用。\n- `get_owned_student_for_write` 的 docstring 寫「另對 withdrawn 學生 409」，補上暫停（suspended）同樣 409 `student_not_active`（BACKEND-557 已實作，行為不變）。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_admin_promote_` 全綠。",
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/admin/students.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-165",
