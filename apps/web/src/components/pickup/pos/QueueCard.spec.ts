@@ -66,9 +66,16 @@ function stagingItem(startedAt: number): PosQueueItem {
   }
 }
 
-async function mountCard(item: PosQueueItem, canOperate = true, now = NOW): Promise<VueWrapper> {
-  const { wrapper } = await mountWithApp(QueueCard, { props: { item, now, canOperate } })
+async function mountCard(item: PosQueueItem, canOperate = true, now = NOW, busy?: boolean): Promise<VueWrapper> {
+  const props: Record<string, unknown> = { item, now, canOperate }
+  if (busy !== undefined) props.busy = busy
+  const { wrapper } = await mountWithApp(QueueCard, { props })
   return wrapper as VueWrapper
+}
+
+/** 直接派發 click（不經 VTU 對 disabled 的略過），驗證 busy 時元件本身也不 emit */
+function forceClick(button: DOMWrapper<Element> | undefined): void {
+  button?.element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 }
 
 function actionButtons(wrapper: VueWrapper): DOMWrapper<Element>[] {
@@ -141,6 +148,40 @@ describe('QueueCard', () => {
     expect(actionTexts(acknowledged)).toEqual(['修改回覆', '完成交付'])
     expect(mainButton(acknowledged).text()).toBe('完成交付')
     expect(acknowledged.text()).toContain('已確認')
+  })
+
+  it('QueueCard busy shows loading and blocks actions', async () => {
+    // pending：「確認」loading、「回覆時間」停用，點擊都不 emit
+    const pending = await mountCard(activeItem(makeRequest()), true, NOW, true)
+    const [reply, ack] = actionButtons(pending)
+    expect(ack?.classes()).toContain('is-loading')
+    expect(reply?.attributes('disabled')).toBeDefined()
+    forceClick(reply)
+    forceClick(ack)
+    await pending.vm.$nextTick()
+    expect(pending.emitted('reply')).toBeUndefined()
+    expect(pending.emitted('acknowledge')).toBeUndefined()
+
+    // acknowledged / arrived：兩顆都停用
+    const acknowledged = await mountCard(activeItem(makeRequest({ status: 'acknowledged', needs_reply: false })), true, NOW, true)
+    expect(actionButtons(acknowledged).map((b) => b.attributes('disabled') !== undefined)).toEqual([true, true])
+    forceClick(actionButtons(acknowledged)[1])
+    expect(acknowledged.emitted('complete')).toBeUndefined()
+    const arrived = await mountCard(
+      activeItem(makeRequest({ status: 'arrived', needs_reply: false, arrived_at: minutesAgo(2) })),
+      true,
+      NOW,
+      true,
+    )
+    expect(actionButtons(arrived).map((b) => b.attributes('disabled') !== undefined)).toEqual([true, true])
+    forceClick(mainButton(arrived))
+    expect(arrived.emitted('complete')).toBeUndefined()
+
+    // 不 busy（預設 false）：照常 emit
+    const idle = await mountCard(activeItem(makeRequest()), true, NOW, false)
+    expect(actionButtons(idle).every((b) => b.attributes('disabled') === undefined)).toBe(true)
+    forceClick(actionButtons(idle)[1])
+    expect((idle.emitted('acknowledge') as [PickupRequest][])[0]?.[0].id).toBe('r1')
   })
 
   it('QueueCard arrived highlights urgency and complete', async () => {

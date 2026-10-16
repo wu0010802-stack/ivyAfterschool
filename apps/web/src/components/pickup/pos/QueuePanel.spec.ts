@@ -84,8 +84,13 @@ interface PanelExposed {
   focus: (requestId: string) => Promise<boolean>
 }
 
-async function mountPanel(props: { items: PosQueueItem[]; canOperate?: boolean; loading?: boolean }): Promise<VueWrapper> {
-  const { wrapper } = await mountWithApp(QueuePanel, { props: { canOperate: true, ...props } })
+async function mountPanel(props: {
+  items: PosQueueItem[]
+  canOperate?: boolean
+  loading?: boolean
+  busyIds?: ReadonlySet<string>
+}): Promise<VueWrapper> {
+  const { wrapper } = await mountWithApp(QueuePanel, { props: { canOperate: true, busyIds: new Set<string>(), ...props } })
   document.body.appendChild(wrapper.element)
   return wrapper as VueWrapper
 }
@@ -235,6 +240,41 @@ describe('QueuePanel', () => {
     expect((wrapper.emitted('acknowledge') as [PickupRequest][])[0]?.[0].id).toBe('r1')
     expect((wrapper.emitted('reply') as [PickupRequest][])[0]?.[0].id).toBe('r1')
     expect((wrapper.emitted('cancel') as [PosQueueItem][])[0]?.[0].id).toBe('staging:s9')
+  })
+
+  it('QueuePanel passes busy state to cards by item id', async () => {
+    const wrapper = await mountPanel({ items: ALL, busyIds: new Set(['r1']) })
+
+    const ack = card(wrapper, 'r1')
+      .findAll('[data-test=queue-actions] button')
+      .find((b) => b.text() === '確認')
+    expect(ack?.classes()).toContain('is-loading')
+    ack?.element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await nextTick()
+    expect(wrapper.emitted('acknowledge')).toBeUndefined()
+
+    // 不在 busyIds 的卡照常操作
+    await buttonIn(wrapper, 'r2', '完成交付').trigger('click')
+    expect((wrapper.emitted('complete') as [PickupRequest][])[0]?.[0].id).toBe('r2')
+
+    // 送出結束（父層移除 id）後恢復
+    await wrapper.setProps({ busyIds: new Set<string>() })
+    await buttonIn(wrapper, 'r1', '確認').trigger('click')
+    expect((wrapper.emitted('acknowledge') as [PickupRequest][])[0]?.[0].id).toBe('r1')
+  })
+
+  it('QueuePanel focus scrolls instantly when reduced motion is preferred', async () => {
+    const matchMedia = vi.fn((query: string) => ({ matches: query.includes('prefers-reduced-motion'), media: query }))
+    vi.stubGlobal('matchMedia', matchMedia)
+    const wrapper = await mountPanel({ items: ALL })
+
+    await (wrapper.vm as unknown as PanelExposed).focus('r2')
+
+    expect(scroll).toHaveBeenLastCalledWith({ behavior: 'instant', block: 'nearest' })
+
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({ matches: false, media: query })))
+    await (wrapper.vm as unknown as PanelExposed).focus('r1')
+    expect(scroll).toHaveBeenLastCalledWith({ behavior: 'smooth', block: 'nearest' })
   })
 
   it('QueuePanel shows swipe hint for operators only', async () => {
