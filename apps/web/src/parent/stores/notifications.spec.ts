@@ -453,4 +453,73 @@ describe('notificationsStore', () => {
     expect(store.loading).toBe(false)
     expect(store.error).toBeNull()
   })
+
+  it('notificationsStore local markRead invalidates in-flight refreshUnread', async () => {
+    const n3 = notification('n3')
+    const n4 = notification('n4')
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [N1, n3, n4], total: 3, unread_count: 3 })
+    const store = useNotificationsStore()
+    await store.load()
+    expect(store.unreadCount).toBe(3)
+    const late = deferredReply()
+    mock.onGet('/parent/notifications').replyOnce(late.reply)
+    mock.onPost('/parent/notifications/n1/read').reply(200, { ...N1, read_at: '2026-10-02T09:00:00Z' })
+
+    const refresh = store.refreshUnread()
+    await flushPromises()
+    await store.markRead('n1')
+    expect(store.unreadCount).toBe(2)
+
+    late.resolve([200, { items: [N1], total: 3, unread_count: 3 }])
+    await refresh
+    await flushPromises()
+
+    expect(store.unreadCount).toBe(2)
+  })
+
+  it('notificationsStore local markAllRead invalidates in-flight refreshUnread', async () => {
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [N1, N2], total: 2, unread_count: 1 })
+    const store = useNotificationsStore()
+    await store.load()
+    const late = deferredReply()
+    mock.onGet('/parent/notifications').replyOnce(late.reply)
+    mock.onPost('/parent/notifications/read-all').reply(200, { updated: 1 })
+
+    const refresh = store.refreshUnread()
+    await flushPromises()
+    await store.markAllRead()
+    expect(store.unreadCount).toBe(0)
+
+    late.resolve([200, { items: [N1], total: 2, unread_count: 1 }])
+    await refresh
+    await flushPromises()
+
+    expect(store.unreadCount).toBe(0)
+  })
+
+  it('notificationsStore ws created invalidates in-flight refreshUnread', async () => {
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [N1, N2], total: 2, unread_count: 1 })
+    const store = useNotificationsStore()
+    await store.load()
+    const ws = useParentWsStore()
+    ws.connect()
+    lastSocket().serverOpen()
+    const late = deferredReply()
+    mock.onGet('/parent/notifications').replyOnce(late.reply)
+
+    const refresh = store.refreshUnread()
+    await flushPromises()
+    lastSocket().serverMessage({ type: 'notification.created', data: notification('n3'), sent_at: SENT_AT })
+    expect(store.unreadCount).toBe(2)
+
+    late.resolve([200, { items: [N1], total: 2, unread_count: 1 }])
+    await refresh
+    await flushPromises()
+    expect(store.unreadCount).toBe(2)
+
+    // 本地增減之後新發出的 refreshUnread 照常套用
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [], total: 5, unread_count: 5 })
+    await store.refreshUnread()
+    expect(store.unreadCount).toBe(5)
+  })
 })
