@@ -36,7 +36,27 @@ function fakeAudio(options: FakeAudioOptions = {}) {
     connect: vi.fn((node: unknown) => node),
   }))
   const ctx = { state: options.state ?? 'running', currentTime: 0, destination: {}, resume, createOscillator, createGain }
-  return { ctx: ctx as unknown as AudioContext, createOscillator, oscillators, resume }
+  return { ctx: ctx as unknown as AudioContext, raw: ctx, createOscillator, oscillators, resume }
+}
+
+/**
+ * 符合 Web Audio 規範的 fake：context 尚未獲允許啟動（沒有使用者手勢）時，resume() 不 reject，
+ * 而是一直 pending；獲允許後 state 轉 running，並一併 resolve 所有 pending 的 resume()。
+ */
+function pendingResumeAudio() {
+  const resolvers: Array<() => void> = []
+  const audio = fakeAudio({
+    state: 'suspended',
+    resume: () =>
+      new Promise<void>((resolve) => {
+        resolvers.push(resolve)
+      }),
+  })
+  const allow = (): void => {
+    audio.raw.state = 'running'
+    for (const resolve of resolvers.splice(0)) resolve()
+  }
+  return { ...audio, allow }
 }
 
 function fakeSpeech() {
@@ -195,25 +215,37 @@ describe('useDismissalChime', () => {
     expect(() => chime.onNewRequest(req('r2'))).not.toThrow()
     await flushPromises()
 
-    expect(resume).toHaveBeenCalled()
+    // 尚未 unlock 不呼叫 resume，直接略過
+    expect(resume).not.toHaveBeenCalled()
     expect(createOscillator).toHaveBeenCalledTimes(0)
     expect(speech.speak).toHaveBeenCalledWith('低年級A班 王小明 家長到了')
+
+    // 已 unlock 但 resume 被拒絕：同樣靜默略過，語音照播
+    chime.unlock()
+    await flushPromises()
+    expect(() => chime.onArrived(req('r3'))).not.toThrow()
+    await flushPromises()
+    expect(resume).toHaveBeenCalledTimes(2)
+    expect(createOscillator).toHaveBeenCalledTimes(0)
+    expect(speech.speak).toHaveBeenCalledTimes(2)
   })
 
   it('useDismissalChime plays after a suspended context resumes', async () => {
     const { chime, createOscillator, resume } = setup({ state: 'suspended' })
+    chime.unlock()
 
     chime.onArrived(req('r1'))
     expect(createOscillator).toHaveBeenCalledTimes(0)
     await flushPromises()
 
-    expect(resume).toHaveBeenCalledTimes(1)
+    expect(resume).toHaveBeenCalledTimes(2)
     expect(createOscillator).toHaveBeenCalledTimes(2)
   })
 
   it('useDismissalChime retries tone after a failed resume', async () => {
     const audio = fakeAudio({ state: 'suspended', resume: () => Promise.reject(new Error('NotAllowedError')) })
     const chime = useDismissalChime({ audioContextFactory: () => audio.ctx, speech: fakeSpeech() })
+    chime.unlock()
 
     chime.onArrived(req('r1'))
     await flushPromises()
@@ -222,6 +254,90 @@ describe('useDismissalChime', () => {
     chime.onArrived(req('r2'))
     await flushPromises()
 
+    expect(audio.createOscillator).toHaveBeenCalledTimes(2)
+  })
+
+  it('useDismissalChime stays silent before unlock and never replays skipped tones afterwards', async () => {
+    const audio = pendingResumeAudio()
+    const speech = fakeSpeech()
+    const chime = useDismissalChime({ audioContextFactory: () => audio.ctx, speech })
+
+    chime.onArrived(req('r1'))
+    chime.onNewRequest(req('r2'))
+    vi.advanceTimersByTime(60_000)
+    chime.onArrived(req('r3'))
+    await flushPromises()
+
+    expect(audio.createOscillator).toHaveBeenCalledTimes(0)
+    // unlock 前不呼叫 resume：resume 會一直 pending，等第一次手勢才一併 resolve
+    expect(audio.resume).not.toHaveBeenCalled()
+    expect(speech.speak).toHaveBeenCalledTimes(2)
+
+    chime.unlock()
+    audio.allow()
+    await flushPromises()
+    expect(audio.createOscillator).toHaveBeenCalledTimes(0)
+
+    // unlock 之後的新請求照常響
+    chime.onArrived(req('r4'))
+    expect(audio.createOscillator).toHaveBeenCalledTimes(2)
+    chime.onNewRequest(req('r5'))
+    expect(audio.createOscillator).toHaveBeenCalledTimes(3)
+  })
+
+  it('useDismissalChime first gesture muting does not play skipped tones', async () => {
+    const audio = pendingResumeAudio()
+    const chime = useDismissalChime({ audioContextFactory: () => audio.ctx, speech: fakeSpeech() })
+
+    chime.onArrived(req('r1'))
+    chime.toggleMute()
+    chime.unlock()
+    audio.allow()
+    await flushPromises()
+
+    expect(audio.createOscillator).toHaveBeenCalledTimes(0)
+  })
+
+  it('useDismissalChime plays when a suspended context resumes right after unlock', async () => {
+    const audio = pendingResumeAudio()
+    const chime = useDismissalChime({ audioContextFactory: () => audio.ctx, speech: fakeSpeech() })
+    chime.unlock()
+
+    chime.onArrived(req('r1'))
+    await flushPromises()
+    expect(audio.createOscillator).toHaveBeenCalledTimes(0)
+    audio.allow()
+    await flushPromises()
+
+    expect(audio.createOscillator).toHaveBeenCalledTimes(2)
+  })
+
+  it('useDismissalChime drops a tone whose resume resolves after muting', async () => {
+    const audio = pendingResumeAudio()
+    const chime = useDismissalChime({ audioContextFactory: () => audio.ctx, speech: fakeSpeech() })
+    chime.unlock()
+
+    chime.onArrived(req('r1'))
+    chime.toggleMute()
+    audio.allow()
+    await flushPromises()
+
+    expect(audio.createOscillator).toHaveBeenCalledTimes(0)
+  })
+
+  it('useDismissalChime drops a tone whose resume resolves too late', async () => {
+    const audio = pendingResumeAudio()
+    const chime = useDismissalChime({ audioContextFactory: () => audio.ctx, speech: fakeSpeech() })
+    chime.unlock()
+
+    chime.onArrived(req('r1'))
+    chime.onNewRequest(req('r2'))
+    vi.advanceTimersByTime(60_000)
+    audio.allow()
+    await flushPromises()
+    expect(audio.createOscillator).toHaveBeenCalledTimes(0)
+
+    chime.onArrived(req('r3'))
     expect(audio.createOscillator).toHaveBeenCalledTimes(2)
   })
 
