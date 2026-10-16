@@ -104,7 +104,10 @@ def _closed_at(request: PickupRequest) -> datetime:
 
 
 def get_queue(session: Session, query: PickupQueueQuery, *, clock: Clock) -> PickupQueueOut:
-    """該日全部請求，分 open（非終態）/ closed（終態，最近結束的在前）。"""
+    """該日全部請求，分 open（非終態）/ closed（終態，最近結束的在前）。
+
+    附目前 ``pickup.window`` 的 latest_expected_arrival（BACKEND-563；不隨 date 變化）。
+    """
     d = query.date or clock.today()
     requests = list(
         session.execute(select(PickupRequest).where(PickupRequest.service_date == d)).scalars()
@@ -128,6 +131,7 @@ def get_queue(session: Session, query: PickupQueueQuery, *, clock: Clock) -> Pic
             arrived=statuses["arrived"],
             needs_reply=sum(1 for view in open_views if view.needs_reply),
         ),
+        latest_expected_arrival=get_setting(session, PICKUP_WINDOW).latest_expected_arrival,
     )
 
 

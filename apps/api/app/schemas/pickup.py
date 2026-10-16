@@ -167,6 +167,8 @@ class PickupQueueOut(OutModel):
     open: list[PickupRequestOut]
     closed: list[PickupRequestOut]
     counts: PickupQueueCountsOut
+    # 目前 pickup.window 的最晚預計抵達時間（不隨 date 變化）；員工代建 / 回覆的時間選項上限
+    latest_expected_arrival: TimeHM
 
 
 class RosterOpenRequestOut(OutModel):
