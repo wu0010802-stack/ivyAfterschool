@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 233,
-  "last_updated": "2026-10-16T13:00:53Z",
+  "version": 234,
+  "last_updated": "2026-10-16T13:01:34Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5172,7 +5172,7 @@
           "ExamsView empty states：預設篩選下 GET /admin/exams 回 {items:[],total:0} → 文字含 '還沒有考試紀錄' 與 '預設只顯示近 90 天到未來 30 天的考試'；在搜尋框輸入 '期末' 並按 Enter 後回空 → 文字含 '沒有符合條件的考試'、不含 '還沒有考試紀錄'"
         ],
         "run": "just web-test src/views/ExamsView.spec.ts -t \"ExamsView\"",
-        "notes": "「create redirects to scores tab」與「delete only for drafts with permission」要掛整頁 + 表格 + dialog / 下拉，在共用 CPU 下可能超過 vitest 預設 5 秒，各設 20 秒 timeout。年級篩選在 filters 以字串存（usePagedList 依初始值型別還原網址 query），傳給工具列下拉與 API 時轉成數字。"
+        "notes": "每個案例都掛整頁（PageHeader + AdminListToolbar + el-table，部分再開 dialog / 下拉 / 確認框），在共用 CPU 下單一案例可能超過 vitest 預設 5 秒，整個 describe 設 20 秒 timeout。年級篩選在 filters 以字串存（usePagedList 依初始值型別還原網址 query），傳給工具列下拉與 API 時轉成數字。"
       },
       "review": {
         "status": "pending",
