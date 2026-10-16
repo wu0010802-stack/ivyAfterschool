@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 206,
-  "last_updated": "2026-10-16T15:54:06Z",
+  "version": 207,
+  "last_updated": "2026-10-16T19:09:45Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3798,7 +3798,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/ConfirmDialog.vue",
       "source_ref": "FE:src/parent/components/ConfirmDialog.vue::defineEmits",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-026"
@@ -3819,9 +3819,9 @@
         "notes": "版面以 Chromium 390×844 實測寫進回報（見 description）；harness 的 vite 一律 dts: false。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。2 條 red_case 都有同名測試；tdd.run 21/21 綠，名稱清單選得到兩條。commit 順序 cf63ab0（測試；當時 ConfirmDialog 沒有這兩條規則，所以是紅的）→ 60633d1（只改 ConfirmDialog.vue 樣式）→ 476a138（狀態）。測試的 cssRule 只取「整個選擇器恰為該字串」的規則，.dialog__extra:empty 與 .dialog__actions .m3-button 都不會誤中。突變 6 個全殺：拿掉 actions margin-top、改成 4px、寫到別的選擇器、拿掉 extra margin、改成只有 margin-top、拿掉 :empty。Chromium 390×844 實測（scratchpad 內獨立 vite 設定，只掛 vue 外掛，不寫 components.d.ts）：按鈕列與上方內容的間距，無 slot 時 24（gap 16 + 8），有勾選列時 20（16 + 8 − 4），與元件稿一致。頁面內實測：PickupView「取消這次接送？」342×152（原本 144，稿 152）；「確認已抵達安親班？」342×244（不變，稿 244）；MoreView「確定要登出？」342×188，與 parent-page-more.html 稿內的登出對話框 342×188 相同。其他使用 ConfirmDialog 的頁面以實際文案逐一掛載量測，都沒有水平或垂直溢出、按鈕都在對話框內、對話框都在視窗內：LeavesView 取消整筆 / 剩餘 342×188；PickupProxyView 刪除接送人 342×220、重新產生接送碼 342×208、取消代理 342×188、離開確認 342×208；ChildHub 的「我到了」同 PickupView 342×244。壓力案例（長標題、長說明、長按鈕、含勾選列）按鈕換成兩列，仍在對話框內，高 404，不溢出。web-lint 乾淨；web-typecheck 只剩他人未追蹤的 DismissalPosBoard.spec.ts（紅燈階段、元件尚未建立）的錯誤，本 task 檔案沒有錯誤。殘留：無。"
       }
     }
   ]
