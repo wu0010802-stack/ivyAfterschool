@@ -198,6 +198,43 @@ describe('StudentSelect', () => {
     expect(optionTexts(wrapper)).toEqual(['林小華（S1003・中年級班）'])
   })
 
+  it('StudentSelect discards stale results: clearing text cancels in-flight request', async () => {
+    mock.onGet('/admin/students').reply(
+      () => new Promise((resolve) => setTimeout(() => resolve([200, page([WANG])]), 500)),
+    )
+    const wrapper = await mountSelect()
+
+    await type(wrapper, '王')
+    await advance(300)
+    expect(studentGets()).toHaveLength(1)
+    // 回應未到前清掉文字：這個請求作廢
+    await type(wrapper, '')
+    await advance(600)
+
+    expect(optionTexts(wrapper)).toEqual([])
+  })
+
+  it('StudentSelect discards stale results: new input cancels in-flight request during debounce', async () => {
+    mock.onGet('/admin/students', { params: { q: '王', status: 'active', page_size: 20 } }).reply(
+      () => new Promise((resolve) => setTimeout(() => resolve([200, page([WANG])]), 200)),
+    )
+    mock.onGet('/admin/students', { params: { q: '林', status: 'active', page_size: 20 } }).reply(200, page([LIN]))
+    const wrapper = await mountSelect()
+
+    await type(wrapper, '王')
+    await advance(300)
+    expect(studentGets()).toHaveLength(1)
+    await type(wrapper, '林')
+    // 「林」的 debounce 期間「王」的回應到達：仍只顯示搜尋中，不出現上一個關鍵字的結果
+    await advance(250)
+    expect(studentGets()).toHaveLength(1)
+    expect(optionTexts(wrapper)).toEqual([])
+    expect(dropdown(wrapper).textContent).toContain('搜尋中…')
+
+    await advance(100)
+    expect(optionTexts(wrapper)).toEqual(['林小華（S1003・中年級班）'])
+  })
+
   it('StudentSelect empty result copy', async () => {
     mock.onGet('/admin/students').reply(200, page([]))
     const wrapper = await mountSelect()
