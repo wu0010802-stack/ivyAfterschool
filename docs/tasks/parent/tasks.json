@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 157,
-  "last_updated": "2026-10-16T06:17:40Z",
+  "version": 158,
+  "last_updated": "2026-10-16T06:23:10Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1940,11 +1940,11 @@
     {
       "id": "PARENT-093",
       "title": "實作 parent/stores/pickupRequests.ts：今日接送請求（全部小孩）、操作與 ws 即時套用",
-      "description": "建立 `apps/web/src/parent/stores/pickupRequests.ts`（Pinia setup store，id `parentPickupRequests`）：\n- state：`items: ParentPickupRequest[]`、`loaded`、`loading`、`error: string | null`。\n- getters：`openFor(childId)`：該小孩 status ∈ {pending, acknowledged, arrived} 中 created_at 最新的一筆，無則 null；`latestFor(childId)`：該小孩 created_at 最新的一筆（含終態）；`historyFor(childId)`：該小孩終態請求，created_at 由新到舊。\n- actions：`load(force = false)`（PARENT-090 `listTodayPickupRequests`，並發共用 promise，失敗 `error = '接送狀態載入失敗'`、保留舊資料）；`create(childId, expectedArrivalAt: string | null)`；`markArrived(id)`；`cancel(id, reason?)`；`arriveNow(childId)`：「我已經到了」捷徑，POST `{student_id, arrived: true}`；回 409 `pickup_request_exists` 且 `error.details.request_id` 有值 → 改對該 id 呼叫 PARENT-090 `markPickupArrived`（BACKEND-442）並以其結果作為回傳（不先 rethrow）；該次 arrived 再回 409 `invalid_pickup_status`（例如已被接走）→ `load(true)` 後 rethrow。四個寫入動作成功後以回應 upsert（依 id 取代或加入）並回傳該筆。錯誤：`pickup_request_exists`、`invalid_pickup_status` 或 404 `pickup_request_not_found`（請求已不存在或已不屬於自己，例如解除綁定）→ 先 `load(true)` 同步最新狀態再 rethrow 原錯誤（移植 ivy PickupNoticeView「409 時先 refresh」）。寫入進行中以 `pendingAction: string | null` 標示，同時只允許一個寫入（重複呼叫直接回傳進行中的 promise，防連點）。\n- ws：向 PARENT-173 `parentWs.on('pickup.request_updated', data => upsert(data))`；向 `parentWs.registerPoller(() => load(true))`。只保留 service_date 為台北今日的資料（FRONTEND-003），跨日事件忽略。\n- `clear()`。\n\n移植 ivy `FE:src/parent/views/PickupNoticeView.vue::refresh` 的 listSeq 過期回應保護與 409 同步邏輯（從 view 抽到 store）。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/stores/pickupRequests.ts`（Pinia setup store，id `parentPickupRequests`）：\n- state：`items: ParentPickupRequest[]`、`loaded`、`loading`、`error: string | null`。\n- getters：`openFor(childId)`：該小孩 status ∈ {pending, acknowledged, arrived} 中 created_at 最新的一筆，無則 null；`latestFor(childId)`：該小孩 created_at 最新的一筆（含終態）；`historyFor(childId)`：該小孩終態請求，created_at 由新到舊。\n- actions：`load(force = false)`（PARENT-090 `listTodayPickupRequests`，並發共用 promise，失敗 `error = '接送狀態載入失敗'`、保留舊資料）；`create(childId, expectedArrivalAt: string | null)`；`markArrived(id)`；`cancel(id, reason?)`；`arriveNow(childId)`：「我已經到了」捷徑，POST `{student_id, arrived: true}`；回 409 `pickup_request_exists` 且 `error.details.request_id` 有值 → 改對該 id 呼叫 PARENT-090 `markPickupArrived`（BACKEND-442）並以其結果作為回傳（不先 rethrow）；該次 arrived 再回 409 `invalid_pickup_status`（例如已被接走）→ `load(true)` 後 rethrow。四個寫入動作成功後以回應 upsert（依 id 取代或加入）並回傳該筆。錯誤：`pickup_request_exists`、`invalid_pickup_status` 或 404 `pickup_request_not_found`（請求已不存在或已不屬於自己，例如解除綁定）→ 先 `load(true)` 同步最新狀態再 rethrow 原錯誤（移植 ivy PickupNoticeView「409 時先 refresh」）。寫入進行中以 `pendingAction: string | null` 標示（目前送出中的動作），同時只允許一個寫入在途：同一動作且同參數的重複呼叫共用進行中（或排隊中）的 promise（防連點）；不同動作或不同參數的寫入排在進行中的寫入之後依序送出（前一筆失敗也照常執行），各自回傳自己的結果，不得以別的寫入結果 resolve；沒有寫入在途時立刻開始。\n- ws：向 PARENT-173 `parentWs.on('pickup.request_updated', data => upsert(data))`；向 `parentWs.registerPoller(() => load(true))`。只保留 service_date 為台北今日的資料（FRONTEND-003），跨日事件忽略。\n- `clear()`（登出 / 換人）：清空 state，並讓在途與排隊中的寫入失效——已送出的寫入回應不寫回 store、需同步的失敗不再 `load(true)`，呼叫端的 promise 照常 resolve / reject；排隊中尚未送出的寫入不送出，以 `ApiError(0, 'write_cancelled', ...)` reject（export `WRITE_CANCELLED_CODE`）；clear 之後的新寫入照常執行，不與被丟棄的寫入共用 promise。\n\n移植 ivy `FE:src/parent/views/PickupNoticeView.vue::refresh` 的 listSeq 過期回應保護與 409 同步邏輯（從 view 抽到 store）。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/pickupRequests.ts",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::refresh",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -1970,10 +1970,15 @@
           "pickupRequestsStore arriveNow creates arrived request：POST 回 201 {id:'r8', student_id:'s1', status:'arrived', reply_message:'作業已完成，可以接送', reply_source:'auto'} → arriveNow('s1') resolve 該筆，POST body 深等於 {student_id:'s1', arrived:true}，openFor('s1').status === 'arrived'",
           "pickupRequestsStore arriveNow falls back to existing request：POST 回 409 {error:{code:'pickup_request_exists', details:{request_id:'r7'}}}、POST '/parent/pickup/requests/r7/arrived' 回 {id:'r7', status:'arrived'} → arriveNow('s1') resolve 的 id === 'r7'，openFor('s1').status === 'arrived'，不 reject",
           "pickupRequestsStore arriveNow fallback conflict syncs：409 pickup_request_exists 後對 r7 arrived 回 409 invalid_pickup_status、GET today 回 r7 completed → arriveNow reject 且 error.code === 'invalid_pickup_status'，之後 latestFor('s1').status === 'completed'",
-          "pickupRequestsStore handles not found：markArrived('r2') 回 404 {error:{code:'pickup_request_not_found'}}、GET today 回 [] → reject 且 error.code === 'pickup_request_not_found'，之後 openFor('s1') === null"
+          "pickupRequestsStore handles not found：markArrived('r2') 回 404 {error:{code:'pickup_request_not_found'}}、GET today 回 [] → reject 且 error.code === 'pickup_request_not_found'，之後 openFor('s1') === null",
+          "pickupRequestsStore queues a different create behind the in-flight one：create('s1', null) 在途時 create('s2', '17:40') → 第一筆回應前只送出 1 次 POST；回應後才送出第二次 POST，body 深等於 {student_id:'s2', expected_arrival_at:'17:40'}，create('s2') resolve 成 s2 的請求（不是 s1 的），openFor('s2') 為該筆",
+          "pickupRequestsStore queues arriveNow behind an in-flight create：create('s1', null) 在途時 arriveNow('s1') → 不得 resolve 成 pending 那筆；create 回應後送出 POST {student_id:'s1', arrived:true}，回 409 pickup_request_exists（request_id 'r5'）後對 r5 arrived → resolve 的 status === 'arrived'，openFor('s1').status === 'arrived'",
+          "pickupRequestsStore queues cancel behind an in-flight markArrived：markArrived('r2') 在途時 cancel('r2') → arrived 回應前沒有送出 cancel；之後送出 POST cancel，cancel() resolve 成 status 'cancelled' 的那筆，markArrived() resolve 成 arrived 那筆，openFor('s1') === null",
+          "pickupRequestsStore clear ignores in-flight write results：已載入 [r2]，markArrived('r2') 在途時 clear()：回應 200 arrived → promise resolve 該筆，但 items 仍為 []、loaded false；回應 409 invalid_pickup_status → promise reject 且 code 相同，GET today 的請求數不變（沒有 load(true)）",
+          "pickupRequestsStore clear drops queued writes without sending them：markArrived('r2') 在途、cancel('r2') 排隊時 clear() → 排隊的 cancel 以 ApiError status 0、code 'write_cancelled' reject 且沒有送出 POST cancel；clear 之後再呼叫 cancel('r2')（同 key）照常送出一次並 resolve 自己的結果、寫回 store"
         ],
         "run": "just web-test src/parent/stores/pickupRequests.spec.ts -t \"pickupRequestsStore\"",
-        "notes": ""
+        "notes": "Pinia 會把 action 回傳的 promise 再包一層（wrapAction），共用 promise 的斷言要比對 resolve 的值（同一筆物件），不能比對 promise 身分。"
       },
       "review": {
         "status": "concern",
