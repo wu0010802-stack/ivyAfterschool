@@ -275,7 +275,7 @@ describe('PickupCompleteDialog', () => {
     expect(completeBodies()).toEqual([{ method: 'override', note: '阿嬤臨時來接，已電話向媽媽確認' }])
     expect(wrapper.emitted('done')).toHaveLength(1)
 
-    document.body.innerHTML = ''
+    wrapper.unmount()
     await mountDialog({ canOverride: false })
     expect(dialog().text()).not.toContain('主管確認交付')
   })
@@ -317,18 +317,20 @@ describe('PickupCompleteDialog', () => {
 
   it('PickupCompleteDialog no eligible person', async () => {
     mock.onGet(GUARDIANS_URL).reply(200, [MOTHER, { ...FATHER, can_pickup: false }])
-    await mountDialog()
+    const none = await mountDialog()
 
     expect(dialog().text()).toContain('沒有可接送的監護人，請聯絡主任處理')
     expect(submitButton().attributes('disabled')).toBeDefined()
+    none.unmount()
 
     // 有今日授權或可主管確認時就不是「沒有可接送的人」
-    document.body.innerHTML = ''
-    await mountDialog({ authorizations: [authorization('pa1')] })
-    expect(dialog().text()).not.toContain('沒有可接送的監護人')
-    document.body.innerHTML = ''
+    const withProxy = await mountDialog({ authorizations: [authorization('pa1')] })
+    expect(dialog().text()).not.toContain('沒有可接送的監護人，請聯絡主任處理')
+    expect(dialog().find('.el-alert--warning').exists()).toBe(false)
+    withProxy.unmount()
     await mountDialog({ canOverride: true })
-    expect(dialog().text()).not.toContain('沒有可接送的監護人')
+    expect(dialog().text()).not.toContain('沒有可接送的監護人，請聯絡主任處理')
+    expect(dialog().find('.el-alert--warning').exists()).toBe(false)
   })
 
   it('PickupCompleteDialog shows when the student has no guardian data', async () => {
