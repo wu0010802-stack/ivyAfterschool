@@ -70,7 +70,7 @@ describe('ExamSummaryTable', () => {
     expect(wrapper.text()).toContain('平均只計有分數的學生，缺考與未填不計入；不做排名')
     expect(headers(wrapper)).toEqual(['科目', '滿分', '平均', '最高', '最低', '已填', '缺考', '未填'])
     const cells = rowCells(wrapper, '數學')
-    expect(cells.map((c) => c.text())).toEqual(['數學', '100', '82.4得分率 82%', '100', '45', '16', '1', '1'])
+    expect(cells.map((c) => c.text())).toEqual(['數學', '100', '82.4 得分率 82%', '100', '45', '16', '1', '1'])
     expect(cells[2]?.text()).toContain('82.4')
     expect(cells[2]?.text()).toContain('82%')
     expect(cells[7]?.find('.is-warning').exists()).toBe(true)
@@ -104,7 +104,7 @@ describe('ExamSummaryTable', () => {
     expect(rowCells(wrapper, '英語')[7]?.find('.is-warning').exists()).toBe(false)
     // 平均一位小數、最高最低原樣、得分率整數百分比
     const math = rowCells(wrapper, '數學').map((c) => c.text())
-    expect(math).toEqual(['數學', '100', '60.0得分率 60%', '88.5', '59.95', '2', '0', '16'])
+    expect(math).toEqual(['數學', '100', '60.0 得分率 60%', '88.5', '59.95', '2', '0', '16'])
   })
 
   it('ExamSummaryTable reloads on refresh key', async () => {
