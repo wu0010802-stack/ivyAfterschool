@@ -119,6 +119,16 @@ function detailGets(id = 's1'): number {
   return mock.history.get.filter((c) => c.url === `/admin/students/${id}`).length
 }
 
+/** header 的 meta 兩行（以 <br> 分隔）：學號・年級・安親班班級／就讀國小與班級 */
+function metaLines(wrapper: VueWrapper): string[] {
+  const lines: string[] = ['']
+  for (const node of Array.from(wrapper.find('.detail-head__meta').element.childNodes)) {
+    if (node.nodeName === 'BR') lines.push('')
+    else lines[lines.length - 1] += node.textContent ?? ''
+  }
+  return lines.map((l) => l.replace(/\s+/g, ' ').trim())
+}
+
 function buttonsText(wrapper: VueWrapper): string[] {
   return wrapper.findAll('button').map((b) => b.text())
 }
@@ -190,11 +200,13 @@ describe('StudentDetailPanel', () => {
     const head = wrapper.find('.detail-head')
     expect(head.find('h2').text().replace(/\s+/g, '')).toBe('王小明在學')
     expect(head.find('h2 .el-tag').classes()).toContain('el-tag--success')
-    expect(head.find('.detail-head__meta').text().replace(/\s+/g, ' ')).toBe('S1001・三年級・低年級A班 某某國小 三年二班')
+    expect(metaLines(wrapper)).toEqual(['S1001・三年級・低年級A班', '某某國小 三年二班'])
     expect(head.find('.detail-head__archived').exists()).toBe(false)
 
+    // 第一個 el-descriptions 是基本資料；敏感欄位（StudentSensitiveFields）另有自己的 descriptions
+    const basic = wrapper.findAll('.el-descriptions')[0]!
     const items = Object.fromEntries(
-      wrapper.findAll('.el-descriptions__label').map((l, i) => [l.text(), wrapper.findAll('.el-descriptions__content')[i]?.text()]),
+      basic.findAll('.el-descriptions__label').map((l, i) => [l.text(), basic.findAll('.el-descriptions__content')[i]?.text()]),
     )
     expect(items).toEqual({
       性別: '男',
@@ -220,7 +232,7 @@ describe('StudentDetailPanel', () => {
     mock.onGet('/admin/students/s1').reply(200, detail({ class: null, school: null, school_class: null, gender: null, note: null }))
     const { wrapper } = await mountPanel()
 
-    expect(wrapper.find('.detail-head__meta').text().replace(/\s+/g, ' ')).toBe('S1001・三年級・未分班 未填就讀國小')
+    expect(metaLines(wrapper)).toEqual(['S1001・三年級・未分班', '未填就讀國小'])
     const labels = wrapper.findAll('.el-descriptions__label').map((l) => l.text())
     const contents = wrapper.findAll('.el-descriptions__content').map((c) => c.text())
     expect(contents[labels.indexOf('性別')]).toBe('—')
