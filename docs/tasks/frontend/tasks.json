@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 329,
-  "last_updated": "2026-10-16T23:20:22Z",
+  "version": 330,
+  "last_updated": "2026-10-16T23:21:55Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6043,7 +6043,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/support/admin.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "INFRA-014",
@@ -6054,7 +6054,7 @@
         "BACKEND-174"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r10-f1 打回】e2e 與共用 DB 的整合測試互相干擾，需在 e2e 端處理（建議寫進 FRONTEND-290 的 tdd.run / notes 與 291~293 的執行方式）：1) e2e 一律在 flock /tmp/afterschool_db.lock 內執行（例如 flock /tmp/afterschool_db.lock timeout 600 just e2e ...），避免 seedBasic 的未封存學生 / 班級與整合測試同時存在；2) e2e.admin 在 run 結束後不得保持啟用：例如 globalSetup 以 owner（依 username）啟用、globalTeardown 停用（UPDATE is_active=false，不刪列，audit_logs 不可刪），或改用其他不留啟用帳號的方式；驗收：跑完一次 e2e 後，以 flock 跑 test_staff_user_service.py -k test_deactivate_concurrent_last_admins、test_attendance_jobs.py、test_grade_promotion_service.py 全綠。若協調者 / 使用者偏好改用獨立 e2e 資料庫，屬架構決策，請寫進 open_design_questions 後再改。",
+      "risk_notes": "e2e 會在共用本機 DB 建立未封存的學生 / 班級並在 run 期間啟用 e2e.admin，必須在 flock /tmp/afterschool_db.lock 內執行（tdd.run 已寫入）；FRONTEND-291~293 的 tdd.run 也要包 flock。\nglobalTeardown 只在 Playwright 正常結束時執行：run 被 timeout / SIGKILL 中止時，e2e.admin 會保持啟用，test_deactivate_concurrent_last_admins 會出現假紅。補救方式：重跑一次任一 e2e，或以 owner 執行 UPDATE staff_users SET is_active=false WHERE username='e2e.admin'。\nCI（.github/workflows/e2e.yml，手動或每日排程）目前跑不起後台 e2e：workflow 沒有以 create-admin 建立 e2e admin 並改密碼，也沒有 E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD；未設時 globalSetup / globalTeardown 不做事，loginAsAdmin 會直接 throw。另外 `pnpm exec playwright test` 跑全套時，parent-mobile 的 testMatch e2e/parent/** 把 fixtures.ts 也當成測試檔，載入就失敗（在 PARENT-190 就已存在，與 290 無關）。這兩項都屬 INFRA，應另開 task，不擋 290。ownerDb 依賴的 docker compose exec db，在 CI 用 compose 起的 DB 上可以用。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/e2e/admin/support.spec.ts",
@@ -6071,9 +6071,9 @@
         "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin，帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數。create-admin 建立的帳號 must_change_password=true，登入後會被導到 /change-password：先以 UI 或 `POST /api/admin/auth/change-password` 改成 `E2E_ADMIN_PASSWORD` 再跑 e2e。e2e 會在共用本機 DB 建立未封存的學生 / 班級並啟用 e2e.admin，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯；run 結束由 globalTeardown 停用 e2e.admin（owner 連線，理由見 description）。API / Web 不在 8341 / 5341 時設 `E2E_BASE_URL`，且 API 的 `CORS_ORIGINS` 要含該 Web origin（Origin 檢查，BACKEND-019）。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。驗收：跑完一次 e2e 後以 flock 跑 test_staff_user_service.py -k test_deactivate_concurrent_last_admins、test_attendance_jobs.py、test_grade_promotion_service.py 全綠。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f1",
-        "notes": "打回（review-r10-f1）。helper 本身符合 description：just e2e e2e/admin/support.spec.ts -g \"e2e support\" 3 passed（3 條 red_case 逐條對應），tsc_e2e.sh 檢查 admin.ts / support.spec.ts exit 0，web-typecheck exit 0；a2beb12 / 657b934（紅）先於 4962236 / 5ad4298。突變：cleanup 不封存監護人、不封存學生、拿掉缺帳密檢查，各讓對應測試轉紅（突變留下的未封存 E2E 學生 / 監護人 / 班級已由 reviewer 以 API 封存，DB 回到 0 筆未封存）。cleanup 偏離合理：封存學生不會連帶封存監護人（拿掉監護人封存後 GET guardians 不為空即證），班級有在學學生時封存會 409 class_has_students，所以順序必須是監護人 → 學生 → 班級。打回原因（攸關共用 DB）：以 flock 跑整合測試的結果——1) tests/integration/services/test_staff_user_service.py::test_deactivate_concurrent_last_admins 穩定假紅：前置斷言『共用 DB 沒有其他啟用員工』被 e2e.admin（admin、啟用中，目前 staff_users 唯一一列）擋下；2) e2e 執行期間 seedBasic 建立的「未封存」學生 / 班級會讓整表計數類測試假紅：test_attendance_jobs::test_attendance_job_runs_and_idempotent（4 == 2）、test_grade_promotion_service 11 條失敗（預覽名單含 E2E生、409 名單有變）——當時 DB 內正有 FRONTEND-291 的 e2e 剛建立、尚未封存的 E2E生（23:11）；e2e 沒有取 /tmp/afterschool_db.lock，會與整合測試交錯。已封存的殘列不受影響（各 service 都排除 archived_at），dashboard、rbac_retained、pickup_jobs、student_repository、classes / staff_users / roles 端點測試皆綠。判斷：應改 e2e 端，不改這些測試（它們依賴的『共用 DB 無殘列 / 無其他啟用員工』是 kickoff 的既有慣例）。"
+        "notes": "複審通過（review-r10-f1）。驗收：flock 內 just e2e e2e/admin/support.spec.ts -g \"e2e support\" 4 passed，跑完以 owner psql 查詢 e2e.admin is_active=f，且沒有其他啟用中的 staff。之後 flock 跑 test_staff_user_service.py -k test_deactivate_concurrent_last_admins 1 passed、test_attendance_jobs.py 3 passed、test_grade_promotion_service.py 14 passed。e2e/admin 全目錄跑完（4 passed / 7 skipped），未封存學生 / 班級都是 0。新 red_case「teardown deactivates admin」有對應測試；1837045（紅：global-setup/teardown 尚不存在）先於 04fa8f2（綠）。description 只補上 globalSetup/Teardown 與 owner 連線的範圍，tdd.run 包上 flock，都屬修正，不是放寬。突變：global-teardown 改成不停用 → 新測試紅（Expected false / Received true）；還原後 git diff 乾淨，重跑綠，e2e.admin 恢復成 f。tsc_e2e.sh 檢查 ownerDb / global-setup / global-teardown / support.spec / playwright.config exit 0，web-typecheck exit 0。(1) owner 連線：execFileSync 直接呼叫 docker，沒經過 shell。username 以 psql -v u=... 傳入，SQL 經 stdin 以 :'u' 加引號展開，不會注入；ON_ERROR_STOP=1。只對 staff_users 依 username UPDATE is_active，停用時 token_version+1 讓舊 session 失效，不刪列、不碰 audit_logs，只有 globalSetup/Teardown 和 support.spec 斷言用到。判定安全，用途也只限於此。(2) 家長端替身 e2e：未設 E2E_ADMIN_USERNAME 時 setup / teardown 都不做事。實測 env -u E2E_ADMIN_* just e2e e2e/parent/login-bind-pickup.spec.ts 5 passed，不受影響。（以 e2e/parent 目錄執行會因 testMatch 收到 fixtures.ts 而載入失敗，在 PARENT-190 就已存在，見 risk_notes。）(3) CI：workflow 沒有建立 e2e admin，也沒有 E2E_ADMIN_* secret，後台 e2e 在 CI 會在 loginAsAdmin throw；teardown 依賴的 docker compose 在 CI 可以用。這是 CI 佈建問題，加上全套 testMatch 的問題，應另開 INFRA task，不擋 290。"
       }
     },
     {
