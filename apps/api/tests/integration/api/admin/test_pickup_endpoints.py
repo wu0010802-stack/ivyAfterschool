@@ -5,6 +5,7 @@ BACKEND-430 / 432 / 434：POST /api/admin/pickup/requests、/{id}/acknowledge、
 BACKEND-431：POST /api/admin/pickup/requests/{id}/reply。
 BACKEND-433：POST /api/admin/pickup/requests/{id}/complete。
 BACKEND-437：POST /api/admin/pickup/authorizations/{id}/verify（錯碼累計先 commit）。
+BACKEND-569：verify 錯碼 400 / 鎖定 409 也推播 pickup.authorization_updated（靠先 commit）。
 BACKEND-438：POST /api/admin/pickup/authorizations/{id}/confirm-visual-match。
 BACKEND-439：POST /api/admin/pickup/authorizations/{id}/override-complete。
 
@@ -13,8 +14,10 @@ fake_clock 預設 2026-09-01 01:00 UTC（台北 09:00）；接送請求 / 授權
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime, time
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -33,6 +36,8 @@ from app.models.parents import ParentAccount
 from app.models.pickup import PickupAuthorization, PickupRequest
 from app.models.students import Student
 from app.notifications import outbox_jobs
+from app.realtime import publish as publish_module
+from app.realtime.publish import admin_topic_channel, student_channel
 from app.services.settings_service import clear_settings_cache
 from tests.support.factories import (
     make_attendance,
@@ -1051,6 +1056,85 @@ def test_admin_pickup_verify_lock_on_fifth(
         fake_clock.now(),
         "active",
     )
+
+
+# --- BACKEND-569：錯碼 / 鎖定的推播（handler 先 commit 才送得出 after_commit 推播） ---
+
+Call = tuple[list[str], dict[str, Any]]
+_AUTH_UPDATED = "pickup.authorization_updated"
+
+
+@pytest.fixture
+def published(monkeypatch: pytest.MonkeyPatch) -> list[Call]:
+    calls: list[Call] = []
+
+    def record(channels: list[str], message: dict[str, Any]) -> None:
+        calls.append((list(channels), dict(message)))
+
+    monkeypatch.setattr(publish_module, "publish_threadsafe", record)
+    return calls
+
+
+def _auth_updates(published: list[Call]) -> list[dict[str, Any]]:
+    return [
+        m
+        for channels, m in published
+        if channels == [admin_topic_channel("pickup")] and m["type"] == _AUTH_UPDATED
+    ]
+
+
+def test_admin_pickup_verify_mismatch_broadcasts(
+    staff_client: StaffClientFactory,
+    db_session: Session,
+    assert_error: AssertError,
+    published: list[Call],
+) -> None:
+    ming, _ = _family(db_session)
+    auth = make_pickup_authorization(db_session, ming, service_date=_TODAY, code="135790")
+    client, _ = staff_client(permissions=["pickup:operate", "pickup:read"])
+
+    resp = client.post(_auth_url(auth.id, "/verify"), json={"code": "246802"})
+
+    assert_error(resp, 400, "pickup_code_mismatch")
+    [message] = _auth_updates(published)
+    assert (message["data"]["id"], message["data"]["status"]) == (str(auth.id), "active")
+    # 推播形狀為 PickupAuthorizationOut（不含連錯次數 / 鎖定）；後台收到後重抓 B436 清單
+    assert not {"code_attempts", "locked"} & set(message["data"])
+    assert [(a["id"], a["code_attempts"], a["locked"]) for a in client.get(_AUTHS).json()] == [
+        (str(auth.id), 1, False)
+    ]
+    dumped = json.dumps(message)
+    assert "246802" not in dumped
+    assert "135790" not in dumped
+    assert "code_hash" not in message["data"]
+
+
+def test_admin_pickup_verify_lock_broadcasts(
+    staff_client: StaffClientFactory,
+    db_session: Session,
+    assert_error: AssertError,
+    published: list[Call],
+) -> None:
+    ming, _ = _family(db_session)
+    auth = make_pickup_authorization(
+        db_session, ming, service_date=_TODAY, code="135790", code_attempts=4
+    )
+    client, _ = staff_client(permissions=["pickup:operate", "pickup:read"])
+
+    resp = client.post(_auth_url(auth.id, "/verify"), json={"code": "246802"})
+
+    assert_error(resp, 409, "pickup_code_locked")
+    [message] = _auth_updates(published)
+    assert (message["data"]["id"], message["data"]["status"]) == (str(auth.id), "active")
+    assert [(a["id"], a["code_attempts"], a["locked"]) for a in client.get(_AUTHS).json()] == [
+        (str(auth.id), 5, True)
+    ]
+    # 只送 admin:pickup：家長端（student 頻道）收不到
+    assert [
+        m
+        for channels, m in published
+        if student_channel(ming.id) in channels and m["type"] == _AUTH_UPDATED
+    ] == []
 
 
 def test_admin_pickup_verify_after_regenerate(
