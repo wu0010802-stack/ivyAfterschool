@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 200,
-  "last_updated": "2026-10-16T05:29:40Z",
+  "version": 201,
+  "last_updated": "2026-10-16T05:30:17Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2766,7 +2766,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentSensitiveFields.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081"
@@ -2797,11 +2797,11 @@
     {
       "id": "FRONTEND-089",
       "title": "實作 components/student/StudentFormDialog.vue：新增 / 編輯學生（敏感欄位依權限）",
-      "description": "建立 `apps/web/src/components/student/StudentFormDialog.vue`。移植 ivy `FE:src/components/student/StudentEditDialog.vue` 的 FormDialog + 分段表單 + dirty 防呆 + 422 欄位錯誤對應；欄位改為本專案 StudentCreate，**去掉** 家長 / 緊急聯絡 / 政府申報分段、lifecycle。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue: boolean`、`student?: StudentDetail`（有值 = 編輯）；emits `update:modelValue`、`saved(detail: StudentDetail)`。\n**欄位**\n- 基本：學號（必填 ≤20）、姓名（必填 ≤30）、性別（GENDER_LABELS）、生日（不可晚於今天）、年級（GRADE_OPTIONS，必填）。\n- 就讀：就讀國小（lookups schoolOptions）、學校班級（文字，例如「三年二班」）、安親班班級（lookups classOptions，currentAcademicYear）。\n- 狀態：狀態（在學 / 暫停 / 退班，新增預設在學）、入學日（新增預設 todayTaipei）、退班日（狀態為退班時顯示且必填）、備註。\n- 敏感（只有 `students:sensitive` 才渲染此分段）：身分證字號（新增：選填，前端格式檢查 `^[A-Z][12]\\d{8}$`，自動轉大寫）、健康備註（textarea ≤500）。編輯時欄位初始為空並提示「留空表示不變更」，另有「清除已填寫的資料」checkbox（勾選送 `null`）；`has_id_number` 時顯示「目前已填寫」。\n**送出**\n- 新增 → `createStudent`；編輯 → 只送有變更的欄位（`updateStudent`），未變更不送請求並直接關閉。\n- 錯誤：`student_no_taken` → 學號欄「學號已被使用」；`id_number_duplicate` → 身分證欄「此身分證字號已有學生使用」；`invalid_dates` → 顯示後端 message 於退班日；`sensitive_permission_required` → ElMessage.error；422 欄位錯誤對應。\n- 成功 `ElMessage.success('已儲存')`、emit saved、關閉；dirty 時關閉需確認（FormDialog）。\n- **暫停 / 退班確認**（domain_spec M3、BACKEND-529）：編輯時把狀態由在學改為暫停或退班（或由暫停改為退班）並按儲存，送出前先跳確認框：標題「確認將 {name} 改為{暫停 / 退班}」，內容「儲存後系統會自動：取消今天進行中的接送請求與有效的代理接送授權、刪除今天起尚未登記的出勤、取消未來的請假（已開始的截到昨天）。已發生的紀錄會保留。」；取消則不送出並保留表單內容。新增學生時不顯示此確認。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/student/StudentFormDialog.vue`。移植 ivy `FE:src/components/student/StudentEditDialog.vue` 的 FormDialog + 分段表單 + dirty 防呆 + 422 欄位錯誤對應；欄位改為本專案 StudentCreate，**去掉** 家長 / 緊急聯絡 / 政府申報分段、lifecycle。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue: boolean`、`student?: StudentDetail`（有值 = 編輯）；emits `update:modelValue`、`saved(detail: StudentDetail)`。\n**欄位**\n- 基本：學號（必填 ≤20）、姓名（必填 ≤30）、性別（GENDER_LABELS）、生日（不可晚於今天）、年級（GRADE_OPTIONS，必填）。\n- 就讀：就讀國小（lookups schoolOptions）、學校班級（文字，例如「三年二班」）、安親班班級（lookups classOptions，currentAcademicYear）。\n- 狀態：狀態（在學 / 暫停 / 退班，新增預設在學）、入學日（新增預設 todayTaipei）、退班日（狀態為退班時顯示且必填）、備註。\n- 敏感（只有 `students:sensitive` 才渲染此分段）：身分證字號（新增：選填，前端格式檢查 `^[A-Z][12]\\d{8}$`，自動轉大寫）、健康備註（textarea ≤500）。編輯時欄位初始為空並提示「留空表示不變更」，另有「清除已填寫的資料」checkbox（勾選送 `null`）；`has_id_number` 時顯示「目前已填寫」。\n**送出**\n- 新增 → `createStudent`；編輯 → 只送有變更的欄位（`updateStudent`），未變更不送請求並直接關閉。\n- 錯誤：`student_no_taken` → 學號欄「學號已被使用」；`id_number_duplicate` → 身分證欄「此身分證字號已有學生使用」；`invalid_dates` → 顯示後端 message 於退班日；`sensitive_permission_required` → ElMessage.error；422 欄位錯誤對應。\n- 成功 `ElMessage.success('已儲存')`、emit saved、關閉；dirty 時關閉需確認（FormDialog）。\n- 編輯時學生目前的安親班班級 / 就讀國小不在選單內（舊學年度、已停用）時仍列出；學校與班級選項載入失敗 ElMessage.error(errorMessage(err, '無法載入學校與班級選項'))；其他送出錯誤 ElMessage.error(errorMessage(err, '儲存失敗，請稍後再試'))。\n- **暫停 / 退班確認**（domain_spec M3、BACKEND-529）：編輯時把狀態由在學改為暫停或退班（或由暫停改為退班）並按儲存，送出前先跳確認框：標題「確認將 {name} 改為{暫停 / 退班}」，內容「儲存後系統會自動：取消今天進行中的接送請求與有效的代理接送授權、刪除今天起尚未登記的出勤、取消未來的請假（已開始的截到昨天）。已發生的紀錄會保留。」；取消則不送出並保留表單內容。新增學生時不顯示此確認。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentFormDialog.vue",
       "source_ref": "FE:src/components/student/StudentEditDialog.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
@@ -2829,7 +2829,7 @@
           "StudentFormDialog skips status confirm when not deactivating：只改姓名 → 無確認框直接 PATCH；新增學生選狀態 '暫停' → 無確認框直接 POST"
         ],
         "run": "just web-test src/components/student/StudentFormDialog.spec.ts -t \"StudentFormDialog\"",
-        "notes": ""
+        "notes": "el-date-picker 在 happy-dom 每個約 0.6 秒且隨數量超線性變慢：除「creates student with defaults」與「confirms before suspending or withdrawing」用真實日期元件外，其餘案例以 stub（顯示 YYYY/MM/DD、change 回 YYYY-MM-DD）取代；describe 逾時放寬為 20 秒。"
       },
       "review": {
         "status": "pending",
@@ -2840,11 +2840,11 @@
     {
       "id": "FRONTEND-090",
       "title": "實作 components/student/StudentPhotoUploader.vue：學生照片顯示與上傳",
-      "description": "建立 `apps/web/src/components/student/StudentPhotoUploader.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`studentId: string`、`photoUrl: string | null`、`name: string`、`editable: boolean`；emits `uploaded(photoUrl: string)`。\n- 顯示 96×96 圓角照片；無照片顯示姓名首字頭像（monogram）。照片 URL 為短效簽名 URL，載入失敗（onerror）改顯示 monogram。\n- `editable`（父層依 students:write 與未封存決定）：hover 顯示「更換照片」，點擊開檔案選擇（accept `image/jpeg,image/png,image/webp`）。\n- 選檔後 `checkUpload(file, PHOTO_RULE)`（FRONTEND-006）不通過 → ElMessage.error(message) 不送出；通過 → 本地預覽（objectURL）並 `uploadStudentPhoto` → 成功以回傳 photo_url 取代預覽、emit uploaded；失敗還原舊照片並顯示 `errorMessage`（413 / 415 / 502 storage_unavailable 用後端 message）。上傳中顯示 loading 遮罩。\n\n**驗收標準**\n- monogram fallback；前端檢查擋下不合法檔；上傳成功 / 失敗行為正確。",
+      "description": "建立 `apps/web/src/components/student/StudentPhotoUploader.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`studentId: string`、`photoUrl: string | null`、`name: string`、`editable: boolean`；emits `uploaded(photoUrl: string)`。\n- 顯示 96×96 圓角照片；無照片顯示姓名首字頭像（monogram）。照片 URL 為短效簽名 URL，載入失敗（onerror）改顯示 monogram。\n- `editable`（父層依 students:write 與未封存決定）：hover 顯示「更換照片」，點擊開檔案選擇（accept `image/jpeg,image/png,image/webp`）。\n- 選檔後 `checkUpload(file, PHOTO_RULE)`（FRONTEND-006）不通過 → ElMessage.error(message) 不送出；通過 → 本地預覽（objectURL）並 `uploadStudentPhoto` → 成功以回傳 photo_url 取代預覽、emit uploaded、ElMessage.success('已更新照片')；失敗還原舊照片並顯示 `errorMessage`（413 / 415 / 502 storage_unavailable 用後端 message）。上傳中顯示 loading 遮罩。\n\n**驗收標準**\n- monogram fallback；前端檢查擋下不合法檔；上傳成功 / 失敗行為正確。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPhotoUploader.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
