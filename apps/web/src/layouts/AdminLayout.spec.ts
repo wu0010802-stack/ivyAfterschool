@@ -1,13 +1,15 @@
-import { flushPromises } from '@vue/test-utils'
+import { createTestingPinia } from '@pinia/testing'
+import { flushPromises, mount } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
-import type { RouteRecordRaw } from 'vue-router'
+import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-router'
 import type { StaffMe } from '@/api/auth'
 import { adminHttp } from '@/api/http'
 import AdminHeader from '@/components/layout/AdminHeader.vue'
 import { useAdminWsStore } from '@/stores/adminWs'
 import { useNotificationsStore } from '@/stores/notifications'
+import type { Notification } from '@/shared/types/api'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import AdminLayout from './AdminLayout.vue'
 import layoutSource from './AdminLayout.vue?raw'
@@ -98,6 +100,59 @@ const sidebarOf = (wrapper: { find: (selector: string) => { classes: () => strin
 
 function drawerEl(): HTMLElement | null {
   return document.body.querySelector<HTMLElement>('[data-test=admin-sidebar-drawer]')
+}
+
+/**
+ * 同一個 pinia 與 router 重複掛載：模擬同一個分頁登出（AdminLayout 卸載）後換人登入。
+ * mountWithApp 每次都建新的 pinia，驗不出 store 殘留的上一位使用者資料。
+ */
+function createSharedApp() {
+  const router = createRouter({ history: createMemoryHistory(), routes: ROUTES })
+  const pinia = createTestingPinia({
+    initialState: { auth: { user: USER, status: 'authenticated' } },
+    stubActions: false,
+    createSpy: vi.fn,
+  })
+  return { router, pinia }
+}
+
+async function mountShared(app: ReturnType<typeof createSharedApp>) {
+  await app.router.push('/students')
+  await app.router.isReady()
+  const wrapper = mount(AdminLayout, {
+    slots: { default: '<div data-test="page-content">頁面內容</div>' },
+    global: { plugins: [app.router, app.pinia] },
+  })
+  await flushPromises()
+  document.body.appendChild(wrapper.element)
+  return wrapper
+}
+
+function makeNotice(id: string, title: string): Notification {
+  return {
+    id,
+    event: 'leave.created',
+    title,
+    body: `${title}的內文`,
+    payload: {},
+    read_at: null,
+    created_at: '2026-10-02T08:00:00Z',
+    deep_link: '/leaves',
+  }
+}
+
+/** 手動決定何時回應通知清單，重現「上一位的預載還在途中就換人登入」 */
+function deferredInbox() {
+  let resolve!: (body: { items: Notification[]; total: number; unread_count: number }) => void
+  const promise = new Promise<{ items: Notification[]; total: number; unread_count: number }>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+const badgeVisible = (wrapper: { find: (selector: string) => { exists: () => boolean; isVisible: () => boolean } }): boolean => {
+  const badge = wrapper.find('.el-badge__content')
+  return badge.exists() && badge.isVisible()
 }
 
 /** 推進 fake timers（只假造 timer，promise 照常） */
@@ -351,6 +406,93 @@ describe('AdminLayout', () => {
     expect(sockets).toHaveLength(2)
     expect(sockets[1]?.readyState).not.toBe(3)
     expect(mock.history.get.map((r) => r.url)).toEqual(['/admin/notifications'])
+  })
+
+  it('AdminLayout does not keep the previous user notifications when mounted again on the same pinia', async () => {
+    mock.reset()
+    mock.onGet('/admin/notifications').replyOnce(200, {
+      items: [makeNotice('nA', '陳小美 請假')],
+      total: 1,
+      unread_count: 1,
+    })
+    mock.onGet('/admin/notifications').replyOnce(500, { error: { code: 'internal_error', message: '伺服器錯誤' } })
+    const app = createSharedApp()
+    const store = useNotificationsStore()
+
+    const first = await mountShared(app)
+    expect(store.items.map((n) => n.id)).toEqual(['nA'])
+    expect(first.find('.el-badge__content').text()).toBe('1')
+
+    // 登出：導向 blank layout，AdminLayout 卸載，通知收件匣一併清空
+    first.unmount()
+    expect(store.items).toEqual([])
+    expect(store.unreadCount).toBe(0)
+    expect(store.loaded).toBe(false)
+
+    // 下一位使用者登入，預載失敗：不會看到上一位的通知與未讀數
+    const second = await mountShared(app)
+    expect(mock.history.get).toHaveLength(2)
+    expect(store.items).toEqual([])
+    expect(store.unreadCount).toBe(0)
+    expect(store.total).toBe(0)
+    expect(store.loaded).toBe(false)
+    expect(badgeVisible(second)).toBe(false)
+    expect(document.body.textContent).not.toContain('陳小美 請假')
+  })
+
+  it('AdminLayout ignores an in-flight notification response from the previous mount', async () => {
+    mock.reset()
+    const inboxA = deferredInbox()
+    const inboxB = deferredInbox()
+    mock.onGet('/admin/notifications').replyOnce(() => inboxA.promise.then((body) => [200, body]))
+    mock.onGet('/admin/notifications').replyOnce(() => inboxB.promise.then((body) => [200, body]))
+    const app = createSharedApp()
+    const store = useNotificationsStore()
+
+    // A 的預載還在途中就登出，B 登入後重新掛載：不共用 A 的請求
+    const first = await mountShared(app)
+    first.unmount()
+    const second = await mountShared(app)
+    expect(mock.history.get).toHaveLength(2)
+
+    // A 的回應（以 A 的 cookie 取得）先到：不得寫進 store
+    inboxA.resolve({ items: [makeNotice('nA', '陳小美 請假')], total: 1, unread_count: 1 })
+    await flushPromises()
+    expect(store.items).toEqual([])
+    expect(store.unreadCount).toBe(0)
+    expect(badgeVisible(second)).toBe(false)
+
+    // 載入成功後只有 B 的資料
+    inboxB.resolve({ items: [makeNotice('nB', '林小華 請假')], total: 1, unread_count: 1 })
+    await flushPromises()
+    expect(store.items.map((n) => n.id)).toEqual(['nB'])
+    expect(store.unreadCount).toBe(1)
+    expect(second.find('.el-badge__content').text()).toBe('1')
+  })
+
+  it('AdminLayout ignores a previous mount response that arrives after the new user is loaded', async () => {
+    mock.reset()
+    const inboxA = deferredInbox()
+    mock.onGet('/admin/notifications').replyOnce(() => inboxA.promise.then((body) => [200, body]))
+    mock.onGet('/admin/notifications').replyOnce(200, {
+      items: [makeNotice('nB', '林小華 請假')],
+      total: 1,
+      unread_count: 1,
+    })
+    const app = createSharedApp()
+    const store = useNotificationsStore()
+
+    const first = await mountShared(app)
+    first.unmount()
+    await mountShared(app)
+    expect(store.items.map((n) => n.id)).toEqual(['nB'])
+
+    inboxA.resolve({ items: [makeNotice('nA', '陳小美 請假'), makeNotice('nA2', '王小明 請假')], total: 2, unread_count: 2 })
+    await flushPromises()
+
+    expect(store.items.map((n) => n.id)).toEqual(['nB'])
+    expect(store.unreadCount).toBe(1)
+    expect(store.total).toBe(1)
   })
 
   it('AdminLayout does not show a stale banner after remount', async () => {

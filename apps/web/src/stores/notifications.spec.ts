@@ -64,6 +64,21 @@ function makeNotification(id: string, overrides: Partial<Notification> = {}): No
 
 const SERVER_ERROR = { error: { code: 'internal_error', message: '伺服器錯誤', details: null } }
 
+/** 手動決定何時回應的請求（用來重現「換人登入時上一位的請求還在途中」） */
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+interface InboxBody {
+  items: Notification[]
+  total: number
+  unread_count: number
+}
+
 /** 開好一條 admin ws 連線並綁定通知 store */
 function startWsAndBind() {
   const store = useNotificationsStore()
@@ -309,5 +324,126 @@ describe('notifications store', () => {
       '/admin/notifications/read-all',
       '/admin/notifications/read-all',
     ])
+  })
+  it('notifications store reset clears the inbox state', async () => {
+    mock.onGet('/admin/notifications').reply(200, {
+      items: [makeNotification('n2'), makeNotification('n1', { read_at: '2026-10-07T07:00:00Z' })],
+      total: 2,
+      unread_count: 1,
+    })
+    const store = useNotificationsStore()
+    await store.fetch()
+    expect(store.items).toHaveLength(2)
+
+    store.reset()
+
+    expect(store.items).toEqual([])
+    expect(store.unreadCount).toBe(0)
+    expect(store.total).toBe(0)
+    expect(store.loaded).toBe(false)
+    expect(store.loading).toBe(false)
+
+    // 重置後可以從空狀態正常收件
+    store.receive(makeNotification('n9'))
+    expect(store.items.map((n) => n.id)).toEqual(['n9'])
+    expect(store.unreadCount).toBe(1)
+  })
+
+  it('notifications store reset discards an in-flight fetch response', async () => {
+    const pending = deferred<InboxBody>()
+    mock.onGet('/admin/notifications').replyOnce(() => pending.promise.then((body) => [200, body]))
+    const store = useNotificationsStore()
+    const request = store.fetch()
+    expect(store.loading).toBe(true)
+
+    store.reset()
+    expect(store.loading).toBe(false)
+    pending.resolve({ items: [makeNotification('nA')], total: 1, unread_count: 1 })
+    await request
+
+    expect(store.items).toEqual([])
+    expect(store.unreadCount).toBe(0)
+    expect(store.total).toBe(0)
+    expect(store.loaded).toBe(false)
+    expect(store.loading).toBe(false)
+  })
+
+  it('notifications store fetch after reset does not share the previous in-flight request', async () => {
+    const first = deferred<InboxBody>()
+    const second = deferred<InboxBody>()
+    mock.onGet('/admin/notifications').replyOnce(() => first.promise.then((body) => [200, body]))
+    mock.onGet('/admin/notifications').replyOnce(() => second.promise.then((body) => [200, body]))
+    const store = useNotificationsStore()
+    const requestA = store.fetch()
+
+    store.reset()
+    const requestB = store.fetch()
+
+    expect(mock.history.get).toHaveLength(2)
+    // 上一位的回應先到：不寫入，下一位載入前仍是空的
+    first.resolve({ items: [makeNotification('nA')], total: 1, unread_count: 1 })
+    await requestA
+    expect(store.items).toEqual([])
+    expect(store.loaded).toBe(false)
+    expect(store.loading).toBe(true)
+
+    second.resolve({ items: [makeNotification('nB')], total: 1, unread_count: 1 })
+    await requestB
+    expect(store.items.map((n) => n.id)).toEqual(['nB'])
+    expect(store.loaded).toBe(true)
+    expect(store.loading).toBe(false)
+  })
+
+  it('notifications store ignores a previous response that arrives after the new one', async () => {
+    const first = deferred<InboxBody>()
+    mock.onGet('/admin/notifications').replyOnce(() => first.promise.then((body) => [200, body]))
+    mock.onGet('/admin/notifications').replyOnce(200, { items: [makeNotification('nB')], total: 1, unread_count: 1 })
+    const store = useNotificationsStore()
+    const requestA = store.fetch()
+
+    store.reset()
+    await store.fetch()
+    first.resolve({ items: [makeNotification('nA'), makeNotification('nA2')], total: 2, unread_count: 2 })
+    await requestA
+
+    expect(store.items.map((n) => n.id)).toEqual(['nB'])
+    expect(store.unreadCount).toBe(1)
+    expect(store.total).toBe(1)
+    expect(store.loaded).toBe(true)
+  })
+
+  it('notifications store reset ignores late read marks from before the reset', async () => {
+    mock.onGet('/admin/notifications').replyOnce(200, {
+      items: [makeNotification('nA')],
+      total: 1,
+      unread_count: 1,
+    })
+    const store = useNotificationsStore()
+    await store.fetch()
+    const markAll = deferred<{ updated: number }>()
+    const markOne = deferred<number>()
+    mock.onPost('/admin/notifications/read-all').replyOnce(() => markAll.promise.then((body) => [200, body]))
+    mock.onPost('/admin/notifications/nA/read').replyOnce(() => markOne.promise.then((status) => [status, SERVER_ERROR]))
+    const readAll = store.markAllRead()
+    const readOne = store.markRead('nA').catch((e: unknown) => e)
+
+    store.reset()
+    mock.onGet('/admin/notifications').replyOnce(200, {
+      items: [makeNotification('nB'), makeNotification('nC')],
+      total: 2,
+      unread_count: 2,
+    })
+    await store.fetch()
+    markAll.resolve({ updated: 1 })
+    markOne.resolve(500)
+    await readAll
+    expect(await readOne).toBeInstanceOf(ApiError)
+
+    // 上一位的已讀結果不得改動下一位的未讀數與項目
+    expect(store.items.map((n) => [n.id, n.read_at])).toEqual([
+      ['nB', null],
+      ['nC', null],
+    ])
+    expect(store.unreadCount).toBe(2)
   })
 })
