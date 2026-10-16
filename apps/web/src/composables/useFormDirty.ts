@@ -59,12 +59,17 @@ export function useFormDirty<T extends object>(
   return { isDirty, markClean }
 }
 
-/** 詢問是否放棄未儲存的變更；使用者選「放棄變更」回 true，「繼續編輯」或關閉對話框回 false。 */
+/**
+ * 詢問是否放棄未儲存的變更；使用者選「放棄變更」回 true，「繼續編輯」或關閉對話框回 false。
+ * closeOnHashChange 關閉：hash router 的上一頁 / 下一頁會在路由守衛開框後緊接著派發 hashchange，
+ * Element Plus 以 hashchange 關框時不送結果，Promise 永不結束、導航卡住（FRONTEND-058 / 071）。
+ */
 export async function confirmDiscardChanges(): Promise<boolean> {
   try {
     await ElMessageBox.confirm('尚未儲存的變更將會遺失，確定要關閉嗎？', '未儲存的變更', {
       confirmButtonText: '放棄變更',
       cancelButtonText: '繼續編輯',
+      closeOnHashChange: false,
     })
     return true
   } catch {
