@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 176,
-  "last_updated": "2026-10-16T04:42:09Z",
+  "version": 177,
+  "last_updated": "2026-10-16T04:49:40Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2456,7 +2456,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/students.ts",
       "source_ref": "FE:src/api/students.ts::getStudents",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
@@ -3780,7 +3780,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/homework.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
@@ -4151,7 +4151,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/pickupAuthorizations.ts",
       "source_ref": "FE:src/api/pickupAuthorizations.ts::verifyPickupAuthorization",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
@@ -4185,11 +4185,11 @@
     {
       "id": "FRONTEND-182",
       "title": "實作 composables/useDismissalRoster.ts：POS 名單分組、班級欄計數與搜尋（純函式）",
-      "description": "建立 `apps/web/src/composables/useDismissalRoster.ts`。移植 ivy `FE:src/composables/useDismissalRoster.ts` 的純函式設計（`ACTIVE_STATUSES`、`activeCallStudentIds`、`matchStudent`、`buildRoster`）；資料來源改為後端 `GET /pickup/roster` 已分好組的結果（FRONTEND-180），**去掉** 前端依 classroom 清單分組、學期標籤、unknown 群組。\n\n**介面**\n```ts\nexport const OPEN_PICKUP_STATUSES: ReadonlySet<string>      // pending / acknowledged / arrived（取自 FRONTEND-002）\nexport function openRequestStudentIds(requests: Pick<PickupRequest, 'status' | 'student'>[]): Set<string>\nexport function matchStudent(s: Pick<RosterStudent, 'name' | 'student_no'>, query: string): boolean   // 去空白、不分大小寫，比對姓名或學號子字串；空 query 回 true\nexport interface RailItem { key: string; classId: string | null; label: string; total: number; openCount: number; arrivedCount: number }\nexport function buildClassRail(roster: PickupRoster): RailItem[]   // 第一項 key 'all'（全部班級，加總）；其後每班 key = class_id ?? 'unassigned'\nexport function studentsForRail(roster: PickupRoster, key: string, query: string): RosterStudent[]\nexport function patchRosterStudent(roster: PickupRoster, studentId: string, patch: Partial<RosterStudent>): PickupRoster   // 回新物件，找不到學生回原物件\n```\n- `openCount` = 該班 open_request 不為 null 的人數；`arrivedCount` = open_request.status 為 arrived 的人數；total = 該班學生數（不含請假 / 缺席者另計入 total）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/useDismissalRoster.ts`。移植 ivy `FE:src/composables/useDismissalRoster.ts` 的純函式設計（`ACTIVE_STATUSES`、`activeCallStudentIds`、`matchStudent`、`buildRoster`）；資料來源改為後端 `GET /pickup/roster` 已分好組的結果（FRONTEND-180），**去掉** 前端依 classroom 清單分組、學期標籤、unknown 群組。\n\n**介面**\n```ts\nexport const OPEN_PICKUP_STATUSES: ReadonlySet<string>      // pending / acknowledged / arrived（取自 FRONTEND-002）\nexport function openRequestStudentIds(requests: Pick<PickupRequest, 'status' | 'student'>[]): Set<string>\nexport function matchStudent(s: Pick<RosterStudent, 'name' | 'student_no'>, query: string): boolean   // 去空白、不分大小寫，比對姓名或學號子字串；空 query 回 true\nexport interface RailItem { key: string; classId: string | null; label: string; total: number; openCount: number; arrivedCount: number }\nexport function buildClassRail(roster: PickupRoster): RailItem[]   // 第一項 key 'all'（全部班級，加總）；其後每班 key = class_id ?? 'unassigned'\nexport function studentsForRail(roster: PickupRoster, key: string, query: string): RosterStudent[]\nexport function patchRosterStudent(roster: PickupRoster, studentId: string, patch: Partial<RosterStudent>): PickupRoster   // 回新物件，找不到學生回原物件\n```\n- `openCount` = 該班 open_request 不為 null 的人數；`arrivedCount` = open_request.status 為 arrived 的人數；total = 該班學生數（請假 / 缺席者也計入）。\n\n`matchStudent` 把 query 與姓名、學號都去掉所有空白後再比對；`buildClassRail` 的班級 `class_name` 為 null 時 label 退為「未分班」；`studentsForRail` 保留 roster 的班級與學生順序，key 找不到回空陣列；`openRequestStudentIds` 的參數型別為 `{status, student: {id}}[]`（`PickupRequest[]` 符合）。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalRoster.ts",
       "source_ref": "FE:src/composables/useDismissalRoster.ts::buildRoster",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
@@ -4222,11 +4222,11 @@
     {
       "id": "FRONTEND-183",
       "title": "實作 composables/useStudentPosStatus.ts：POS 學生卡狀態與排序權重（純函式）",
-      "description": "建立 `apps/web/src/composables/useStudentPosStatus.ts`。移植 ivy `FE:src/composables/useStudentPosStatus.ts::useStudentPosStatus` 的「輸入單一學生 → {status, sortWeight, detail}」純函式設計與優先權寫法；狀態改為本專案（出勤 + 接送請求），**去掉** bus_picked / proxy_picked / POS 補登。\n\n**介面**\n```ts\nexport type PosStudentStatus = 'arrived' | 'requested' | 'waiting' | 'not_arrived' | 'picked_up' | 'on_leave' | 'absent'\nexport interface PosStudentStatusResult {\n  status: PosStudentStatus\n  sortWeight: number\n  detail: { requestId?: string; requestStatus?: string; needsReply?: boolean; expectedArrival?: string | null; homeworkStatus?: string | null; readyEta?: string | null; authorizationCount: number; leaveType?: LeaveType | null }\n  // leaveType 是 roster 的 leave_type 代碼（sick / personal / other，FRONTEND-180 RosterStudent），中文由 StudentCard（FRONTEND-193）以 LEAVE_TYPE_META 轉換\n}\nexport function useStudentPosStatus(student: RosterStudent): PosStudentStatusResult\nexport const POS_STATUS_META: Record<PosStudentStatus, { label: string; tone: Tone }>\n  // arrived 家長已到 danger、requested 接送中 warning、waiting 在班等待 success、not_arrived 尚未到班 info、picked_up 已離班 info、on_leave 請假 info、absent 缺席 info\n```\n**優先權（高 → 低）**\n1. open_request.status === 'arrived' → arrived\n2. open_request（pending / acknowledged）→ requested\n3. attendance_status === 'left' → picked_up\n4. leave → on_leave（detail.leaveType = leave_type 代碼）；absent → absent\n5. present → waiting\n6. 其他（expected / null）→ not_arrived\n**sortWeight**：arrived 0、requested 1、waiting 2、not_arrived 3、picked_up 4、on_leave 5、absent 5。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/useStudentPosStatus.ts`。移植 ivy `FE:src/composables/useStudentPosStatus.ts::useStudentPosStatus` 的「輸入單一學生 → {status, sortWeight, detail}」純函式設計與優先權寫法；狀態改為本專案（出勤 + 接送請求），**去掉** bus_picked / proxy_picked / POS 補登。\n\n**介面**\n```ts\nexport type PosStudentStatus = 'arrived' | 'requested' | 'waiting' | 'not_arrived' | 'picked_up' | 'on_leave' | 'absent'\nexport interface PosStudentStatusResult {\n  status: PosStudentStatus\n  sortWeight: number\n  detail: { requestId?: string; requestStatus?: string; needsReply?: boolean; expectedArrival?: string | null; homeworkStatus?: string | null; readyEta?: string | null; authorizationCount: number; leaveType?: LeaveType | null }\n  // leaveType 是 roster 的 leave_type 代碼（sick / personal / other，FRONTEND-180 RosterStudent），中文由 StudentCard（FRONTEND-193）以 LEAVE_TYPE_META 轉換\n}\nexport function useStudentPosStatus(student: RosterStudent): PosStudentStatusResult\nexport const POS_STATUS_META: Record<PosStudentStatus, { label: string; tone: Tone }>\n  // arrived 家長已到 danger、requested 接送中 warning、waiting 在班等待 success、not_arrived 尚未到班 info、picked_up 已離班 info、on_leave 請假 info、absent 缺席 info\n```\n**優先權（高 → 低）**\n1. open_request.status === 'arrived' → arrived\n2. open_request（pending / acknowledged）→ requested\n3. attendance_status === 'left' → picked_up\n4. leave → on_leave（detail.leaveType = leave_type 代碼）；absent → absent\n5. present → waiting\n6. 其他（expected / null）→ not_arrived\n**sortWeight**：arrived 0、requested 1、waiting 2、not_arrived 3、picked_up 4、on_leave 5、absent 5。\n\n`detail.leaveType` 直接取 roster 的 `leave_type`；`detail.expectedArrival` 無進行中請求時為 null，`requestId` / `requestStatus` / `needsReply` 無進行中請求時為 undefined；`requestStatus` 型別為 `PickupOpenStatus`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useStudentPosStatus.ts",
       "source_ref": "FE:src/composables/useStudentPosStatus.ts::useStudentPosStatus",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
@@ -4258,11 +4258,11 @@
     {
       "id": "FRONTEND-184",
       "title": "實作 composables/useDismissalUrgency.ts：等候時間、急迫等級、ETA 相對文字與分鐘時鐘",
-      "description": "建立 `apps/web/src/composables/useDismissalUrgency.ts`。移植 ivy `FE:src/composables/useDismissalUrgency.ts` 的 `URGENCY_WARNING_MIN = 3` / `URGENCY_CRITICAL_MIN = 8`、`elapsedMinutes`、`urgencyLevel`、`formatWaited`、`etaRelativeText`、`monogramOf`、`useNowClock`；時間解析改用 FRONTEND-003（`HH:MM` 欄位為台北時間），**去掉** reservation announcement、isPreArrivalNotice（本專案以 status 判斷）。\n\n**介面**\n```ts\nexport const URGENCY_WARNING_MIN = 3; export const URGENCY_CRITICAL_MIN = 8\nexport type UrgencyLevel = 'normal' | 'warning' | 'critical'\nexport function waitedMinutes(req: Pick<PickupRequest, 'status' | 'arrived_at'>, now: number): number | null   // 只有 arrived 才計算（minutesSince(arrived_at)）；其他 null\nexport function urgencyLevel(minutes: number | null): UrgencyLevel   // null / <3 normal；3~7 warning；≥8 critical\nexport function formatWaited(minutes: number | null): string          // null ''；0 '剛到'；n '已等 n 分'；≥60 '已等 1 小時 5 分'\nexport function etaRelativeText(hhmm: string | null, now: number): string   // null ''；未來 '約 n 分後'；過去 1 分以上 '已過 n 分'；±1 分內 '現在'\nexport function monogramOf(name: string | null | undefined): string   // 取最後一個字；空 → '?'\nexport function useNowClock(intervalMs = 30_000): { now: Ref<number> }   // onScopeDispose 清除 interval\n```\n\n**驗收標準**：每一條對應下列 red_case（fake timers）。",
+      "description": "建立 `apps/web/src/composables/useDismissalUrgency.ts`。移植 ivy `FE:src/composables/useDismissalUrgency.ts` 的 `URGENCY_WARNING_MIN = 3` / `URGENCY_CRITICAL_MIN = 8`、`elapsedMinutes`、`urgencyLevel`、`formatWaited`、`etaRelativeText`、`monogramOf`、`useNowClock`；時間解析改用 FRONTEND-003（`HH:MM` 欄位為台北時間），**去掉** reservation announcement、isPreArrivalNotice（本專案以 status 判斷）。\n\n**介面**\n```ts\nexport const URGENCY_WARNING_MIN = 3; export const URGENCY_CRITICAL_MIN = 8\nexport type UrgencyLevel = 'normal' | 'warning' | 'critical'\nexport function waitedMinutes(req: Pick<PickupRequest, 'status' | 'arrived_at'>, now: number): number | null   // 只有 arrived 才計算（minutesSince(arrived_at)）；其他 null\nexport function urgencyLevel(minutes: number | null): UrgencyLevel   // null / <3 normal；3~7 warning；≥8 critical\nexport function formatWaited(minutes: number | null): string          // null ''；0 '剛到'；n '已等 n 分'；≥60 '已等 1 小時 5 分'\nexport function etaRelativeText(hhmm: string | null, now: number): string   // null ''；未來 '約 n 分後'；過去 1 分以上 '已過 n 分'；±1 分內 '現在'\nexport function monogramOf(name: string | null | undefined): string   // 取最後一個字；空 → '?'\nexport function useNowClock(intervalMs = 30_000): { now: Ref<number> }   // onScopeDispose 清除 interval\n```\n\n`etaRelativeText` 把 HH:MM 視為 now 所在台北日期的時間，以毫秒計差（含秒）：差值絕對值不滿 1 分鐘為「現在」，其餘四捨五入到分；格式錯誤回空字串。`formatWaited` 滿整點仍寫分（60 → 「已等 1 小時 0 分」，與設計稿一致）。`waitedMinutes` 的 arrived_at 缺值或無法解析回 null。`useNowClock` 建立時即以 Date.now() 取值（不等 onMounted），在 effectScope 內才註冊 onScopeDispose。\n\n**驗收標準**：每一條對應下列 red_case（fake timers）。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalUrgency.ts",
       "source_ref": "FE:src/composables/useDismissalUrgency.ts::urgencyLevel",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -4374,11 +4374,11 @@
     {
       "id": "FRONTEND-187",
       "title": "實作 composables/useDismissalChime.ts：家長到達提示音、新請求提示音、中文語音與靜音",
-      "description": "建立 `apps/web/src/composables/useDismissalChime.ts`（domain_spec M7 流程 4：家長按「我到了」員工端提示音）。移植 ivy `FE:src/composables/useDismissalChime.ts` 的 `drawChimeTones`（雙音）、`drawSoftChime`（C5 單音）、`speakZh` / `unlockSpeechZh`（zh-TW voice 選擇、無中文 voice 時不播）；**去掉** reservation chime（ivy useDismissalReservationChime）。\n\n**介面**\n```ts\nexport function useDismissalChime(opts?: { audioContextFactory?: () => AudioContext; speech?: { speak(text: string): void; unlock(): void } }): {\n  muted: Ref<boolean>                       // localStorage 'pickup.chimeMuted'（try/catch，讀不到預設 false）\n  toggleMute(): void\n  unlock(): void                            // 第一次使用者手勢時呼叫：建立 / resume AudioContext 並預熱語音\n  onArrived(req: PickupRequest): void       // 雙音 + 語音「{class_name} {student_name} 家長到了」\n  onNewRequest(req: PickupRequest): void    // 單音（不播語音）\n}\n```\n- muted 時兩者都不發聲；AudioContext 尚未 unlock（state 為 suspended 且 resume 失敗）時靜默略過，不 throw。\n- 同一 request id 的 arrived 只播一次（記住已播 id，跨日清空）；請求不論是經 pending 轉為 arrived，或家長以「我已經到了」捷徑直接建立為 arrived，都以 onArrived 播放。\n- 已播過 arrived 的 request id 之後再收到 onNewRequest 一律略過。\n- 2 秒內多個 arrived 合併為一次雙音，語音依序播報。\n\n**驗收標準**：每一條對應下列 red_case（注入 fake AudioContext 與 speech）。",
+      "description": "建立 `apps/web/src/composables/useDismissalChime.ts`（domain_spec M7 流程 4：家長按「我到了」員工端提示音）。移植 ivy `FE:src/composables/useDismissalChime.ts` 的 `drawChimeTones`（雙音）、`drawSoftChime`（C5 單音）、`speakZh` / `unlockSpeechZh`（zh-TW voice 選擇、無中文 voice 時不播）；**去掉** reservation chime（ivy useDismissalReservationChime）。\n\n**介面**\n```ts\nexport function useDismissalChime(opts?: { audioContextFactory?: () => AudioContext; speech?: { speak(text: string): void; unlock(): void } }): {\n  muted: Ref<boolean>                       // localStorage 'pickup.chimeMuted'（try/catch，讀不到預設 false）\n  toggleMute(): void\n  unlock(): void                            // 第一次使用者手勢時呼叫：建立 / resume AudioContext 並預熱語音\n  onArrived(req: PickupRequest): void       // 雙音 + 語音「{class_name} {student_name} 家長到了」\n  onNewRequest(req: PickupRequest): void    // 單音（不播語音）\n}\n```\n- muted 時兩者都不發聲；AudioContext 尚未 unlock（state 為 suspended 且 resume 失敗）時靜默略過，不 throw。\n- 同一 request id 的 arrived 只播一次（記住已播 id，跨日清空）；請求不論是經 pending 轉為 arrived，或家長以「我已經到了」捷徑直接建立為 arrived，都以 onArrived 播放。\n- 已播過 arrived 的 request id 之後再收到 onNewRequest 一律略過。\n- 2 秒內多個 arrived 合併為一次雙音，語音依序播報。\n\n**實作細節**：到達雙音為 C5 → G5 兩個音（2 個 oscillator）。批次視窗從雙音開始起算 2 秒：視窗內其他 arrived 只播語音；AudioContext 非 running 時先 resume，resume 失敗（尚未解鎖）略過該次雙音並重置視窗。`onNewRequest` 同一 request id 只播一次。靜音時 onArrived 仍記下 request id（取消靜音後被補抓重送的舊到達不補響）。`onArrived` / `onNewRequest` 的參數型別為 `ChimeRequest = {id, student: {name, class_name}}`（`PickupRequest` 符合）。\n\n**驗收標準**：每一條對應下列 red_case（注入 fake AudioContext 與 speech）。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalChime.ts",
       "source_ref": "FE:src/composables/useDismissalChime.ts::drawChimeTones",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
