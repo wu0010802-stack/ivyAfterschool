@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 224,
-  "last_updated": "2026-10-16T06:21:47Z",
+  "version": 225,
+  "last_updated": "2026-10-16T06:23:08Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4625,7 +4625,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/ClassroomRail.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosClassroomRail.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-182"
@@ -4646,9 +4646,9 @@
         "notes": "紅燈 commit c550a5a、實作 commit 3b89791。除 2 條 red_cases 外另有 2 條：↑↓ 鍵切換（首尾不動）、觸控高度 ≥ 56px（happy-dom 不計算版面，以 ?raw 讀原始碼斷言 min-height 規則）。突變自檢：徽章優先順序對調使 red_case 1 轉紅。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 通過。tdd.run 4/4 綠，2 條 red_case 以同名測試選到；c550a5a（紅燈）先於 3b89791（實作）。description 逐條相符：兩行（班名粗體 /「{total} 人」+ 徽章）、arrivedCount > 0 為 danger「n 已到」且優先於 warning「n 接送中」、openCount 為 0 不顯示徽章、選中 is-active + aria-current、↑↓ 切換（首尾不動）並移焦、選中狀態完全由 prop 決定。稿 decisions 第 5 條（班級欄）逐項相符；第 25 條觸控：真實 Chromium 1024×768 實測每項 58.5~61.5px（≥ 56px）。突變：點擊改 emit 目前 key、danger 徽章條件失效 → 對應測試轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯。"
       }
     },
     {
@@ -4694,14 +4694,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentCard.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
         "FRONTEND-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r10-f7 打回] 鍵盤操作 ⋮ 會同時觸發卡片的 quick-dispatch：根元素 @keydown.enter.prevent / @keydown.space.prevent 會收到從 ⋮（el-dropdown 觸發鈕）冒泡上來的 keydown，⋮ 只有 @click.stop（核可稿與 ivy 同寫法，屬疏漏）。反例（真實 Chromium 1024×768 實測）：在班等待、canOperate 的學生卡，聚焦「王小明 的選項」⋮ 後按 Enter 或空白鍵 → 選單打開，同時 emit quick-dispatch（頁面會開始 5 秒倒數、時間到建立員工代建接送請求）；接送中 / 家長已到且有代理授權的卡片同理會多 emit focus-request。期望：只有卡片本身收到 Enter / 空白鍵才觸發 onTap（例如 .self 修飾，或判斷 event.target === event.currentTarget），⋮ 的鍵盤操作只開選單。驗收：spec 補一條「對 ⋮ 按鈕觸發 keydown Enter 與空白鍵 → 沒有 quick-dispatch」，拿掉修正要轉紅；卡片本身 Enter / 空白鍵仍可發起的既有斷言保留。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/pos/StudentCard.spec.ts",
@@ -4720,9 +4720,9 @@
         "notes": "紅燈 commit c550a5a（補強 903d4a3）、實作 commit 3b89791。除 6 條 red_cases 外另有 2 條：⋮ 選單 emit create-request 與已離班停用說明 / 請假無選單 / 倒數中選單停用、⋮ 44×44 與 role=button aria-label（?raw 原始碼斷言）。選單項目「代建接送請求…」依核可稿在 staging 時不列出、el-dropdown 以 :disabled=staging 停用；「查看代理授權」由元件直接 router.push（稿內為 emit view-authorizations，依 description 改為導頁）。突變自檢：唯讀者可 quick-dispatch、唯讀者顯示選單、家長已到也顯示請求小字各使對應測試轉紅。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 打回 1 項（見 risk_notes）：鍵盤操作 ⋮ 會冒泡觸發卡片 quick-dispatch。其餘通過：tdd.run 8/8 綠，6 條 red_case 以同名測試選到；c550a5a / 903d4a3（測試）先於 3b89791（實作）。description 逐條相符（狀態 tag 與請假假別、請求小字含家長已到只補「待回覆」、作業與 ready_eta、Postcard icon +「代理 n」、staging 遮罩、點擊規則含唯讀者 focus-request、⋮ 只給 canOperate 且至少一項、代建 / 查看代理授權 / 今天已離班停用）。「查看代理授權」由元件 router.push：e8672b5 之前的 description 原文即為 router.push，e8672b5 只補註稿內為 emit，合理。稿 decisions 第 7~10、22、25 條相符；真實 Chromium 1024×768 實測 ⋮ 44×44、滑鼠點 ⋮ 不觸發卡片、選單「查看代理授權」導到 /pickup/authorizations?student_id=s1、staging 時點卡片無 emit。突變：導頁 query key、staging 仍可派發、假別直接顯示代碼 → 對應測試轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯。"
       }
     },
     {
@@ -4769,7 +4769,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/QueueCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosQueueCard.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-184",
@@ -4800,9 +4800,9 @@
         "notes": "紅燈 commit c550a5a（補強 903d4a3）、實作 commit 3b89791。除 9 條 red_cases 外另有 1 條：按鈕 44px / 取消鈕 84px / 急迫框線規則（?raw 原始碼斷言）。red_case 7「不含 '預計'」以 current_ready_eta 為 null 的請求驗證（有作業預計完成時間時「作業預計 HH:MM 完成」本就含「預計」，另以 .queue-card__eta 不存在斷言）。倒數秒數以 250ms 自有 interval 用真實時鐘計算（now prop 每 30 秒一跳太粗）；根元素 id=qc-{id} 與 is-flash 樣式供 QueuePanel（FRONTEND-194）定位閃爍；拖曳超過 6px 後鬆手的 click 以 capture 攔截避免誤觸卡內按鈕。fake timers 只 fake Date / setTimeout / setInterval。突變自檢：不套急迫 class、唯讀者可左滑、取消後不收合、pending 用家長端用語各使對應測試轉紅。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 通過。tdd.run 10/10 綠，9 條 red_case 以同名測試選到；c550a5a / 903d4a3（測試）先於 3b89791（實作）。description 逐條相符：staging 秒數 + CountdownBar + 直接取消；POS 用語 tag 與 needs_reply 實心「待回覆」；第二列整列寬；直接 arrived 不顯示預計列；ETA 相對文字 /「已等 n 分」+ 到達時間；urgency-warning / critical 套在根元素；作業列；回覆來源；三種狀態的按鈕與主次；四個 pointer 事件都綁、左滑露出取消、點擊 emit 後收合；closed 三種摘要、無按鈕不可左滑。e8672b5 補的「定位」段（根元素 id=qc-{id}、父層加 is-flash 閃 1.5 秒）與核可稿 QueueCard 根元素 id、.qcard.is-flash 及 FRONTEND-194 的 focus 契約一致，屬合理補述。稿 decisions 第 12~17、22、25、26 條相符。真實 Chromium 1024×768 實測：操作鈕高 44px、倒數「取消」88×44、滑鼠左滑後 translateX(-84px) 露出 84px「取消」且可點、點後 emit cancel 並回到 0、從卡內按鈕上開始拖曳鬆手不會觸發按鈕。突變：主次不看 needs_reply、closed 可左滑、無原因仍顯示「已取消・」、直接 arrived 顯示預計列 → 對應測試轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯。殘留：(1) 沒有 busy prop——稿 decisions 第 15 條「送出中按鈕 loading / 停用」與稿 QueueCard 有 busy，但 description 未列，不算違反；連點「確認」會送兩次 acknowledge，第二次 409 invalid_pickup_status 由 board（FRONTEND-188）提示並 reload，不會重複業務動作，交協調者在 189 / 194（或 board 去重）處理。(2) depends_on 未列 FRONTEND-185，但 props 的 PosQueueItem 型別來自 185 的 useDismissalPosQueue.ts（in_review、已 commit）。(3) 家長已到時「完成交付」以 flex 2:1 實作，實測 160.7 / 96.3px（約 62.5%，非精確 2/3），與核可稿 CSS 相同。"
       }
     },
     {
@@ -5010,14 +5010,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationVerifyDialog.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::submitVerify",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
         "FRONTEND-040"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r10-f7 打回] description「鎖定（authorization.locked 或收到 pickup_code_locked）…canOverride 時自動切到強制完成」目前只在開啟（reset）與收到 pickup_code_locked 時切換；dialog 開著時 props.authorization.locked 由 false 變 true（FRONTEND-200 收 pickup.authorization_updated 原地更新，稿 decisions：其他員工核驗或連錯鎖定）不會切。反例（真實 Chromium 實測）：canOverride、停在接送碼分頁 → 同一張授權 props 改為 {locked: true, code_attempts: 5} → 警示寫「已切換到「主管強制完成」。」，但目前分頁仍是已停用的「接送碼」、footer「核驗接送碼」停用（停在目視核對分頁時同理）。期望：locked 轉 true 且 canOverride 時切到「主管強制完成」並聚焦備註（與收到 pickup_code_locked 相同）。驗收：spec 補一條「開著時 setProps authorization 改 locked: true → 目前分頁為主管強制完成、footer 送出鈕為『強制完成』」，拿掉修正要轉紅。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/AuthorizationVerifyDialog.spec.ts",
@@ -5037,9 +5037,9 @@
         "notes": "紅燈 commit 17b9d39（補強 a833d14）、實作 commit 9905486。除 7 條 red_cases 外另有 6 條：逐格輸入自動跳格 / 非數字忽略 / Backspace 回上一格 / 貼上含空白與「-」、已鎖定授權開啟即在強制完成分頁（無 override 只剩關閉）、送出中只送一次（格子與 footer 停用，直接派發 paste / Enter 也不重送）、其他錯誤顯示後端 message 且表單保留、關閉再開同一張授權與開著時換授權都重設、接送碼格 52×60 / 分頁 48px / 關閉鈕 44px（?raw 原始碼斷言）。聚焦：FormDialog 的 @opened 在 happy-dom 不會觸發、且 el-dialog 的 focus trap（focus-start-el=container）會在開啟後幾個 tick 無條件把焦點放到容器，故元件自己在 setTimeout 0 聚焦（開啟 / 切分頁 / 碼錯清空後），FormDialog 傳 autofocus=false；spec 的 settle 多等 20ms 真實 timer。成功畫面的方式標籤取自本次操作（code / visual_match / override），不依賴回應欄位。突變自檢：鎖定回應不進鎖定、碼錯不清空、強制完成不檢查備註、鎖定無 override 仍顯示 footer、busy 不擋重送、貼上不去分隔符、成功不 emit verified、圖片失敗不退回、重開不重設各使對應測試轉紅（busy 守衛集中在 run()，submitCode 不再重複檢查，否則為等價突變）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 打回 1 項（見 risk_notes）：dialog 開著時 authorization.locked 由 props 轉 true 不會自動切到強制完成、警示卻寫已切換。其餘通過：tdd.run 13/13 綠，7 條 red_case 以同名測試選到；17b9d39 / a833d14（測試）先於 9905486（實作）。權限：「主管強制完成」分頁只在 canOverride 出現、送出走 override-complete（後端另有 pickup:override 守衛）；備註 trim 後必填；送出中 run() 擋重送、格子與 footer 停用、FormDialog loading 期間不可關閉；畫面只顯示末四碼。setTimeout 0 聚焦 + FormDialog autofocus=false（tdd.notes）：真實 Chromium 實測開啟即聚焦第 1 碼、錯碼後回第 1 碼、切到強制完成與已鎖定開啟時聚焦備註，合理。稿 decisions 第 7~13、15、19 條相符；實測 dialog 560px、分頁高 48px、「關閉」44px、接送碼格 52×60。實測流程：逐格輸入（間隔 ≥ 20ms）滿 6 碼自動送出、核驗中格子與 footer 停用、送出中按 Enter 不重送（只 1 次 POST）、錯碼「還可嘗試 2 次」+ 清空 + 摘要更新、貼上「12 34-56」送 123456、其他錯誤顯示後端 message 且保留輸入、Backspace 回上一格、鎖定回應切強制完成、無 override 只剩「關閉」。突變 8 項（鎖定不切分頁、不檢查備註、強制完成分頁不看權限、拿掉 busy 守衛、錯碼不清空、鎖定時目視核對不停用、鎖定無 override 仍有 footer、成功不 emit verified）皆轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯。殘留：(1) 同一 macrotask 內連續送入多鍵（Playwright keyboard.type delay 0）會掉一碼（跳格聚焦排在 setTimeout 0，下一鍵進到舊格）；人手輸入與貼上 / one-time-code 不受影響。(2) lockedByResponse / localAttempts 在開著期間不隨 props 更新（例如家長重新產生接送碼解鎖），需關閉再開。(3) 接送碼格 52×60 依賴 FRONTEND-028 base.css 的全域 box-sizing: border-box；目前 main.ts 為佔位，沒有該規則時 Chromium 量到 54×62。"
       }
     },
     {
@@ -5049,7 +5049,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationCard.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::recordSummary",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
@@ -5074,9 +5074,9 @@
         "notes": "紅燈 commit 17b9d39、實作 commit 9905486。除 4 條 red_cases 外另有 1 條：核驗鈕 44px（?raw 原始碼斷言）與根元素 article；photo fallback 另驗 img @error 退回 monogram、photo_url 變更時重試載入。突變自檢：鎖定時仍顯示錯誤次數、核驗鈕不看 canVerify 各使對應測試轉紅。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 通過。tdd.run 5/5 綠，4 條 red_case 以同名測試選到；17b9d39（紅燈）先於 9905486（實作）。description 逐條相符：照片 / monogram（含載入失敗退回與換照片重試）、姓名 / 電話 /「學生 {name}・{class}」/「末四碼」、狀態 tag 以 effective_status 查、active 時鎖定取代錯誤次數、非 active 淡灰底與姓名次要色、active 且 locked 淡紅框、completed「方式・核驗人・HH:MM」、canVerify 且 active 才有「核驗」。稿 decisions 第 6、19 條相符（64px 照片、18px 姓名；「核驗」primary 實測 88×44）。canVerify（pickup:operate 且今天）由頁面計算，元件只看 prop。突變：核驗鈕不看 canVerify、非 active 仍顯示「已鎖定」→ 對應測試轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯。"
       }
     },
     {
