@@ -3,6 +3,8 @@
 // （FRONTEND-033）與 /api/ws/admin 的個人訊息（FRONTEND-037）：notification.created 進收件匣並加未讀，
 // notification.transient 只做即時提示（例如 pickup.arrived 的提示音），不進收件匣。
 // items 最新在前、最多保留 MAX_ITEMS 筆；更多歷史由收件匣頁分頁查詢。
+// reset()：登出（AdminLayout 卸載，FRONTEND-029）時清空；整個分頁共用同一個 pinia，不清的話下一位使用者會看到上一位的通知，
+// reset 之前發出而晚到的請求結果（fetch / markRead / markAllRead）一律不得寫回。
 import { ElNotification } from 'element-plus'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
@@ -39,6 +41,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
   // 同一種 fetch 併發共用 promise；不同種（全部 / 只看未讀）各自送出，只有最後發出的那次可以寫回
   let inflight: { unreadOnly: boolean; promise: Promise<void> } | null = null
   let seq = 0
+  // reset 的次數：已讀操作發出時記下，回來時不同就表示已換人，不能再動本地狀態
+  let epoch = 0
 
   const transientListeners = new Set<TransientListener>()
   let unbindWs: (() => void) | null = null
@@ -71,6 +75,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const target = items.value.find((n) => n.id === id)
     if (target && target.read_at !== null) return
     const decremented = target !== undefined && unreadCount.value > 0
+    const startEpoch = epoch
     if (target) target.read_at = new Date().toISOString()
     if (decremented) unreadCount.value -= 1
     try {
@@ -78,20 +83,37 @@ export const useNotificationsStore = defineStore('notifications', () => {
       if (target) target.read_at = updated.read_at ?? target.read_at
     } catch (err) {
       if (target) target.read_at = null
-      if (decremented) unreadCount.value += 1
+      if (decremented && epoch === startEpoch) unreadCount.value += 1
       throw err
     }
   }
 
   /** 成功後才把全部標成已讀、未讀歸 0（不樂觀） */
   async function markAllRead(): Promise<{ updated: number }> {
+    const startEpoch = epoch
     const result = await notificationsApi.markAllNotificationsRead()
+    if (epoch !== startEpoch) return result
     const now = new Date().toISOString()
     for (const n of items.value) {
       if (n.read_at === null) n.read_at = now
     }
     unreadCount.value = 0
     return result
+  }
+
+  /**
+   * 清空收件匣並讓在途的請求失效（登出）：回到尚未載入的初始狀態，下一次 fetch 不共用上一個請求，
+   * 上一個請求晚到的回應也不會寫回。不動 ws 綁定與暫態訊息的訂閱（由各自的擁有者解除）。
+   */
+  function reset(): void {
+    epoch += 1
+    seq += 1
+    inflight = null
+    items.value = []
+    unreadCount.value = 0
+    total.value = 0
+    loading.value = false
+    loaded.value = false
   }
 
   /** ws 即時新增：同 id 已存在則忽略 */
@@ -155,6 +177,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     fetch,
     markRead,
     markAllRead,
+    reset,
     receive,
     bindWs,
     onTransient,

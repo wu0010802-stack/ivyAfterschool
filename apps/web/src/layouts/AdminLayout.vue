@@ -109,6 +109,8 @@ onUnmounted(() => {
   clearBannerTimer()
   unbindNotifications?.()
   unbindNotifications = null
+  // 整個分頁共用同一個 pinia：不清的話，換人登入後下一位使用者會先看到上一位的通知
+  notifications.reset()
   adminWs.stop()
 })
 </script>
