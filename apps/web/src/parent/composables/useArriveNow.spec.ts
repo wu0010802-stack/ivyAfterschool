@@ -73,11 +73,11 @@ afterEach(() => {
   localStorage.removeItem(SKIP_KEY)
 })
 
-async function setup(): Promise<ArriveNow> {
+async function setup(options?: Parameters<typeof useArriveNow>[0]): Promise<ArriveNow> {
   let api: ArriveNow | null = null
   const Host = defineComponent({
     setup() {
-      api = useArriveNow()
+      api = options ? useArriveNow(options) : useArriveNow()
       return () => h('div')
     },
   })
@@ -318,5 +318,53 @@ describe('useArriveNow', () => {
     pending.resolve([201, request('r8')])
     expect((await first)?.id).toBe('r8')
     expect(posts()).toEqual([CREATE_URL])
+  })
+
+  it('useArriveNow calls onStale only for stale errors', async () => {
+    mock.onGet(TODAY_URL).reply(200, [])
+    const onStale = vi.fn()
+    const api = await setup({ onStale })
+    const attempt = async (status: number, body: unknown) => {
+      mock.onPost(arrivedUrl('r1')).replyOnce(status, body)
+      api.request('s1', 'r1')
+      return api.confirm()
+    }
+
+    expect(await attempt(409, apiError('invalid_pickup_status', '狀態不符'))).toBeNull()
+    expect(onStale).toHaveBeenCalledTimes(1)
+    expect(snackbarItems()[0]).toEqual(['狀態已更新，請確認後再操作', 'error'])
+
+    expect(await attempt(403, apiError('pickup_not_allowed', '沒有接送權限'))).toBeNull()
+    expect(onStale).toHaveBeenCalledTimes(1)
+
+    expect((await attempt(200, request('r1')))?.id).toBe('r1')
+    expect(onStale).toHaveBeenCalledTimes(1)
+  })
+
+  it('useArriveNow calls onStale for a missing request and swallows its failure', async () => {
+    mock.onGet(TODAY_URL).reply(200, [])
+    mock.onPost(arrivedUrl('r1')).reply(404, apiError('pickup_request_not_found', '找不到接送請求'))
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onStale = vi.fn(() => Promise.reject(new Error('重抓失敗')))
+    const api = await setup({ onStale })
+
+    api.request('s1', 'r1')
+    const result = await api.confirm()
+    await flushPromises()
+
+    expect(result).toBeNull()
+    expect(onStale).toHaveBeenCalledTimes(1)
+    expect(snackbarItems()[0]).toEqual(['找不到這筆接送請求，已重新整理', 'error'])
+    expect(logged).toHaveBeenCalledTimes(1)
+  })
+
+  it('useArriveNow without options ignores stale errors', async () => {
+    mock.onGet(TODAY_URL).reply(200, [])
+    mock.onPost(arrivedUrl('r1')).reply(409, apiError('invalid_pickup_status', '狀態不符'))
+    const api = await setup()
+
+    api.request('s1', 'r1')
+    await expect(api.confirm()).resolves.toBeNull()
+    expect(snackbarItems()[0]).toEqual(['狀態已更新，請確認後再操作', 'error'])
   })
 })

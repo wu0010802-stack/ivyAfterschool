@@ -650,4 +650,83 @@ describe('ChildHubView', () => {
     await flushPromises()
     expect(card(wrapper).text()).toContain('17:50 離班')
   })
+
+  it('ChildHubView refreshes today after stale arrive', async () => {
+    const pending = childToday('s2', {
+      pickup_request: {
+        id: 'r1',
+        status: 'pending',
+        expected_arrival_at: '17:30',
+        reply_ready_eta: null,
+        reply_message: null,
+        reply_source: null,
+        completed_at: null,
+        picked_up_by_name: null,
+        can_cancel: true,
+        can_mark_arrived: true,
+      },
+    })
+    const { wrapper } = await mountWithToday(pending)
+    expect(todayGets('s2')).toBe(1)
+    mock.resetHandlers()
+    mock.onGet('/parent/pickup/requests/today').reply(200, [])
+    mock.onPost(arrivedUrl('r1')).reply(409, { error: { code: 'invalid_pickup_status', message: '狀態不符', details: null } })
+    const refreshed = deferredReply()
+    mock.onGet(todayUrl('s2')).reply(refreshed.reply)
+
+    await click(button(wrapper, '我到了'))
+    await confirmArrive()
+
+    expect(snackbarMessages()[0]).toBe('狀態已更新，請確認後再操作')
+    expect(todayGets('s2')).toBe(2)
+    expect(busySkeletons(wrapper)).toHaveLength(0)
+
+    refreshed.resolve([
+      200,
+      childToday('s2', {
+        pickup_request: {
+          id: 'r1',
+          status: 'arrived',
+          expected_arrival_at: '17:30',
+          reply_ready_eta: null,
+          reply_message: null,
+          reply_source: null,
+          completed_at: null,
+          picked_up_by_name: null,
+          can_cancel: true,
+          can_mark_arrived: false,
+        },
+      }),
+    ])
+    await flushPromises()
+
+    expect(hasButton(wrapper, '我到了')).toBe(false)
+    expect(busySkeletons(wrapper)).toHaveLength(0)
+  })
+
+  it('ChildHubView refreshes today after missing request', async () => {
+    const pending = childToday('s2', {
+      pickup_request: {
+        id: 'r1',
+        status: 'pending',
+        expected_arrival_at: '17:30',
+        reply_ready_eta: null,
+        reply_message: null,
+        reply_source: null,
+        completed_at: null,
+        picked_up_by_name: null,
+        can_cancel: true,
+        can_mark_arrived: true,
+      },
+    })
+    const { wrapper } = await mountWithToday(pending)
+    mock.onGet('/parent/pickup/requests/today').reply(200, [])
+    mock.onPost(arrivedUrl('r1')).reply(404, { error: { code: 'pickup_request_not_found', message: '找不到', details: null } })
+
+    await click(button(wrapper, '我到了'))
+    await confirmArrive()
+
+    expect(snackbarMessages()[0]).toBe('找不到這筆接送請求，已重新整理')
+    expect(todayGets('s2')).toBe(2)
+  })
 })
