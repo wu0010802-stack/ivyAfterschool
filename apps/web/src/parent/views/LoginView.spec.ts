@@ -97,7 +97,8 @@ describe('LoginView', () => {
 
   const loginPosts = () => mock.history.post.filter((r) => r.url === LOGIN_URL)
   const telLinks = (w: MountedApp['wrapper']) => w.findAll('a').filter((a) => (a.attributes('href') ?? '').startsWith('tel:'))
-  const button = (w: MountedApp['wrapper'], label: string) => w.findAll('button').find((b) => b.text() === label)
+  // M3Button / ParentEmptyState 的按鈕文字含 icon ligature（例如 'login使用 LINE 登入'），以結尾比對
+  const button = (w: MountedApp['wrapper'], label: string) => w.findAll('button').find((b) => b.text().endsWith(label))
 
   it('LoginView logs in bound parent and redirects', async () => {
     installLiff(fakeLiff())
@@ -123,6 +124,15 @@ describe('LoginView', () => {
     expect(router.currentRoute.value.fullPath).toBe('/bind?redirect=/leaves')
     expect(useParentAuthStore(pinia).bindPending?.nameHint).toBe('王媽媽')
     expect(useParentAuthStore(pinia).isAuthed).toBe(false)
+  })
+
+  it('LoginView login success ignores unsafe redirect', async () => {
+    installLiff(fakeLiff())
+    mock.onPost(LOGIN_URL).reply(200, { status: 'ok', parent: ME, name_hint: null })
+
+    const { router } = await mountLogin('/login?redirect=//evil.com')
+
+    expect(router.currentRoute.value.fullPath).toBe('/')
   })
 
   it('LoginView drops unsafe redirect when sending to bind', async () => {
@@ -197,11 +207,14 @@ describe('LoginView', () => {
     const retry = button(wrapper, '重試')
     expect(retry).toBeDefined()
     expect(sessionStorage.getItem(MARKER)).toBeNull()
+    // 本輪已有舊 marker：使用者主動重試要先清掉，才會真的強制重登
+    sessionStorage.setItem(MARKER, 'old')
 
     await retry!.trigger('click')
     await flushPromises()
 
     expect(sessionStorage.getItem(MARKER)).not.toBeNull()
+    expect(sessionStorage.getItem(MARKER)).not.toBe('old')
     expect(fake.logout).toHaveBeenCalledTimes(1)
     expect(fake.login).toHaveBeenCalledTimes(1)
     // 等 LINE 轉址：停在 init 畫面，不顯示錯誤
@@ -266,7 +279,7 @@ describe('LoginView', () => {
     const link = telLinks(disabled.wrapper)
     expect(link).toHaveLength(1)
     expect(link[0]!.attributes('href')).toBe('tel:0223456789')
-    expect(link[0]!.text()).toBe('聯絡安親班 02-2345-6789 #12')
+    expect(link[0]!.get('.login-call__label').text()).toBe('聯絡安親班 02-2345-6789 #12')
     disabled.wrapper.unmount()
     mounted = null
 
@@ -293,7 +306,7 @@ describe('LoginView', () => {
     const { wrapper } = await mountLogin()
 
     expect(telLinks(wrapper)[0]?.attributes('href')).toBe('tel:+886223456789')
-    expect(telLinks(wrapper)[0]?.text()).toBe('聯絡安親班 +886-2-2345-6789 轉 12')
+    expect(telLinks(wrapper)[0]?.get('.login-call__label').text()).toBe('聯絡安親班 +886-2-2345-6789 轉 12')
   })
 
   it('LoginView hides contact button without phone', async () => {
@@ -334,7 +347,8 @@ describe('LoginView', () => {
     installLiff(fakeLiff({ getIDToken: vi.fn(() => null) }))
     const noToken = await mountLogin()
     expect(noToken.wrapper.text()).toContain('登入失敗，請稍後再試')
-    expect(loginPosts()).toHaveLength(2)
+    // 沒有 id_token 時不送出 liff-login
+    expect(loginPosts()).toHaveLength(3)
   })
 
   it('LoginView shows brand from config', async () => {
