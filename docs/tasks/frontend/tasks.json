@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 253,
-  "last_updated": "2026-10-16T14:27:14Z",
+  "version": 254,
+  "last_updated": "2026-10-16T14:28:14Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4564,7 +4564,7 @@
     {
       "id": "FRONTEND-189",
       "title": "實作 views/PickupPosView.vue：接送 POS 頁（頂部狀態列、靜音、代建、POS 三欄）",
-      "description": "建立 `apps/web/src/views/PickupPosView.vue`（路由 `/pickup`，`pickup:read`，meta.tablet）。移植 ivy `FE:src/views/DismissalQueueView.vue` 的頁面骨架（連線狀態、POS board 容器、建立 dialog）；**去掉** PageHeader（頁名「接送」只在外框頂欄，同今日出勤 / 作業看板）、歷史篩選分頁、手機卡片列表、娃娃車、教師端連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**內容**\n- 頂部工具列（44px，不放 PageHeader）：今天日期（formatDateWithWeekday，例如「10/07（三）」），沒有 `pickup:operate` 時日期旁加「僅檢視」tag；計數 chip「待回覆 {needs_reply}」danger、「等待確認 {pending}」warning、「已確認 {acknowledged}」info、「家長已到 {arrived}」danger（數字為 0 時改中性灰 plain；載入中 / 載入失敗時數字顯示「–」；needs_reply 由後端計算，員工代建的請求在自動回覆沒有預計時間時也會計入）；連線膠囊（固定寬度：open 綠點「即時」、其他黃點「重新連線中」，tooltip「即時連線中斷，畫面每 15 秒自動更新」；完整句子不放進膠囊，斷線超過 5 秒另由外框整寬橫幅提示）；靜音切換（FRONTEND-187 muted，icon + 文字「提示音：開 / 關」，關時 warning plain）；「代理接送核驗」連結 → `/pickup/authorizations`；有 `pickup:operate` 時「代建接送請求」→ `PickupCreateDialog`（FRONTEND-199，未預選學生；中欄選了班級時帶 `classFilter`，全部班級時不帶）。平板 1024 寬度下任何狀態（載入中 / 失敗、斷線、兩位數計數）工具列都維持一列，寬度 < 900 才換行。\n- 主體 `DismissalPosBoard`（FRONTEND-190），傳入 `usePickupBoard({withRoster: true, withAuthorizations: true})`（FRONTEND-188）的資料與操作。\n- 提示音：`board.onArrived(chime.onArrived)`、`board.onNewRequest(chime.onNewRequest)`；頁面第一次 pointerdown 時 `chime.unlock()`；並訂閱 `useNotificationsStore().onTransient`（`pickup.arrived` 以 request_id 去重，不重播）。家長到達時，佇列卡移到最前並閃爍、提示音（未靜音時）與 FRONTEND-034 全域的 ElNotification「{姓名} 家長已抵達」同時出現，本頁不另外抑制 ElNotification。\n- 第一次進入且尚未 unlock 時顯示提示條「點一下畫面以啟用提示音」，unlock 後消失。\n- 載入失敗 EmptyState error + 重試。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/PickupPosView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/views/PickupPosView.vue`（路由 `/pickup`，`pickup:read`，meta.tablet）。移植 ivy `FE:src/views/DismissalQueueView.vue` 的頁面骨架（連線狀態、POS board 容器、建立 dialog）；**去掉** PageHeader（頁名「接送」只在外框頂欄，同今日出勤 / 作業看板）、歷史篩選分頁、手機卡片列表、娃娃車、教師端連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**內容**\n- 頂部工具列（44px，不放 PageHeader）：今天日期（formatDateWithWeekday，例如「10/07（三）」），沒有 `pickup:operate` 時日期旁加「僅檢視」tag；計數 chip「待回覆 {needs_reply}」danger、「等待確認 {pending}」warning、「已確認 {acknowledged}」info、「家長已到 {arrived}」danger（數字為 0 時改中性灰 plain；載入中 / 載入失敗時數字顯示「–」；needs_reply 由後端計算，員工代建的請求在自動回覆沒有預計時間時也會計入）；連線膠囊（固定寬度：open 綠點「即時」、其他黃點「重新連線中」，tooltip「即時連線中斷，畫面每 15 秒自動更新」；完整句子不放進膠囊，斷線超過 5 秒另由外框整寬橫幅提示）；靜音切換（FRONTEND-187 muted，icon + 文字「提示音：開 / 關」，關時 warning plain）；「代理接送核驗」連結 → `/pickup/authorizations`；有 `pickup:operate` 時「代建接送請求」→ `PickupCreateDialog`（FRONTEND-199，未預選學生；中欄選了班級時帶 `classFilter`，全部班級時不帶）。平板 1024 寬度下任何狀態（載入中 / 失敗、斷線、兩位數計數）工具列都維持一列，寬度 < 900 才換行。\n- 主體 `DismissalPosBoard`（FRONTEND-190），傳入 `usePickupBoard({withRoster: true, withAuthorizations: true})`（FRONTEND-188）的資料與操作。\n- 提示音：`board.onArrived(chime.onArrived)`、`board.onNewRequest(chime.onNewRequest)`；頁面第一次 pointerdown 時 `chime.unlock()`；並訂閱 `useNotificationsStore().onTransient`（`pickup.arrived` 以 request_id 去重，不重播）。家長到達時，佇列卡移到最前並閃爍、提示音（未靜音時）與 FRONTEND-034 全域的 ElNotification「{姓名} 家長已抵達」同時出現，本頁不另外抑制 ElNotification。\n- 本機 `board.create` 建立的請求不播「新請求」提示音（核可稿只在 ws 收到其他人建立的新請求時播單音）；FRONTEND-188 目前 create 成功也會觸發 `onNewRequest`，若要改 `usePickupBoard` 才能做到，在本 task description 寫明改寫 188 的範圍並補 188 的 red_case。\n- 第一次進入且尚未 unlock 時顯示提示條「點一下畫面以啟用提示音」，unlock 後消失。\n- 載入失敗 EmptyState error + 重試。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/PickupPosView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupPosView.vue",
       "source_ref": "FE:src/views/DismissalQueueView.vue::default",
@@ -4595,7 +4595,8 @@
           "PickupPosView hides operate actions for readers：permissions ['pickup:read'] → 沒有 '代建接送請求'，仍有 '代理接送核驗' 連結，且文字含 '僅檢視'",
           "PickupPosView chimes for request created directly as arrived：unlock 後 ws 送出 queue 中原本不存在的 r5（status arrived、expected_arrival_at null）→ speech.speak 收到 '低年級A班 王小明 家長到了' 一次；同時收到 notification.transient pickup.arrived（payload.request_id 'r5'）→ speak 仍只 1 次",
           "PickupPosView shows connection capsule：adminWs status 'open' → 文字含 '即時'；status 'reconnecting' → 文字含 '重新連線中' 且不含 '每 15 秒更新'",
-          "PickupPosView shows count placeholders and neutral zero chips：GET queue 尚未回應 → 文字含 '待回覆 –'、'家長已到 –'；回應 counts 全為 0 → 含 '待回覆 0' 的 chip class 含 'el-tag--info' 與 'el-tag--plain'"
+          "PickupPosView shows count placeholders and neutral zero chips：GET queue 尚未回應 → 文字含 '待回覆 –'、'家長已到 –'；回應 counts 全為 0 → 含 '待回覆 0' 的 chip class 含 'el-tag--info' 與 'el-tag--plain'",
+          "PickupPosView does not chime for locally created request：unlock 後經 PickupCreateDialog 建立 r9 成功（POST 回 pending）→ 新請求提示音播放 0 次；之後 ws 推來 queue 中不存在的 pending r10 → 播放 1 次"
         ],
         "run": "just web-test src/views/PickupPosView.spec.ts -t \"PickupPosView\"",
         "notes": ""
@@ -4609,7 +4610,7 @@
     {
       "id": "FRONTEND-190",
       "title": "實作 components/pickup/pos/DismissalPosBoard.vue：三欄 POS 容器（班級欄、學生卡、佇列）",
-      "description": "建立 `apps/web/src/components/pickup/pos/DismissalPosBoard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosBoard.vue` 的三欄組裝與 selectedClassroomId 只影響中欄的設計；**去掉** 娃娃車 / 請假補登（runMark）、reservation chime。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`board: ReturnType<typeof usePickupBoard>`、`canOperate: boolean`、`canOverride: boolean`。\n**行為**\n- 版面：三欄貼齊內容區（左 148px、中彈性、右 320px；桌機 160 / 340），各欄各自捲動。\n- 左 `ClassroomRail`（FRONTEND-191）：`buildClassRail(roster)`（FRONTEND-182），預設選 `all`，選取存 `route.query.class`；只影響中欄，右欄佇列永遠是全部班級。\n- 中 `StudentGrid`（FRONTEND-192）：students = `studentsForRail(roster, selected, query)`、rosterClasses = `roster.classes`、query、groupByClass = 選取 `all`。中欄頂部固定一列：「{班級}（{n} 人）」標題 + 搜尋框（姓名 / 學號，44px）；搜尋框只過濾中欄，放在中欄頂部（不放班級欄）。\n- 右 `QueuePanel`（FRONTEND-194）：`useDismissalPosQueue(board.queue)`（FRONTEND-185）的 items。\n- 學生卡 `quick-dispatch`（canOperate 且狀態 waiting / not_arrived）→ `addToQueue`。\n- 學生卡 `focus-request` → 右欄捲到並閃爍該請求卡。\n- 學生卡 `create-request`（⋮「代建接送請求…」）→ `PickupCreateDialog`（FRONTEND-199，預選學生）。\n- 佇列卡 `reply` → `PickupReplyDialog`（FRONTEND-197）；`acknowledge` → `board.acknowledge`；`complete` → `PickupCompleteDialog`（FRONTEND-198）；`cancel` → `ElMessageBox.prompt('取消原因（選填，家長發起的請求會通知家長）', '取消接送請求')` → queue.cancel(item, reason)。\n- `PickupCompleteDialog` emit `verify-authorization(auth)` → 導到 `/pickup/authorizations?verify={auth.id}`。\n- 寬度 < 900：右欄改為底部抽屜（高約 70%，點遮罩或「收合」關閉）；中欄右下浮動按鈕「佇列（N）」，有家長已到時加紅色數字徽章；學生卡 `focus-request` 時先打開抽屜再定位閃爍。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/pickup/pos/DismissalPosBoard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosBoard.vue` 的三欄組裝與 selectedClassroomId 只影響中欄的設計；**去掉** 娃娃車 / 請假補登（runMark）、reservation chime。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`board: ReturnType<typeof usePickupBoard>`、`canOperate: boolean`、`canOverride: boolean`。\n**行為**\n- 版面：三欄貼齊內容區（左 148px、中彈性、右 320px；桌機 160 / 340），各欄各自捲動。\n- 左 `ClassroomRail`（FRONTEND-191）：`buildClassRail(roster)`（FRONTEND-182），預設選 `all`，選取存 `route.query.class`；只影響中欄，右欄佇列永遠是全部班級。\n- 中 `StudentGrid`（FRONTEND-192）：students = `studentsForRail(roster, selected, query)`、rosterClasses = `roster.classes`、query、groupByClass = 選取 `all`。中欄頂部固定一列：「{班級}（{n} 人）」標題 + 搜尋框（姓名 / 學號，44px）；搜尋框只過濾中欄，放在中欄頂部（不放班級欄）。\n- 右 `QueuePanel`（FRONTEND-194）：`useDismissalPosQueue(board.queue)`（FRONTEND-185）的 items。\n- 學生卡 `quick-dispatch`（canOperate 且狀態 waiting / not_arrived）→ `addToQueue`。\n- 學生卡 `focus-request` → 右欄捲到並閃爍該請求卡。\n- 學生卡 `create-request`（⋮「代建接送請求…」）→ `PickupCreateDialog`（FRONTEND-199，預選學生）。\n- 送出中防連點：維護 `busyIds`（reactive `Set<string>`），佇列卡 `acknowledge` 與 `cancel` 呼叫 API 前加入該請求 id、promise 結束（成功或失敗）後移除，傳給 QueuePanel 的 `busyIds`（FRONTEND-194）；busy 中的請求再收到同一動作時忽略。`reply` / `complete` 由各自 dialog 的送出中狀態處理。\n- 佇列卡 `reply` → `PickupReplyDialog`（FRONTEND-197）；`acknowledge` → `board.acknowledge`；`complete` → `PickupCompleteDialog`（FRONTEND-198）；`cancel` → `ElMessageBox.prompt('取消原因（選填，家長發起的請求會通知家長）', '取消接送請求')` → queue.cancel(item, reason)。\n- `PickupCompleteDialog` emit `verify-authorization(auth)` → 導到 `/pickup/authorizations?verify={auth.id}`。\n- 寬度 < 900：右欄改為底部抽屜（高約 70%，點遮罩或「收合」關閉）；中欄右下浮動按鈕「佇列（N）」，有家長已到時加紅色數字徽章；學生卡 `focus-request` 時先打開抽屜再定位閃爍。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/DismissalPosBoard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosBoard.vue::default",
@@ -4625,7 +4626,7 @@
         "FRONTEND-199"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "FRONTEND-185 殘留（review-r10-f6）：`queue.cancel(active)` 只回 boolean、board 沒有 cancel，取消成功後卡片要等 ws 推播才移到已結束；本元件 cancel 成功後呼叫 `board.reload()` 讓畫面立即更新。倒數到 0、POST 已送出後再取消，請求仍會建立（185 已知行為）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/pos/DismissalPosBoard.spec.ts",
@@ -4638,7 +4639,8 @@
           "DismissalPosBoard search filters students：搜尋 'S1002' → 中欄只剩學號 S1002 的卡",
           "DismissalPosBoard cancel prompts for reason：點佇列卡左滑後的 '取消'，在 prompt 輸入 '家長改明天' 確認 → POST /admin/pickup/requests/r1/cancel body 深等於 {reason:'家長改明天'}",
           "DismissalPosBoard readonly ignores taps：canOperate false → 點 '王小明' 卡後右欄沒有倒數卡、無 POST",
-          "DismissalPosBoard narrow width uses bottom drawer：視窗寬 800、queue.open 2 筆 → 沒有右欄，有 '佇列（2）' 按鈕；點擊後抽屜內有 2 張請求卡"
+          "DismissalPosBoard narrow width uses bottom drawer：視窗寬 800、queue.open 2 筆 → 沒有右欄，有 '佇列（2）' 按鈕；點擊後抽屜內有 2 張請求卡",
+          "DismissalPosBoard marks card busy while acknowledging：queue.open 有 r1（pending）、POST /admin/pickup/requests/r1/acknowledge 延遲回應 → 點 r1「確認」後該鈕 class 含 'is-loading'、同卡「回覆時間」disabled；再點一次「確認」→ acknowledge POST 只有 1 次；回應後 loading 消失"
         ],
         "run": "just web-test src/components/pickup/pos/DismissalPosBoard.spec.ts -t \"DismissalPosBoard\"",
         "notes": ""
@@ -4768,7 +4770,8 @@
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-195",
-        "FRONTEND-184"
+        "FRONTEND-184",
+        "FRONTEND-185"
       ],
       "suggested_model": "sonnet-5",
       "risk_notes": "送出中防連點（例如連點「確認」送出兩次 acknowledge）不在本元件處理：QueueCard（FRONTEND-195）沒有 busy prop，由 board 層（FRONTEND-188 / 189）負責。\n【review-r10-f2 打回】送出中防連點沒有落地：核可稿 page-pickup-pos.html 的 QueuePanel 有必填的 busyIds，對每張 QueueCard 傳 :busy=\"busyIds.has(it.id)\"，QueueCard 的「確認」:loading=\"busy\"、其餘按鈕 :disabled=\"busy\"，對應 decisions「佇列卡按鈕…送出中按鈕 loading / 停用」。本元件沒有 busyIds，QueueCard（FRONTEND-195）也沒有 busy prop；本欄原寫「由 board 層（FRONTEND-188 / 189）負責」，但 188 / 189 的 description 與 red_cases 都沒有這項（README：移交驗收四者缺一等同刪除），而且 board 沒有管道讓卡片按鈕顯示 loading / 停用。反例（reviewer 以 Chromium 觸控實測）：同一張 pending 卡 120ms 內點兩次「確認」→ QueuePanel emit acknowledge 2 次；usePickupBoard 的 mutate 沒有在途去重，第二次 POST 得到 409 invalid_pickup_status，畫面跳「此請求狀態已變更（目前：已確認）」並整個重新載入。驗收：QueuePanel 依稿新增 busyIds（以 item.id 判斷）並傳給 QueueCard 的 busy；QueueCard 加 busy prop（「確認」loading、其餘按鈕停用，busy 時點擊不 emit）——這是部分改寫 FRONTEND-195，依 README 在 194 description 寫明改寫範圍並同步 195 的 description / red_cases（或由協調者重開 195）；誰維護 busyIds（稿中由頁面在 API 呼叫前後加入 / 移除）要寫進 FRONTEND-189（或 188）的 description 與 red_cases，本欄原本的移交說明改寫為實際落點。測試：busyIds 含 r1 時 r1 的「確認」為 loading、其他按鈕 disabled、點擊不 emit；不含時照常 emit。",
@@ -4810,7 +4813,8 @@
         "FRONTEND-184",
         "FRONTEND-186",
         "FRONTEND-196",
-        "FRONTEND-005"
+        "FRONTEND-005",
+        "FRONTEND-185"
       ],
       "suggested_model": "opus-5",
       "risk_notes": "",
@@ -6188,6 +6192,41 @@
         "status": "pass",
         "reviewer": "review-r10-f4",
         "notes": "複審通過（只核對 review-r10-f4 的打回項：再點圖示關閉且圖示換形時，下一次點圖示被吞掉）。紅燈 b97368d 早於修正 cf7bf76；red_cases 補第 8、9 條並擴充第 7 條（點圖示開啟後 Esc / Enter 還焦）。tdd.run 實跑 18/18 綠。修法：吞掉旗標綁定啟動它的 pointerdown 事件物件，圖示鈕自己的 pointerdown 若不是該事件就清掉舊旗標；超過 200 字時點外面以 document capture 的 click 監聽擋下緊接的那次 click，另一格的編輯框不會同時開啟。突變 10 處：整檔換回打回前 ee6b968（第 8、9 條轉紅，證明新測試有效）、圖示 pointerdown 不清舊旗標、拿掉 @pointerdown 綁定、capture click 不擋、超過 200 字不設 blockNextClick、同手勢也清旗標、取消不還焦（第 7 條擴充後轉紅）、確定不還焦 —— 皆轉紅；缺考格改還焦到分數框、pointerdown 不重設 blockNextClick 兩處不轉紅（列入 risk_notes）。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（chromium-1243）重驗：無→有、有→無（圖示換形）再點圖示關閉後下一次一點就開；按下拖離後一點就開；圖示不換形時同手勢的 click 仍被吞、不重開；a 格超過 200 字點 b 格圖示只剩 a、焦點在 a、無 emit，改回合法再點 b 則 a 送出、只剩 b 且焦點在 b；超過 200 字點 b 的「缺」不觸發 b；之後點編輯框內「清空」、外面拖曳後點「取消」都正常。上一輪的 Chromium 回歸腳本全部重跑通過（點外面確定、201 字焦點拉回、Shift+F2、Esc / 取消 / 確定 / Enter 還焦、缺考格、tooltip、Tab 順序、尺寸）。web-lint 乾淨；web-typecheck 全專案 0 錯誤。"
+      }
+    },
+    {
+      "id": "FRONTEND-297",
+      "title": "修正 useSwipeReveal：水平拖曳確立後才 setPointerCapture（桌機滑鼠點佇列卡按鈕沒有反應）",
+      "description": "部分改寫 `apps/web/src/composables/useSwipeReveal.ts`（FRONTEND-186）。現況 `onPointerDown` 一按下就對 `e.currentTarget` 呼叫 `setPointerCapture`，pointerup 因此改送到卡片本體；在 Chromium 用滑鼠點 QueueCard（FRONTEND-195）卡內的「回覆時間 / 確認 / 完成交付」時，click 落在卡片本體、按鈕不會 emit（review-r10-f2 實測：觸控 tap 與 `element.click()` 不受影響，happy-dom 測不出來）。櫃台桌機用滑鼠因此無法操作佇列卡。\n\n**改寫範圍**（FRONTEND-186 其餘行為不變）\n- `onPointerDown` 不再 capture。\n- `onPointerMove` 在水平位移第一次超過 `SCROLL_SLOP_PX`、`horizontalLocked` 變成 true 的那一次，才對 `e.currentTarget` 呼叫 `setPointerCapture(e.pointerId)`。\n- 結束手勢（`abandon`）只在本次手勢確實 capture 過時才 `releasePointerCapture`。\n- 沒有水平拖曳的點擊（down → up，水平位移 ≤ `SCROLL_SLOP_PX`）：不 capture、`isOpen` 不變、`dragX` 回到目前開合狀態的位置。\n\n**驗收標準**：每一條對應下列 red_case（測試以會記錄目前 capture 中 pointerId 的替身元素當 `currentTarget`，斷言替身的 capture 狀態，不只斷言函式被呼叫）。另需以真實 Chromium（`/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`，harness 放 scratchpad、不 commit）實測並寫進回報：(1) 用滑鼠點 canOperate 的進行中 QueueCard「確認」「回覆時間」「完成交付」各 emit 一次；(2) 滑鼠拖曳與 CDP 觸控左滑仍可露出「取消」，點「取消」emit cancel；(3) 已開啟時往右拖仍可關閉。",
+      "granularity_unit": "composable",
+      "target_path": "apps/web/src/composables/useSwipeReveal.ts",
+      "source_ref": "FE:src/composables/useSwipeReveal.ts::useSwipeReveal",
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-186",
+        "FRONTEND-195"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/useSwipeReveal.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "useSwipeReveal captures pointer only after horizontal lock：pointerdown x=300 → 替身沒有 capture 任何 pointer；move x=295（dx -5）→ 仍沒有；move x=280（dx -20）→ 替身 capture 中的 pointerId 為該次 pointerId；再 move x=260 → capture 仍只有這一個",
+          "useSwipeReveal tap without horizontal drag never captures：關閉狀態 down x=300、up x=302 → 替身從未 capture、isOpen false、dragX 0；開啟狀態 down x=200、up x=203 → 替身從未 capture、isOpen true、dragX -84",
+          "useSwipeReveal releases capture when the drag ends：down x=300、move x=250、up → 替身已沒有 capture 中的 pointer、isOpen true；down x=300、move dx=-20 後 pointercancel → 替身已沒有 capture、isOpen false"
+        ],
+        "run": "just web-test src/composables/useSwipeReveal.spec.ts -t \"useSwipeReveal\"",
+        "notes": "Chromium 實測三項寫進回報（見 description）；reviewer 需重跑。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]
