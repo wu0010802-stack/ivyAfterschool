@@ -261,6 +261,19 @@ describe('StaffUserFormDialog', () => {
     expect(formItem('帳號').find('.el-form-item__error').text()).toBe('請輸入帳號')
   })
 
+  it('StaffUserFormDialog rejects username starting with symbol', async () => {
+    await mountDialog()
+    await fill('帳號', '.tutor')
+    await fill('姓名', '陳老師')
+    await pickRole('課輔老師')
+
+    await submit()
+    await settleErrors()
+
+    expect(formItem('帳號').find('.el-form-item__error').text()).toBe('3~30 碼，只能使用小寫英文、數字與 . _ -')
+    expect(mock.history.post).toHaveLength(0)
+  })
+
   it('StaffUserFormDialog derives extra and revoked from picker', async () => {
     mock.onPost('/admin/staff-users').reply(201, { user: makeUser(), temp_password: 'Tmp-y' })
     await mountDialog()
@@ -333,6 +346,29 @@ describe('StaffUserFormDialog', () => {
     expect(body('patch')).toEqual({ display_name: '陳老師' })
     expect((wrapper.emitted('updated') as [StaffUser][])[0]![0].display_name).toBe('陳老師')
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    expect(Array.from(document.body.querySelectorAll('.el-message')).map((m) => m.textContent?.trim())).toContain(
+      '已更新',
+    )
+  })
+
+  it('StaffUserFormDialog does not resend redundant adjustments', async () => {
+    // 角色行政已含 leaves:write，存的 extra ['leaves:write'] 已冗餘、revoked ['pickup:override'] 不在角色內也無意義：
+    // 有效權限與角色預設相同。只改姓名時不可送出 extra / revoked（自己編輯自己會被 409 cannot_modify_self_permissions）
+    const self = makeUser({
+      id: 'u1',
+      display_name: '林行政',
+      role: { id: 'r-clerk', code: 'clerk', name: '行政' },
+      extra_permissions: ['leaves:write'],
+      revoked_permissions: ['pickup:override'],
+      effective_permissions: ['leaves:read', 'leaves:write', 'students:read'],
+    })
+    mock.onPatch('/admin/staff-users/u1').reply(200, { ...self, display_name: '林行政二' })
+    await mountDialog({ user: self, selfId: 'u1' })
+
+    await fill('姓名', '林行政二')
+    await submit()
+
+    expect(body('patch')).toEqual({ display_name: '林行政二' })
   })
 
   it('StaffUserFormDialog edits permissions and clears contact fields', async () => {
@@ -459,5 +495,21 @@ describe('StaffUserFormDialog', () => {
     await pickRole('課輔老師')
     expect(dialog().find('[data-test=ungrantable-warning]').exists()).toBe(false)
     expect(dialog().text()).not.toContain('包含你沒有的')
+  })
+
+  it('StaffUserFormDialog ungrantable warning ignores codes the user already has', async () => {
+    // 目標原本就有 pickup:override（操作者沒有）：後端只限制新授出的碼，不提示；新勾的 leaves:read 才提示
+    const user = makeUser({
+      extra_permissions: ['pickup:override'],
+      effective_permissions: ['pickup:override', 'students:read'],
+    })
+    await mountDialog({ user, permissions: ['staff:read', 'staff:write', 'students:read', 'leaves:write'] })
+
+    expect(dialog().find('[data-test=ungrantable-warning]').exists()).toBe(false)
+
+    await pickRole('行政')
+    const warn = dialog().find('[data-test=ungrantable-warning]')
+    expect(warn.text()).toContain('包含你沒有的 1 項權限（查請假）')
+    expect(warn.text()).not.toContain('代理接送強制完成')
   })
 })
