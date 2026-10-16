@@ -109,8 +109,13 @@ const noteInput = ref<InputExpose | null>(null)
 const panel = ref<HTMLElement | null>(null)
 const editing = ref(false)
 const draft = ref('')
-// 再點同一格的圖示視同點外面：pointerdown 已確定並關閉，接著的 click 不再開啟
+// 再點同一格的圖示視同點外面：pointerdown 已確定並關閉，緊接著的那次 click 不再開啟。
+// 只吞同一個手勢的 click：記下啟動旗標的 pointerdown 事件，新的 pointerdown 一律先清掉舊旗標
+// （圖示換形時瀏覽器不派發 click、按下後拖離等情況都不會留下殘旗標）。
 let swallowClick = false
+let swallowArmedBy: Event | null = null
+// 內容超過上限時點外面：連同緊接著的那次 click 一起擋下（例如另一格的圖示），編輯框維持唯一開啟
+let blockNextClick = false
 
 const noteLength = (s: string): number => Array.from(s.trim()).length
 const noteCount = computed(() => noteLength(draft.value))
@@ -140,10 +145,16 @@ function popperEl(): HTMLElement | null {
   return panel.value?.closest<HTMLElement>('.el-popper') ?? null
 }
 
-function closeEditor(returnFocus: boolean): void {
-  editing.value = false
+function removeDocumentListeners(): void {
   document.removeEventListener('pointerdown', onOutsidePointerdown, true)
   document.removeEventListener('focusin', onFocusGuard, true)
+  document.removeEventListener('click', onCaptureClick, true)
+}
+
+function closeEditor(returnFocus: boolean): void {
+  editing.value = false
+  blockNextClick = false
+  removeDocumentListeners()
   // 等 popover 的 focus trap 在這次 flush 裡還完焦點，再聚焦本格
   if (returnFocus) void nextTick(focusCell)
 }
@@ -167,18 +178,30 @@ function clearNote(): void {
   void nextTick(focusNoteInput)
 }
 
-/** 點編輯框外面視同確定；超過 200 字時不關閉、焦點拉回文字框 */
+/** 點編輯框外面視同確定；超過 200 字時不關閉、焦點拉回文字框，並擋下緊接著的那次 click */
 function onOutsidePointerdown(e: Event): void {
   if (!editing.value) return
+  blockNextClick = false
   const target = e.target as Node | null
   if (target && popperEl()?.contains(target)) return
-  const trigger = root.value?.querySelector('.score-cell__note')
-  if (target && trigger?.contains(target)) swallowClick = true
   if (noteOver.value) {
+    blockNextClick = true
     setTimeout(focusNoteInput, 0)
     return
   }
+  const trigger = root.value?.querySelector('.score-cell__note')
+  if (target && trigger?.contains(target)) {
+    swallowClick = true
+    swallowArmedBy = e
+  }
   confirmNote(false)
+}
+
+function onCaptureClick(e: Event): void {
+  if (!blockNextClick) return
+  blockNextClick = false
+  e.stopPropagation()
+  e.preventDefault()
 }
 
 /**
@@ -194,10 +217,14 @@ function onFocusGuard(e: FocusEvent): void {
 
 function openEditor(): void {
   if (editing.value) return
+  swallowClick = false
+  swallowArmedBy = null
+  blockNextClick = false
   draft.value = props.note ?? ''
   editing.value = true
   document.addEventListener('pointerdown', onOutsidePointerdown, true)
   document.addEventListener('focusin', onFocusGuard, true)
+  document.addEventListener('click', onCaptureClick, true)
   void nextTick(focusNoteInput)
 }
 
@@ -206,9 +233,18 @@ function onEditorShown(): void {
   if (editing.value && document.activeElement !== noteInput.value?.textarea) focusNoteInput()
 }
 
+/** 新的手勢：不是啟動旗標的那次 pointerdown 就先清掉舊旗標（同一個事件物件會先經過 document 的 capture 再到這裡） */
+function onTriggerPointerdown(e: Event): void {
+  if (e !== swallowArmedBy) {
+    swallowClick = false
+    swallowArmedBy = null
+  }
+}
+
 function onNoteClick(): void {
   if (swallowClick) {
     swallowClick = false
+    swallowArmedBy = null
     return
   }
   openEditor()
@@ -239,10 +275,7 @@ function onPanelKeydown(e: KeyboardEvent): void {
   }
 }
 
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onOutsidePointerdown, true)
-  document.removeEventListener('focusin', onFocusGuard, true)
-})
+onBeforeUnmount(removeDocumentListeners)
 </script>
 
 <template>
@@ -343,6 +376,7 @@ onBeforeUnmount(() => {
                 :aria-label="noteLabel"
                 aria-haspopup="dialog"
                 :aria-expanded="editing ? 'true' : 'false'"
+                @pointerdown="onTriggerPointerdown"
                 @click="onNoteClick"
               >
                 <el-icon>
