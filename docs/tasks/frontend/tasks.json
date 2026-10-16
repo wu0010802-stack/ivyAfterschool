@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 298,
-  "last_updated": "2026-10-16T15:37:32Z",
+  "version": 299,
+  "last_updated": "2026-10-16T15:38:36Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2758,7 +2758,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentDetailPanel.vue",
       "source_ref": "FE:src/components/student/StudentDetailPanel.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
@@ -2771,7 +2771,7 @@
         "FRONTEND-042"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f1 打回】「靜默重抓、不顯示骨架」沒有被測試驗到（斷言放在重抓完成之後，恆真）。反例（突變）：onGuardiansChanged 改成 load()（非靜默）→ 18 條仍全綠；實際後果是「產生綁定碼」後 GuardianManager 被卸載，只顯示一次的綁定碼 dialog 消失。onPurged 改成 load() 也仍全綠。驗收：1) passes guardians and refreshes count after change：第二次 GET 改用可控 Promise，在回應前斷言沒有 .el-skeleton、GuardianManager 替身仍是同一個實例（例如替身記錄 mounted 次數，期間維持 1），放行後再斷言 GET 2 次與「監護人（2）」；2) reloads and emits changed after purge：重抓回應前斷言沒有 .el-skeleton 且 header 仍在。以上兩個突變都要轉紅。",
+      "risk_notes": "監護人異動後必須靜默重抓、不可卸載 GuardianManager（產生綁定碼後才 emit change，綁定碼 dialog 在 GuardianManager 內且只顯示一次），由「passes guardians and refreshes count after change」的掛載次數斷言把關；改動 load / onGuardiansChanged 時須保留。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentDetailPanel.spec.ts",
@@ -2802,9 +2802,9 @@
         "notes": "StudentPhotoUploader / GuardianManager / StudentExamHistoryTab / StudentFormDialog 以 vi.mock 替身驗證傳入的 props 與完成事件（各自已有完整測試；避免它們各自發請求與多個 el-select 拖慢 happy-dom）；StudentSensitiveFields 與 StudentPurgeDialog 用真實元件。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f1",
-        "notes": "打回（review-r10-f1）。tdd.run 18 passed（18 條 red_case 逐條對應）；55bbbfa（測試，當時 StudentDetailPanel.vue 不存在）先於 8262266（實作）；0c5ddda 的測試修正是加嚴（meta 依 <br> 拆兩行比對、基本資料只取自己的 descriptions），不是放寬。9d01b5b：拿掉 close() 合理——已核可稿的詳情內沒有關閉鈕，抽屜關閉鈕與清 query.student 屬 085（085 description / red_case 也只依賴抽屜自己的關閉）；description 補述（20px 姓名、兩行 meta 與「未分班」「未填就讀國小」、照片可編輯條件、封存確認框、監護人人數、成績紀錄 lazy、?tab= 值與 fallback）出自稿的詳情程式。介面：StudentPhotoUploader / GuardianManager / StudentExamHistoryTab / StudentPurgeDialog / StudentSensitiveFields 的 props 與事件用法正確。Chromium 實測：面板寬 520 / 640 照片 96×96、姓名 20px / 600、meta 兩行、右側「編輯」「封存」放得下無溢出；已封存退班學生橘字「已封存（2026/09/01）」、⋮ 選單只有「永久刪除」。突變 18 種中 16 種轉紅；未轉紅的兩種即打回項。web-lint exit 0；web-typecheck exit 0。打回項：red_case「passes guardians and refreshes count after change」與 description 都要求監護人異動後「靜默重抓、不顯示骨架」，但測試只在重抓完成後才斷言沒有骨架（恆真）：改成一般重抓（顯示骨架）仍全綠。這不是外觀問題：GuardianManager 在「產生綁定碼」成功後才 emit change，綁定碼 dialog 在 GuardianManager 內；一般重抓會清空 detail、卸載 GuardianManager，只顯示一次的綁定碼 dialog 會在使用者抄下前消失。永久刪除後的重抓也有同樣的恆真斷言。"
+        "notes": "複審通過（review-r10-f1）。打回項（監護人異動與永久刪除後「靜默重抓、不顯示骨架」的斷言恆真）已由 868e425 修正，實作未改：子元件替身記錄掛載次數；兩條測試的第二次 GET 改用可控 Promise，回應前斷言沒有 .el-skeleton、GuardianManager 掛載次數維持 1（永久刪除則是 header 仍顯示原姓名），放行後再斷言結果。reviewer 重跑兩個突變（onGuardiansChanged 改 load()、onPurged 改 load()）各讓對應測試轉紅，還原後 cmp 與 git diff 乾淨。tdd.run 18 passed（d5d509b 加嚴的兩條 red_case 與測試同名對應）。web-lint spec exit 0；web-typecheck 本 task 檔案零錯誤（現存錯誤只在他人尚未實作的 LeavesView.spec）。首審已確認的部分（0c5ddda 加嚴、拿掉 close() 合理、description 補述出自稿、子元件介面、Chromium 520 / 640 版面、其餘 16 種突變轉紅）維持不變。"
       }
     },
     {
