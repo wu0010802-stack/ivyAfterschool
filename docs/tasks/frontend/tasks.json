@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 196,
-  "last_updated": "2026-10-16T05:24:50Z",
+  "version": 197,
+  "last_updated": "2026-10-16T05:25:15Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5539,8 +5539,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/DashboardView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-260",
         "FRONTEND-043",
