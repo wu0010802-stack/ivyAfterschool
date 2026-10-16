@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Component } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { isPermissionCode } from '@/constants/permissions'
-import { mountWithApp } from '@/test/helpers'
 import { VIEW_LOADERS } from '@/router/viewLoaders'
 import { ROUTE_PERMISSIONS, routes } from './routes'
 import routesSource from './routes.ts?raw'
@@ -128,17 +127,18 @@ describe('admin routes', () => {
     expect(routesSource).not.toMatch(/from\s+['"]@\/views/)
   })
 
-  it('admin routes use placeholder loaders by default', async () => {
-    // 以尚未實作的 PickupPosView（FRONTEND-189）驗證；各 view 實作完成時會把自己的 loader 改成真正的 view
+  it('every view loader loads a real view', { timeout: 60_000 }, async () => {
+    // 每個後台 view 都已實作：VIEW_LOADERS 不指向 PlaceholderView，且各自載入同名的 view 檔
     const actual = await vi.importActual<typeof import('@/router/viewLoaders')>('@/router/viewLoaders')
-    const loaded = (await actual.VIEW_LOADERS.PickupPosView()) as Component | { default: Component }
-    const component = 'default' in loaded ? loaded.default : loaded
+    const placeholder = (await import('@/router/PlaceholderView.vue')).default
+    const names = Object.keys(actual.VIEW_LOADERS)
+    expect(names.sort()).toEqual(Object.keys(VIEW_LOADERS).sort())
 
-    const { wrapper } = await mountWithApp(component, {
-      routes: [{ path: '/pickup', component, meta: { title: '接送' } }],
-      initialRoute: '/pickup',
-    })
-
-    expect(wrapper.text()).toContain('此頁面尚未實作：接送')
+    for (const [name, load] of Object.entries(actual.VIEW_LOADERS)) {
+      const loaded = (await load()) as Component | { default: Component }
+      const component = 'default' in loaded ? loaded.default : loaded
+      expect(component, name).not.toBe(placeholder)
+      expect((component as { __file?: string }).__file, name).toMatch(new RegExp(`/views/(settings/)?${name}\\.vue$`))
+    }
   })
 })
