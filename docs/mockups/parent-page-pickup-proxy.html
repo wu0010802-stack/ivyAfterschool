@@ -12,7 +12,7 @@
      preview-route  : 對應的家長端路由 path；元件稿寫 component:<相對路徑>
      preview-updated: 最後更新日期 YYYY-MM-DD
      ============================================================ -->
-<meta name="preview-status" content="draft">
+<meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="PARENT-104">
 <meta name="preview-route" content="/pickup/proxy">
 <meta name="preview-updated" content="2026-10-16">
@@ -2444,19 +2444,11 @@ function pageSetup({ snack }) {
     '接送碼：不可關閉的 ParentBottomSheet「接送碼」（dismissible=false：沒有 ✕、scrim / Esc / 下拖都不關）內放 PARENT-101 PickupCodeCard；只能按「我已記下」→ 關閉、暫存 code 設回 null、重抓授權清單（新授權只剩末四碼）。code 只存在本頁的區域 ref，不進 store、不寫 storage、不出現在 URL。接送碼卡開著時離開頁面（返回鍵、底部導覽、瀏覽器返回；onBeforeRouteLeave）→ ConfirmDialog「確定已記下接送碼？」/「離開後就無法再查看這組接送碼，遺失時只能重新產生」/「已記下，離開」/「留在這裡」，疊在接送碼 sheet 上（dialog 15 > sheet 10）。',
     '重新產生：列上「重新產生接送碼」→ ConfirmDialog「重新產生接送碼？」/「舊的接送碼會立即失效，請把新碼重新傳給接送人」，說明下方一列目標「{proxy_name} · MM/DD（X）」，確認鈕「重新產生」（一般色，loading 防連點）→ 成功同樣以接送碼 sheet 顯示新碼。取消：「取消授權」→ ConfirmDialog destructive「取消這筆代理接送？」/「接送碼會立即失效，代理人無法再用它接送」+ 目標列，confirmLabel「確定取消」、cancelLabel「先不要」→ 成功以回應更新該列（移到「過去的授權」）並 snackbar「已取消代理接送」。',
     '新增接送人：ParentBottomSheet「新增接送人」；上方「為 {小孩姓名} 新增常用接送人」+ PARENT-099 PickupPersonForm → createPickupPerson → 關閉、重抓清單、snackbar「已新增接送人」。刪除：列上刪除鈕 → ConfirmDialog destructive「刪除 {name}？」/「已建立的代理接送授權不受影響」/ 確認「刪除」→ deletePickupPerson → 重抓、snackbar「已刪除 {name}」。',
-    '錯誤一律以 error snackbar 顯示（疊在 sheet 之上），表單 sheet 保持開啟並保留輸入：接送人 pickup_person_limit_reached「常用接送人最多 {persons_max} 位」、413「照片檔案過大」、415「照片格式不支援，請使用 JPG、PNG、WEBP 或 HEIC」、storage_unavailable「照片上傳失敗，請稍後再試」；刪除 404「接送人已不存在」並重抓。授權 authorization_limit_reached 見待裁定 1、invalid_service_date「日期需在今天起 {authorization_max_days_ahead} 天內」、pickup_person_not_found「接送人已不存在」並重抓接送人（表單裡已選的人會被清掉）、authorization_not_active / authorization_expired「這筆授權已失效」並重抓授權。其他錯誤（例如 student_not_active）顯示後端 error.message，不自動重試。',
+    '錯誤一律以 error snackbar 顯示（疊在 sheet 之上），表單 sheet 保持開啟並保留輸入：接送人 pickup_person_limit_reached「常用接送人最多 {persons_max} 位」、413「照片檔案過大」、415「照片格式不支援，請使用 JPG、PNG、WEBP 或 HEIC」、storage_unavailable「照片上傳失敗，請稍後再試」；刪除 404「接送人已不存在」並重抓。授權 authorization_limit_reached「這一天的代理接送已達上限」（使用者裁定：不顯示數字——上限是後台可調設定 pickup.authorization.max_active_per_day，不在公開設定裡）、invalid_service_date「日期需在今天起 {authorization_max_days_ahead} 天內」、pickup_person_not_found「接送人已不存在」並重抓接送人（表單裡已選的人會被清掉）、authorization_not_active / authorization_expired「這筆授權已失效」並重抓授權。其他錯誤（例如 student_not_active）顯示後端 error.message，不自動重試。',
     '觸控目標：身分卡 80px、「新增代理接送」「新增接送人」48px、授權列文字按鈕 48px、刪除鈕 48×48、展開列 48px、sheet / 對話框按鈕 48px。',
     '移植 ivy PickupView 的 askRegenerate / doCancel / submitPerson 與 PickupCreateView 建立後顯示碼流程（合併為單頁 + bottom sheet）；去掉編輯接送人、跨小孩授權列表、一次多孩授權。各元件外觀與行為照已核可元件稿，本稿只決定版面與流程。',
   ]
-  const openQuestions = [
-    {
-      question: '新增代理接送時後端回 authorization_limit_reached（同一學生同一天的有效授權已達上限）。task 寫的提示是「同一天最多 3 筆代理接送」，但上限是後台可調的設定（pickup.authorization.max_active_per_day，1～10），且不在公開設定裡，前端拿不到實際數字。提示要怎麼寫？',
-      options: [
-        { text: '不寫數字：「這一天的代理接送已達上限」（可另加「請先取消不需要的授權」）；後台改上限也不會出現錯的數字', recommended: true },
-        { text: '照 task 寫死「同一天最多 3 筆代理接送」；後台改上限時要記得同步改前端文案', recommended: false },
-      ],
-    },
-  ]
+  const openQuestions = []
 
   return {
     TODAY, kids, kidsLoading, childId, currentKid, limits, persons, auths, personState, authState, pastOpen, scrolled, navResult, log, sim,
