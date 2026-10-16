@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 194,
-  "last_updated": "2026-10-16T05:23:56Z",
+  "version": 195,
+  "last_updated": "2026-10-16T05:24:17Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3190,7 +3190,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/classes/ClassStaffDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-080",
@@ -3198,7 +3198,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f3 打回】角色下拉沒有任何測試驗到：red_case「ClassStaffDialog saves full staff list」替新列選的「協助老師」正好是新列的預設角色（已有負責老師時新列預設協助老師，稿 decision），選了等於沒選；把角色 el-select 的 v-model=\"row.role\" 改成 :model-value=\"row.role\"（選了不寫回）後 tdd.run 12 條仍全綠。要求：改 red_case 1 或補一條測試，讓角色改成非預設值並斷言 PUT body（例：既有列 u3 由「負責老師」改「協助老師」，或新列改選「負責老師」→ body 對應列的 role 隨之改變），以上述突變確認轉紅後還原；實作本身正確，只需改 spec 並同步 tdd.red_cases 文字。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/classes/ClassStaffDialog.spec.ts",
@@ -3217,9 +3217,9 @@
         "notes": "20 列上限的測試以 stub 取代 el-select（happy-dom 渲染 40 個 el-select 需十幾秒，與元件無關）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f3",
+        "notes": "review-r10-f3：打回 1 項（角色下拉未被任何測試驗到，見 risk_notes），其餘通過。tdd.run 12 綠，6 條 red_case 皆有同名測試；49376c1（測試）先於 e762b92（實作）。e762b92 對 spec 的改動只在非 red_case 的「limits rows to twenty」：改以 stub 下拉、初始 19 列並驗 19→20 的轉換與新增鈕停用，沒有放寬任何紅燈斷言（多驗一段轉換），MAX_ROWS 改 21 會轉紅。868c830「other errors show backend message」拿掉 ElMessage.error 會轉紅。3e80ad0 補的「成功 ElMessage.success「已更新負責老師」→ emit saved → 關閉」與「其他錯誤 ElMessage.error、保持開啟」是原規格沒寫到的路徑，與稿（成功訊息）及同頁 ClassFormDialog 對 class_archived 的處理一致，判定為合理補述而非遷就實作。api：setClassStaff → PUT /admin/classes/{id}/staff {items}、listStaffOptions → GET /admin/staff-users/options，invalid_staff 的 details.invalid 與後端 class_service（字串 id）一致。突變 10 項 9 項轉紅（takenByOther 恆 false、invalid_staff 不標列、其他錯誤不顯示、已停用不標示、canAdd 不看載入狀態、上限 21、不 emit saved、送出列內容、新列預設角色恆 lead），只有「角色下拉不寫回」不轉紅。稿 page-classes.html（approved）ClassStaffDialog 四條 decisions 逐條一致：(1) FormDialog md 560、標題「指派老師：{班級}」、上方說明文、員工可搜尋下拉 + 角色下拉 132px + 垃圾桶、下方「新增老師」+「N / 20」；(2) 已被其他列選走的 disabled、新列預設角色、沒選員工「請選擇員工」、無列時提示且仍送 {items: []}；(3) 開啟時 listStaffOptions、載入中下拉 loading 且儲存停用、失敗紅色 alert「無法載入員工清單」+「重試」且新增停用、重試成功恢復；(4) 已停用顯示「黃老師（已停用）」+ 紅色線框 tag、送出時該列紅框 +「此員工已停用，請移除或更換」不發請求、422 invalid_staff 頂端 alert + 標出 details 所在列。其餘 decisions 屬 097 / 098。Playwright（Chromium）實測 dialog 寬 560、角色欄 132。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：868c830 以 body 文字斷言錯誤訊息，分不出 ElMessage 與頂端 alert。"
       }
     },
     {
@@ -3733,7 +3733,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveCancelDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
@@ -3761,9 +3761,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f3",
+        "notes": "review-r10-f3：通過。tdd.run 14 綠，7 條 red_case 皆有同名測試，斷言 POST body、emit 與文字；a880969（測試）先於 52d6682（實作），之後只有 868c830 追加一條測試，既有斷言未改。3e80ad0 補的「其他錯誤同樣以頂部 alert（errorMessage 後備「取消失敗，請稍後再試」）、不 emit failed」是原規格沒寫到的路徑，與稿的錯誤呈現一致（稿只對兩個 409 要求關閉後重新整理），判定為合理補述；868c830 的測試在「對所有錯誤 emit failed」突變下轉紅。api：cancelLeave(id, scope) → POST /admin/leaves/{id}/cancel {scope}。突變 9 項全轉紅：今天才開始改判已開始、已結束送 remaining、單日區間不合併、所有錯誤 emit failed、錯誤不顯示 alert、today 改 UTC、預設選 all、未分班不顯示、送出鈕文字不隨 scope。稿 page-leaves.html（approved）decisions 逐條：LeaveCancelDialog 版面（FormDialog md、返回 / 取消請假 / 整筆取消、標題依是否已結束、灰底摘要姓名（學號・班級|未分班）+ 假別 tag + 期間、三種日期分支的文案與 scope、鈴鐺灰字、單日只顯示一天）一致；錯誤（兩個 409 頂部紅色 alert、保持開啟；關閉後重新整理由 129 依 failed 處理、成功 ElMessage「已取消請假」並關閉）一致；今天才開始視同未開始、只顯示「將取消整筆請假」並送 remaining 一致；其餘 decisions 屬 LeavesView / LeaveFormDialog / LeaveAttachmentList。Playwright（Chromium）實測 dialog 寬 560、兩個帶框選項滿寬。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：網路錯誤時伺服器可能其實已取消，列表不會自動重新整理；再按一次取消會得到 409 leave_not_active 觸發 failed 而自癒。"
       }
     },
     {
@@ -3773,7 +3773,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveAttachmentList.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121"
@@ -3797,9 +3797,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f3",
+        "notes": "review-r10-f3：通過。tdd.run 8 綠，5 條 red_case 皆有同名測試；1f2138b（測試）先於 78146fa（實作），之後 spec 無變更；components.d.ts 只多 ElImageViewer 一行。api：fetchLeaveAttachmentUrl(leaveId, id) 每次點擊重新請求（測試以兩次不同 sig 的 url 驗證）。突變 6 項全轉紅：HEIC 改可預覽、大小改 1000 為底、拿掉重複點擊守衛、window.open 缺 noopener、錯誤不顯示、busy 改成全域。稿 page-leaves.html（approved）decisions 逐條：LeaveAttachmentList 外觀（寬 300、高 ≥ 52、橫向換行、圖片藍 / PDF 紅色文件 icon、「附件 n・類型」、「大小・時間 上傳」KB / MB 一位小數 1024 為底、右側「預覽」/「另開」、無使用者檔名）一致；開啟（不快取、取得中該列轉圈 /「取得中…」/ aria-busy 且其他列可點、JPG / PNG / WEBP 以 el-image-viewer 預覽可點遮罩或 Esc 關閉、PDF 與 HEIC window.open(url, _blank, noopener)、失敗 ElMessage.error 後端訊息或「無法開啟附件」、空陣列「沒有附件」）一致；附件欄展開屬 129。Playwright（Chromium）實測按鈕 300×53（button 預設 border-box）、窄寬時換行、Esc 關閉預覽。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：window.open 在 await 取得網址之後才呼叫，Safari 可能不視為使用者手勢而擋下彈窗（規格層，Chrome / Firefox 的暫時性使用者啟用可通過）；卸載中取得完成時不開啟（disposed 守衛）屬合理附加。"
       }
     },
     {
@@ -5575,7 +5575,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/dashboard/RecentLeavesList.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-260",
@@ -5602,9 +5602,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f3",
+        "notes": "review-r10-f3：通過。tdd.run 7 綠，5 條 red_case 皆有同名測試；32f6a5e（測試）先於 68ef1f2（實作），68ef1f2 只追加台北跨午夜測試、8f9ee8e 只加 box-sizing。突變 7 項全轉紅：上限改 10、學生連結不看 students:read、查看全部不看 leaves:read、今天改 UTC、載入中改顯示空狀態、假別 tag 上色、建立者對調。稿 page-dashboard.html（approved）decisions 逐條：近期請假清單（白底、每列 ≥ 48、姓名依 students:read 為連結 → /students?student={id}、班級灰字 / 未分班、假別中性 info tag、期間單日一天 + 藍色線框「今天」、「家長申請 / 員工代登記・時間」、最多 8 列、leaves:read 時右下「查看全部請假 →」且空清單也顯示、不顯示剩餘筆數、空清單 inline「近期沒有請假」）一致，區塊標題旁「今天起 7 天內」屬 261；載入中近期請假 3 列 skeleton（el-skeleton :rows=3，與稿同寫法）一致；權限（學生連結看 students:read、查看全部看 leaves:read）一致；其餘 decisions 屬 261。Playwright（Chromium）實測：容器寬 1020 / 772（1280、1024 視窗扣側欄 220 與內距）列高皆 48、border-box；772 時以 container query 套用稿的平板欄寬。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：容器 < 600px 改兩欄換行（稿未涵蓋手機寬），各列各自成 grid，欄寬隨內容不同而不對齊；todayTaipei() 非響應式，跨午夜要等下一次 props 更新（儀表板每 60 秒重抓）才換「今天」標記。"
       }
     },
     {
