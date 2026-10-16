@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 168,
-  "last_updated": "2026-10-16T14:11:56Z",
+  "version": 169,
+  "last_updated": "2026-10-16T14:14:34Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -889,8 +889,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/layouts/ParentLayout.vue",
       "source_ref": "FE:src/parent/layouts/ParentLayout.vue::onTabSelect",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-005",
         "PARENT-009",
@@ -1776,8 +1776,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/HomeworkView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-010",
@@ -2350,8 +2350,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/AuthorizationForm.vue",
       "source_ref": "FE:src/parent/views/PickupCreateView.vue::canSubmit",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-018",
@@ -3408,8 +3408,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/NotificationsView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
         "PARENT-010",
