@@ -4,6 +4,7 @@
 // div[role=button] 包巢狀按鈕、倒數中停用選單；狀態與選單項目改為本專案（去掉娃娃車 / 請假補登）。
 // - 狀態由父層以 useStudentPosStatus（FRONTEND-183）算好傳入，本元件不自己判斷。
 // - 點卡片：接送中 / 家長已到 → focus-request（唯讀者也可）；在班等待 / 尚未到班且 canOperate 且非 staging → quick-dispatch；其他無動作。
+//   Enter / 空白鍵只在卡片本身收到時處理（.self）：⋮ 上的按鍵冒泡上來只開選單，不可同時發起代建。
 // - ⋮（canOperate 且至少一項才顯示）：代建接送請求…（在班等待 / 尚未到班、非 staging）、查看代理授權（有代理授權，導到
 //   /pickup/authorizations?student_id=）、已離班顯示停用說明「今天已離班」。
 import { CircleCheck, Loading, MoreFilled, Plus, Postcard } from '@element-plus/icons-vue'
@@ -109,8 +110,8 @@ function onCommand(command: MenuItem['key']): void {
     :aria-disabled="tappable ? undefined : 'true'"
     :aria-label="ariaLabel"
     @click="onTap"
-    @keydown.enter.prevent="onTap"
-    @keydown.space.prevent="onTap"
+    @keydown.enter.self.prevent="onTap"
+    @keydown.space.self.prevent="onTap"
   >
     <div class="scard__top">
       <span class="scard__name">{{ student.name }}</span>

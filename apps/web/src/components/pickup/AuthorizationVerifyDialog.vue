@@ -6,7 +6,8 @@
 // - 接送碼：6 格（3 + 3）、inputmode numeric、可貼上整串（空白與「-」忽略）、自動跳格、Backspace 回上一格、開啟即聚焦第一格，
 //   滿 6 碼自動送出。pickup_code_mismatch →「接送碼錯誤，還可嘗試 n 次」並清空重新聚焦；pickup_code_locked → 鎖定狀態。
 // - 鎖定（authorization.locked 或回應 pickup_code_locked）：接送碼 / 目視核對分頁停用；canOverride 自動切到強制完成，
-//   否則只剩「關閉」。
+//   否則回到接送碼分頁、只剩「關閉」。開著時父層把同一張授權更新（收推播後重抓清單）：錯誤次數與鎖定以 props 為準，
+//   轉鎖定同收到 pickup_code_locked、轉解鎖（家長重新產生接送碼）恢復分頁與送出鈕。
 // - 成功：取代整個內容為成功畫面並 emit verified；其他錯誤（authorization_not_active / not_today）顯示後端 message、表單保留。
 // - 開啟時的聚焦自己做（FormDialog 的 @opened 要等開啟動畫，這裡改在 modelValue 轉 true 的下一個 tick 聚焦）。
 import { CircleCheckFilled, Document, Loading, Postcard } from '@element-plus/icons-vue'
@@ -161,6 +162,19 @@ watch(
   },
 )
 
+// 開著時父層更新同一張授權：錯誤次數與鎖定改以 props 為準（蓋掉本次由錯誤回應推得的值）。
+// 多來源 watch：只有這三個值真的變了才觸發，父層換成內容相同的新物件不會清掉本次收到的鎖定。
+watch(
+  [() => props.authorization.id, () => props.authorization.locked, () => props.authorization.code_attempts],
+  ([id, isLocked], [prevId, wasLocked]) => {
+    if (!props.modelValue || success.value || id !== prevId) return
+    const alreadyLocked = wasLocked || lockedByResponse.value
+    lockedByResponse.value = false
+    localAttempts.value = null
+    if (isLocked && !alreadyLocked) enterLocked()
+  },
+)
+
 watch(tab, () => {
   error.value = ''
   focusCurrent()
@@ -172,6 +186,13 @@ watch(overrideNote, () => {
 
 function clearDigits(): void {
   digits.value = emptyDigits()
+}
+
+/** 進入鎖定：清掉輸入；有 override 切到強制完成（tab watcher 會聚焦備註），否則回接送碼分頁顯示鎖定說明 */
+function enterLocked(): void {
+  codeError.value = ''
+  clearDigits()
+  tab.value = props.canOverride ? 'override' : 'code'
 }
 
 function handleError(err: unknown): void {
@@ -190,9 +211,7 @@ function handleError(err: unknown): void {
   if (isApiError(err) && err.code === 'pickup_code_locked') {
     lockedByResponse.value = true
     localAttempts.value = MAX_CODE_ATTEMPTS
-    codeError.value = ''
-    clearDigits()
-    if (props.canOverride) tab.value = 'override'
+    enterLocked()
     return
   }
   error.value = errorMessage(err, '核驗失敗，請稍後再試')
