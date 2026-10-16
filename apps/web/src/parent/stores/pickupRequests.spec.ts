@@ -311,6 +311,185 @@ describe('pickupRequestsStore', () => {
     expect(store.pendingAction).toBeNull()
   })
 
+  /** 讓某個 POST 停住，測試手動放行（可指定狀態碼與 body） */
+  function holdPost(url: string): { release: (status: number, body: unknown) => void; reached: Promise<void> } {
+    let release!: (status: number, body: unknown) => void
+    let reachedResolve!: () => void
+    const reached = new Promise<void>((resolve) => {
+      reachedResolve = resolve
+    })
+    mock.onPost(url).replyOnce(() => {
+      reachedResolve()
+      return new Promise<[number, unknown]>((resolve) => {
+        release = (status, body) => resolve([status, body])
+      })
+    })
+    return { release: (status, body) => release(status, body), reached }
+  }
+
+  it('pickupRequestsStore queues a different create behind the in-flight one', async () => {
+    const store = await loadedStore([])
+    const first = holdPost(CREATE_URL)
+    const forS2 = request('r6', { student_id: 's2', student_name: '王小華', expected_arrival_at: '17:40' })
+    mock.onPost(CREATE_URL).replyOnce(201, forS2)
+
+    const a = store.create('s1', null)
+    const b = store.create('s2', '17:40')
+    await first.reached
+    await flushPromises()
+    // 不同參數：排在進行中的寫入之後，還沒送出
+    expect(postsTo(CREATE_URL)).toHaveLength(1)
+    expect(store.pendingAction).toBe('create')
+
+    first.release(201, request('r5', { student_id: 's1' }))
+    const [ra, rb] = await Promise.all([a, b])
+
+    expect(postsTo(CREATE_URL).map((p) => JSON.parse(p.data as string))).toEqual([
+      { student_id: 's1' },
+      { student_id: 's2', expected_arrival_at: '17:40' },
+    ])
+    expect(ra.id).toBe('r5')
+    expect(ra.student_id).toBe('s1')
+    expect(rb).toEqual(forS2)
+    expect(store.openFor('s1')?.id).toBe('r5')
+    expect(store.openFor('s2')?.id).toBe('r6')
+    expect(store.pendingAction).toBeNull()
+  })
+
+  it('pickupRequestsStore queues arriveNow behind an in-flight create', async () => {
+    const store = await loadedStore([])
+    const first = holdPost(CREATE_URL)
+    mock.onPost(CREATE_URL).replyOnce(409, apiError('pickup_request_exists', '今天已有進行中的接送請求', { request_id: 'r5' }))
+    const arrived = request('r5', { status: 'arrived', arrived_at: '2026-10-02T08:05:00Z', can_mark_arrived: false })
+    mock.onPost('/parent/pickup/requests/r5/arrived').reply(200, arrived)
+
+    void store.create('s1', null)
+    const b = store.arriveNow('s1')
+    await first.reached
+    await flushPromises()
+    expect(mock.history.post).toHaveLength(1)
+
+    first.release(201, request('r5', { status: 'pending' }))
+    const rb = await b
+
+    // 「我已經到了」不得拿到 create 那筆 pending 的結果：自己送出 arrived，409 後改對既有請求報到
+    expect(rb.status).toBe('arrived')
+    expect(rb.id).toBe('r5')
+    expect(mock.history.post.map((p) => p.url)).toEqual([CREATE_URL, CREATE_URL, '/parent/pickup/requests/r5/arrived'])
+    expect(JSON.parse(mock.history.post[1]!.data as string)).toEqual({ student_id: 's1', arrived: true })
+    expect(store.openFor('s1')?.status).toBe('arrived')
+    expect(store.pendingAction).toBeNull()
+  })
+
+  it('pickupRequestsStore queues cancel behind an in-flight markArrived', async () => {
+    const store = await loadedStore()
+    const first = holdPost('/parent/pickup/requests/r2/arrived')
+    const cancelled = request('r2', { status: 'cancelled', cancelled_at: '2026-10-02T08:20:00Z', can_cancel: false, can_mark_arrived: false, created_at: '2026-10-02T08:00:00Z' })
+    mock.onPost('/parent/pickup/requests/r2/cancel').reply(200, cancelled)
+
+    const a = store.markArrived('r2')
+    const b = store.cancel('r2', '臨時有事')
+    await first.reached
+    await flushPromises()
+    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(0)
+    expect(store.pendingAction).toBe('markArrived')
+
+    first.release(200, request('r2', { status: 'arrived', arrived_at: '2026-10-02T08:10:00Z', can_mark_arrived: false, created_at: '2026-10-02T08:00:00Z' }))
+    const [ra, rb] = await Promise.all([a, b])
+
+    expect(ra.status).toBe('arrived')
+    expect(rb.status).toBe('cancelled')
+    expect(rb).toEqual(cancelled)
+    expect(mock.history.post.map((p) => p.url)).toEqual(['/parent/pickup/requests/r2/arrived', '/parent/pickup/requests/r2/cancel'])
+    expect(store.openFor('s1')).toBeNull()
+    expect(store.latestFor('s1')?.status).toBe('cancelled')
+    expect(store.pendingAction).toBeNull()
+  })
+
+  it('pickupRequestsStore runs queued writes even when the previous one fails and dedupes identical queued calls', async () => {
+    const store = await loadedStore()
+    const first = holdPost(CREATE_URL)
+    const cancelled = request('r2', { status: 'cancelled', cancelled_at: '2026-10-02T08:20:00Z', can_cancel: false, can_mark_arrived: false, created_at: '2026-10-02T08:00:00Z' })
+    mock.onPost('/parent/pickup/requests/r2/cancel').reply(200, cancelled)
+
+    const a = store.create('s2', null).catch((e: unknown) => e)
+    const b = store.cancel('r2')
+    const c = store.cancel('r2')
+    expect(c).toBe(b)
+    await first.reached
+    first.release(409, apiError('pickup_window_closed', '目前不在可發起接送的時段'))
+    const [ea, rb, rc] = await Promise.all([a, b, c])
+
+    expect(ea).toMatchObject({ code: 'pickup_window_closed' })
+    expect(rb).toEqual(cancelled)
+    expect(rc).toBe(rb)
+    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(1)
+    expect(store.openFor('s1')).toBeNull()
+    expect(store.pendingAction).toBeNull()
+  })
+
+  it('pickupRequestsStore clear ignores in-flight write results', async () => {
+    // 成功：回應不得寫回（上一位家長的請求）
+    const store = await loadedStore([R2])
+    const first = holdPost('/parent/pickup/requests/r2/arrived')
+    const a = store.markArrived('r2')
+    await first.reached
+    store.clear()
+    const arrived = request('r2', { status: 'arrived', arrived_at: '2026-10-02T08:10:00Z', can_mark_arrived: false, created_at: '2026-10-02T08:00:00Z' })
+    first.release(200, arrived)
+
+    await expect(a).resolves.toEqual(arrived)
+    await flushPromises()
+    expect(store.items).toEqual([])
+    expect(store.loaded).toBe(false)
+    expect(store.pendingAction).toBeNull()
+
+    // 失敗（需同步）：不得觸發 load(true)，呼叫端照常 reject
+    mock.onGet(TODAY_URL).replyOnce(200, [R2])
+    await store.load()
+    const getsBefore = todayRequests()
+    const second = holdPost('/parent/pickup/requests/r2/arrived')
+    mock.onGet(TODAY_URL).reply(200, [request('rB', { student_id: 'sB' })])
+    const b = store.markArrived('r2')
+    await second.reached
+    store.clear()
+    second.release(409, apiError('invalid_pickup_status', '此請求目前的狀態不允許此操作'))
+
+    await expect(b).rejects.toMatchObject({ code: 'invalid_pickup_status' })
+    await flushPromises()
+    expect(todayRequests()).toBe(getsBefore)
+    expect(store.items).toEqual([])
+    expect(store.loaded).toBe(false)
+    expect(store.loading).toBe(false)
+  })
+
+  it('pickupRequestsStore clear drops queued writes without sending them', async () => {
+    const store = await loadedStore()
+    const first = holdPost('/parent/pickup/requests/r2/arrived')
+    const a = store.markArrived('r2')
+    const queued = store.cancel('r2').catch((e: unknown) => e)
+    await first.reached
+
+    store.clear()
+    first.release(200, request('r2', { status: 'arrived', created_at: '2026-10-02T08:00:00Z' }))
+    await a
+    const dropped = await queued
+    await flushPromises()
+
+    expect(dropped).toMatchObject({ name: 'ApiError', status: 0, code: 'write_cancelled' })
+    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(0)
+    expect(store.items).toEqual([])
+
+    // clear 之後的新寫入照常送出並寫回（不被已丟棄的寫入影響）
+    mock.onGet(TODAY_URL).replyOnce(200, [])
+    await store.load()
+    const created = request('r5')
+    mock.onPost(CREATE_URL).reply(201, created)
+    await expect(store.create('s1', null)).resolves.toEqual(created)
+    expect(store.openFor('s1')?.id).toBe('r5')
+    expect(store.pendingAction).toBeNull()
+  })
+
   it('pickupRequestsStore cancel upserts and sends reason', async () => {
     const store = await loadedStore()
     const cancelled = request('r2', { status: 'cancelled', cancelled_at: '2026-10-02T08:20:00Z', can_cancel: false, can_mark_arrived: false, created_at: '2026-10-02T08:00:00Z' })
