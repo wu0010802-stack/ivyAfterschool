@@ -2,7 +2,8 @@
 不受信任 xlsx 的格數 / 解壓防護在交給 openpyxl 之前生效）。
 BACKEND-156：execute（重跑 preview、有錯誤列 409 import_has_errors 且不寫入、全部合法以 151 的寫入
 邏輯逐列新增（密文 + HMAC）、競態衝突整批回滾 409 import_conflict、稽核 student.import、
-不 commit）。"""
+不 commit）。
+BACKEND-560：preview 加 clock，退班且入學日晚於今天的列在預覽就判錯誤（與 execute 一致）。"""
 
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ import tracemalloc
 import warnings
 import zipfile
 from collections.abc import Callable, Iterator, Sequence
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import openpyxl.xml
@@ -343,6 +344,91 @@ def test_import_preview_no_writes(db_session: Session, lookups: dict[str, object
     assert result.valid == 2
     assert not db_session.new
     assert db_session.execute(select(func.count()).select_from(Student)).scalar_one() == before
+
+
+# --- BACKEND-560：退班且入學日晚於今天，預覽就判錯誤 ----------------------------------------------
+
+_WITHDRAWN_FUTURE_ERROR = "退班學生的入學日不可晚於今天（退班日以匯入當天計）"
+
+
+def _preview_at(
+    db: Session, upload: ValidatedUpload, clock: FakeClock, actor: CurrentStaff = _SENSITIVE
+) -> ImportPreview:
+    return preview(db, upload, academic_year=115, actor=actor, clock=clock)
+
+
+@pytest.mark.clock("2026-10-02T09:00:00+08:00")
+def test_import_preview_withdrawn_future_enrollment_is_invalid(
+    db_session: Session, lookups: dict[str, object], fake_clock: FakeClock
+) -> None:
+    upload = _xlsx(
+        [_row(status="退班", enrolled="2026-10-03"), _row(student_no="S115102", name="陳小華")],
+        header=IMPORT_COLUMNS,
+    )
+
+    result = _preview_at(db_session, upload, fake_clock)
+
+    assert (result.total, result.valid, result.invalid) == (2, 1, 1)
+    bad, good = result.rows
+    assert bad.data is None
+    assert bad.errors == [_WITHDRAWN_FUTURE_ERROR]
+    assert bad.display["狀態"] == "退班"
+    assert bad.display["入學日"] == "2026-10-03"
+    assert good.data is not None
+    assert good.errors == []
+
+
+@pytest.mark.clock("2026-10-02T09:00:00+08:00")
+def test_import_preview_withdrawn_enrollment_boundaries_are_valid(
+    db_session: Session, lookups: dict[str, object], fake_clock: FakeClock
+) -> None:
+    upload = _xlsx(
+        [
+            _row(status="退班", enrolled="2026-10-02"),  # 入學日等於今天
+            _row(student_no="S115102", name="陳小華", status="退班", enrolled=None),
+            _row(student_no="S115103", name="黃小美", status="在學", enrolled="2026-10-03"),
+            _row(student_no="S115104", name="張小美", status="暫停", enrolled=date(2026, 10, 3)),
+        ],
+        header=IMPORT_COLUMNS,
+    )
+
+    result = _preview_at(db_session, upload, fake_clock)
+
+    assert (result.total, result.valid, result.invalid) == (4, 4, 0)
+    assert all(r.errors == [] and r.data is not None for r in result.rows)
+    assert [r.data.status for r in result.rows if r.data is not None] == [
+        "withdrawn",
+        "withdrawn",
+        "active",
+        "suspended",
+    ]
+
+
+def test_import_preview_withdrawn_future_enrollment_uses_taipei_today(
+    db_session: Session, lookups: dict[str, object]
+) -> None:
+    """「今天」以 Asia/Taipei 判斷：UTC 15:59 台北還是 10/01，UTC 16:00 台北已是 10/02。"""
+    upload = _xlsx([_row(status="退班", enrolled="2026-10-02")], header=IMPORT_COLUMNS)
+    before_midnight = FakeClock(datetime(2026, 10, 1, 15, 59, tzinfo=UTC))
+    after_midnight = FakeClock(datetime(2026, 10, 1, 16, 0, tzinfo=UTC))
+
+    before = _preview_at(db_session, upload, before_midnight)
+    after = _preview_at(db_session, upload, after_midnight)
+
+    assert (before.valid, before.invalid) == (0, 1)
+    assert before.rows[0].errors == [_WITHDRAWN_FUTURE_ERROR]
+    assert (after.valid, after.invalid) == (1, 0)
+
+
+@pytest.mark.clock("2026-10-02T09:00:00+08:00")
+def test_import_preview_withdrawn_unparsable_enrollment_reports_format_error_only(
+    db_session: Session, lookups: dict[str, object], fake_clock: FakeClock
+) -> None:
+    upload = _xlsx([_row(status="退班", enrolled="明天")], header=IMPORT_COLUMNS)
+
+    result = _preview_at(db_session, upload, fake_clock)
+
+    assert result.rows[0].errors == ["入學日格式不正確（請用 YYYY-MM-DD）"]
 
 
 # --- 不受信任 xlsx 的防護（review-r8-b 兩輪打回的攻擊面清單）---------------------------
@@ -1069,3 +1155,30 @@ def test_import_execute_conflict_rolls_back_all(
         [_row(id_number=_ID_A), _row(student_no="S115103", name="黃小美")], header=IMPORT_COLUMNS
     )
     assert _execute(db_session, fixed, fake_clock).created == 2
+
+
+@pytest.mark.clock("2026-10-02T09:00:00+08:00")
+def test_import_execute_withdrawn_future_enrollment_has_errors(
+    db_session: Session, lookups: dict[str, object], fake_clock: FakeClock
+) -> None:
+    before = db_session.execute(select(func.count()).select_from(Student)).scalar_one()
+    upload = _xlsx(
+        [
+            _row(status="退班", enrolled="2026-10-03"),
+            _row(student_no="S115102", name="陳小華"),
+        ],
+        header=IMPORT_COLUMNS,
+    )
+
+    with pytest.raises(AppError) as exc:
+        _execute(db_session, upload, fake_clock)
+
+    assert (exc.value.status, exc.value.code) == (409, "import_has_errors")
+    details = exc.value.details
+    assert (details["total"], details["valid"], details["invalid"]) == (2, 1, 1)
+    [bad] = details["rows"]
+    assert bad["row_number"] == 2
+    assert bad["errors"] == [_WITHDRAWN_FUTURE_ERROR]
+    assert db_session.execute(select(func.count()).select_from(Student)).scalar_one() == before
+    assert _by_student_no(db_session, "S115101", "S115102") == []
+    assert _import_audits(db_session) == []

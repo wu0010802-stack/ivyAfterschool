@@ -1216,6 +1216,34 @@ def test_admin_import_preview(staff_client: StaffClientFactory, db_session: Sess
     assert _upload(client, _xlsx(_three_rows()), dry_run="true").json() == body
 
 
+def test_admin_import_preview_withdrawn_future_enrollment_invalid(
+    staff_client: StaffClientFactory, assert_error: AssertError, db_session: Session
+) -> None:
+    """預覽 endpoint 也注入 clock：預設時鐘是 2026-09-01（台北），退班 + 入學日 9/02 判為錯誤，
+    同一檔案寫入時 409 import_has_errors（不是 import_conflict）。"""
+    _import_lookups(db_session)
+    client, _ = staff_client(permissions=["students:write"])
+    content = _xlsx(
+        [
+            _row(status="退班", enrolled="2026-09-02"),
+            _row(student_no="S115102", name="陳小華", status="退班", enrolled="2026-09-01"),
+        ]
+    )
+
+    preview = _upload(client, content)
+    execute = _upload(client, content, dry_run="false")
+
+    assert preview.status_code == 200
+    body = preview.json()
+    assert (body["total"], body["valid"], body["invalid"]) == (2, 1, 1)
+    assert body["rows"][0]["errors"] == ["退班學生的入學日不可晚於今天（退班日以匯入當天計）"]
+    assert body["rows"][1]["errors"] == []
+    assert_error(execute, 409, "import_has_errors")
+    assert execute.json()["error"]["details"]["rows"][0]["row_number"] == 2
+    assert _imported(db_session) == []
+    assert _import_audits(db_session) == []
+
+
 def test_admin_import_execute(staff_client: StaffClientFactory, db_session: Session) -> None:
     _import_lookups(db_session)
     client, staff = staff_client(permissions=["students:write", "students:sensitive"])
