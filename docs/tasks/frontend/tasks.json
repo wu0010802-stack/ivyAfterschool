@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 207,
-  "last_updated": "2026-10-16T05:45:47Z",
+  "version": 208,
+  "last_updated": "2026-10-16T05:45:54Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3082,11 +3082,11 @@
     {
       "id": "FRONTEND-096",
       "title": "實作 components/student/StudentSelect.vue：遠端搜尋學生下拉（代登記請假、員工代建接送共用）",
-      "description": "建立 `apps/web/src/components/student/StudentSelect.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/component-student-select.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：搜尋中、結果清單、查無結果、載入失敗、已選取狀態。\n\n**props / emits**：`modelValue: string | null`、`classId?: string`、`statuses?: StudentStatus[]`（預設 `['active']`）、`placeholder?: string`（預設「輸入學號或姓名搜尋」）、`disabled?: boolean`、`initialOption?: {id, name, student_no, class_name}`（編輯時預先顯示）；emits `update:modelValue`、`change(student: StudentListItem | null)`。\n- el-select `filterable remote`；輸入 debounce 300ms 後 `listStudents({q, class_id, status, page_size: 20})`（多個 status 時以第一個查詢；本專案目前只用 active）。\n- 選項文字「王小明（S1001・低年級A班）」；無班級顯示「未分班」。\n- 空輸入不查詢；查無結果「找不到符合的學生」；請求失敗「無法載入學生」。\n- 舊請求結果晚到時丟棄（序號）。\n\n**驗收標準**\n- debounce 與查詢參數；選項格式；emit 完整學生物件；過期結果丟棄。",
+      "description": "建立 `apps/web/src/components/student/StudentSelect.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/component-student-select.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：搜尋中、結果清單、查無結果、載入失敗、已選取狀態。\n\n**props / emits**：`modelValue: string | null`、`classId?: string`、`statuses?: StudentStatus[]`（預設 `['active']`）、`placeholder?: string`（預設「輸入學號或姓名搜尋」）、`disabled?: boolean`、`initialOption?: {id, name, student_no, class_name}`（編輯時預先顯示）；emits `update:modelValue`、`change(student: StudentListItem | null)`。\n- el-select `filterable remote`；輸入 debounce 300ms 後 `listStudents({q, class_id, status, page_size: 20})`（多個 status 時以第一個查詢；本專案目前只用 active）。\n- 選項文字「王小明（S1001・低年級A班）」；無班級顯示「未分班」。\n- 空輸入不查詢；查無結果「找不到符合的學生」；請求失敗「無法載入學生」。\n- 舊請求結果晚到時丟棄（序號；每次輸入即作廢進行中的請求）。debounce 由元件自己控制（el-select 的 remote debounce 設 0），等待期間即顯示「搜尋中…」；未輸入時不展開下拉。\n\n**驗收標準**\n- debounce 與查詢參數；選項格式；emit 完整學生物件；過期結果丟棄。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentSelect.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081"
@@ -3102,7 +3102,7 @@
         "red_cases": [
           "StudentSelect searches after debounce with filters：classId 'c1'、輸入 '王' → 299ms 時無請求；300ms 後 GET /admin/students params 深等於 {q:'王',class_id:'c1',status:'active',page_size:20}",
           "StudentSelect formats options and emits student：回 [{id:'s1',name:'王小明',student_no:'S1001',class:{name:'低年級A班'}},{id:'s2',name:'王小華',student_no:'S1002',class:null}] → 選項文字 ['王小明（S1001・低年級A班）','王小華（S1002・未分班）']；選第一個 → emitted('update:modelValue')[0] 深等於 ['s1']、emitted('change')[0][0].name === '王小明'",
-          "StudentSelect discards stale results：輸入 '王'（回應延遲 300ms 回 [王小明]）後輸入 '林'（10ms 回 [林小華]）→ 最終選項只有 '林小華（…）'",
+          "StudentSelect discards stale results：輸入 '王'（請求送出後回應延遲 1000ms 回 [王小明]）後輸入 '林'（10ms 回 [林小華]）→ '林' 的結果先到時選項只有 '林小華（…）'，'王' 的回應晚到後選項仍只有 '林小華（…）'（debounce 300ms 下，'王' 的延遲要超過 300ms 才會與 '林' 的請求交錯）",
           "StudentSelect empty result copy：回 [] → 下拉顯示 '找不到符合的學生'"
         ],
         "run": "just web-test src/components/student/StudentSelect.spec.ts -t \"StudentSelect\"",
@@ -3240,7 +3240,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPurgeDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
