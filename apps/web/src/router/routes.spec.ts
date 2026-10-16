@@ -129,15 +129,16 @@ describe('admin routes', () => {
   })
 
   it('admin routes use placeholder loaders by default', async () => {
+    // 以尚未實作的 PickupPosView（FRONTEND-189）驗證；各 view 實作完成時會把自己的 loader 改成真正的 view
     const actual = await vi.importActual<typeof import('@/router/viewLoaders')>('@/router/viewLoaders')
-    const loaded = (await actual.VIEW_LOADERS.StudentWorkbenchView()) as Component | { default: Component }
+    const loaded = (await actual.VIEW_LOADERS.PickupPosView()) as Component | { default: Component }
     const component = 'default' in loaded ? loaded.default : loaded
 
     const { wrapper } = await mountWithApp(component, {
-      routes: [{ path: '/students', component, meta: { title: '學生工作台' } }],
-      initialRoute: '/students',
+      routes: [{ path: '/pickup', component, meta: { title: '接送' } }],
+      initialRoute: '/pickup',
     })
 
-    expect(wrapper.text()).toContain('此頁面尚未實作：學生工作台')
+    expect(wrapper.text()).toContain('此頁面尚未實作：接送')
   })
 })
