@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 131,
-  "last_updated": "2026-10-16T05:00:25Z",
+  "version": 132,
+  "last_updated": "2026-10-16T05:00:57Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -303,7 +303,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/parentAuth.ts",
       "source_ref": "FE:src/parent/stores/parentAuth.ts::useParentAuthStore",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-006",
@@ -330,9 +330,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。6 條 red_case 皆有同名測試且斷言具體值（回傳值、isAuthed、parent、sessionStorage JSON、/parent/me 與 refresh 的請求次數）；tdd.run 17/17 綠，verbose 名稱清單含全部 6 條；commit 順序 7ff7f50 / 612e188（測試，當時 parentAuth.ts 不存在）→ 06375bd（實作）。介面用法核對：getMe / logout 走 PARENT-004 parentHttp，401 → refresh 401 → onAuthFailure 的路徑由『false on 401』案例的 refresh 請求數釘住；logout 在 noRefreshPaths，500 直接 reject 後仍 clear。安全：logout / clear 清 parent、bindPending 與兩個 sessionStorage key；探測失敗只清 parent、不動 bindPending（與規格一致）；sessionStorage 還原有形狀驗證（ParentMe 需 id 字串 + children 陣列、BindPending 的 nameHint 需 null 或字串），損毀 JSON 與 storage 拋錯都以記憶體運作。突變 18 個殺 17：去掉並發去重、失敗快取、clear / markBindPending 重置探測、setParent 清 bindPending、logout 吞錯、clear 清 bindPending、id / children 形狀檢查、nameHint 檢查、失敗時誤清 bindPending、寫 storage、讀寫 storage 的 catch、『探測中已登入以較新為準』、已登入不探測、從 storage 還原，全部轉紅；存活 1 個為等價突變（失敗分支的 writeParent(null)：進入探測時 parent 必為 null，較新的 parent 已由前一行 return true 處理）。web-lint 四檔乾淨；web-typecheck 的 4 個錯誤都在他人檔案（見下）。殘留（不擋）：(1) 探測成功分支沒有比照失敗分支『探測期間已由別處 setParent 則以較新為準』，若探測進行中 setParent(B) 而探測稍後成功，會以探測結果覆蓋；目前 /login、/bind 守衛都先 await 探測才進入 LoginView / BindView，構造不出實際反例，PARENT-012 改守衛時留意即可。(2) clear() 會把進行中的 probe 設為 null，PARENT-013 handler 在同一次探測的 401 流程中呼叫 clear() 後，失敗結果仍由 onRejected 重新快取（scratch 模擬冷啟動 /leaves、/login 皆只打 1 次 /parent/me，無重複探測迴圈）。(3) 本輪 web-typecheck 殘留錯誤（皆非本 task 檔案）：components/attendance/AttendanceStudentCard.vue(107)（FRONTEND-124）、parent/components/leaves/LeaveForm.vue(137)（PARENT-134）、parent/views/ExamsView.spec.ts(295)（PARENT-153）、views/settings/RolesView.vue(10)（未追蹤、他人進行中）。跨 task 首綁問題：以真實 parentHttp / parentAuth / children / parentWs 加上依 PARENT-012、013 規格寫的守衛與 handler 在 scratch 重現成立（LoginView needs_binding → markBindPending → push('/bind') 結果為 /login 且 bindPending 被清；/bind 重新整理同樣被導回 /login）；改成 /bind 守衛先看 bindPending 再 ensureSession 後兩種情境都停在 /bind、bindPending 保留、且不打 /parent/me。屬 PARENT-012 / 013 規格問題，不影響本 task 判決。"
       }
     },
     {
@@ -3195,7 +3195,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/parentWs.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-002",
@@ -3224,9 +3224,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。6 條 red_case 皆有同名測試；tdd.run 16/16 綠，verbose 名稱清單含全部 6 條；commit 順序 ac85e51（測試，當時 parentWs.ts 不存在）→ 1fb081f（實作）。介面用法核對：createWsClient 的 path / onOpen({isReconnect}) / onPoll / onAuthClose 與 FRONTEND-004 實作一致，status 由 client.status（shallowRef）經 computed 反映、無 client 時 idle；系統訊息形狀與 BACKEND-227 實作一致（ready / children_changed 的 children 在信封頂層、error 帶 code）；children store 用 items 與 load(true)。重連與輪詢以 fake timers 釘住（斷線當下補一次、15 秒週期、1 秒後重連、重連成功 isReconnect 再補一次）；4401 / 4403 後 enabled=false、60 秒內不再建構 socket、poller 不再被呼叫；handler 例外以 try/catch 隔離並 console.error；pollNow 同步拋錯與 rejected promise 都隔離。沒有任何 send（家長端不 subscribe）。disconnect 另外重置 children 與 client（規格外但更安全，避免下一位家長沿用上一位的小孩 id，已有測試）。突變 20 個殺 19：connect 冪等、重連輪詢、onPoll、4401 關 enabled、handler 隔離、id 集合恆同 / 恆異、off、pollNow 隔離 rejected（以 unhandled rejection 轉紅）、disconnect stop、路徑、ready / children_changed 註冊、children state、格式檢查、disconnect 重置 children、load force、error 記錄、status 反映，全部轉紅。web-lint 四檔乾淨；web-typecheck 錯誤不在本 task 檔案（同 PARENT-009 notes）。殘留（不擋）：(1) 存活突變『id 集合只比大小』：測試只涵蓋增加 / 減少小孩，未涵蓋大小相同但 id 不同（例如 items [s1] 收到 ready [s2]；BACKEND-227 定期重驗時可能一次解綁一位又綁定一位）；實作以 Set 比對是正確的，建議日後 chore 補一條案例。(2) red_case 3 的訊息順序與測試不同（測試先送相同的 ready 再送 children_changed），涵蓋的行為等價。(3) onAuthClose 只關 enabled、不清 children；下次 connect 會收到新的 ready，且 PARENT-013 / 033 會呼叫 disconnect，觀測不到外洩。"
       }
     },
     {
