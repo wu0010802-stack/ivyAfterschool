@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 138,
-  "last_updated": "2026-10-16T05:18:11Z",
+  "version": 139,
+  "last_updated": "2026-10-16T05:24:03Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -431,7 +431,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": "FE:src/parent/router.ts::router",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -3159,7 +3159,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/notifications.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-170",
@@ -3238,7 +3238,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/ConnectionBanner.vue",
       "source_ref": "FE:src/parent/components/ConnectionBanner.vue::wsBannerDelayMs",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-001",
