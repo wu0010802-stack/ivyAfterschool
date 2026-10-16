@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 243,
-  "last_updated": "2026-10-16T14:03:13Z",
+  "version": 244,
+  "last_updated": "2026-10-16T14:12:57Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3109,13 +3109,13 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentSelect.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r10-f3 打回】description「每次輸入即作廢進行中的請求」與稿 decision 3「清掉文字會作廢進行中的請求」沒有測試：(a) 把 remoteMethod 的 ++seq 移到空輸入判斷之後（清掉文字不作廢）、(b) 把 ++seq 移到 debounce 計時器觸發時才做（輸入不作廢、只有送新請求才作廢），tdd.run 8 條都仍全綠。反例：輸入「王」→ 300ms 送出請求 → 回應未到前清掉文字 → 回應晚到後選項被填入「王小明」，輸入框是空的卻有舊結果可選；或回應落在下一次輸入的 debounce 期間時，下拉短暫顯示上一個關鍵字的結果而不是「搜尋中…」。要求補兩條測試並以上述兩個突變確認轉紅：①「王」請求送出後（回應延遲例如 500ms）清掉文字，回應到達後 optionTexts 為空（或下拉不展開）；②「王」請求送出後（回應延遲例如 200ms）輸入「林」，在「林」的 debounce 期間「王」的回應到達，下拉仍只顯示「搜尋中…」、沒有「王小明」。實作本身正確，只需補 spec。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentSelect.spec.ts",
@@ -3134,9 +3134,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f3",
-        "notes": "review-r10-f3：打回 1 項（輸入 / 清掉文字作廢進行中請求沒有測試，見 risk_notes），其餘通過。tdd.run 8 綠，4 條 red_case 皆有同名測試；7e8bbac（測試）先於 db9c2d8（實作）。red_case「discards stale results」的 1000ms：紅燈 commit 7e8bbac 寫測試時就用 1000ms，7075f70 只把 red_case 文字同步；理由成立——debounce 300ms 時「林」最早在「王」送出後 300ms 才送，「王」回應 300ms 必定先於「林」的請求到達，只斷言最終選項時有沒有丟棄都會綠；1000ms 才讓「王」晚於「林」回來，拿掉序號檢查即轉紅。db9c2d8 對 spec 只把 placeholder 斷言改讀 .el-select__placeholder（EP 2.14 不把 placeholder 放在 input 屬性），未放寬。ea8afab（#empty 只在搜尋中 / 失敗 / 有輸入時提供，空輸入不展開）與 e1c0b92（清除後移除 initialOption，否則重選會 emit change(null)）都附測試，突變可轉紅，屬合理修正；e1c0b92 在改 in_review 後才補，一併審過。api：listStudents({q, class_id?, status: statuses[0], page_size: 20})，與 BACKEND-159 查詢參數一致；q 去頭尾空白、空白不查。突變 15 項 13 項轉紅（debounce 299、status 固定、一律帶 class_id、不丟棄過期、序號不遞增、失敗不清空選項、選項格式、change 帶 null、#empty 恆提供、清除不移除 initialOption、不 trim、拿掉 :debounce=0、不顯示搜尋中），只有兩個「作廢」突變不轉紅。稿 component-student-select.html（approved）10 條 decisions 逐條：1 外觀 / 寬 100% / placeholder 可覆寫 一致；2 選項格式、姓名主色、括號 13px 次要色省略、選中顯示完整字串 一致；3 未輸入不查不展開 一致、清掉文字作廢 實作有但無測試（打回項）；4 debounce 300 與「搜尋中…」一致；5 查無 / 失敗 role=alert、不放重試、失敗清空選項 一致；6 序號丟棄 一致；7 清除 emit null / null、選取帶完整 StudentListItem 一致；8 initialOption 唯一初始選項 一致；9 status=active（description 為 statuses 第一個、預設 active，與稿相容）、page_size 20、classId 帶 class_id 一致；10 無權限差異、disabled 由使用端決定 一致。Chromium 實測寬 100%（320 容器量 320）、空輸入點擊不展開、輸入後先顯示「搜尋中…」、括號段 13px、選中後輸入框顯示「王小明（S11301・低年級A班）」。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：disabled prop 只是透傳，無測試；下拉寬度沿用 EP 預設（隨內容加寬，與稿相同），長班名先撐寬下拉才省略。"
+        "notes": "review-r10-f3：通過（複審）。初審打回「每次輸入 / 清掉文字即作廢進行中的請求」無測試：9084f8b 只補 spec（實作最後一次仍是 e1c0b92），da7f355 同步 2 條 red_case：「clearing text cancels in-flight request」（王 送出後回應 500ms，回應前清掉文字 → 回應到達後選項為空）與「new input cancels in-flight request during debounce」（王 回應 200ms 落在 林 的 debounce 期間 → 選項為空且顯示「搜尋中…」，林 回應後只有林小華）。只新增測試，既有斷言未動。複審：tdd.run 10 綠；初審不轉紅的兩個突變都轉紅——++seq 移到空輸入判斷之後（清掉文字不作廢）由前者抓到、++seq 移到計時器觸發時才做（輸入不作廢）由兩條一起抓到；還原後 git diff 乾淨；spec web-lint 乾淨。初審其餘結論維持：4 條原 red_case 對應、discards stale results 用 1000ms 的理由成立、ea8afab / e1c0b92 合理且附測試、api 與 BACKEND-159 一致、稿 10 條 decisions 逐條一致（decision 3 的「清掉文字作廢」現已有測試）。web-typecheck：唯一錯誤在 src/views/AttendanceTodayView.spec.ts（FRONTEND-122 他人進行中、未提交），非本 task。殘留（不擋）：disabled prop 透傳無測試；下拉寬度沿用 EP 預設隨內容加寬（與稿相同）。"
       }
     },
     {
@@ -3271,7 +3271,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPurgeDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
@@ -3279,7 +3279,7 @@
         "FRONTEND-009"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f3 打回】不可逆刪除的三個防護沒有測試（實作正確，突變後 tdd.run 7 條仍全綠，只需補 spec）：(1)「學號完全相符才可送」只驗了按鈕 disabled；實作另加了輸入框 @keyup.enter=\"submit\"，拿掉 submit() 內的 !canSubmit 檢查後，輸入「S100」按 Enter 就會送出 POST，測試不會發現。要求：輸入不相符的值後在輸入框按 Enter → mock.history.post 為 0。(2) description 明列 close-on-click-modal false：改成 true 不轉紅（未送出時點遮罩會直接關閉）。要求：點 .el-overlay 遮罩（或對 el-dialog 觸發 modal click）後未 emit update:modelValue。(3) 重新開啟時清空輸入（watch modelValue 重設 confirmText，與稿 openPurge 一致）：拿掉重設不轉紅；父層若讓 dialog 常駐，取消後再開會帶著上次輸入的正確學號、按鈕直接可按，等於跳過輸入確認。要求：輸入「S1001」→ modelValue 改 false 再改 true → 輸入框為空且「永久刪除」disabled。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentPurgeDialog.spec.ts",
@@ -3300,9 +3300,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f3",
-        "notes": "review-r10-f3：打回 3 項（Enter 送出的相符檢查、close-on-click-modal、重開清空輸入皆無測試，見 risk_notes），其餘通過。tdd.run 7 綠，5 條 red_case 皆有同名測試；053f9ec（測試）先於 6d16828（實作）。6d16828 對 spec：錯誤 alert 改在 .purge-alert 範圍內找 .el-alert--error（Transition stub 把 class 掛外層），仍斷言完全相同的後端訊息；另補 handleClose 路徑，沒有放寬。api：purgeStudent(id, 去頭尾空白的輸入) → POST /admin/students/{id}/purge {confirm_student_no}，回 PurgeResult，與 BACKEND-530 / 531 一致（後端精確比對學號，不符 422 purge_confirmation_mismatch）。權限：dialog 本身不判斷 students:purge；入口（「⋮ → 永久刪除」只在 students:purge 且已封存且退班時出現）屬 087，後端 531 require_permission 為安全邊界。突變 15 項 11 項轉紅（不 trim 比對、不分大小寫、送出不 trim、送出中可關閉、送出中有 X、按鈕非 danger、mismatch 不清空、錯誤不顯示、不 emit purged、成功訊息錯、取消鈕送出中可按）；不轉紅 4 項：submit 不檢查 canSubmit、close-on-click-modal true、重開不清空（即打回項），以及「送出中 Esc 可關」為等價突變（before-close 仍擋下）。稿 page-students.html（approved）decisions：「StudentPurgeDialog（480px）」與「版面數值照 FormDialog md」及稿 template 的 560px 互相矛盾，實作照 description / template 用 560，協調者會修稿文字，不算打回；其餘（頂端 error alert 列不可復原影響、「請輸入學號 {學號} 以確認」+ 輸入框、去頭尾空白完全相同才啟用 danger「永久刪除」、送出中取消 / X / Esc 無效、409 alert 在 dialog 內、422 輸入框下紅字並清空、不用 FormDialog 直接 el-dialog、footer 取消 + danger）逐條一致。Chromium 實測寬 560、按鈕 el-button--danger 初始 disabled、輸入不符按 Enter 不送出、點遮罩不關、送出中按 Esc 不關且無 X、取消 disabled，完成後出現「已永久刪除並匿名化（新編號 DEL-1a2b3c4d）」。web-lint 乾淨、web-typecheck 0 錯誤。"
+        "notes": "review-r10-f3：通過（複審）。初審打回的三項不可逆刪除防護無測試：0dcaaae 只補 spec（實作最後一次仍是 6d16828），da7f355 同步 3 條 red_case：「enter does not submit mismatched value」（輸入 S100 在輸入框按 Enter → 不送 POST、未 emit purged）、「overlay click does not close」（點遮罩 → 未 emit update:modelValue）、「reopening clears input」（輸入 S1001 後關閉再開 → 輸入框為空、「永久刪除」disabled）。只新增測試，既有斷言未動。複審：tdd.run 10 綠；初審不轉紅的三個突變都轉紅——拿掉 submit() 的 !canSubmit 檢查、close-on-click-modal 改 true、拿掉開啟時重設 confirmText，各由對應測試抓到；還原後 git diff 乾淨；spec web-lint 乾淨。初審其餘結論維持：5 條原 red_case 對應、053f9ec 先於 6d16828、6d16828 對 spec 的 alert 範圍調整未放寬、api 與 BACKEND-530 / 531 一致、權限入口屬 087 且後端 require_permission(students:purge) 為安全邊界、「送出中 Esc 可關」為等價突變（before-close 仍擋）、稿 decisions 逐條一致（480px 與 560px 的稿文字矛盾由協調者修稿，實作照 description / template 用 560）。web-typecheck：唯一錯誤在 src/views/AttendanceTodayView.spec.ts（FRONTEND-122 他人進行中、未提交），非本 task。"
       }
     },
     {
