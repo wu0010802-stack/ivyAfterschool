@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 128,
-  "last_updated": "2026-10-16T04:32:02Z",
+  "version": 129,
+  "last_updated": "2026-10-16T04:33:53Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -303,8 +303,8 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/parentAuth.ts",
       "source_ref": "FE:src/parent/stores/parentAuth.ts::useParentAuthStore",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-006",
         "PARENT-007",
@@ -2663,8 +2663,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveForm.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveForm.vue::update",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-015",
@@ -2707,8 +2707,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveAttachmentList.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveAttachments.vue::onFileChange",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-014",
         "PARENT-133",
@@ -2745,8 +2745,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveListItem.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveListCard.vue::emit",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-051",
@@ -2996,8 +2996,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamsView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-010",
         "PARENT-027",
@@ -3042,8 +3042,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamDetailView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-010",
@@ -3195,8 +3195,8 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/parentWs.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-002",
         "FRONTEND-004",

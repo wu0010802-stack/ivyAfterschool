@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 174,
-  "last_updated": "2026-10-16T04:32:02Z",
+  "version": 175,
+  "last_updated": "2026-10-16T04:33:53Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -799,8 +799,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/layout/AdminHeader.vue",
       "source_ref": "FE:src/components/layout/AdminHeader.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-035",
         "FRONTEND-022",
@@ -1789,8 +1789,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/SystemSettingsView.vue",
       "source_ref": "FE:src/components/settings/SettingsLineTab.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-057",
         "FRONTEND-039",
@@ -1987,8 +1987,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/ReferenceDataView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-059",
         "FRONTEND-060",
@@ -2072,8 +2072,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/StaffUserFormDialog.vue",
       "source_ref": "FE:src/components/settings/SettingsAccountsTab.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-052",
         "FRONTEND-067",
@@ -2295,8 +2295,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/RolesView.vue",
       "source_ref": "FE:src/views/settings/SettingsRolesView.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-067",
         "FRONTEND-069",
@@ -2452,8 +2452,8 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/students.ts",
       "source_ref": "FE:src/api/students.ts::getStudents",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
         "FRONTEND-006",
@@ -3164,8 +3164,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/classes/ClassStaffDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-080",
         "FRONTEND-052",
@@ -3414,8 +3414,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/attendance/AttendanceStudentCard.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-005",
         "FRONTEND-003",
@@ -3454,8 +3454,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/attendance/AttendanceAmendDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
         "FRONTEND-003",
@@ -3492,8 +3492,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
         "FRONTEND-038",
@@ -3574,8 +3574,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/attendance/MonthlyAttendanceGrid.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
         "FRONTEND-005"
@@ -3700,8 +3700,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveCancelDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
         "FRONTEND-003",
@@ -3740,8 +3740,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveAttachmentList.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121"
       ],
@@ -3776,8 +3776,8 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/homework.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
         "BACKEND-385",
@@ -4147,8 +4147,8 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/pickupAuthorizations.ts",
       "source_ref": "FE:src/api/pickupAuthorizations.ts::verifyPickupAuthorization",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-020",
         "BACKEND-436",
@@ -4185,8 +4185,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalRoster.ts",
       "source_ref": "FE:src/composables/useDismissalRoster.ts::buildRoster",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
         "FRONTEND-002"
@@ -4222,8 +4222,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useStudentPosStatus.ts",
       "source_ref": "FE:src/composables/useStudentPosStatus.ts::useStudentPosStatus",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
         "FRONTEND-005"
@@ -4258,8 +4258,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalUrgency.ts",
       "source_ref": "FE:src/composables/useDismissalUrgency.ts::urgencyLevel",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-003",
         "FRONTEND-180"
@@ -4374,8 +4374,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalChime.ts",
       "source_ref": "FE:src/composables/useDismissalChime.ts::drawChimeTones",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
         "INFRA-012"
@@ -5096,8 +5096,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamFormDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
         "FRONTEND-083",
@@ -5136,8 +5136,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSubjectsEditor.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
         "FRONTEND-083"
@@ -5310,8 +5310,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useScoreAutosave.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
         "FRONTEND-009"
@@ -5387,8 +5387,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSummaryTable.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230"
       ],
@@ -5537,8 +5537,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/dashboard/RecentLeavesList.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-260",
         "FRONTEND-023",

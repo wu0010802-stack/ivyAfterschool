@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 450,
-  "last_updated": "2026-10-16T04:32:02Z",
+  "version": 451,
+  "last_updated": "2026-10-16T04:33:53Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -11995,8 +11995,8 @@
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/parent/pickup.py",
       "source_ref": "BE:api/parent_portal/pickup.py::cancel_authorization",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-422",
         "BACKEND-402",
@@ -15507,8 +15507,8 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/exam_service.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-463"
       ],
@@ -15542,8 +15542,8 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/student_import_service.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-155",
         "BACKEND-156",
@@ -15578,8 +15578,8 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/attendance_service.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-314",
         "BACKEND-323"
