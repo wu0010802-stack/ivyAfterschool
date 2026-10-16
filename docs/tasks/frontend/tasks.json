@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 316,
-  "last_updated": "2026-10-16T19:29:13Z",
+  "version": 317,
+  "last_updated": "2026-10-16T19:33:39Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2669,7 +2669,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/StudentWorkbenchView.vue",
       "source_ref": "FE:src/views/StudentWorkbenchView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-086",
@@ -2691,7 +2691,9 @@
           "StudentWorkbenchView placeholder without selection：寬 1600、無 query.student → 詳情欄文字含 '從左側選擇學生以檢視詳情'，沒有 GET 學生詳情，drawer 未顯示",
           "StudentWorkbenchView switches to drawer below 1440：window.innerWidth 1439、initialRoute '/students?student=s1&tab=guardians&status=all&page=2' → drawer 顯示、詳情渲染在 .el-drawer 內、雙欄詳情欄隱藏；點 drawer 的「關閉」→ query 深等於 {status:'all',page:'2'}、drawer 隱藏，closed 之前詳情仍顯示、closed 後卸載；窄版點 '陳小美' 列 → drawer 顯示陳小美；innerWidth 1440 → 詳情不在 .el-drawer 內（雙欄）、drawer 未顯示",
           "StudentWorkbenchView keeps selection across list query changes：initialRoute '/students?student=s1' → 在列表把狀態改為 '暫停'（query 含 student 's1'、status 'suspended'、page '1'）、再換到第 2 頁（列表參數 page 2）→ router query.student 仍為 's1'，詳情仍顯示 '王小明'，GET /admin/students/s1 仍只有 1 次",
-          "StudentWorkbenchView keeps detail mounted when crossing 1440：寬 1600、initialRoute '/students?student=s1&tab=guardians'（詳情在雙欄、GuardianManager 掛載 1 次）→ resize 1200 → 詳情在 .el-drawer 內；→ resize 1600 → 回到雙欄、drawer 隱藏；全程 GuardianManager 掛載次數維持 1、GET /admin/students/s1 只有 1 次"
+          "StudentWorkbenchView keeps detail mounted when crossing 1440：寬 1600、initialRoute '/students?student=s1&tab=guardians'（詳情在雙欄、GuardianManager 掛載 1 次）→ resize 1200 → 詳情在 .el-drawer 內；→ resize 1600 → 回到雙欄、drawer 隱藏；之後 ElDrawer 送出 closed（抽屜收起的動畫結束）→ 詳情仍在雙欄；全程 GuardianManager 掛載次數維持 1、GET /admin/students/s1 只有 1 次",
+          "StudentWorkbenchView keeps new selection when an earlier close finishes late：寬 1200、initialRoute '/students?student=s1' → 點 drawer「關閉」（query 不含 student）→ 關閉動畫期間點 '陳小美' 列 → 之後才由 ElDrawer 送出上一次的 closed → query.student 's2'、drawer 顯示中、詳情在 drawer 內且為 '陳小美'",
+          "StudentWorkbenchView closes drawer with Escape and overlay click：寬 1200、initialRoute '/students?student=s1&tab=guardians&status=all&page=2' → document 上 Escape keydown → query 深等於 {status:'all',page:'2'}、drawer 隱藏；再以 router 帶入 student 's2'、tab 'guardians'（drawer 顯示）→ 點遮罩（.el-overlay 的 mousedown、mouseup、click）→ query 深等於 {status:'all',page:'2'}、drawer 隱藏"
         ],
         "run": "just web-test src/views/StudentWorkbenchView.spec.ts -t \"StudentWorkbenchView\"",
         "notes": "另跑 `just web-test src/composables/usePagedList.spec.ts -t \"usePagedList\"`（改寫 045 的測試）與 `just web-test src/router/routes.spec.ts`（024 的 placeholder 範例改用 PickupPosView）。列表與詳情用真實元件；底下的 dialog、照片、監護人、成績紀錄以 vi.mock 替身（各自已有完整測試，也避免多個 el-select 拖慢 happy-dom），替身記錄掛載次數以驗證跨斷點不重掛。happy-dom 的 Transition 由 test-utils 替身處理，不會觸發 el-drawer 的 closed，測試以 ElDrawer emit closed 模擬動畫結束；真實瀏覽器已用 Playwright 驗證 closed 後卸載。"
