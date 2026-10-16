@@ -334,6 +334,7 @@ async function submit(): Promise<void> {
     @submit="submit"
   >
     <el-form
+      class="sf-form"
       label-position="top"
       :disabled="loading"
       @submit.prevent
@@ -640,6 +641,11 @@ async function submit(): Promise<void> {
 </template>
 
 <style scoped>
+/* el-row 的 gutter 以負邊距實作，會讓 dialog body 多出 8px 橫向捲動（手機滿版時 body 可捲動）；只裁切橫向 */
+.sf-form {
+  overflow-x: clip;
+}
+
 .form-section {
   display: flex;
   gap: 4px;
