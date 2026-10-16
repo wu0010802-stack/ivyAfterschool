@@ -2,6 +2,9 @@
 // - load 重置為第 1 頁並以序號丟棄過期回應；loadMore 以 id 去重附加。
 // - unreadCount 是「更多」分頁徽章（PARENT-024）的來源：markRead 只在該筆原本未讀時減 1，
 //   ws notification.created 只在 id 不存在時插到最前並 +1；斷線期間由 parentWs poller 以 refreshUnread 補齊。
+// - 伺服器回來的未讀數（load / loadMore / refreshUnread）依發出順序取號，較早發出、較晚回來的不蓋掉較新的結果。
+// - clear()（登出 / 換人）讓在途請求全部失效：load / loadMore / refreshUnread / markRead / markAllRead 晚到的回應都不寫回，
+//   呼叫端的 promise 照常 resolve / reject。
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Notification } from '@/shared/types/api'
@@ -29,9 +32,21 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
 
   // 每次 load / clear 遞增；較舊請求（含 loadMore）的回應一律丟棄
   let seq = 0
+  // clear 的次數：已讀操作發出時記下，回來時不同就表示已換人，不能再動本地狀態
+  let epoch = 0
+  // 伺服器未讀數的發出號碼與已套用的最大號碼；clear 時把已套用推到最新，在途的一律作廢
+  let unreadIssued = 0
+  let unreadApplied = 0
+
+  function applyUnread(ticket: number, count: number): void {
+    if (ticket <= unreadApplied) return
+    unreadApplied = ticket
+    unreadCount.value = count
+  }
 
   async function load({ unreadOnly: only = false }: { unreadOnly?: boolean } = {}): Promise<void> {
     const mySeq = ++seq
+    const ticket = ++unreadIssued
     unreadOnly.value = only
     loading.value = true
     error.value = null
@@ -40,7 +55,7 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
       if (mySeq !== seq) return
       items.value = res.items
       total.value = res.total
-      unreadCount.value = res.unread_count
+      applyUnread(ticket, res.unread_count)
       page.value = 1
       loaded.value = true
     } catch {
@@ -54,6 +69,7 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
   async function loadMore(): Promise<void> {
     if (loading.value || items.value.length >= total.value) return
     const mySeq = seq
+    const ticket = ++unreadIssued
     const next = page.value + 1
     loading.value = true
     try {
@@ -62,7 +78,7 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
       const known = new Set(items.value.map((n) => n.id))
       items.value = [...items.value, ...res.items.filter((n) => !known.has(n.id))]
       total.value = res.total
-      unreadCount.value = res.unread_count
+      applyUnread(ticket, res.unread_count)
       page.value = next
     } catch {
       if (mySeq !== seq) return
@@ -74,16 +90,19 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
 
   /** 只更新未讀數（page_size 1 取 unread_count），不動 items；失敗忽略（輪詢下次再補） */
   async function refreshUnread(): Promise<void> {
+    const ticket = ++unreadIssued
     try {
       const res = await listNotifications({ page: 1, pageSize: 1 })
-      unreadCount.value = res.unread_count
+      applyUnread(ticket, res.unread_count)
     } catch {
       // 盡力而為
     }
   }
 
   async function markRead(id: string): Promise<void> {
+    const startEpoch = epoch
     const updated = await markNotificationRead(id)
+    if (epoch !== startEpoch) return
     const index = items.value.findIndex((n) => n.id === id)
     if (index < 0) return
     const current = items.value[index]!
@@ -97,14 +116,19 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
   }
 
   async function markAllRead(): Promise<void> {
+    const startEpoch = epoch
     await markAllNotificationsRead()
+    if (epoch !== startEpoch) return
     const now = new Date().toISOString()
     items.value = items.value.map((n) => (n.read_at === null ? { ...n, read_at: now } : n))
     unreadCount.value = 0
   }
 
+  /** 登出 / 換人：清空並讓所有在途請求失效（晚到的回應不寫回） */
   function clear(): void {
     seq += 1
+    epoch += 1
+    unreadApplied = unreadIssued
     items.value = []
     total.value = 0
     unreadCount.value = 0
