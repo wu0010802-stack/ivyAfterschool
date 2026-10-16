@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 265,
-  "last_updated": "2026-10-16T14:45:28Z",
+  "version": 266,
+  "last_updated": "2026-10-16T14:46:08Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4013,8 +4013,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-154",
         "FRONTEND-005"
