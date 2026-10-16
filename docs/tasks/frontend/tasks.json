@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 305,
-  "last_updated": "2026-10-16T15:48:28Z",
+  "version": 306,
+  "last_updated": "2026-10-16T15:48:48Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4643,8 +4643,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/DismissalPosBoard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosBoard.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-185",
         "FRONTEND-191",
