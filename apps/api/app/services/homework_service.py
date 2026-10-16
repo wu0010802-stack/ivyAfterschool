@@ -192,7 +192,7 @@ def _progress_out(
     )
 
 
-def _progress_view(session: Session, progress: HomeworkDailyProgress) -> ProgressOut:
+def progress_view(session: Session, progress: HomeworkDailyProgress) -> ProgressOut:
     """進度列 → ``ProgressOut``（含預計可接送時間最後修改者的姓名）。"""
     eta_by = None
     if progress.eta_updated_by is not None:
@@ -210,12 +210,11 @@ def _publish_snapshot(session: Session, student_id: UUID, service_date: date, cl
             HomeworkDailyProgress.service_date == service_date,
         )
     ).scalar_one_or_none()
-    eta_by = None
-    if progress is not None and progress.eta_updated_by is not None:
-        eta_by = session.execute(
-            select(StaffUser.display_name).where(StaffUser.id == progress.eta_updated_by)
-        ).scalar_one_or_none()
-    progress_out = _progress_out(student_id, service_date, progress, eta_by)
+    progress_out = (
+        _progress_out(student_id, service_date, None, None)
+        if progress is None
+        else progress_view(session, progress)
+    )
     broadcast_after_commit(
         session,
         topic="homework",
@@ -457,7 +456,7 @@ def set_ready_eta_and_note(
     if eta_changed:
         sync_open_request_reply(session, student_id, service_date, clock=clock)
     broadcast_homework_snapshot(session, student_id, service_date, clock=clock)
-    return _progress_view(session, progress)
+    return progress_view(session, progress)
 
 
 @dataclass(frozen=True)
@@ -566,7 +565,7 @@ def create_item(
     session.flush()
     change = recompute_progress(session, student.id, service_date, clock=clock)
     return HomeworkMutationOut(
-        item=_item_out(item), progress=_progress_view(session, change.progress)
+        item=_item_out(item), progress=progress_view(session, change.progress)
     )
 
 
@@ -682,7 +681,7 @@ def update_item(
 
     change = recompute_progress(session, item.student_id, item.service_date, clock=clock)
     return HomeworkMutationOut(
-        item=_item_out(item), progress=_progress_view(session, change.progress)
+        item=_item_out(item), progress=progress_view(session, change.progress)
     )
 
 
@@ -700,4 +699,4 @@ def delete_item(
     session.delete(item)
     session.flush()
     change = recompute_progress(session, student_id, service_date, clock=clock)
-    return HomeworkMutationOut(item=None, progress=_progress_view(session, change.progress))
+    return HomeworkMutationOut(item=None, progress=progress_view(session, change.progress))

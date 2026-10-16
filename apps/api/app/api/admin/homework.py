@@ -14,7 +14,8 @@
 - BACKEND-390 ``PUT /homework/progress/{student_id}``：homework:write；``ProgressPutIn``
   （service_date 預設今天）→ 有給 overall 先 BACKEND-381 ``set_overall_status``，有給
   ready_eta / note 再 BACKEND-382 ``set_ready_eta_and_note``（未給的欄位傳 UNSET）→ commit →
-  ``ProgressOut``。只給 overall 時以 381 回傳的進度列組回應（規則同 382）。
+  ``ProgressOut``。只給 overall 時以 381 回傳的進度列經 BACKEND-564 ``progress_view`` 組回應
+  （規則同 382）。
 
 固定路徑 ``/items/batch`` 宣告在 ``/items/{item_id}`` 之前。
 """
@@ -33,8 +34,6 @@ from app.api.deps import CurrentStaff, require_permission
 from app.core.clock import Clock, get_clock
 from app.core.db import get_db
 from app.core.permissions import Permission
-from app.models.account import StaffUser
-from app.models.homework import HomeworkDailyProgress
 from app.schemas.homework import (
     BoardOut,
     BoardQuery,
@@ -102,21 +101,6 @@ def delete_item(
     return out
 
 
-def _progress_out(db: Session, progress: HomeworkDailyProgress) -> ProgressOut:
-    """進度列 → ``ProgressOut``（規則同 BACKEND-382：ready_eta 為 ``HH:MM``、
-    eta_updated_by_name 為最後修改 ETA 的員工）。"""
-    editor = db.get(StaffUser, progress.eta_updated_by) if progress.eta_updated_by else None
-    return ProgressOut(
-        student_id=progress.student_id,
-        service_date=progress.service_date,
-        overall_status=progress.overall_status,
-        ready_eta=None if progress.ready_eta is None else progress.ready_eta.strftime("%H:%M"),
-        note=progress.note,
-        eta_updated_at=progress.eta_updated_at,
-        eta_updated_by_name=None if editor is None else editor.display_name,
-    )
-
-
 @router.put("/progress/{student_id}", response_model=ProgressOut)
 def put_progress(
     student_id: UUID, body: ProgressPutIn, staff: HomeworkWrite, db: Db, clock: ClockDep
@@ -129,7 +113,7 @@ def put_progress(
             db, student_id, d, body.overall, actor=staff, clock=clock
         )
     if change is not None and not given & {"ready_eta", "note"}:
-        out = _progress_out(db, change.progress)
+        out = homework_service.progress_view(db, change.progress)
     else:
         # ProgressPutIn 保證除 service_date 外至少給一個欄位：沒給 overall 時必有 ready_eta / note
         out = homework_service.set_ready_eta_and_note(
