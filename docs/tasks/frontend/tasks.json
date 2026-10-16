@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 268,
-  "last_updated": "2026-10-16T14:53:36Z",
+  "version": 269,
+  "last_updated": "2026-10-16T14:56:57Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5362,7 +5362,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": "FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5395,7 +5395,7 @@
           "ScoreGrid note trigger click keeps editor focus：attachTo document.body，canWrite true → 點王小明國語格的 [data-test=note-trigger] → 備註編輯框開啟且 document.activeElement 為 [data-test=note-input] 的 textarea（不是該格分數 input）；按 Esc 後點林小華國語格內輸入框與「缺」以外的空白處 → document.activeElement 為林小華國語格的分數 input"
         ],
         "run": "just web-test src/components/exams/ScoreGrid.spec.ts -t \"ScoreGrid\"",
-        "notes": ""
+        "notes": "表格 height 為 100%：ScoreGrid 根元素是高度 100% 的 flex 欄，由考試頁（FRONTEND-234）給定內容區剩餘高度，表頭固定、只捲表格本體。RenotifyChoiceDialog 以本元件自己的計時器（與 useScoreAutosave 同一個 DEFAULT_DEBOUNCE_MS）在格子變更後到期時檢查 awaitingNotifyChoice 開啟；換考試或發布狀態改變時重新決定 notifyParents（已發布 null、草稿 false），同一場已發布考試重新載入時維持本次選擇。重新載入（reload）保留畫面上的表格直到新資料回來，只有第一次載入顯示 skeleton。happy-dom 不會在卸載有焦點的輸入框時觸發 blur（Chromium 會），Esc 案例在 keydown 之後、重新渲染之前補派 blur 模擬，拿掉「忽略卸載時的 change」會轉紅。點格子空白處時缺考格聚焦「缺」勾選（與鍵盤導覽一致）；輸入法組字中的 Enter 不換格。整組 timeout 上限 30 秒（共用 CPU 高負載時避免假紅，不影響斷言）。真實 Chromium 驗證：高度填滿、表頭固定、列高 ≥ 48、科目欄 140、Tab 換列與被固定欄遮住的格子捲到可見、Esc 還原不送出、點備註圖示焦點在編輯框、點空白處聚焦該格。"
       },
       "review": {
         "status": "pending",
