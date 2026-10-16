@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 307,
-  "last_updated": "2026-10-16T15:50:18Z",
+  "version": 308,
+  "last_updated": "2026-10-16T15:55:12Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3729,7 +3729,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/LeavesView.vue",
       "source_ref": "FE:src/views/StudentLeavesListView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
@@ -3762,7 +3762,7 @@
           "LeavesView presets filtered student in create dialog：學生篩選選 s1（王小明）後點 '代登記請假' → LeaveFormDialog 的 props.presetStudent.id === 's1'"
         ],
         "run": "just web-test src/views/LeavesView.spec.ts -t \"LeavesView\"",
-        "notes": ""
+        "notes": "13 passed（8 條 red_cases + 5 條延伸：清空日期／重設、單日／原因 fallback／學生連結、取消後重載、取消失敗關閉後重載、載入失敗重試）。describe timeout 20s（happy-dom 下 el-select／el-date-picker 渲染慢）；日期區間改值以 findComponent ElDatePicker 直接 emit update:modelValue（happy-dom 打字不會 emit）。日期「不限」以 date_from=all&date_to=all 寫入網址；除列表篩選與 page 外不需額外 query 參數（usePagedList 洗參數問題不影響本頁）。突變 13/14 抓到；未抓到者為等價突變（預設 status 改空字串，toApiParams 會 fallback 回 active）。"
       },
       "review": {
         "status": "pending",
