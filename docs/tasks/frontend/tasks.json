@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 282,
-  "last_updated": "2026-10-16T15:18:23Z",
+  "version": 283,
+  "last_updated": "2026-10-16T15:19:21Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3928,8 +3928,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/HomeworkBoardView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-152",
         "FRONTEND-153",
