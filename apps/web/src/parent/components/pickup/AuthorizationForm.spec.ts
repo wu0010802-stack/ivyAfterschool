@@ -277,14 +277,18 @@ describe('AuthorizationForm', () => {
     expect(create.attributes('aria-busy')).toBe('true')
     expect(create.attributes('type')).toBe('submit')
     expect(button(w, '取消').attributes('disabled')).toBeDefined()
+    // 日期欄由 disabled 的 fieldset 鎖定（happy-dom 不會把 fieldset 的 disabled 傳給子欄位的 :disabled，
+    // 以「在 disabled fieldset 內」斷言；真實 Chromium 的 :disabled 由 Playwright 驗證）
     const lock = w.get('fieldset.af-lock')
     expect(lock.attributes('disabled')).toBeDefined()
     const date = field(w, '接送日期')
-    expect(lock.element.contains(date.element)).toBe(true)
-    expect(date.element.matches(':disabled')).toBe(true)
-    expect(lock.element.contains(w.get('.af-persons').element)).toBe(true)
+    expect(date.element.closest('fieldset[disabled]')).toBe(lock.element)
+    expect(w.get('.af-persons').element.closest('fieldset[disabled]')).toBe(lock.element)
 
     await create.trigger('click')
+    expect(w.emitted('submit')).toBeUndefined()
+    // 不經送出鈕的送出（例如 requestSubmit）也不 emit
+    await w.trigger('submit')
     expect(w.emitted('submit')).toBeUndefined()
 
     await w.setProps({ submitting: false })
