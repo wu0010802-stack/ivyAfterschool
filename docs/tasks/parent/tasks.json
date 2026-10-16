@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 151,
-  "last_updated": "2026-10-16T06:11:14Z",
+  "version": 152,
+  "last_updated": "2026-10-16T06:13:02Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1510,7 +1510,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/parent/composables/useTodayStatus.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "FRONTEND-002",
@@ -1543,9 +1543,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。10 條 red_case 皆有同名測試（另有首次載入骨架、null 不送請求、切換當下清空、ws 填入空狀態、visibilitychange、卸載解除 6 條）；tdd.run 16/16 綠，verbose 名稱清單含全部 10 條；commit 順序 f7b5c35（測試，當時 useTodayStatus.ts 不存在）→ d850da3（實作，只追加一條「切換當下清空」測試）。只打 GET /parent/children/{id}/today 一支；ws 事件以 student_id === childId 且日期等於 today.date 過濾（attendance.updated 的形狀與後端 to_parent_attendance_event、api_index §15 一致）；pickup 合併規則與 description 逐條相符（只有「目前為另一筆非終態、新資料為終態」忽略）；applyPickup 走同一規則、別的小孩的回應不寫入。別的小孩的資料不會寫進目前小孩：切換時清空並以序號丟棄晚到回應（reviewer 探針 s1→s2→s1 回應亂序，最終為最後一次的 s1 資料）；卸載時序號遞增，在途回應不寫回（探針驗證）；本 composable 沒有 clear()，登出時頁面卸載即失效。實作者回報的偏離「ws 開啟時轉 visible 會重抓兩次」：description 同時要求 registerPoller(refresh) 與 visibilitychange 轉 visible 時 refresh，FRONTEND-004 轉 visible 時也會 invokePoll、重連 onOpen 再 pollNow，最多 3 次 GET；每次 refresh 遞增序號只採用最後一次，狀態正確，屬規格行為、不擋。突變 15 個全殺：不比對小孩、不比對日期、不優先非終態、不丟棄過期回應、切換不清空、開始不清 error、done_count 計全部、漏 picked_up_by_name、失敗清空 today、不監聽 visibility、卸載不解除、poller 不註冊、null 也送請求、loading 不結束、attendance 不套用；還原後 git diff 乾淨。web-lint 兩檔乾淨；web-typecheck 錯誤不在本 task 檔案。殘留（不擋）：(1) 轉 visible 的重複 GET（見上）可在 PARENT-054 整合時評估是否只在 parentWs 非 open 時自行重抓（需改 description）。(2) ws 事件與在途 refresh 的競態：較舊的 refresh 回應晚於較新的 ws 事件到達時會覆蓋；規格未要求比對新舊。"
       }
     },
     {
@@ -1695,7 +1695,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/homeworkToday.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "FRONTEND-003",
@@ -1722,9 +1722,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。5 條 red_case 皆有同名測試（另有並發共用、force 重抓、ws 填入未載入小孩、重試清 error、clear 丟棄在途回應 5 條）；tdd.run 10/10 綠，verbose 名稱清單含全部 5 條；commit 順序 9019d55（測試，當時 homeworkToday.ts 不存在）→ e814ec5（實作）。介面核對：parentWs.on 的 handler 收 (data, envelope)，updated_at 取 envelope.sent_at；registerPoller 對 byChild 每個 id force 重抓；getChildHomework 為 PARENT-070 實作。換人登入檢查（FRONTEND-029 同類）：clear() 遞增世代並清 pending，在途 load 的成功 / 失敗與 loading 都不寫回（既有測試 + reviewer 探針：clear 後同一小孩重新載入，舊回應晚到時 get 為 null、最終為新回應）；登出時 PARENT-033 先 parentWs.disconnect，clear 後不會再收到事件；poller 在 clear 後只走空的 byChild。突變 9 個殺 8：不檢查日期、updated_at 不取 sent_at、非 force 不沿用快取、失敗清掉舊資料、失敗不設 error、poller 不 force、clear 不換世代、不共用進行中請求，全部轉紅；還原後 git diff 乾淨。web-lint 兩檔乾淨；web-typecheck 3 個錯誤皆在他人進行中的檔案（ScoreCell.vue、StaffUserFormDialog.vue、stores/notifications.ts），不在本 task。殘留（不擋）：(1) 存活突變「今日改用 UTC 日期」：測試時間固定在台北 16:00（UTC 08:00），UTC 與台北日期相同；實作呼叫 FRONTEND-003 todayTaipei 是正確的，建議日後 chore 補跨午夜（UTC 16:00 前後）案例（testing_conventions §2）。(2) ws 事件與在途 load 的競態：load 送出後收到較新的 ws 事件，較舊的 load 回應晚到仍會覆蓋；規格未要求比對新舊，斷線輪詢 / 下一個事件會補正。"
       }
     },
     {
@@ -1942,7 +1942,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/pickupRequests.ts",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::refresh",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "FRONTEND-003",
@@ -1951,7 +1951,7 @@
         "INFRA-013"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-p3 打回】(1) 寫入互斥把「不同的寫入」也 resolve 成進行中那筆的結果：runWrite 在 pendingWrite 存在時，不論動作與參數一律回傳進行中的 promise。reviewer 實測反例：(a) create('s1', null) 在途時 create('s2', '17:40') → 只送出 1 次 POST（body {student_id:'s1'}），create('s2') resolve 成 s1 的請求，s2 沒有任何請求；(b) create('s1', null) 在途時 arriveNow('s1') → resolve 成 status 'pending' 的那筆，從未送出 arrived；(c) markArrived('r2') 在途時 cancel('r2') → resolve 成 status 'arrived'，取消沒有送出、呼叫端以為成功。(b) 可由正式 UI 觸發：接送頁按「通知安親班」後在回應前回到首頁，今日卡 pickup_request 仍為 null，按「我已經到了」（PARENT-053）→ 首頁自己的 useArriveNow（PARENT-105，busy 為各實例自己的）呼叫 arriveNow → 拿到 pending 那筆 → snackbar「已通知老師您到了」並 applyPickup(pending)，家長以為已通知抵達，老師端只看到「在路上」。description「重複呼叫直接回傳進行中的 promise，防連點」只涵蓋同一動作、同一參數的重複呼叫；「同時只允許一個寫入」代表不同的寫入不得同時開始，但也不得以另一個寫入的結果 resolve。驗收：同一動作且同參數的重複呼叫維持共用 promise（red_case「blocks concurrent writes」不變）；不同動作或不同參數 → 等進行中的寫入結束後再依序執行，或直接 reject（錯誤形狀由實作者決定，PARENT-105 的錯誤對照要能呈現）——擇一寫回 description，並新增 red_case 覆蓋 (a)、(b)（例如 create 在途時 arriveNow 不得 resolve 成 pending 那筆、create(s2) 不得 resolve 成 s1 的請求）。認為需要使用者決定時寫進 open_design_questions。(2) clear() 之後在途寫入的回應仍寫回：clear() 只遞增 listSeq、把 pendingWrite 設為 null，runWrite 成功分支的 upsert(r) 與失敗分支的 failWrite → load(true) 都沒有檢查世代。reviewer 實測：已載入 [r2] 後 markArrived('r2') 在途 → clear() → 回應 r2 arrived → items 為 [r2]（上一位家長的請求寫回，loaded=false）；失敗為 invalid_pickup_status 時則在 clear 之後再送一次 GET today 並把 loaded 設為 true。登出流程（PARENT-033）在 await 登出 API 後才 clear，按「我到了」後立刻登出即可能發生；下一位家長登入後第一次 load 失敗時（error 有值、不清 items）上一位的請求就留在 store。與後台 FRONTEND-029 本輪打回的「換人登入殘留上一位資料（在途請求晚到寫回）」同類。驗收：新增 red_case「clear 之後在途寫入的成功回應不得 upsert、需同步的失敗不得觸發 load(true)；呼叫端的 promise 照常 resolve / reject」，並在 description 的 clear() 補上此語意。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/stores/pickupRequests.spec.ts",
@@ -1974,9 +1974,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-p3",
+        "notes": "打回 2 項（見 risk_notes【review-r10-p3 打回】）：(1) 寫入互斥把不同的寫入也 resolve 成進行中那筆的結果（create(s2) 得到 s1 的請求、create 在途時 arriveNow 得到 pending、markArrived 在途時 cancel 得到 arrived），首頁「我已經到了」可經正式 UI 觸發；(2) clear() 之後在途寫入的回應仍 upsert、需同步的失敗仍觸發 load(true)（FRONTEND-029 同類）。其餘檢查通過：10 條 red_case 皆有同名測試（另有兩筆非終態取最新、排序、load 共用與保留、過期回應、預計時間、非同步錯誤不 resync、cancel 原因、409 無 request_id、poller、clear 10 條）；tdd.run 20/20 綠，verbose 名稱清單含全部 10 條；commit 順序 f7cdb3d（測試，當時 pickupRequests.ts 不存在）→ 7cdaf51（實作，只追加一條「兩筆非終態取最新」測試）。介面核對：PARENT-090 的 createPickupRequest（arrived: true 與 expected_arrival_at 互斥）/ listTodayPickupRequests / markPickupArrived / cancelPickupRequest、parentWs.on / registerPoller 用法正確；load 以 listSeq 丟棄過期回應，clear 後在途 load 不寫回（reviewer 探針驗證）。實作者回報的偏離判斷：「arriveNow 409 帶 request_id 不先 load(true)」符合 description（該情況「不先 rethrow」，通則是 load(true) 後 rethrow；後援成功即以回應 upsert 該筆）；「任何寫入進行中再呼叫任何寫入都回傳進行中的 promise」不符合，見打回項 (1)。突變 18 個殺 18（openFor 取最舊、historyFor 含非終態、失敗不 resync / 一律 resync、寫入不互斥、upsert 不看日期、arriveNow 不後援 / 不帶 arrived、not_found / invalid_status 不 resync、load 失敗清空、不丟棄過期回應、load 不共用、成功不 upsert、ws / poller 不註冊、pendingAction 不重設、clear 不清 items）；還原後 git diff 乾淨。web-lint 兩檔乾淨；web-typecheck 錯誤不在本 task 檔案。殘留（不擋）：(1) 今日判斷沒有跨午夜案例（同 PARENT-071，測試時間台北 16:00）。(2) 寫入回應與 ws 事件沒有新舊比對：較晚到的寫入回應可能覆蓋較新的 ws 狀態，規格未要求。"
       }
     },
     {
