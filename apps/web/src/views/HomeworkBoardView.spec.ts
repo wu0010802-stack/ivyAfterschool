@@ -10,6 +10,7 @@ import HomeworkBatchAddDialog from '@/components/homework/HomeworkBatchAddDialog
 import HomeworkItemDialog from '@/components/homework/HomeworkItemDialog.vue'
 import ReadyEtaDialog from '@/components/homework/ReadyEtaDialog.vue'
 import { createApiMock, mountWithApp } from '@/test/helpers'
+import viewSource from './HomeworkBoardView.vue?raw'
 import HomeworkBoardView from './HomeworkBoardView.vue'
 
 const BOARD_URL = '/admin/homework/board'
@@ -599,6 +600,13 @@ describe('HomeworkBoardView', { timeout: 30_000 }, () => {
     await button(wrapper, '重新整理')!.trigger('click')
     await settle()
     expect(boardGets()).toHaveLength(gets + 1)
+  })
+
+  it('HomeworkBoardView sizes date picker through toolbar deep selector', () => {
+    // el-date-picker 的根節點不帶本元件的 scoped 屬性：寬度規則要從工具列以 :deep() 選取才會生效（稿：日期 190px，
+    // 平板 1024 寬時篩選列維持單行）。happy-dom 不計算版面，以原始碼斷言規則。
+    expect(viewSource).toMatch(/\.hw-toolbar\s+:deep\(\.hw-toolbar__date\.el-date-editor\)\s*{[^}]*width:\s*190px/)
+    expect(viewSource).not.toMatch(/(^|\n)\.hw-toolbar__date\s*{/)
   })
 
   it('HomeworkBoardView is wired in view loaders', async () => {
