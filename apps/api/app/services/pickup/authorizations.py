@@ -12,6 +12,7 @@
 - BACKEND-428：``override_complete``（pickup:override 員工強制完成，鎖定的授權也可；寫 audit）。
 - BACKEND-555：``authorization_out`` / ``staff_authorization_out``（公開的輸出組裝函式；其他模組
   —— 例如 student_service 的 close_out —— 組授權推播資料一律用它，不匯入本模組的私有名稱）。
+- BACKEND-562：``verify_code`` 錯碼累計與鎖定後推播 ``pickup.authorization_updated``。
 - BACKEND-422：``cancel_authorization``（家長取消 active 授權；條件式更新，與員工核銷並發只有一方
   成功）。
 
@@ -560,6 +561,10 @@ def verify_code(
     ``UPDATE ... SET code_attempts = code_attempts + 1 WHERE code_locked_at IS NULL``：授權列已被
     BACKEND-424 FOR UPDATE 序列化，即使未來有路徑漏鎖，WHERE 守衛也保證 code_attempts 不超過 5、
     鎖定後不會再被核銷。明碼不進 log 與例外訊息。
+
+    錯碼累計成功（含第 5 次鎖定）後，commit 時推播 ``pickup.authorization_updated``（只送
+    admin:pickup）；已鎖定（載入時 409，或 WHERE 守衛沒有更新任何列）不推播；正確碼的推播由
+    ``complete_via_authorization`` 負責，不重複。
     """
     auth = load_verifiable_authorization(session, auth_id, clock=clock)
     if pickup_code_matches(raw_code, auth.code_hash):
@@ -601,6 +606,15 @@ def verify_code(
     locked = attempts >= PICKUP_CODE_MAX_ATTEMPTS
     if locked:
         logger.warning("代理接送授權 %s 接送碼連錯 %d 次，已鎖定", auth_id, attempts)
+    # 其他平板即時同步錯誤次數與鎖定（BACKEND-562）：前端收到後重抓核驗清單。auth 已 expire，
+    # 這裡組輸出會以 DB 現值重讀；只送 admin:pickup，家長端收不到
+    broadcast_after_commit(
+        session,
+        topic="pickup",
+        type="pickup.authorization_updated",
+        data=authorization_out(auth, clock.today()).model_dump(),
+        clock=clock,
+    )
     return VerifyOutcome(
         ok=False,
         result=None,
