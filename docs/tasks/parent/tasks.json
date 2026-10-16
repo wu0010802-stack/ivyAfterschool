@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 130,
-  "last_updated": "2026-10-16T04:48:30Z",
+  "version": 131,
+  "last_updated": "2026-10-16T05:00:25Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1876,8 +1876,8 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/parent/api/pickupAuthorizations.ts",
       "source_ref": "FE:src/parent/api/pickup.ts::regeneratePickupCode",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "BACKEND-447",
         "BACKEND-448",
@@ -3586,8 +3586,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-130",
         "PARENT-131",
