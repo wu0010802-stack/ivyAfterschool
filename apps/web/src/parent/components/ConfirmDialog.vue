@@ -230,16 +230,22 @@ onBeforeUnmount(deactivate)
   overflow-wrap: anywhere;
 }
 
+/* default slot（例如「下次不再提醒」勾選列）上下各收 4px（稿）；沒有內容時整塊不佔 gap */
+.dialog__extra {
+  margin: -4px 0;
+}
+
 .dialog__extra:empty {
   display: none;
 }
 
-/* 放不下一列時換行堆疊（確認在上、取消在下，仍靠右） */
+/* 放不下一列時換行堆疊（確認在上、取消在下，仍靠右）；與上方內容間距 = gap 16 + 8（稿） */
 .dialog__actions {
   display: flex;
   flex-wrap: wrap-reverse;
   gap: 8px;
   justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .dialog__action {
