@@ -320,6 +320,22 @@ describe('SystemSettingsView', () => {
     expect(router.currentRoute.value.path).toBe('/students')
   })
 
+  it('SystemSettingsView guards tab query change with unsaved changes', async () => {
+    mock.onGet(LIST_URL).reply(200, { items: settingsFixture() })
+    const { wrapper, router } = await mountView('/settings/system?tab=pickup')
+    await setExpireMinutes(wrapper, '90')
+
+    // 瀏覽器上一頁 / 下一頁只改 ?tab=，同樣要確認
+    const switching = router.push('/settings/system?tab=line')
+    await settle()
+    expect(document.body.textContent).toContain('尚未儲存的變更將會遺失')
+    await answerMessageBox('繼續編輯')
+    await switching
+    expect(router.currentRoute.value.query.tab).toBe('pickup')
+    expect(activeTabTitle(wrapper)).toBe('接送')
+    expect(expireMinutesValue(wrapper)).toBe('90')
+  })
+
   it('SystemSettingsView leaves without prompt when clean', async () => {
     mock.onGet(LIST_URL).reply(200, { items: settingsFixture() })
     const { router } = await mountView('/settings/system?tab=pickup')
