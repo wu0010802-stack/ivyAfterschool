@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 204,
-  "last_updated": "2026-10-16T15:46:19Z",
+  "version": 205,
+  "last_updated": "2026-10-16T15:50:51Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3798,7 +3798,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/ConfirmDialog.vue",
       "source_ref": "FE:src/parent/components/ConfirmDialog.vue::defineEmits",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-026"
