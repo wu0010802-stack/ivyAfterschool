@@ -334,7 +334,8 @@ async function exportExcel(): Promise<void> {
   white-space: nowrap;
 }
 
-.monthly-page__month.el-date-editor {
+/* el-date-picker 的根節點不帶本元件的 scoped 屬性，從工具列往下選 */
+.list-toolbar :deep(.monthly-page__month.el-date-editor) {
   width: 150px;
 }
 
