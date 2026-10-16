@@ -286,6 +286,7 @@ describe('QueueCard', () => {
           source: 'parent',
           needs_reply: false,
           reply_source: null,
+          current_ready_eta: null,
         }),
       ),
     )
@@ -293,6 +294,15 @@ describe('QueueCard', () => {
     expect(wrapper.text()).toContain('家長已到')
     expect(wrapper.text()).toContain('已等 4 分')
     expect(wrapper.text()).not.toContain('預計')
+    expect(wrapper.find('.queue-card__eta').exists()).toBe(false)
+
+    // 有作業預計完成時間時，仍沒有「預計 … 到」那一行
+    const withHomework = await mountCard(
+      activeItem(makeRequest({ status: 'arrived', expected_arrival_at: null, arrived_at: minutesAgo(4), needs_reply: false })),
+    )
+    expect(withHomework.text()).not.toMatch(/預計 \d{2}:\d{2} 到/)
+    expect(withHomework.text()).toContain('作業預計 17:40 完成')
+    expect(withHomework.find('.queue-card__eta').exists()).toBe(false)
     expect(wrapper.classes()).toContain('urgency-warning')
     expect(mainButton(wrapper).text()).toBe('完成交付')
     expect(actionTexts(wrapper)).not.toContain('確認')

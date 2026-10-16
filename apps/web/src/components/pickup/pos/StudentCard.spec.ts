@@ -150,6 +150,9 @@ describe('StudentCard', () => {
     expect(arrived.wrapper.text()).toContain('家長已到')
     expect(arrived.wrapper.text()).not.toContain('待回覆')
     expect(arrived.wrapper.text()).not.toContain('預計')
+    // tag 已寫家長已到：不需回覆時沒有任何請求小字（也不會變成「已確認」）
+    expect(arrived.wrapper.find('.scard__req').exists()).toBe(false)
+    expect(arrived.wrapper.text()).not.toContain('已確認')
     expect(arrived.wrapper.classes()).toContain('st-arrived')
     await arrived.wrapper.trigger('click')
     expect(arrived.wrapper.emitted('focus-request')?.[0]).toEqual(['r4'])
