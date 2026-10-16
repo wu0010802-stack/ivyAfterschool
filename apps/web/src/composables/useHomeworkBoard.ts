@@ -5,6 +5,9 @@
 // - 同一項目的狀態切換序列化：一次最多一個 PATCH；進行中再切換只記下最新值，完成後若與伺服器狀態不同再送最後一次。
 // - ws homework.progress_updated：當日且學生在看板中才套用；該生有進行中的狀態切換時延後，結束後套用最新一筆。
 // - 其他 mutation 成功後以回應更新該生；失敗 reject 原錯誤、不顯示訊息（呼叫端依情境：dialog 的 error 或 ElMessage）。
+// - reload 晚到不倒退（FRONTEND-305，規則同 FRONTEND-304）：serverBoard 每次更新某生（ws、mutation 回應）記
+//   touched[student_id] = ++touchClock，reload 發出時記 startedAt；回應到達時 startedAt 之後更新過的學生保留目前的
+//   serverBoard 列，其餘取回應值（看板名單以回應為準）。篩選鍵改變時清空 touched；summary 由合併結果重算。
 import { ElMessage } from 'element-plus'
 import { computed, ref, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
 import {
@@ -121,6 +124,10 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
   let seq = 0
   /** serverBoard 對應的篩選；載入失敗時若篩選已換，就不再顯示別的篩選的舊資料 */
   let loadedKey: string | null = null
+  /** 本機異動序號：student_id → 最後一次更新該生時的 touchClock；touchedKey 為這份紀錄對應的篩選 */
+  let touchClock = 0
+  const touched = new Map<string, number>()
+  let touchedKey: string | null = null
 
   const currentClassId = (): string | null => classId.value || null
   const filterKey = (): string => `${date.value}|${currentClassId() ?? ''}`
@@ -147,11 +154,16 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
     const key = filterKey()
     const cls = currentClassId()
     const query: HomeworkBoardParams = cls ? { date: date.value, class_id: cls } : { date: date.value }
+    if (touchedKey !== key) {
+      touched.clear()
+      touchedKey = key
+    }
+    const startedAt = touchClock
     loading.value = true
     try {
       const res = await fetchHomeworkBoard(query)
       if (mySeq !== seq) return
-      serverBoard.value = res
+      serverBoard.value = mergeTouched(res, startedAt, key)
       loadedKey = key
       error.value = null
     } catch (err) {
@@ -166,6 +178,19 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
     }
   }
 
+  /** 回應與目前 serverBoard 合併：startedAt 之後更新過的學生保留目前的列 */
+  function mergeTouched(res: HomeworkBoard, startedAt: number, key: string): HomeworkBoard {
+    const current = serverBoard.value
+    if (!current || loadedKey !== key) return res
+    const newer = new Map(
+      current.students
+        .filter((s) => (touched.get(s.student_id) ?? 0) > startedAt)
+        .map((s) => [s.student_id, s] as const),
+    )
+    if (!newer.size) return res
+    return { ...res, students: res.students.map((s) => newer.get(s.student_id) ?? s) }
+  }
+
   /** 只更新與看板同日、且在看板中的學生 */
   function patchStudent(studentId: string, serviceDate: string, fn: (s: BoardStudent) => BoardStudent): void {
     const current = serverBoard.value
@@ -174,6 +199,7 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
     if (index < 0) return
     const students = [...current.students]
     students[index] = fn(students[index]!)
+    touched.set(studentId, ++touchClock)
     serverBoard.value = { ...current, students }
   }
 
