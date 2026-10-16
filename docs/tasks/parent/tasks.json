@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 133,
-  "last_updated": "2026-10-16T05:02:10Z",
+  "version": 134,
+  "last_updated": "2026-10-16T05:02:40Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -431,8 +431,8 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": "FE:src/parent/router.ts::router",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
         "PARENT-009",
@@ -1486,8 +1486,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/parent/composables/useTodayStatus.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "FRONTEND-002",
         "PARENT-006",
@@ -1671,8 +1671,8 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/homeworkToday.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-070",
@@ -1918,8 +1918,8 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/pickupRequests.ts",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::refresh",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-090",
@@ -3159,8 +3159,8 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/notifications.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-170",
         "PARENT-173",
@@ -3238,8 +3238,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/ConnectionBanner.vue",
       "source_ref": "FE:src/parent/components/ConnectionBanner.vue::wsBannerDelayMs",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-001",
         "PARENT-173",
