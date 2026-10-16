@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 193,
-  "last_updated": "2026-10-16T15:16:27Z",
+  "version": 194,
+  "last_updated": "2026-10-16T15:18:08Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1293,7 +1293,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/parent/composables/useParentLogout.ts",
       "source_ref": "FE:src/parent/composables/useParentLogout.ts::performParentLogout",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-008",
@@ -1326,9 +1326,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。5 條 red_case 都有同名測試（ends LINE session 拆成三條：LINE 已登入要 logout、未登入不 logout、initLiff reject 仍導頁）；tdd.run 7/7 綠，名稱清單選得到每一條。commit 順序 adf9b1f（測試，當時 useParentLogout.ts 不存在）→ d5c297e（實作）→ 036ec08（狀態）。流程與 description 一致：並發守衛 → parentWs.disconnect → await parentAuth.logout（API 失敗也清本地）→ children / notifications / pickupRequests / homeworkToday / snackbar 的 clear → clearLiffTokenRefreshMarker → initLiff 後 LINE 已登入才 logout（任何錯誤忽略）→ router.replace('/login?logged_out=1')，finally 重設 loggingOut。清 store 放在 await parentAuth.logout 之後：PARENT-172 / PARENT-010 的 clear 會讓在途請求失效，登出 API 期間晚到的回應不會寫回。MoreView 只在掛載時 load 小孩，清空後不會再送需要登入的請求，所以不會觸發 PARENT-013 handler 把 logged_out 洗掉。整合案例用真實 createParentRouter（含 PARENT-196 的 logged_out 不探測）與 PARENT-013 規格的 handler：最後停在 /login?logged_out=1，登出後 /parent/me 與 refresh 0 次。我另外用 Chromium 390×844 實測 MoreView 的登出（見 PARENT-034 notes）：導向 #/login?logged_out=1，LIFF logout 1 次，sessionStorage 的 parent_me_v1 與 localStorage 的選中小孩都被清掉。突變 16 個殺 15：不斷 ws、不呼叫 parentAuth.logout、五個 store 各自不清、不清 relogin marker、不結束 LINE session、endLineSession 不吞錯、LINE 未登入也 logout、導頁不帶 logged_out、沒有並發守衛、loggingOut 不在 finally 重設、loggingOut 晚設，全部轉紅。web-lint 乾淨；web-typecheck（耗時 108 秒）只剩他人進行中的 PickupProxyView.spec.ts 兩個錯誤，本 task 檔案沒有錯誤。殘留（不擋）：(1) 存活突變：router.replace 改成 push 不會轉紅（memory history 驗不出返回堆疊差異）；實作是 replace，與規格一致。(2) 並發守衛是每個 composable 實例各一份；目前只有 MoreView 使用，日後多處呼叫時要注意。(3) risk_notes 所述外部瀏覽器依賴 PARENT-197，197 已在同一次判決通過。"
       }
     },
     {
@@ -1338,7 +1338,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/MoreView.vue",
       "source_ref": "FE:src/parent/views/MeView.vue::doLogout",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-005",
@@ -1380,9 +1380,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。12 條 red_case 都有同名測試；tdd.run 15/15 綠，名稱清單選得到每一條。commit 順序 934af72（測試，當時 MoreView.vue 是 PARENT-012 佔位檔）→ 01df343（實作）→ 036ec08（狀態）。設計稿 parent-page-more.html（approved，preview-tasks PARENT-034）的 11 條 decisions 逐條對照一致。description 的偏離（尚未載入過也顯示骨架）已寫回 description，實作與之一致。Chromium 390×844 實測（scratch harness：真實 ParentLayout + hash router + 真實 MoreView，API 以 Playwright route 模擬）：頁面內距 8 / 16 / 24px；家長頭像 56px 圓形、tertiary-container、首字「王」；姓名 h2；小標「我的小孩」「功能」為 on-surface-variant；小孩列高 72，選中列「目前查看」且 aria-current=true；暫停小孩有「暫停」膠囊，班級為 null 時只顯示「1 年級」；加好友卡在小孩卡與功能卡之間；功能列與登出列高 56；「通知」列膠囊 24×24、error 底、aria-hidden，另有「，5 則未讀」；頁尾安親班名稱置中；沒有水平溢出。登出對話框：標題、說明正確，按鈕高 48；確認後對話框保持開啟、確認鈕 aria-busy=true、取消停用、Esc 無效；登出 API 回應後導向 #/login?logged_out=1。與核可稿截圖並排比對版面一致，差異只在示範資料。突變 20 個殺 16：點小孩不 select / 不導頁、目前查看條件、暫停條件、null 班級、掛載不 load、空清單不導 bind、徽章不封頂、拿掉未讀隱藏文字、確認後立即關閉對話框、不傳 loading、取消不關閉、頭像錯誤不退回、空白名稱不用「家」、加好友 url 不接、頁尾不判空、功能路徑錯，全部轉紅。web-lint 乾淨；web-typecheck（耗時 108 秒）只剩他人進行中的 PickupProxyView.spec.ts 兩個錯誤，本 task 檔案沒有錯誤。殘留（不擋，實作正確、測試沒有釘住）：(1) 偏離條件『loaded 為 false 且不在載入中也顯示骨架』沒有測試（只檢查 loading 的突變存活）。(2) 『有舊資料時即使 error 也顯示清單』沒有測試（error 判斷移到 items 之前的突變存活）。(3) 重試改成不 force 的 load() 在已測情境等價（loaded 為 false 時照樣會請求），規格要求 load(true)。(4) risk_notes 所述登出進行中對話框下方短暫變成骨架，實測確認存在（被對話框遮罩覆蓋），導頁後即卸載。"
       }
     },
     {
@@ -3222,7 +3222,7 @@
         "INFRA-013"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "未讀數的本地增減（markRead 減 1、markAllRead 歸零、ws notification.created 加 1）不參與發出順序取號：在這些操作之前發出、之後才回來的 refreshUnread / load 會用伺服器當時的未讀數覆蓋，要等下一次 refreshUnread（parentWs 輪詢或重新進頁）才會更正。load 的 finally 不看序號就關掉 loading，較舊的 load 若在較新的 load 進行中結束，會讓 loading 提早變 false（沒有測試釘住）。",
+      "risk_notes": "未讀數的本地增減（markRead 減 1、markAllRead 歸零、ws notification.created 加 1）不參與發出順序取號：在這些操作之前發出、之後才回來的 refreshUnread / load 會用伺服器當時的未讀數覆蓋，要等下一次 refreshUnread（parentWs 輪詢或重新進頁）才會更正。load 的 finally 以序號判斷才關掉 loading（較舊的 load 結束時不動較新 load 的 loading），但這個守衛沒有測試釘住：拿掉後不會有測試轉紅。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/stores/notifications.spec.ts",
@@ -3248,7 +3248,7 @@
       "review": {
         "status": "pass",
         "reviewer": "review-r10-p1",
-        "notes": "複審通過（review-r10-p1）。上次三條打回項都已修正，各有測試對應：(1) refreshUnread：發出時取號，clear() 把已套用號碼推到最新，在途回應作廢——對應『clear invalidates an in-flight refreshUnread』（含 clear 後新的 refreshUnread 照常更新）；較早發出、較晚回來的未讀數不蓋掉較新的 load——對應『refreshUnread does not overwrite a newer load result』。(2) markAllRead / markRead：clear() 遞增 epoch，回來時世代不同就不動本地狀態，呼叫端 promise 照常 resolve——對應『clear invalidates an in-flight markAllRead』『clear invalidates an in-flight markRead』（B 清單剛好有相同 id 也不寫回）。(3) clear 讓在途 load / loadMore 失效的測試已補——對應『clear invalidates an in-flight load / loadMore』。red_case 共 11 條都有同名測試；tdd.run 20/20 綠，名稱清單選得到每一條。commit 順序 23d023c（測試）→ dd9c651（實作，未改 spec）→ 4a94c58（狀態）。我用舊實作 e040fe7 跑新 spec，四條新行為測試轉紅（refreshUnread 兩條、markAllRead、markRead；load / loadMore 舊實作已有序號守衛，所以本來就綠）。我上次的反例探針對修正後的 store 重跑，5 個情境全部正確：clear 後 refreshUnread 晚到未讀數為 0；markAllRead 晚到後 B 的 read_at 皆 null、未讀數 2。守衛逐一突變 11 個殺 10：clear 不遞增 seq / epoch、clear 不作廢未讀號碼、applyUnread 不比號碼、markRead / markAllRead 不檢查 epoch、loadMore 不檢查 seq、load / refreshUnread 不取號、refreshUnread 不遞增號碼，全部轉紅。web-lint 乾淨；web-typecheck 的錯誤都在他人檔案（AuthorizationVerifyDialog.vue、useDismissalPosQueue.ts、AttendanceTodayView.spec.ts、StaffAccountsView.spec.ts），本 task 檔案沒有錯誤。殘留（不擋）：(1) 存活突變：load 的 finally 不看 seq 就把 loading 設 false——較舊的 load 晚於較新的 load 發出前結束時，會提早關掉 loading；這是打回前就有的行為，沒有測試釘住。(2) 本地的 markRead / markAllRead 減數與 ws +1 不取號：在它們之前發出、之後回來的 refreshUnread 會用伺服器當時的數字蓋回，下一次輪詢更正。(3) markRead 的 id 不在目前 items 時不知道原本是否未讀，未讀數要等下一次 refreshUnread 才更正。"
+        "notes": "複審通過（review-r10-p1）。上次三條打回項都已修正，各有測試對應：(1) refreshUnread：發出時取號，clear() 把已套用號碼推到最新，在途回應作廢——對應『clear invalidates an in-flight refreshUnread』（含 clear 後新的 refreshUnread 照常更新）；較早發出、較晚回來的未讀數不蓋掉較新的 load——對應『refreshUnread does not overwrite a newer load result』。(2) markAllRead / markRead：clear() 遞增 epoch，回來時世代不同就不動本地狀態，呼叫端 promise 照常 resolve——對應『clear invalidates an in-flight markAllRead』『clear invalidates an in-flight markRead』（B 清單剛好有相同 id 也不寫回）。(3) clear 讓在途 load / loadMore 失效的測試已補——對應『clear invalidates an in-flight load / loadMore』。red_case 共 11 條都有同名測試；tdd.run 20/20 綠，名稱清單選得到每一條。commit 順序 23d023c（測試）→ dd9c651（實作，未改 spec）→ 4a94c58（狀態）。我用舊實作 e040fe7 跑新 spec，四條新行為測試轉紅（refreshUnread 兩條、markAllRead、markRead；load / loadMore 舊實作已有序號守衛，所以本來就綠）。我上次的反例探針對修正後的 store 重跑，5 個情境全部正確：clear 後 refreshUnread 晚到未讀數為 0；markAllRead 晚到後 B 的 read_at 皆 null、未讀數 2。守衛逐一突變 11 個殺 10：clear 不遞增 seq / epoch、clear 不作廢未讀號碼、applyUnread 不比號碼、markRead / markAllRead 不檢查 epoch、loadMore 不檢查 seq、load / refreshUnread 不取號、refreshUnread 不遞增號碼，全部轉紅。web-lint 乾淨；web-typecheck 的錯誤都在他人檔案（AuthorizationVerifyDialog.vue、useDismissalPosQueue.ts、AttendanceTodayView.spec.ts、StaffAccountsView.spec.ts），本 task 檔案沒有錯誤。殘留（不擋）：(1) 存活突變：load 的 finally 已以 seq 判斷才關 loading，但拿掉這個判斷（較舊的 load 結束時會提早關掉較新 load 的 loading）不會有測試轉紅。(2) 本地的 markRead / markAllRead 減數與 ws +1 不取號：在它們之前發出、之後回來的 refreshUnread 會用伺服器當時的數字蓋回，下一次輪詢更正。(3) markRead 的 id 不在目前 items 時不知道原本是否未讀，未讀數要等下一次 refreshUnread 才更正。"
       }
     },
     {
@@ -3758,7 +3758,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/services/liff.ts",
       "source_ref": "FE:src/parent/services/liff.ts::initLiff",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-008",
@@ -3780,9 +3780,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。2 條 red_case 都有同名測試；PARENT-008 原本斷言 true 的測試已改為 false；tdd.run 11/11 綠，名稱清單選得到兩條。commit 順序 9d60b93（測試，當時實作仍是 true，新測試會紅）→ 655bc54（實作，只改 init 參數與註解）→ a4f7a34（狀態）。替身的忠實度：我讀了 node_modules 內 @liff/init 2.31.1 的 init。實際邏輯是 `!withLoginOnExternalBrowser || isLoggedIn() ? 繼續 : (login(), await new Promise(() => {}))`，沒有檢查 isInClient。替身多加了 !isInClient()，但測試把 isInClient 設為 false，在這個情境下與 SDK 行為相同；LINE 內 isLoggedIn 恆為 true，兩者也相同。可以接受。能否抓到改回 true：把實作改回 true 時，三條測試轉紅（init 參數兩條，外部瀏覽器那條在 109ms 逾時，且 login 被呼叫）；把參數整個拿掉時，嚴格相等的兩條轉紅。beforeEach 補 isInClient true 不影響既有案例。LoginView（PARENT-030）spec 在 197 落地後跑一次 23/23 綠。web-lint 乾淨；web-typecheck（耗時 108 秒）只剩他人進行中的 PickupProxyView.spec.ts 兩個錯誤，本 task 檔案沒有錯誤。殘留（不擋）：外部瀏覽器那條用真實 100ms 計時器搭 Promise.race，機器高負載時 initLiff 的 microtask / mock 匯入若超過 100ms 會誤紅。可改成直接 await initLiff()，以 vitest 測試逾時當保護，並斷言 login 0 次（不 resolve 的分支必定先呼叫 login）。真實 LINE App 與外部瀏覽器的轉址行為仍待部署後實機確認（risk_notes）。"
       }
     }
   ]
