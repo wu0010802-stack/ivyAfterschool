@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 308,
-  "last_updated": "2026-10-16T15:55:12Z",
+  "version": 309,
+  "last_updated": "2026-10-16T15:55:54Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3936,7 +3936,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/HomeworkBoardView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-152",
@@ -3950,7 +3950,7 @@
         "FRONTEND-024"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f5 打回】日期選擇器寬度規則沒有生效，平板 1024 寬時篩選列折成兩行：.hw-toolbar__date { width: 190px } 是 scoped 規則，但 el-date-picker 的根節點不帶本元件的 scoped 屬性（Chromium 實測根節點只有 class、沒有 data-v），寬度維持 Element Plus 預設 220px。以 AdminLayout 平板版面（側欄收合 64px、main 內距 16px，內容寬 928px）實測：日期 220 + 班級 160 + 開關 193 + 搜尋 180 + 整班新增 136 + 5 個間距 40 = 929px，超出 1px，「整班新增作業」掉到第二行、摘要與卡片整體下移約 52px；已核可稿在同寬（926px）下為單行（日期 190px），不符稿 decision 1「頂部一列篩選…右側『整班新增作業』」。修正方向：比照 FRONTEND-127 的 c742126，以 .hw-toolbar :deep(.hw-toolbar__date.el-date-editor) 設寬 190px（或以 style 綁定寬度），並以 Chromium 1024×768（側欄收合、內距 16px）實測篩選列為單行、各控制項高 ≥ 44px 後回報。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/HomeworkBoardView.spec.ts",
@@ -3976,9 +3976,9 @@
         "notes": "紅燈測試 5072396、實作 3023848（含 viewLoaders 的 HomeworkBoardView 改為實際頁面）。除 13 條 red_cases 外另有 7 條：全部班級依班級分組（組內學號）與換班級寫 query、搜尋姓名或學號、整班新增送出後 ElMessage 與重抓、ETA 儲存失敗 dialog 保持開啟並顯示錯誤、空清單 / 篩選後無卡片（清除篩選）/ 載入失敗重試、wsDenied 提示與重新整理、viewLoaders 接線。describe 逾時放寬為 30 秒（日期元件、兩個下拉、開關與多張帶 el-dropdown / 四段切換的卡片，happy-dom 單一案例數秒）。dialog 開合以 dialog 元件的 modelValue 判斷（happy-dom 不跑關閉動畫）；選單與下拉選項以觸發元素的 aria-controls 找對應清單。日期 picker 的 format 用 YYYY/MM/DD（與已核可稿實際渲染及其他頁一致）；稿 decisions 第 2 條文字寫「YYYY/MM/DD（週）」，要顯示星期需在 bootstrap 載入 dayjs 的 zh-tw 語系（目前只有 Element Plus 的 zh-tw），未在本 task 處理，已回報協調者。「隱藏請假 / 缺席 / 已離班」存 localStorage 'homework.hideAway'；「清除篩選」同稿：清搜尋、摘要回全部、關閉隱藏。突變自檢：隱藏不含已離班、偏好不寫入 localStorage、摘要篩選不生效、整班新增不看班級、編輯一律送全部欄位、日期範圍不用看板 window、範圍外日期也切換、刪除不確認、失敗也關閉 dialog、改回依項目判斷送 done、選了班級仍顯示分組標題、組內不依學號 各使對應測試轉紅。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f5",
+        "notes": "打回（concern）。tdd.run 20/20 綠：13 條 red_case 依名稱一一對應，另有分組、搜尋、整班新增送出、ETA 失敗保持開啟、空 / 篩選後無卡片 / 載入失敗、wsDenied、viewLoaders 共 7 條；測試 5072396 先於實作 3023848；b74c9f1 只改 status 與 tdd.notes。突變 20 處 19 處轉紅；存活：同一時間只開一個 dialog 的防護（無 red_case；dialog 為 modal，實務上點不到第二張卡）。卡片事件接線（edit-eta → ReadyEtaDialog → setProgress、add-item / edit-item 只送變更欄位 → addItem / renameItem、set-status、remove-item 經 useConfirmDelete、set-overall）與 152 / 153 / 155 / 156 / 157 的介面一致。協調者詢問的判斷：(1) 日期格式採 YYYY/MM/DD：已核可稿實際渲染（format=\"YYYY/MM/DD\"）與其他頁一致，接受；decision 2 文字的「（週）」與稿渲染不符，列殘留（要顯示星期需 dayjs zh-tw 語系，另開 task 或改稿文字）。(2)「隱藏請假 / 缺席 / 已離班」預設開、存 localStorage homework.hideAway（讀寫皆 try/catch）、「清除篩選」清搜尋 + 摘要回全部 + 關隱藏，與稿 decision 19 及稿內 clearFilters 完全一致，接受。(3) 153 的空 ⋮ 選單由協調者另排，不影響本頁判決。稿 decisions 逐條（頁面層）：2 日期範圍取看板 window、不可清空、班級可清空 = 全部並分組加「{班級}（人數）」符合；3 整班新增只有 write、未選班級 disabled + tooltip「請先選擇班級」（Chromium hover 實測出現）符合；4 四張 StatCard 當篩選 chip、再點回全部、數字不含請假缺席符合；5 卡片 grid 最小 400px、1024 寬為兩欄（454px）符合；16 非今天提示文案符合；17 wsDenied warning + 重新整理符合；18 空 / 篩選後無卡片 / 載入中骨架 / 載入失敗重試符合；19 符合；1 不符（見打回項）。打回項（已追加至 risk_notes）：日期選擇器寬度規則沒有生效，平板 1024 寬時篩選列折成兩行。just web-lint 3 檔 exit 0；just web-typecheck exit 0。"
       }
     },
     {
