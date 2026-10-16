@@ -152,10 +152,13 @@ def lookups(db_session: Session) -> dict[str, object]:
     return {"school": school, "class": klass}
 
 
+_PREVIEW_CLOCK = FakeClock(datetime(2026, 9, 1, 1, 0, tzinfo=UTC))  # 台北 2026-09-01 09:00
+
+
 def _preview(
     db: Session, upload: ValidatedUpload, actor: CurrentStaff = _SENSITIVE
 ) -> ImportPreview:
-    return preview(db, upload, academic_year=115, actor=actor)
+    return preview(db, upload, academic_year=115, actor=actor, clock=_PREVIEW_CLOCK)
 
 
 def test_import_preview_valid(db_session: Session, lookups: dict[str, object]) -> None:

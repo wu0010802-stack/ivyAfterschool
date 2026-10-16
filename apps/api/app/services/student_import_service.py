@@ -37,6 +37,10 @@
   的 DB 重複（含封存）與檔內重複（兩列都標），最後以 ``StudentCreateIn`` 驗證並把 Pydantic 錯誤
   轉成繁中訊息。驗證規則與 BACKEND-151 ``create_student`` 一致（執行階段由 BACKEND-156 共用其
   寫入邏輯）。
+- 退班（BACKEND-560）：匯入檔沒有退班日欄位，``insert_student`` 以 ``clock.today()``（Asia/Taipei）
+  當退班日，入學日晚於今天會被 ``invalid_dates`` 擋下；預覽與實際匯入的判斷必須一致，所以
+  ``preview`` 帶 ``clock``，退班 + 入學日晚於今天的列在預覽就標錯誤（入學日等於今天、沒有入學日、
+  在學 / 暫停不受限）。
 - ``display`` 為原始儲存格字串供前端呈現：身分證遮罩（``mask_id_number``）、健康備註以固定文字
   取代。
 
@@ -150,6 +154,7 @@ _STATUSES: Final = {"在學": "active", "暫停": "suspended", "退班": "withdr
 _DATE_RE: Final = re.compile(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$")
 _HEALTH_NOTE_MASK: Final = "（已隱藏）"
 _SENSITIVE_PERMISSION_ERROR: Final = "沒有權限匯入敏感欄位"
+_WITHDRAWN_FUTURE_ENROLLMENT_ERROR: Final = "退班學生的入學日不可晚於今天（退班日以匯入當天計）"
 
 # zip / XML 解析階段可能拋出的錯誤：壞檔一律 422，不讓 500 外洩
 _ZIP_ERRORS: Final = (
@@ -545,8 +550,14 @@ def _cells(header: list[str], raw: tuple[Any, ...]) -> dict[str, Any]:
 
 
 def preview(
-    session: Session, upload: ValidatedUpload, *, academic_year: int, actor: CurrentStaff
+    session: Session,
+    upload: ValidatedUpload,
+    *,
+    academic_year: int,
+    actor: CurrentStaff,
+    clock: Clock,
 ) -> ImportPreview:
+    today = clock.today()
     header, raw_rows = _read_rows(upload.content)
     rows = [(row_number, _cells(header, raw)) for row_number, raw in raw_rows]
     can_sensitive = actor.has(Permission.STUDENTS_SENSITIVE)
@@ -632,6 +643,13 @@ def preview(
             "id_number": normalized_id,
             "health_note": health_note,
         }
+        # 退班列的退班日以匯入當天計（insert_student 以 clock.today() 補），入學日晚於今天會被拒
+        if (
+            payload["status"] == "withdrawn"
+            and payload["enrolled_on"] is not None
+            and payload["enrolled_on"] > today
+        ):
+            errors.append(_WITHDRAWN_FUTURE_ENROLLMENT_ERROR)
         data: StudentCreateIn | None = None
         try:
             data = StudentCreateIn.model_validate(payload)
@@ -697,7 +715,7 @@ def execute(
     meta: RequestMeta,
     clock: Clock,
 ) -> ImportResult:
-    result = preview(session, upload, academic_year=academic_year, actor=actor)
+    result = preview(session, upload, academic_year=academic_year, actor=actor, clock=clock)
     if result.invalid:
         raise ConflictError(
             "import_has_errors",

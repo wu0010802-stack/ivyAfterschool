@@ -31,7 +31,8 @@ BACKEND-158 ``execute`` → commit → ``PromotionResultOut``。409 already_prom
 ``academic_year`` / ``dry_run``。上傳檔先經 BACKEND-016 ``read_validated_upload``（分塊讀、5 MiB
 上限 413、空檔 422、非 xlsx 415）才交給 service（zip / XML 深度防護在 BACKEND-155 內）：
 dry_run=true → ``preview`` → ``ImportPreviewOut``（每列只回 row_number / display / errors，不回
-正規化資料）；dry_run=false → BACKEND-156 ``execute`` → commit → ``ImportResultOut``。
+正規化資料）；dry_run=false → BACKEND-156 ``execute`` → commit → ``ImportResultOut``。兩個分支共用
+注入的 ``clock``（BACKEND-560：退班列以匯入當天為退班日，預覽與寫入判斷一致）。
 409 import_has_errors / import_conflict 由 service 拋出（不 commit）。
 """
 
@@ -163,7 +164,7 @@ def import_students(
     upload = read_validated_upload(file, allowed=XLSX_TYPES, max_bytes=XLSX_MAX_BYTES)
     if dry_run:
         preview = student_import_service.preview(
-            db, upload, academic_year=academic_year, actor=staff
+            db, upload, academic_year=academic_year, actor=staff, clock=clock
         )
         return ImportPreviewOut.model_validate(preview)
     result = student_import_service.execute(
