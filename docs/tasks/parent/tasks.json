@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 186,
-  "last_updated": "2026-10-16T15:03:10Z",
+  "version": 187,
+  "last_updated": "2026-10-16T15:06:04Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3406,11 +3406,11 @@
     {
       "id": "PARENT-177",
       "title": "建立 NotificationsView：通知收件匣（全部 / 未讀、已讀、全部已讀、依 deep_link 導頁）",
-      "description": "建立 `apps/web/src/parent/views/NotificationsView.vue`（路由 `/notifications`；頂部列「通知」+ 返回鍵由 ParentLayout 依 route meta 負責，底部導覽停在「更多」）。外觀與互動以已核可稿 `docs/mockups/parent-page-notifications.html` 為準。\n\n**版面**（頁面自帶左右 16px、上 8px、底部 24px 內距，區塊間距 12px；整頁內容包在 PARENT-027 PullToRefresh 內）：\n- 最上方 PARENT-098 M3SegmentedButton（全寬、aria-label「通知篩選」）兩段：「全部」/「未讀」；`unreadCount > 0` 時第二段文字為「未讀 {n}」（>99 顯示 99+）。切換 → PARENT-172 `load({ unreadOnly })`。\n- 篩選下方工具列（ParentLayout 的頂部列沒有頁面動作插槽，因此放在頁面內容）：左 text M3Button「通知設定」（tune 圖示）→ `router.push('/notifications/preferences')`；右 text M3Button「全部標為已讀」（done_all 圖示）。\n- outlined M3Card 內 `<ul role=\"list\">`（aria-label「通知」，未讀篩選時「未讀通知」）+ PARENT-176 NotificationListItem；`items.length < total` 時清單下方 outlined 全寬「載入更多」（loading 轉圈）→ `loadMore()`。ws 新通知由 store 插到最前面，畫面直接出現、不重新請求。\n- 掛載時 `load({ unreadOnly: false })` 與 `children.load()`（PARENT-010，給點通知時切換小孩用）。\n\n**全部標為已讀**：`unreadCount === 0` 時原生 disabled；點擊 → 按鈕 loading（防連點）→ `markAllRead()`；成功 snackbar「已全部標為已讀」，清單項目變成已讀樣式；在「未讀」篩選下成功後再 `load({ unreadOnly: true })`，清單變成空狀態。失敗 → error snackbar「全部標為已讀失敗，請稍後再試」，狀態不變。\n\n**點通知**（open 事件）：未讀的先 `markRead(id)`（失敗不阻擋後續；「未讀」篩選下該列由 store 移出清單）→ `payload.student_id` 是 `children.items` 中的 id 時 `children.select(該 id)` → `deep_link` 通過 PARENT-003 `isSafeRedirectPath` 才 `router.push(deep_link)`；`deep_link` 為 null 或不安全（外部網址、`/login` 等）時留在本頁、不提示。\n\n**空狀態**（卡內 PARENT-029 ParentEmptyState）：全部模式（notifications 圖示）「目前沒有通知」/「到班、作業、接送與成績的通知會出現在這裡」；未讀模式（done_all）「沒有未讀通知」/「新的到班、作業、接送與成績通知會出現在這裡」。\n\n**載入**：首次載入與切換篩選（頁面在等待該次 load 回應期間）→ 卡內 PARENT-028 SkeletonBlock `variant=\"row\"` count 4；失敗（store `error` 有值且 items 為空）→ 卡片與「載入更多」換成 ParentEmptyState error「通知載入失敗」/「請檢查網路連線後再試一次」/「重試」（以目前篩選重新 load；篩選與工具列保留）。PullToRefresh：以目前篩選重抓第 1 頁、期間保留現有內容（不顯示骨架），失敗保留內容並以 error snackbar「更新失敗，請稍後再試」。載入更多失敗 → error snackbar「載入更多失敗，請稍後再試」，按鈕保留可重按。\n\n新寫頁面（domain_spec §4 家長端 `/notifications` 收件匣）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-notifications.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：全部（未讀 + 已讀混合）、未讀篩選、全部已讀停用、載入更多、空狀態兩種文案、首次載入、載入失敗。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `NotificationsView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；PullToRefresh 以 `findComponent(PullToRefresh).props('onRefresh')()` 觸發）。",
+      "description": "建立 `apps/web/src/parent/views/NotificationsView.vue`（路由 `/notifications`；頂部列「通知」+ 返回鍵由 ParentLayout 依 route meta 負責，底部導覽停在「更多」）。外觀與互動以已核可稿 `docs/mockups/parent-page-notifications.html` 為準。\n\n**版面**（頁面自帶左右 16px、上 8px、底部 24px 內距，區塊間距 12px；整頁內容包在 PARENT-027 PullToRefresh 內）：\n- 最上方 PARENT-098 M3SegmentedButton（全寬、aria-label「通知篩選」）兩段：「全部」/「未讀」；`unreadCount > 0` 時第二段文字為「未讀 {n}」（>99 顯示 99+）。切換 → PARENT-172 `load({ unreadOnly })`。\n- 篩選下方工具列（ParentLayout 的頂部列沒有頁面動作插槽，因此放在頁面內容）：左 text M3Button「通知設定」（tune 圖示）→ `router.push('/notifications/preferences')`；右 text M3Button「全部標為已讀」（done_all 圖示）。\n- outlined M3Card 內 `<ul role=\"list\">`（aria-label「通知」，未讀篩選時「未讀通知」）+ PARENT-176 NotificationListItem；`items.length < total` 時清單下方 outlined 全寬「載入更多」（loading 轉圈）→ `loadMore()`。ws 新通知由 store 插到最前面，畫面直接出現、不重新請求。\n- 掛載時 `load({ unreadOnly: false })` 與 `children.load()`（PARENT-010，給點通知時切換小孩用）。\n\n**全部標為已讀**：`unreadCount === 0` 時原生 disabled；點擊 → 按鈕 loading（防連點）→ `markAllRead()`；成功 snackbar「已全部標為已讀」，清單項目變成已讀樣式；在「未讀」篩選下成功後再 `load({ unreadOnly: true })`，清單變成空狀態。失敗 → error snackbar「全部標為已讀失敗，請稍後再試」，狀態不變。\n\n**點通知**（open 事件）：未讀的先送出 `markRead(id)`（不等回應、失敗不阻擋後續；「未讀」篩選下該列由 store 移出清單）→ `payload.student_id` 是 `children.items` 中的 id 時 `children.select(該 id)` → `deep_link` 通過 PARENT-003 `isSafeRedirectPath` 才 `router.push(deep_link)`；`deep_link` 為 null 或不安全（外部網址、`/login` 等）時留在本頁、不提示。\n\n**空狀態**（卡內 PARENT-029 ParentEmptyState）：全部模式（notifications 圖示）「目前沒有通知」/「到班、作業、接送與成績的通知會出現在這裡」；未讀模式（done_all）「沒有未讀通知」/「新的到班、作業、接送與成績通知會出現在這裡」。\n\n**載入**：首次載入與切換篩選（頁面在等待該次 load 回應期間）→ 卡內 PARENT-028 SkeletonBlock `variant=\"row\"` count 4；失敗（store `error` 有值，且 items 為空或不是目前篩選成功載入的結果——切換篩選失敗時 store 保留的是另一個篩選的舊清單，不可當成目前篩選的內容顯示）→ 卡片與「載入更多」換成 ParentEmptyState error「通知載入失敗」/「請檢查網路連線後再試一次」/「重試」（以目前篩選重新 load；篩選與工具列保留）。PullToRefresh：以目前篩選重抓第 1 頁、期間保留現有內容（不顯示骨架），失敗保留內容並以 error snackbar「更新失敗，請稍後再試」（畫面已是錯誤態時不另提示）。載入更多失敗 → error snackbar「載入更多失敗，請稍後再試」，按鈕保留可重按。\n\n新寫頁面（domain_spec §4 家長端 `/notifications` 收件匣）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-notifications.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：全部（未讀 + 已讀混合）、未讀篩選、全部已讀停用、載入更多、空狀態兩種文案、首次載入、載入失敗。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `NotificationsView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；PullToRefresh 以 `findComponent(PullToRefresh).props('onRefresh')()` 觸發）。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/NotificationsView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -3443,7 +3443,8 @@
           "NotificationsView preferences link：點「通知設定」→ currentRoute.path === '/notifications/preferences'",
           "NotificationsView load more：GET 第 1 頁回 20 筆、total 25 → 含「載入更多」；點擊 → GET params page === 2，回 5 筆 → li 數 === 25 且不含「載入更多」",
           "NotificationsView empty and error：GET 回 {items:[], total:0, unread_count:0} → 含「目前沒有通知」；GET 500 → 含「通知載入失敗」與「重試」",
-          "NotificationsView keeps items on refresh error：第一次 GET 回 2 筆，觸發 PullToRefresh 且 GET 回 500 → li 數仍為 2，snackbar「更新失敗，請稍後再試」"
+          "NotificationsView keeps items on refresh error：第一次 GET 回 2 筆，觸發 PullToRefresh 且 GET 回 500 → li 數仍為 2，snackbar「更新失敗，請稍後再試」",
+          "NotificationsView retry keeps current filter：「全部」載入 1 筆後切到「未讀」、GET 回 500 → 含「通知載入失敗」（不顯示「全部」的舊清單）；點「重試」→ GET params 深等於 {unread_only:true, page:1, page_size:20}，回 1 筆 → li 數為 1"
         ],
         "run": "just web-test src/parent/views/NotificationsView.spec.ts -t \"NotificationsView\"",
         "notes": ""
