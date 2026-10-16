@@ -274,6 +274,36 @@ describe('LeavesView', () => {
     expect(wrapper.get('.lv-section__count').text()).toBe('共 1 筆')
   })
 
+  it('LeavesView load more stops when the next page is empty', async () => {
+    mock.onGet(listUrl('s1'), PAGE1).reply(200, { items: leaves(1, 20), total: 22 })
+    mock.onGet(listUrl('s1'), PAGE2).reply(200, { items: [], total: 22 })
+    const { wrapper } = await mountView('s1')
+
+    await click(button(wrapper, '載入更多'))
+    await flushPromises()
+
+    expect(rows(wrapper)).toHaveLength(20)
+    expect(wrapper.text()).not.toContain('載入更多')
+  })
+
+  it('LeavesView pull refresh while a load more is in flight discards that page and clears its progress', async () => {
+    mock.onGet(listUrl('s1'), PAGE1).replyOnce(200, { items: leaves(1, 20), total: 40 })
+    const more = deferredReply()
+    mock.onGet(listUrl('s1'), PAGE2).replyOnce(more.reply)
+    const { wrapper } = await mountView('s1')
+    await click(button(wrapper, '載入更多'))
+    expect(button(wrapper, '載入更多').getAttribute('aria-busy')).toBe('true')
+    mock.onGet(listUrl('s1'), PAGE1).replyOnce(200, { items: leaves(1, 20), total: 40 })
+
+    await wrapper.getComponent(PullToRefresh).props('onRefresh')()
+    await flushPromises()
+    more.resolve([200, { items: leaves(21, 40), total: 40 }])
+    await flushPromises()
+
+    expect(rows(wrapper)).toHaveLength(20)
+    expect(button(wrapper, '載入更多').getAttribute('aria-busy')).toBeNull()
+  })
+
   it('LeavesView empty and error states', async () => {
     mock.onGet(listUrl('s1')).replyOnce(200, { items: [], total: 0 })
     const { wrapper } = await mountView('s1')
@@ -416,6 +446,18 @@ describe('LeavesView', () => {
     expect(rows(wrapper)).toHaveLength(1)
     expect(wrapper.get('.lv-section__count').text()).toBe('共 1 筆')
     expect(wrapper.text()).not.toContain('還沒有請假紀錄')
+  })
+
+  it('LeavesView creates the leave for whichever child is selected', async () => {
+    mock.onGet(listUrl('s2')).reply(200, { items: [], total: 0 })
+    mock.onPost('/parent/leaves').reply(201, leave('l9', { student_id: 's2', start_date: '2026-10-02', end_date: '2026-10-02' }))
+    const { wrapper } = await mountView('s2')
+
+    const form = await openForm(wrapper)
+    expect(form.textContent).toContain('為 王小華 申請請假')
+    await submitForm()
+
+    expect(postBody(0).student_id).toBe('s2')
   })
 
   it('LeavesView create with attachments partial failure', async () => {
@@ -678,6 +720,20 @@ describe('LeavesView', () => {
     expect(snackbarItems()).toEqual([['已取消請假', 'info']])
   })
 
+  it('LeavesView cancels the whole leave when it starts today', async () => {
+    mock.onGet(listUrl('s1')).reply(200, {
+      items: [leave('l1', { start_date: '2026-10-02', end_date: '2026-10-04', can_cancel: true })],
+      total: 1,
+    })
+    const { wrapper } = await mountView('s1')
+
+    await click(button(rows(wrapper)[0]!.element, '取消請假'))
+    await flushPromises()
+
+    expect(alertDialog()?.querySelector('h2')?.textContent?.trim()).toBe('取消這筆請假？')
+    expect(alertDialog()?.textContent).toContain('王小明 · 病假 10/02（五）～10/04（日）')
+  })
+
   it('LeavesView cancel conflict refreshes', async () => {
     const ongoing = leave('l1', { start_date: '2026-09-30', end_date: '2026-10-03', can_cancel: true })
     mock.onGet(listUrl('s1')).replyOnce(200, { items: [ongoing], total: 1 })
@@ -903,7 +959,9 @@ describe('LeavesView', () => {
     expect(wrap!.querySelector('.lf-actions')).not.toBeNull()
     const rule = /\.lv-form-wrap :deep\(\.lf-actions\) \{([^}]*)\}/.exec(source)?.[1] ?? ''
     expect(rule).toMatch(/position:\s*sticky/)
-    expect(rule).toMatch(/bottom:\s*0/)
+    // sticky 會避開捲動容器的 padding：按鈕列與包住表單的元素都以內容區底部內距補回去，才會貼齊 sheet 底緣
+    expect(rule).toMatch(/bottom:\s*calc\(-1 \* var\(--sheet-body-pad\)\)/)
+    expect(/\.lv-form-wrap \{([^}]*)\}/.exec(source)?.[1]).toMatch(/margin-bottom:\s*calc\(-1 \* var\(--sheet-body-pad\)\)/)
     expect(rule).toMatch(/border-top:\s*1px solid var\(--m3-outline-variant\)/)
     expect(rule).toMatch(/background:\s*var\(--m3-surface-container-low\)/)
     expect(rule).toMatch(/env\(safe-area-inset-bottom\)/)
