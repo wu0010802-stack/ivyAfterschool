@@ -129,7 +129,8 @@ function recordDownloads(): string[] {
   return downloads
 }
 
-describe('AttendanceMonthlyView', () => {
+// 31 欄的格狀表在共用容器高負載下單一案例可達 2~3 秒，放寬逾時避免假紅
+describe('AttendanceMonthlyView', { timeout: 15_000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-02T02:00:00Z'))
@@ -303,6 +304,32 @@ describe('AttendanceMonthlyView', () => {
     expect(monthlyParams()).toHaveLength(3)
     expect(wrapper.text()).not.toContain('無法載入出勤月報')
     expect(wrapper.find('.el-table').exists()).toBe(true)
+  })
+
+  it('AttendanceMonthlyView uses latest response when filters change', async () => {
+    const gates: Record<string, () => void> = {}
+    mock.onGet(MONTHLY_URL).reply(async (config) => {
+      const classId = (config.params as { class_id?: string }).class_id ?? 'all'
+      if (classId !== 'all') {
+        await new Promise<void>((resolve) => {
+          gates[classId] = resolve
+        })
+      }
+      const name = classId === 'c1' ? '王小明' : classId === 'c2' ? '陳小美' : '林小華'
+      return [200, report('2026-10', OCT_DAYS, [student('S11301', name, OCT_DAYS)], {}, classId === 'all' ? null : classId)]
+    })
+    const { wrapper } = await mountView()
+
+    await chooseClass(wrapper, '低年級A班')
+    await chooseClass(wrapper, '中年級班')
+    gates.c2?.()
+    await settle()
+    gates.c1?.()
+    await settle()
+
+    expect(monthlyParams().map((p) => p.class_id)).toEqual([undefined, 'c1', 'c2'])
+    expect(wrapper.find('.el-table__body').text()).toContain('陳小美')
+    expect(wrapper.find('.el-table__body').text()).not.toContain('王小明')
   })
 
   it('AttendanceMonthlyView is wired into view loaders', async () => {
