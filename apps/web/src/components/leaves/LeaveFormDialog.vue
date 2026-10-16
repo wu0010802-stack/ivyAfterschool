@@ -41,8 +41,9 @@ interface FormState {
 
 type FieldKey = 'student_id' | 'leave_type' | 'range' | 'reason'
 
-const today = todayTaipei()
-const minDate = addDays(today, -EARLIEST_DAYS_AGO)
+// 每次開啟時重算：dialog 掛著跨過台北午夜後再開，最早可選日與快捷鍵才會跟著換日
+const today = ref<ISODate>(todayTaipei())
+const minDate = computed(() => addDays(today.value, -EARLIEST_DAYS_AGO))
 
 function blankForm(): FormState {
   return { student_id: props.presetStudent?.id ?? null, leave_type: null, range: null, reason: '' }
@@ -66,6 +67,7 @@ watch(
   () => props.modelValue,
   (open) => {
     if (!open) return
+    today.value = todayTaipei()
     Object.assign(form, blankForm())
     clearErrors()
     openSeq.value += 1
@@ -86,12 +88,12 @@ function isoOfLocal(d: Date): ISODate {
 }
 
 function isBeforeEarliest(d: Date): boolean {
-  return isoOfLocal(d) < minDate
+  return isoOfLocal(d) < minDate.value
 }
 
 const shortcuts = [
-  { text: '今天', value: () => [localDate(today), localDate(today)] },
-  { text: '明天', value: () => [localDate(addDays(today, 1)), localDate(addDays(today, 1))] },
+  { text: '今天', value: () => [localDate(today.value), localDate(today.value)] },
+  { text: '明天', value: () => [localDate(addDays(today.value, 1)), localDate(addDays(today.value, 1))] },
 ]
 
 /** el-radio-group 的 model 型別不接受 null（未選假別時給 undefined） */
