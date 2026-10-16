@@ -55,7 +55,14 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.getByPlaceholder('請輸入帳號').fill(username)
   await page.getByPlaceholder('請輸入密碼').fill(password)
   await page.getByRole('button', { name: '登入' }).click()
-  await page.waitForURL((url) => !url.hash.startsWith('#/login'))
+  // 登入失敗（帳密錯、限流 429）時登入頁顯示 alert：立即以其文字失敗，不等到測試逾時
+  const alert = page.getByRole('alert')
+  await Promise.race([
+    page.waitForURL((url) => !url.hash.startsWith('#/login')),
+    alert.waitFor().then(async () => {
+      throw new Error(`登入失敗：${await alert.innerText()}`)
+    }),
+  ])
 }
 
 export async function adminApi(request: APIRequestContext): Promise<AdminApi> {

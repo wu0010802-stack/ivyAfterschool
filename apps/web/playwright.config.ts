@@ -14,6 +14,9 @@ export default defineConfig({
   globalSetup: './e2e/support/global-setup.ts',
   globalTeardown: './e2e/support/global-teardown.ts',
   retries: process.env.CI ? 1 : 0,
+  // 後台 e2e 共用本機 DB、同一個 e2e.admin 與每 IP 的登入限流，且 support.spec 會停用 / 重新啟用 e2e.admin：
+  // 檔案之間不可平行（FRONTEND-290）
+  workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL,
