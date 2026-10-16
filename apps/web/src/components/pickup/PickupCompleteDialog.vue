@@ -36,7 +36,8 @@ const AUTH_PREFIX = 'a:'
 
 const guardians = ref<Guardian[]>([])
 const loadingGuardians = ref(false)
-const choice = ref<string | null>(null)
+// el-radio-group 的 v-model 不接受 null：未選以 undefined 表示
+const choice = ref<string | undefined>(undefined)
 const note = ref('')
 const noteError = ref('')
 const error = ref('')
@@ -61,7 +62,7 @@ const noEligible = computed(
     !props.canOverride,
 )
 const submitText = computed(() => (chosenAuthorization.value ? '前往核驗' : '完成交付'))
-const submitDisabled = computed(() => loadingGuardians.value || choice.value === null || noEligible.value)
+const submitDisabled = computed(() => loadingGuardians.value || choice.value === undefined || noEligible.value)
 const dirty = computed(() => choice.value === OVERRIDE && note.value.trim() !== '')
 
 async function loadGuardians(): Promise<void> {
@@ -73,7 +74,7 @@ async function loadGuardians(): Promise<void> {
     guardians.value = list
     const eligible = list.filter((g) => g.can_pickup)
     // 只有一位可接送監護人時預選
-    if (choice.value === null && eligible.length === 1) choice.value = `${GUARDIAN_PREFIX}${eligible[0]!.id}`
+    if (choice.value === undefined && eligible.length === 1) choice.value = `${GUARDIAN_PREFIX}${eligible[0]!.id}`
   } catch (err) {
     if (seq !== loadSeq) return
     guardians.value = []
@@ -85,7 +86,7 @@ async function loadGuardians(): Promise<void> {
 
 function reset(): void {
   guardians.value = []
-  choice.value = null
+  choice.value = undefined
   note.value = ''
   noteError.value = ''
   error.value = ''
@@ -113,7 +114,7 @@ function close(): void {
 /** 監護人選擇失效（未授權接送 / 資料已變更）：提示、清掉選擇並重新載入 */
 function guardianChanged(message: string): void {
   error.value = message
-  choice.value = null
+  choice.value = undefined
   void loadGuardians()
 }
 
@@ -131,7 +132,7 @@ function bodyOf(c: string): PickupCompleteBody | null {
 
 async function onSubmit(): Promise<void> {
   const c = choice.value
-  if (submitting.value || c === null || submitDisabled.value) return
+  if (submitting.value || c === undefined || submitDisabled.value) return
   const auth = chosenAuthorization.value
   if (auth) {
     // 代理接送不在這裡完成：到核驗頁核對接送碼或身分
