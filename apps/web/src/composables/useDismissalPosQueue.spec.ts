@@ -72,9 +72,9 @@ type Queue = ReturnType<typeof useDismissalPosQueue>
 let mock: MockAdapter
 let scope: EffectScope
 
-function setup(queue: Ref<PickupQueue | null>): Queue {
+function setup(queue: Ref<PickupQueue | null>, options?: Parameters<typeof useDismissalPosQueue>[1]): Queue {
   scope = effectScope()
-  const result = scope.run(() => useDismissalPosQueue(queue))
+  const result = scope.run(() => useDismissalPosQueue(queue, options))
   if (!result) throw new Error('scope 未執行')
   return result
 }
@@ -118,6 +118,29 @@ describe('useDismissalPosQueue', () => {
     expect(mock.history.post).toHaveLength(1)
     expect(mock.history.post[0]?.url).toBe(CREATE_URL)
     expect(JSON.parse(mock.history.post[0]?.data as string)).toEqual({ student_id: 's1' })
+  })
+
+  it('useDismissalPosQueue submits through injected create', async () => {
+    const created = makeRequest({ id: 'r9', source: 'staff' })
+    const create = vi.fn((body: { student_id: string }) => Promise.resolve(body.student_id === 's1' ? created : null))
+    const q = setup(ref(makeQueue()), { create })
+
+    q.addToQueue(STUDENT)
+    await vi.advanceTimersByTimeAsync(STAGING_DURATION_MS)
+
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(create.mock.calls[0]?.[0]).toEqual({ student_id: 's1' })
+    expect(mock.history.post).toHaveLength(0)
+    expect(q.items.value.map((i) => [i.id, i.phase])).toEqual([['r9', 'active']])
+
+    // 回 null：board 已提示並重新整理，不留本地卡片、不另外報錯，可再次發起
+    q.addToQueue({ id: 's2', name: '陳小美', className: '低年級A班' })
+    await vi.advanceTimersByTimeAsync(STAGING_DURATION_MS)
+    expect(create).toHaveBeenCalledTimes(2)
+    expect(q.items.value.map((i) => i.id)).toEqual(['r9'])
+    expect(q.stagingIds.value.size).toBe(0)
+    expect(document.body.textContent).not.toContain('建立接送請求失敗')
+    expect(q.addToQueue({ id: 's2', name: '陳小美', className: '低年級A班' })).toBe(true)
   })
 
   it('useDismissalPosQueue keeps local active until queue catches up', async () => {
