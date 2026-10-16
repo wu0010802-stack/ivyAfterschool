@@ -115,6 +115,10 @@ describe('parentRouter', () => {
     await router.push('/login?redirect=//evil.com')
     expect(router.currentRoute.value.path).toBe('/')
 
+    // 登入 / 綁定頁本身不是合法的導回目標（避免迴圈）：已登入家長會被帶到 /bind 加綁頁，必須回首頁
+    await router.push('/login?redirect=/bind')
+    expect(router.currentRoute.value.path).toBe('/')
+
     await router.push('/login')
     expect(router.currentRoute.value.path).toBe('/')
   })
