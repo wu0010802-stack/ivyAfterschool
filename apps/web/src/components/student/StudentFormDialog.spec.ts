@@ -1,7 +1,7 @@
-import { DOMWrapper, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { config, DOMWrapper, flushPromises, type VueWrapper } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import { adminHttp } from '@/api/http'
 import type { StudentDetail } from '@/api/students'
 import { createApiMock, mountWithApp } from '@/test/helpers'
@@ -73,6 +73,32 @@ function student(overrides: Partial<StudentDetail> = {}): StudentDetail {
 }
 
 let mock: MockAdapter
+const originalStubs = { ...config.global.stubs }
+
+/**
+ * happy-dom 掛一個 el-date-picker 約 0.6 秒且隨數量超線性變慢（表單有 2~3 個），
+ * 除了驗證真實日期元件接線的兩個案例，其餘以輕量 stub 取代：顯示 YYYY/MM/DD、change 時回傳 YYYY-MM-DD。
+ */
+const DatePickerStub = defineComponent({
+  name: 'DatePickerStub',
+  // 父層的 type="date" 等屬性不可落到原生 input，否則 input 變成原生日期欄
+  inheritAttrs: false,
+  props: { modelValue: { type: String, default: null } },
+  emits: ['update:modelValue', 'change'],
+  setup(props, { emit }) {
+    return () =>
+      h('input', {
+        class: 'date-stub',
+        value: props.modelValue ? props.modelValue.replaceAll('-', '/') : '',
+        onChange: (e: Event) => {
+          const raw = (e.target as HTMLInputElement).value
+          const value = raw ? raw.replaceAll('/', '-') : null
+          emit('update:modelValue', value)
+          emit('change', value)
+        },
+      })
+  },
+})
 
 async function settle(): Promise<void> {
   await nextTick()
@@ -89,7 +115,9 @@ async function settleErrors(): Promise<void> {
 async function mountDialog(
   props: { student?: StudentDetail } = {},
   permissions: string[] = WRITER,
+  { realDatePicker = false } = {},
 ): Promise<VueWrapper> {
+  config.global.stubs = realDatePicker ? { ...originalStubs } : { ...originalStubs, ElDatePicker: DatePickerStub }
   const { wrapper } = await mountWithApp(StudentFormDialog, {
     props: { modelValue: true, ...props },
     piniaInitialState: {
@@ -157,7 +185,7 @@ async function typeDate(label: string, value: string): Promise<void> {
 }
 
 function selectedText(label: string): string {
-  return formItem(label).find('.el-select__selected-item, .el-select__placeholder').text()
+  return formItem(label).find('.el-select__placeholder').text()
 }
 
 async function save(): Promise<void> {
@@ -191,7 +219,8 @@ function body(method: 'post' | 'patch', index = 0): Record<string, unknown> {
   return JSON.parse(req.data as string) as Record<string, unknown>
 }
 
-describe('StudentFormDialog', () => {
+// 表單有 5 個 el-select，happy-dom 下單一案例約 2~3 秒，多 agent 並行時易超過預設 5 秒
+describe('StudentFormDialog', { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     // 台北 2026-10-02 09:00
@@ -202,6 +231,7 @@ describe('StudentFormDialog', () => {
   })
 
   afterEach(() => {
+    config.global.stubs = { ...originalStubs }
     mock.restore()
     vi.useRealTimers()
     document.body.innerHTML = ''
@@ -210,7 +240,7 @@ describe('StudentFormDialog', () => {
   it('StudentFormDialog creates student with defaults', async () => {
     const created = student({ id: 's9', student_no: 'S1002', name: '林小華' })
     mock.onPost('/admin/students').reply(201, created)
-    const wrapper = await mountDialog()
+    const wrapper = await mountDialog({}, WRITER, { realDatePicker: true })
 
     expect(dialog().find('.el-dialog__title').text()).toBe('新增學生')
     expect(selectedText('狀態')).toBe('在學')
@@ -449,7 +479,7 @@ describe('StudentFormDialog', () => {
 
   it('StudentFormDialog confirms before suspending or withdrawing', async () => {
     mock.onPatch('/admin/students/s1').reply(200, student({ status: 'withdrawn', withdrawn_on: '2026-10-02' }))
-    const wrapper = await mountDialog({ student: student() })
+    const wrapper = await mountDialog({ student: student() }, WRITER, { realDatePicker: true })
 
     await choose('狀態', '退班')
     await typeDate('退班日', '2026/10/02')
