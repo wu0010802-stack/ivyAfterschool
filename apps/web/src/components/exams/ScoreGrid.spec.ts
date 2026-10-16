@@ -8,8 +8,11 @@ import { adminHttp } from '@/api/http'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import RenotifyChoiceDialog from './RenotifyChoiceDialog.vue'
 import ScoreGrid from './ScoreGrid.vue'
+import scoreGridSource from './ScoreGrid.vue?raw'
 
 const GRID_URL = '/admin/exams/e1/scores'
+const GRID2_URL = '/admin/exams/e2/scores'
+const ANY_SCORES_URL = /\/admin\/exams\/[^/]+\/scores$/
 const RESULT = { written: 1, changed: 1, renotified_students: 0 }
 
 const EXAM: Exam = {
@@ -165,6 +168,8 @@ describe('ScoreGrid', { timeout: 30000 }, () => {
     expect(toolbarText(wrapper)).toContain('所有變更已儲存')
     expect(toolbarText(wrapper)).toContain('Shift')
     expect(toolbarText(wrapper)).not.toContain('修改後通知家長')
+    // 鍵盤移到被左側固定欄（88 + 118 + 100）遮住的格子時捲到可見（happy-dom 不算版面，以原始碼斷言）
+    expect(scoreGridSource).toContain('scroll-padding-left: 306px')
   })
 
   it('ScoreGrid enter moves to next row same subject', async () => {
@@ -444,5 +449,118 @@ describe('ScoreGrid', { timeout: 30000 }, () => {
     await cellAt(wrapper, 1, 0).trigger('click')
     await tick()
     expect(document.activeElement).toBe(scoreInput(wrapper, 1, 0))
+  })
+  /** 第二場考試 e2（草稿）：只有王小明，國語 60 */
+  function grid2(): ScoreGridData {
+    return grid({
+      exam: { ...EXAM, id: 'e2', name: '第二次段考', subjects: SUBJECTS },
+      students: [WANG],
+      cells: [cell('s1', 'sub1', { score: 60 })],
+    })
+  }
+
+  function putUrls(): (string | undefined)[] {
+    return mock.history.put.map((c) => c.url)
+  }
+
+  it('ScoreGrid exam switch drops pending cells of previous exam', async () => {
+    mock.onPut(ANY_SCORES_URL).reply(200, RESULT)
+    const { wrapper } = await mountGrid()
+    mock.onGet(GRID2_URL).reply(200, grid2())
+
+    // e1 王小明數學輸入 88，800ms 內換成 e2
+    await typeAndBlur(wrapper, 0, 1, '88')
+    await tick(300)
+    await wrapper.setProps({ examId: 'e2' })
+    await tick()
+    await tick(2000)
+
+    expect(putUrls()).toEqual([])
+    expect(mock.history.get.map((c) => c.url)).toEqual([GRID_URL, GRID2_URL])
+    // e2 的成績格只顯示 e2 的資料
+    expect(wrapper.findAll('.el-table__body tr.el-table__row')).toHaveLength(1)
+    expect(scoreInput(wrapper, 0, 0).value).toBe('60')
+    expect(scoreInput(wrapper, 0, 1).value).toBe('')
+    expect(toolbarText(wrapper)).toContain('所有變更已儲存')
+    expect(dirtyChanges(wrapper).at(-1)).toEqual([false])
+    expect((wrapper.vm as unknown as { hasUnsaved: boolean }).hasUnsaved).toBe(false)
+
+    // 之後在 e2 的編輯照常送到 e2
+    await typeAndBlur(wrapper, 0, 1, '75')
+    await tick(800)
+    expect(putUrls()).toEqual([GRID2_URL])
+    expect(putBodies()[0]?.cells).toEqual([
+      { student_id: 's1', subject_id: 'sub2', score: 75, is_absent: false, note: null },
+    ])
+  })
+
+  it('ScoreGrid exam switch does not send cells awaiting notify choice', async () => {
+    mock.onPut(ANY_SCORES_URL).reply(200, RESULT)
+    const { wrapper } = await mountGrid({
+      attach: true,
+      data: grid({ exam: { ...EXAM, status: 'published', subjects: SUBJECTS } }),
+    })
+    mock.onGet(GRID2_URL).reply(200, grid2())
+
+    await typeAndBlur(wrapper, 0, 1, '88')
+    await tick(800)
+    expect(dialogOpen(wrapper)).toBe(true)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }))
+    await tick()
+    expect(dialogOpen(wrapper)).toBe(false)
+
+    // 換成草稿 e2：通知選擇變成固定不通知，但 e1 等待中的格子不得送出
+    await wrapper.setProps({ examId: 'e2' })
+    await tick()
+    await tick(2000)
+
+    expect(putUrls()).toEqual([])
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(toolbarText(wrapper)).not.toContain('修改後通知家長')
+    expect(scoreInput(wrapper, 0, 1).value).toBe('')
+    expect(toolbarText(wrapper)).toContain('所有變更已儲存')
+  })
+
+  it('ScoreGrid exam switch stops sending after in-flight request', async () => {
+    mock.onPut(GRID_URL).reply(() => new Promise((resolve) => setTimeout(() => resolve([200, RESULT]), 500)))
+    mock.onPut(GRID2_URL).reply(200, RESULT)
+    const { wrapper } = await mountGrid()
+    mock.onGet(GRID2_URL).reply(200, grid2())
+
+    await typeAndBlur(wrapper, 0, 1, '88')
+    await tick(800)
+    expect(putUrls()).toEqual([GRID_URL])
+    // 請求進行中又改了林小華數學，接著換成 e2
+    await typeAndBlur(wrapper, 1, 1, '77')
+    await wrapper.setProps({ examId: 'e2' })
+    await tick()
+    await tick(3000)
+
+    // 已送出的 e1 請求照原考試完成；之後不再送出 e1 的格子，也不會送到 e2
+    expect(putUrls()).toEqual([GRID_URL])
+    expect(putBodies()[0]?.cells).toEqual([
+      { student_id: 's1', subject_id: 'sub2', score: 88, is_absent: false, note: null },
+    ])
+    expect(scoreInput(wrapper, 0, 0).value).toBe('60')
+    expect(scoreInput(wrapper, 0, 1).value).toBe('')
+    expect(toolbarText(wrapper)).toContain('所有變更已儲存')
+  })
+
+  it('ScoreGrid reload keeps table until new data', async () => {
+    const { wrapper } = await mountGrid()
+    mock
+      .onGet(GRID_URL)
+      .reply(() => new Promise((resolve) => setTimeout(() => resolve([200, grid({ cells: [cell('s1', 'sub1', { score: 70 })] })]), 500)))
+
+    const reloading = (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
+    await tick(100)
+    // 同一場考試重新載入：畫面上的表格保留到新資料回來，不閃 skeleton
+    expect(wrapper.find('.el-skeleton').exists()).toBe(false)
+    expect(scoreInput(wrapper, 0, 0).value).toBe('95')
+    await tick(500)
+    await reloading
+    await tick()
+    expect(mock.history.get).toHaveLength(2)
+    expect(scoreInput(wrapper, 0, 0).value).toBe('70')
   })
 })
