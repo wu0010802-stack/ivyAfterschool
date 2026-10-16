@@ -272,8 +272,8 @@ NFC 管理權限碼 `nfc:manage`（預設只有 admin）在 NFC 解除 blocked �
 | `/attendance` | 今日出勤（點名/到班/離班） | `attendance:read` | `FE:src/views/StudentAttendanceView.vue`、`views/portal/components/studentAttendance/*` |
 | `/attendance/monthly` | 月出勤報表 + 匯出 | `attendance:read` | `FE:src/views/StudentAttendanceView.vue` |
 | `/leaves` | 請假列表 + 代登記 | `leaves:read` | `FE:src/views/StudentLeavesListView.vue` |
-| `/homework` | 作業進度看板（平板友善，逐生卡片） | `homework:read` | 新做 |
-| `/pickup` | 接送 POS（班級欄 / 學生卡 / 佇列 + 回覆預計時間） | `pickup:read` | `FE:src/views/DismissalQueueView.vue`、`components/dismissal/pos/*` |
+| `/homework` | 作業進度看板（平板友善，逐生卡片；日期顯示 `YYYY/MM/DD`，不顯示星期） | `homework:read` | 新做 |
+| `/pickup` | 接送 POS（班級欄 / 學生卡 / 佇列 + 回覆預計時間；員工代建與回覆的預計時間選項上限為 `pickup.window` 的最晚時間，後台讀得到這個設定） | `pickup:read` | `FE:src/views/DismissalQueueView.vue`、`components/dismissal/pos/*` |
 | `/pickup/authorizations` | 代理接送核驗 | `pickup:read` | `FE:src/views/PickupAuthorizationsView.vue` |
 | `/exams` | 考試列表 | `exams:read` | 新做 |
 | `/exams/:id` | 成績輸入格 + 發布 + 各科平均 | `exams:read` | 新做 |
@@ -291,7 +291,7 @@ NFC 管理權限碼 `nfc:manage`（預設只有 admin）在 NFC 解除 blocked �
 |---|---|---|
 | `/login` | LIFF 登入（LINE 內未登入自動導 LINE 登入；外部瀏覽器不自動登入，顯示「使用 LINE 登入」按鈕由家長自行按下；帳號停用、安親班尚未設定 LINE 登入等重試無效的錯誤，另提供「聯絡安親班」撥號按鈕，電話來自 `org.profile`，未設定時不顯示） | `FE:src/parent/views/LoginView.vue` |
 | `/bind` | 綁定碼綁定 / 加綁（加綁時登入狀態過期回 401，先自動 refresh 一次並重送同一組碼，refresh 也失敗才導回登入） | `FE:src/parent/views/BindView.vue`、`BindAdditionalView.vue` |
-| `/` | 首頁：小孩切換 + 今日狀態卡（出勤、作業進度、預計可接送時間、接送按鈕） | `FE:src/parent/views/ChildHubView.vue` |
+| `/` | 首頁：小孩切換 + 今日狀態卡（出勤、作業進度、預計可接送時間、接送按鈕；「我到了」遇到接送狀態已變更或請求不存在時，提示後立即重抓今日狀態） | `FE:src/parent/views/ChildHubView.vue` |
 | `/more` | 更多（通知、出勤、請假、接送人、登出入口） | — |
 | `/homework` | 今日作業明細 | 新做 |
 | `/pickup` | 我要來接 / 我到了 / 回覆訊息 / 取消 | `FE:src/parent/views/PickupNoticeView.vue` |
