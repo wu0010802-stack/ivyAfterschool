@@ -236,6 +236,11 @@ function formCard(w: Wrapper) {
   return w.get('.pk-form')
 }
 
+/** 表單卡內錯誤（role=alert）的文字，去掉圖示 ligature */
+function formError(w: Wrapper): string {
+  return buttonLabel(formCard(w).get('[role="alert"]').element)
+}
+
 function snackbar(): [string, string][] {
   return useSnackbarStore().items.map((i) => [i.message, i.tone])
 }
@@ -428,8 +433,7 @@ describe('PickupView', () => {
 
     await click(button(wrapper, '通知安親班'))
 
-    const error = formCard(wrapper).get('[role="alert"]')
-    expect(error.text()).toBe('目前不在可發起接送的時段（15:00~19:00）')
+    expect(formError(wrapper)).toBe('目前不在可發起接送的時段（15:00~19:00）')
     // 錯誤在選擇器與送出鈕之間
     const order = Array.from(formCard(wrapper).element.querySelectorAll('.arrival, [role="alert"], .pk-form__submit'))
     expect(order.map((el) => (el.matches('.arrival') ? 'picker' : el.matches('[role="alert"]') ? 'error' : 'submit'))).toEqual([
@@ -618,7 +622,7 @@ describe('PickupView', () => {
 
     await click(button(wrapper, '通知安親班'))
 
-    expect(formCard(wrapper).get('[role="alert"]').text()).toBe('此學生目前暫停，無法進行此操作')
+    expect(formError(wrapper)).toBe('此學生目前暫停，無法進行此操作')
     expect(hasButton(wrapper, '通知安親班')).toBe(true)
     expect(mock.history.post).toHaveLength(1)
     expect(gets(TODAY_URL)).toBe(1)
@@ -637,7 +641,7 @@ describe('PickupView', () => {
 
     for (const [, message] of cases) {
       await click(button(wrapper, '通知安親班'))
-      expect(formCard(wrapper).get('[role="alert"]').text()).toBe(message)
+      expect(formError(wrapper)).toBe(message)
     }
     expect(snackbar()).toEqual([])
   })
