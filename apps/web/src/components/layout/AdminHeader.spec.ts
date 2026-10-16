@@ -202,9 +202,10 @@ describe('AdminHeader', () => {
   it('AdminHeader renders notification bell between ws dot and user menu', async () => {
     const { wrapper } = await mountHeader()
 
-    const order = Array.from(wrapper.element.querySelectorAll('[data-test=ws-dot], [aria-label=通知], [data-test=user-menu]')).map(
-      (el) => el.getAttribute('data-test') ?? el.getAttribute('aria-label'),
+    const nodes = (wrapper.element as HTMLElement).querySelectorAll<HTMLElement>(
+      '[data-test=ws-dot], [aria-label=通知], [data-test=user-menu]',
     )
+    const order = Array.from(nodes).map((el) => el.getAttribute('data-test') ?? el.getAttribute('aria-label'))
     expect(order).toEqual(['ws-dot', '通知', 'user-menu'])
   })
 
