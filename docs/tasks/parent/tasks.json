@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 184,
-  "last_updated": "2026-10-16T15:00:36Z",
+  "version": 185,
+  "last_updated": "2026-10-16T15:02:23Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1308,10 +1308,8 @@
         "PARENT-196"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
-      "open_design_questions": [
-        "登出流程的 `initLiff()` 在外部瀏覽器可能讓登出失效，要怎麼處理？PARENT-008 以 `withLoginOnExternalBrowser: true` 初始化，@liff/init 2.31.1 的行為是「外部瀏覽器且 `isLoggedIn()` 為 false → init 直接呼叫 `liff.login()`（轉址，redirectUri 為目前網址）且 promise 永不 resolve」。本頁生命週期還沒初始化過 LIFF（例如重新整理後由 cookie 還原登入）且 LIFF 本地登入狀態已失效時，useParentLogout 在撤銷 session、清完狀態後會被轉去 LINE 登入，回到 `#/more` 後守衛探測 401 導向 `/login?redirect=/more`（沒有 logged_out），LoginView 自動再登入，登出等於無效；LINE 內（LIFF browser）不受影響。選項：(a) 登出只對「本頁已初始化」的 LIFF client 呼叫 logout，未初始化就跳過（services/liff 加同步取得已初始化 client 的函式）；代價是外部瀏覽器重新整理後登出不清 LIFF 本地 token，共用裝置下一位按「使用 LINE 登入」可能沿用上一位的 LINE 身分（LINE 網頁本身的登入 cookie 本來就不受 liff.logout 影響）。(b) PARENT-008 改 `withLoginOnExternalBrowser: false`，外部瀏覽器未登入時改由 LoginView 呼叫 `liff.login`（LoginView 已有 isLoggedIn 判斷），登出時 init 不會轉址；代價是外部瀏覽器首次登入要多按一次「使用 LINE 登入」，且可順帶避免 init 自動登入時 redirectUri 帶著 logged_out 回來。(c) 維持現狀，接受風險。推薦 (b)。"
-      ],
+      "risk_notes": "外部瀏覽器登出依賴 PARENT-197（LIFF init 改 withLoginOnExternalBrowser: false）；197 完成前，外部瀏覽器在本頁未初始化過 LIFF 且 LIFF 本地登入已失效時，登出會被 init 轉去 LINE 登入而失效。",
+      "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/composables/useParentLogout.spec.ts",
         "markers": [
@@ -3750,6 +3748,40 @@
         "status": "pass",
         "reviewer": "review-r10-p3",
         "notes": "通過（review-r10-p3）。2 條 red_case 皆有同名測試（另有「已有快取 session 帶 logged_out 也停在 /login」1 條），tdd.run 3/3 綠；整檔 router.spec.ts 17/17 綠，lazy routes 案例已給 30_000 timeout。commit 順序 986ac28（測試）→ 176275a（實作）。測試以 PARENT-013 規格的 unauthenticated handler 重現：拿掉放行時最後網址變成 /login?redirect=/more（logged_out 遺失），加上後停在 /login?logged_out=1 且 /parent/me、refresh 皆 0 次。突變 3 個全殺（拿掉放行、放行移到探測之後、放行到非 public 頁）；web-lint 乾淨。殘留（不擋）：守衛以 logged_out !== undefined 判斷（?logged_out 無值時 query 為 null 也算），LoginView 則把 null 視為沒有 logged_out；PARENT-033 一律帶 logged_out=1，觀測不到差異。logged_out 頁再登入的迴圈屬 PARENT-030（已打回），與本守衛無關。"
+      }
+    },
+    {
+      "id": "PARENT-197",
+      "title": "LIFF 初始化改為外部瀏覽器不自動登入（withLoginOnExternalBrowser: false）",
+      "description": "部分改寫 `apps/web/src/parent/services/liff.ts`（PARENT-008）：`liff.init({ liffId, withLoginOnExternalBrowser: false })`，其餘行為不變。\n\n**原因**：已核可稿 docs/mockups/parent-page-login.html 定案「外部瀏覽器未登入 LINE → choice 狀態（標題「請使用 LINE 帳號登入」+「使用 LINE 登入」按鈕）」，PARENT-030 LoginView 也只在 LINE 內（`isInClient`）自動 `liff.login`、外部瀏覽器停在 choice；但 `withLoginOnExternalBrowser: true` 會讓 `liff.init` 在外部瀏覽器未登入時直接轉址到 LINE 登入（promise 不 resolve），choice 永遠到不了。同一行為也讓 PARENT-033 登出失效：外部瀏覽器在本頁還沒初始化過 LIFF、LIFF 本地登入已失效時，登出流程呼叫 `initLiff()` 會被轉去 LINE 登入，回來後守衛導向 `/login?redirect=…`（沒有 logged_out），LoginView 自動再登入（impl-parent-r10d 查 @liff/init 2.31.1 原始碼確認）。LINE 內（LIFF browser）不受影響。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-008 既有斷言 `withLoginOnExternalBrowser:true` 的測試改為 false。",
+      "granularity_unit": "method",
+      "target_path": "apps/web/src/parent/services/liff.ts",
+      "source_ref": "FE:src/parent/services/liff.ts::initLiff",
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10d",
+      "depends_on": [
+        "PARENT-008",
+        "PARENT-030"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "真實 LINE App 與外部瀏覽器的轉址行為要部署後實機確認（同 PARENT-030 risk_notes）。",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/services/liff.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "liff init does not auto login on external browser：getPublicConfig 回 {liff_id:'1650000000-abc'} → initLiff() resolve，liff.init 收到的參數深等於 {liffId:'1650000000-abc', withLoginOnExternalBrowser:false}",
+          "liff init resolves on external browser without LINE login：SDK 替身依 @liff/init 的行為實作（withLoginOnExternalBrowser 為 true、isInClient false、isLoggedIn false 時 init 呼叫 login 且 promise 不 resolve）→ initLiff() 在 100ms 內 resolve、替身的 login 呼叫 0 次"
+        ],
+        "run": "just web-test src/parent/services/liff.spec.ts -t \"liff\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]

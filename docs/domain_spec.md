@@ -289,7 +289,7 @@ NFC 管理權限碼 `nfc:manage`（預設只有 admin）在 NFC 解除 blocked �
 ### 家長端（`apps/web/src/parent/views/`）
 | 路由 | 頁面 | ivy 參考 |
 |---|---|---|
-| `/login` | LIFF 登入（帳號停用、安親班尚未設定 LINE 登入等重試無效的錯誤，另提供「聯絡安親班」撥號按鈕，電話來自 `org.profile`，未設定時不顯示） | `FE:src/parent/views/LoginView.vue` |
+| `/login` | LIFF 登入（LINE 內未登入自動導 LINE 登入；外部瀏覽器不自動登入，顯示「使用 LINE 登入」按鈕由家長自行按下；帳號停用、安親班尚未設定 LINE 登入等重試無效的錯誤，另提供「聯絡安親班」撥號按鈕，電話來自 `org.profile`，未設定時不顯示） | `FE:src/parent/views/LoginView.vue` |
 | `/bind` | 綁定碼綁定 / 加綁（加綁時登入狀態過期回 401，先自動 refresh 一次並重送同一組碼，refresh 也失敗才導回登入） | `FE:src/parent/views/BindView.vue`、`BindAdditionalView.vue` |
 | `/` | 首頁：小孩切換 + 今日狀態卡（出勤、作業進度、預計可接送時間、接送按鈕） | `FE:src/parent/views/ChildHubView.vue` |
 | `/more` | 更多（通知、出勤、請假、接送人、登出入口） | — |
