@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 215,
-  "last_updated": "2026-10-16T06:03:02Z",
+  "version": 216,
+  "last_updated": "2026-10-16T06:05:32Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3538,11 +3538,11 @@
     {
       "id": "FRONTEND-126",
       "title": "實作 composables/useAttendanceBoard.ts：今日出勤資料、操作與 ws 即時合併",
-      "description": "建立 `apps/web/src/composables/useAttendanceBoard.ts`，今日出勤頁（FRONTEND-122）的資料擁有者。\n\n**介面**\n```ts\nexport function useAttendanceBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  data: Ref<DailyAttendance | null>; loading: Ref<boolean>; error: Ref<string | null>\n  busyIds: Ref<ReadonlySet<string>>                      // 操作中的 student_id\n  reload(): Promise<void>\n  checkIn(row): Promise<void>; checkOut(row): Promise<void>; markAbsent(row): Promise<void>\n  batchCheckIn(studentIds: string[]): Promise<BatchCheckInResult>\n  applyRow(row: AttendanceRow): void                      // 以 student_id 取代並重算 summary\n  wsStatus: ComputedRef<WsStatus>; wsDenied: ComputedRef<boolean>\n}\n```\n- 掛載時與 date / classId 變更時重新載入（序號防護，只採用最新回應）；classId 為 null 或空字串時不帶 class_id。\n- 載入失敗：`error = errorMessage(err, '無法載入出勤資料')`，成功時清為 null；同一篩選的重抓失敗（例如斷線輪詢）保留舊 data，換日期 / 班級後的載入失敗則 data 清為 null（不顯示別的篩選的舊資料）。\n- 操作：同一學生進行中再呼叫直接忽略；成功以回傳 row `applyRow`；失敗 `ElMessage.error(errorMessage(err, '操作失敗'))`，409（already_checked_in / already_checked_out / not_checked_in / student_on_leave）額外重新載入該日資料以修正畫面。\n- `batchCheckIn`：成功列套用（同 applyRow）；`skipped` 含上述畫面過期的 code 時重新載入；請求失敗 `ElMessage.error(errorMessage(err, '批次到班失敗'))` 後 reject 原錯誤（409 過期類同樣重新載入），呼叫端只需決定畫面狀態。\n- `applyRow` 只套用與目前資料同日（`data.date`）的列；不在清單中的列依班級、學號插入：沿用清單既有的班級順序（後端依班級 sort_order、班名排序，列上沒有 sort_order），同班內依學號，清單中沒有該班時接在最後。\n- `summary` 由 items 重算（不信任舊 summary），與後端一致：total = items 數、各狀態計數。\n- ws：`useAdminWsTopic('attendance', {...}, { resync: reload })`（FRONTEND-038）。`attendance.updated` → 若 `row.service_date === date` 且（classId 為 null 或相同）則 applyRow（不在清單中則加入並依班級、學號排序），否則忽略；`attendance.batch_updated` → 逐筆同上；`attendance.bulk_updated` → `dates` 含目前 date 時 reload。\n- 只有 date 為今天時才訂閱有意義，但仍一律訂閱（改判過去日期也會推播）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/useAttendanceBoard.ts`，今日出勤頁（FRONTEND-122）的資料擁有者。\n\n**介面**\n```ts\nexport function useAttendanceBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  data: Ref<DailyAttendance | null>; loading: Ref<boolean>; error: Ref<string | null>\n  busyIds: Ref<ReadonlySet<string>>                      // 操作中的 student_id\n  reload(): Promise<void>\n  checkIn(row): Promise<void>; checkOut(row): Promise<void>; markAbsent(row): Promise<void>\n  batchCheckIn(studentIds: string[]): Promise<BatchCheckInResult>\n  applyRow(row: AttendanceRow): void                      // 以 student_id 取代並重算 summary（只套用符合目前篩選的列）\n  wsStatus: ComputedRef<WsStatus>; wsDenied: ComputedRef<boolean>\n}\n```\n- 掛載時與 date / classId 變更時重新載入（序號防護，只採用最新回應）；classId 為 null 或空字串時不帶 class_id。\n- 載入失敗：`error = errorMessage(err, '無法載入出勤資料')`，成功時清為 null；同一篩選的重抓失敗（例如斷線輪詢）保留舊 data，換日期 / 班級後的載入失敗則 data 清為 null（不顯示別的篩選的舊資料）。\n- 操作：同一學生進行中再呼叫直接忽略；成功以回傳 row `applyRow`（與 ws 同一條件，篩選切換期間晚到、已不屬於目前篩選的回傳列不套用）；失敗 `ElMessage.error(errorMessage(err, '操作失敗'))`，409（already_checked_in / already_checked_out / not_checked_in / student_on_leave）額外重新載入該日資料以修正畫面。\n- `batchCheckIn`：成功列套用（同 applyRow，只套用符合目前篩選的列；回傳值原樣交給呼叫端）；`skipped` 含上述畫面過期的 code 時重新載入；請求失敗 `ElMessage.error(errorMessage(err, '批次到班失敗'))` 後 reject 原錯誤（409 過期類同樣重新載入），呼叫端只需決定畫面狀態。\n- `applyRow`（操作、批次、ws 共用）只套用符合目前篩選的列：`row.service_date === date` 且（classId 為 null 或 `row.class_id === classId`），並且與目前資料同日（`data.date`，篩選切換後新清單尚未回來時不套用到舊清單）；不在清單中的列依班級、學號插入：沿用清單既有的班級順序（後端依班級 sort_order、班名排序，列上沒有 sort_order），同班內依學號，清單中沒有該班時接在最後。\n- `summary` 由 items 重算（不信任舊 summary），與後端一致：total = items 數、各狀態計數。\n- ws：`useAdminWsTopic('attendance', {...}, { resync: reload })`（FRONTEND-038）。`attendance.updated` → applyRow（同上條件；不在清單中則加入並依班級、學號排序），不符合則忽略；`attendance.batch_updated` → 逐筆同上；`attendance.bulk_updated` → `dates` 含目前 date 時 reload。\n- 只有 date 為今天時才訂閱有意義，但仍一律訂閱（改判過去日期也會推播）。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
@@ -3566,7 +3566,10 @@
           "useAttendanceBoard uses latest response when filters change：classId 改 c1 再改 c2，c1 回應較晚到 → data 為 c2 的結果",
           "useAttendanceBoard inserts unseen ws rows by class and student number：清單 [c3:S11301(s1), c3:S11303(s3), c1:S11300(s4)] → ws 新列 c3:S11302(s5)、c1:S11399(s6)、c8:S11201(s7) → student_id 順序 ['s1','s5','s3','s4','s6','s7']、summary.total 6",
           "useAttendanceBoard keeps data only for the same filters when load fails：首次載入 2 筆後 GET 改回 500 → reload() 後 error '伺服器忙碌中' 且 items 仍 2 筆；classId 改 c1 → data 為 null、loading false",
-          "useAttendanceBoard batch check-in applies succeeded rows：batch 回 succeeded [s1 present]、skipped [] → s1 present、summary.present 1、不重抓；再回 skipped [{student_id:'s2',code:'student_on_leave'}] → GET daily +1、s2 為重抓後的 leave"
+          "useAttendanceBoard batch check-in applies succeeded rows：batch 回 succeeded [s1 present]、skipped [] → s1 present、summary.present 1、不重抓；再回 skipped [{student_id:'s2',code:'student_on_leave'}] → GET daily +1、s2 為重抓後的 leave",
+          "useAttendanceBoard ignores operation result outside current class filter：全部班級下 checkIn(s1，class c2) 回應前改選 c1，c1 的 GET 先回 [s4]、到班回應才到 → items 為 ['s4']、summary 深等於 {total:1,expected:1,present:0,left:0,absent:0,leave:0}、busyIds 不含 s1",
+          "useAttendanceBoard ignores batch result outside current class filter：全部班級下 batchCheckIn(['s1','s4']) 回應前改選 c1（GET 回 [s4]），回 succeeded [s1(c2) present, s4(c1) present] → 回傳值 succeeded 仍為 ['s1','s4']，items 為 ['s4']、s4 present、summary.total 1",
+          "useAttendanceBoard clears error on success and ignores results of another date：首次載入 500 → error '伺服器忙碌中'，reload 成功 → error null；checkIn(s1) 回應前切到 2026-10-01（新清單未回）→ 2026-10-02 的回傳列不套用、s1 仍 expected；切回 2026-10-02 但清單未回時收到當日 ws 列 → 不套用到 2026-10-01 的舊清單"
         ],
         "run": "just web-test src/composables/useAttendanceBoard.spec.ts -t \"useAttendanceBoard\"",
         "notes": ""
