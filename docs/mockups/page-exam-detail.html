@@ -904,15 +904,13 @@ const FormDialog = {
     </el-dialog>`,
 }
 
-/* ==== 以下逐字複製自 component-exams.html（FRONTEND-236 / FRONTEND-296 ScoreCell、FRONTEND-238 RenotifyChoiceDialog）；outsideMode 停在推薦的 A ==== */
+/* ==== 以下逐字複製自 component-exams.html（FRONTEND-236 / FRONTEND-296 ScoreCell、FRONTEND-238 RenotifyChoiceDialog） ==== */
 const fmt = (n) => (n === null || n === undefined ? '' : String(n))
 
 /* ---------- 每格備註（FRONTEND-296） ----------
    字數以 trim 後的字元（code point）計，與後端 ScoreCellIn.note max_length=200 一致。 */
 const NOTE_MAX = 200
 const noteLength = (s) => Array.from((s ?? '').trim()).length
-/** 稿用：待裁定 1「點編輯框外面」的兩個選項（confirm = A 視同確定、cancel = B 視同取消）；實作只會有核可的那一種 */
-const outsideMode = ref('confirm')
 let noteUid = 0
 
 /* 編輯框內容：ScoreCell 的 popover 裡用；狀態一覽也直接攤開 */
@@ -1021,6 +1019,7 @@ const ScoreCell = {
     const closeEditor = (returnFocus) => {
       editing.value = false
       document.removeEventListener('pointerdown', onOutside, true)
+      document.removeEventListener('focusin', onFocusGuard, true)
       if (returnFocus) nextTick(focusScore)
     }
     const confirmNote = (returnFocus = true) => {
@@ -1032,22 +1031,31 @@ const ScoreCell = {
       emit('change', { score: props.score, is_absent: props.isAbsent, note: next })
     }
     const cancelNote = () => closeEditor(true)
-    // 點編輯框外面（待裁定 1）：A 視同確定（超過 200 字時不關閉）/ B 視同取消；焦點留在使用者點的地方
+    // 點編輯框外面 = 確定：合法就送出並關閉，焦點留在使用者點的地方；超過 200 字時不關閉、焦點回到文字框
+    const popperEl = () => (panel.value && panel.value.$el ? panel.value.$el.closest('.el-popper') : null)
     function onOutside(e) {
       if (!editing.value) return
-      const pop = panel.value && panel.value.$el ? panel.value.$el.closest('.el-popper') : null
+      const pop = popperEl()
       if (pop && pop.contains(e.target)) return
       const btn = root.value ? root.value.querySelector('.score-cell__note') : null
       if (btn && btn.contains(e.target)) swallowClick = true    // 再點一次圖示 = 點外面，不要馬上又打開
-      if (outsideMode.value === 'cancel') { closeEditor(false); return }
       if (noteLength(draft.value) > NOTE_MAX) { setTimeout(() => panel.value && panel.value.focus(), 0); return }
       confirmNote(false)
+    }
+    // 超過 200 字時焦點一律留在編輯框：Element Plus popover 的 focus trap 釋放時會把焦點還給觸發鈕，
+    // 所以不能只在 pointerdown 後聚焦一次；焦點跑到編輯框外就拉回文字框
+    function onFocusGuard(e) {
+      if (!editing.value || noteLength(draft.value) <= NOTE_MAX) return
+      const pop = popperEl()
+      if (pop && pop.contains(e.target)) return
+      setTimeout(() => panel.value && panel.value.focus(), 0)
     }
     const openEditor = () => {
       if (editing.value) return
       draft.value = props.note ?? ''
       editing.value = true
       document.addEventListener('pointerdown', onOutside, true)
+      document.addEventListener('focusin', onFocusGuard, true)
       nextTick(() => requestAnimationFrame(() => panel.value && panel.value.focus()))
     }
     const onNoteClick = () => {
@@ -1058,7 +1066,10 @@ const ScoreCell = {
     const onRootKeydown = (e) => {
       if (e.key === 'F2' && e.shiftKey && !editing.value) { e.preventDefault(); openEditor() }
     }
-    onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, true))
+    onBeforeUnmount(() => {
+      document.removeEventListener('pointerdown', onOutside, true)
+      document.removeEventListener('focusin', onFocusGuard, true)
+    })
 
     return {
       text, localError, tip, commit, toggleAbsent, display,
