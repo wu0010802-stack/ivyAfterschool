@@ -12,7 +12,7 @@
      preview-route  : 對應的家長端路由 path；元件稿寫 component:<相對路徑>
      preview-updated: 最後更新日期 YYYY-MM-DD
      ============================================================ -->
-<meta name="preview-status" content="draft">
+<meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="PARENT-024">
 <meta name="preview-route" content="component:parent/layouts/ParentLayout.vue">
 <meta name="preview-updated" content="2026-10-16">
@@ -646,11 +646,11 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
           <button v-for="p in g.paths" :key="p" type="button" :class="{ 'is-active': current.path === p }" @click="push(p)">{{ routes[p].title }} <span class="notes__code">{{ p }}</span></button>
         </div>
       </template>
-      <p class="notes__hint">meta：<span class="notes__code">{{ metaText }}</span><br>history.length（稿內模擬）= {{ stack.length }}</p>
+      <p class="notes__hint">meta：<span class="notes__code">{{ metaText }}</span><br>window.history.state.back（稿內模擬）= {{ stack.length > 1 ? "'" + stack[stack.length - 2].path + "'" : 'null' }}</p>
       <div class="notes__row" style="margin-top: 8px">
-        <span class="state-switch"><button type="button" :disabled="!route.showBack" @click="openDirect">模擬從 LINE 推播直接開啟目前深層頁（history.length = 1）</button></span>
+        <span class="state-switch"><button type="button" :disabled="!route.showBack" @click="openDirect">模擬從 LINE 推播直接開啟目前深層頁（history.state.back = null）</button></span>
       </div>
-      <p class="notes__hint">深層頁按返回：history.length &gt; 1 → router.back()（回到上一頁並還原捲動位置）；= 1 → router.replace('/')。</p>
+      <p class="notes__hint">深層頁按返回：window.history.state?.back 有值 → router.back()（回到上一頁並還原捲動位置）；沒有值 → router.replace('/')。不看 history.length：LIFF 進入時 liff.state 轉址會讓第一頁的 history.length 就大於 1。</p>
 
       <h4>更多分頁未讀徽章（notifications.unreadCount）</h4>
       <div class="state-switch" role="group" aria-label="未讀數">
@@ -1320,15 +1320,15 @@ function pageSetup({ snack }) {
   function onBack() {
     if (stack.value.length > 1) {
       stack.value.pop()
-      addLog(`返回：history.length > 1 → router.back()（回到 ${current.value.path}，還原捲動位置）`)
+      addLog(`返回：history.state.back 有值 → router.back()（回到 ${current.value.path}，還原捲動位置）`)
       scrollMainTo(current.value.scroll)
     } else {
-      replace('/', "返回：history.length = 1 → router.replace('/')")
+      replace('/', "返回：history.state.back 為 null → router.replace('/')")
     }
   }
   function openDirect() {
     stack.value = [{ path: current.value.path, scroll: 0 }]
-    addLog(`模擬從 LINE 推播直接開啟 ${current.value.path}（history.length = 1）`)
+    addLog(`模擬從 LINE 推播直接開啟 ${current.value.path}（history.state.back = null）`)
     scrollMainTo(0)
   }
   function onTabSelect(key, item) {
@@ -1380,14 +1380,14 @@ function pageSetup({ snack }) {
     '結構（由上而下）：頂部區塊（M3TopAppBar + ConnectionBanner，同一個 sticky 區塊、z-index 5）→ main（RouterView）→ M3Snackbar → M3NavigationBar（position: fixed 貼底、z-index 5）。整個 layout 最大寬 560px 置中、min-height 100dvh；頁面捲動是 window 捲動。根元素設 overscroll-behavior-y: contain（PullToRefresh 不被瀏覽器原生下拉刷新 / iOS 回彈搶走）。',
     '內距：main 不加左右內距（各頁自帶左右 16px、上 8px、底部 24px，與已核可頁面稿一致），只在有底部導覽時加 padding-bottom = 80px + env(safe-area-inset-bottom)，最後一張卡不會被導覽蓋住。',
     'meta 驅動：public 或 hideTabBar → 不渲染頂部列與底部導覽（/login、/bind；BindView 首綁的標題與加綁的返回列由頁面自己畫）；其餘頁一律顯示，標題 = meta.title（單行省略）。',
-    '頂部列 leading：showBack → 返回鍵（arrow_back、aria-label「返回」、48×48）。返回：window.history.length > 1 → router.back()，否則 router.replace(\'/\')（例如從 LINE 推播直接開啟深層頁）。沒有返回鍵 → 安親班 logo：logo_url 有值 → 40px 圓形 img（object-fit: cover、alt=""），載入失敗退回首字；無 logo → 名稱首字圓（primary-container，同 M3 kit 稿）；公開設定載入中、取得失敗或名稱空白 → leading 留空（48px 欄位保留，標題不位移、不閃字）。',
+    '頂部列 leading：showBack → 返回鍵（arrow_back、aria-label「返回」、48×48）。返回：window.history.state?.back 有值（vue-router 記錄的上一個站內位置）→ router.back()，否則 router.replace(\'/\')（例如從 LINE 推播直接開啟深層頁）；不用 window.history.length 判斷，LIFF 進入時 liff.state 轉址會讓第一頁的 history.length 就大於 1，router.back() 可能退出 SPA。沒有返回鍵 → 安親班 logo：logo_url 有值 → 40px 圓形 img（object-fit: cover、alt=""），載入失敗退回首字；無 logo → 名稱首字圓（primary-container，同 M3 kit 稿）；公開設定載入中、取得失敗或名稱空白 → leading 留空（48px 欄位保留，標題不位移、不閃字）。',
     '底部導覽固定五項：首頁 / → home、作業 /homework → assignment、接送 /pickup → directions_walk、成績 /exams → grading、更多 /more → menu；currentKey = meta.tab，深層頁停在所屬分頁（例如 /leaves 亮「更多」）。「更多」徽章 = notifications.unreadCount（0 不顯示、>99 顯示 99+，外觀照 M3NavigationBar 稿）。',
     '點分頁：路徑與目前不同 → router.push(path)；再點目前分頁且 route.path 相同 → window 捲回頂端（smooth；prefers-reduced-motion 直接跳）；在深層頁點所屬分頁（例如 /pickup/proxy 點「接送」）→ push 回分頁根路徑。',
     'ConnectionBanner：非公開頁都掛。有頂部列時放在頂部列正下方、同一個 sticky 區塊（照 ConnectionBanner 稿），出現時把內容往下推；hideTabBar 頁（/bind）沒有 layout 頂部列，橫幅放在頁面最上方、一般文流不 sticky（隨內容捲走，不與頁面自帶的 sticky 返回列疊在一起）。顯示規則與 3 秒延遲照元件稿（本稿為了預覽設 delayMs 0）。',
     '登入生命週期：掛載時已登入，或 parentAuth.isAuthed 由 false 變 true → parentWs.connect() 與 notifications.refreshUnread()；由 true 變 false → parentWs.disconnect()。未登入時 ws 不連線，所以橫幅只會出現「目前離線」那一種。',
     'Snackbar：M3Snackbar 的 item = snackbar store 第一則（一次一則、依序輪播，佇列規則照 PARENT-011）。有底部導覽時在導覽上方 16px（bottom 96px + safe-area）；hideTabBar（含 public）時根元素帶 is-tabbar-hidden，改貼底部 16px + safe-area，不懸空。',
     '家長端層級：頂部區塊 5、底部導覽 5、ParentBottomSheet 10、ConfirmDialog 15、M3Snackbar 20（sheet / 對話框的 scrim 蓋住頂部列與導覽；snackbar 在最上層，送出結果看得到）。',
-    '捲動位置：換頁一律從頂端開始，按返回回到原本的捲動位置（稿內示意）。這需要 PARENT-012 router 設定 scrollBehavior（savedPosition ?? { top: 0 }），router 規格目前沒寫，已回報協調者補上。',
+    '捲動位置：換頁一律從頂端開始，按返回回到原本的捲動位置（稿內示意）；由 router 的 scrollBehavior（savedPosition ?? { top: 0 }，PARENT-195）負責，layout 不自己捲。',
     '觸控目標：返回鍵 48×48、底部導覽每項整格（約 78×80）、橫幅「立即更新」48px 點擊區、snackbar action 44px 高。',
     '移植 ivy ParentLayout 的 meta 驅動顯示、返回邏輯與 onTabSelect；去掉 BrandMark、home summary 徽章、孩子 / 聯絡簿 / 事務 / 我的分頁、頂部列「我的」頭像鈕、ParentOfflineIndicator、首頁不顯示頂部列與 LINE in-app 隱藏標題的判斷（本專案首頁也顯示頂部列「首頁」，照首頁稿）。',
   ]

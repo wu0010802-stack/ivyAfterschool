@@ -12,7 +12,7 @@
      preview-route  : 對應的家長端路由 path；元件稿寫 component:<相對路徑>
      preview-updated: 最後更新日期 YYYY-MM-DD
      ============================================================ -->
-<meta name="preview-status" content="draft">
+<meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="PARENT-031">
 <meta name="preview-route" content="/bind">
 <meta name="preview-updated" content="2026-10-16">
@@ -1417,7 +1417,7 @@ function pageSetup({ snack }) {
     { key: 'too_many_attempts', label: '429 嘗試過多' },
     { key: 'parent_disabled', label: '403 帳號停用' },
     { key: 'other', label: '500 / 網路錯誤' },
-    { key: 'unauthenticated', label: '401 unauthenticated' },
+    { key: 'unauthenticated', label: '401（首綁逾時 / 加綁先 refresh 再重送）' },
   ]
   const errorPresets = results.filter((r) => r.key !== 'ok' && r.key !== 'unauthenticated')
 
@@ -1450,7 +1450,7 @@ function pageSetup({ snack }) {
     addLog(`POST /parent/auth/bind { code: '${normalized}' }（${mode.value === 'first' ? '首綁：parent_bind cookie' : '加綁：parent_access cookie'}）`)
     const r = nextResult.value
     const extra = r === 'unauthenticated' && mode.value === 'additional' ? 700 : 0
-    if (extra) addLog('401：加綁模式先 refresh 再自動重送一次（待裁定 1，稿照推薦 A）')
+    if (extra) addLog('401：加綁模式先 POST /parent/auth/refresh，成功後自動重送同一組碼（只重送一次）')
     timer = setTimeout(() => {
       submitting.value = false
       if (r === 'ok' || (r === 'unauthenticated' && mode.value === 'additional')) { onSuccess(); return }
@@ -1537,20 +1537,13 @@ function pageSetup({ snack }) {
     '業務錯誤：「綁定」下方顯示 BindCodeErrorNotice（外觀、色調、「聯絡安親班」條件照已核可元件稿），orgPhone 取公開設定 org_phone（取不到傳 null）；欄位保留輸入值。未知錯誤碼與網路錯誤一律 code 傳 null、不傳 fallbackMessage →「綁定失敗，請稍後再試」（不把後端原始訊息丟給家長）。「重新輸入」→ 清空欄位與錯誤、焦點回到欄位。',
     '首綁逾時（401，bind token 過期或遺失）：表單整段換成提示框（warning-container、filled timer_off 圖示、「綁定時間已逾時，請重新以 LINE 登入」title-medium、role="alert"）+ filled block「重新登入」（login 圖示）→ parentAuth.clearBindPending() → router.replace(\'/login\')。用 warning 不用 error：不是家長輸入錯，重新登入即可。',
     '首綁成功：setParent、children.seed；公開設定 add_friend_url 有值 → 同頁切到成功畫面（照 AddFriendCard 稿）：48px filled check_circle（primary）、「綁定完成」headline-small、「已綁定：王小明（3 年級 · 中年級班）」、AddFriendCard，底部固定 footer（上邊線）filled block「開始使用」→ router.replace(resolveSafeRedirect(redirect))；add_friend_url 為 null 或設定取得失敗 → 直接導頁、不顯示成功畫面。',
+    '加綁 401（parent_access 過期；bind 在 parentHttp 的 noRefreshPaths，不會自動續期）（使用者裁定 A）：BindView 自己呼叫一次 refresh（parentRefreshHttp POST /parent/auth/refresh），成功 → 以同一組正規化後的綁定碼自動重送一次，期間「綁定」持續 loading、家長無感；重送結果照一般流程處理（重送再 401 不再重試，視同登入失效）。refresh 失敗 → 視同登入失效：清 parentAuth / children 狀態並 router.replace(\'/login\')。',
     '加綁成功：setParent、children.seed、children.select(新出現的小孩 id) → snackbar「已加綁 {姓名}」→ router.replace(\'/\')，首頁直接顯示新小孩（snackbar 換頁後仍在底部導覽上方）。',
     'Snackbar 位置：本頁 hideTabBar，snackbar 貼底部 16px（ParentLayout 的 is-tabbar-hidden 規則）。',
     '觸控目標：返回鍵 48×48、輸入框 56px、「綁定」「重新輸入」「聯絡安親班」「重新登入」「開始使用」都是 48px 高按鈕。',
     '移植 ivy BindView / BindAdditionalView 的 submit（合併為單一頁、依登入狀態切換），保留「聯絡安親班」撥號（電話改取 org_phone）；去掉 toast（改用 snackbar）、ivy 的大 logo 與「需要協助？請聯絡園所」頁尾。',
   ]
-  const openQuestions = [
-    {
-      question: '加綁模式送出時，若 parent_access 剛好過期（15 分鐘），後端回 401；但 bind 端點在 parentHttp 的 noRefreshPaths 裡不會自動續期，task 也只寫了首綁 401 的處理，家長會看到「綁定失敗，請稍後再試」且重按也一樣。要怎麼處理？',
-      options: [
-        { text: '自動續期重送：加綁模式收到 401 時呼叫一次 refresh，成功就自動重送同一組碼（家長無感）；refresh 也失敗才視同登入失效，走登入失效流程導回 /login；需在 PARENT-031 description 與 red_case 補上', recommended: true },
-        { text: '不重送：加綁模式收到 401 直接視同登入失效導回 /login，家長重新開啟後再輸入一次綁定碼', recommended: false },
-      ],
-    },
-  ]
+  const openQuestions = []
 
   return {
     mode, nameHint, kids, photoFailed, code, fieldError, submitting, errorCode, timedOut, view, navResult,

@@ -12,7 +12,7 @@
      preview-route  : 對應的家長端路由 path；元件稿寫 component:<相對路徑>
      preview-updated: 最後更新日期 YYYY-MM-DD
      ============================================================ -->
-<meta name="preview-status" content="draft">
+<meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="PARENT-030">
 <meta name="preview-route" content="/login">
 <meta name="preview-updated" content="2026-10-16">
@@ -1262,7 +1262,7 @@ function toTelHref(phone) {
   return 'tel:' + (main.startsWith('+') ? '+' : '') + main.replace(/\D/g, '')
 }
 
-/** PARENT-030 錯誤訊息；call = 待裁定 1 推薦 A 的「聯絡安親班」 */
+/** PARENT-030 錯誤訊息；call = 顯示「聯絡安親班」（org_phone 有值時） */
 const LOGIN_ERRORS = [
   { key: 'liff_not_configured', label: '未設定 LIFF ID', when: 'initLiff 丟 LiffNotConfiguredError（顯示其 message）', message: '安親班尚未設定 LINE 登入，請聯絡安親班', icon: 'settings', call: true },
   { key: 'liff_init_failed', label: 'LIFF 初始化失敗', when: 'initLiff 其他失敗', message: 'LINE 登入初始化失敗，請稍後再試', icon: 'error', call: false },
@@ -1462,20 +1462,12 @@ function pageSetup({ snack }) {
     'init / loading：40px 轉圈（primary，reduced-motion 時停成靜止弧形）+ body-large 文案「正在連線 LINE…」/「登入中…」，外層 role="status"。LINE 內未登入自動呼叫 liff.login()、id_token 快過期或 invalid_id_token 第一次自動重登、錯誤態按「重試」（forceFresh）時，都停在 init 畫面直到 LINE 轉址回來，不顯示錯誤。',
     'choice：外部瀏覽器未登入 LINE → 標題「請使用 LINE 帳號登入」+ 說明「登入後即可查看小孩的到班、作業與接送狀態」；query logged_out=1 → 標題「您已登出」+ 說明「需要時可再以 LINE 登入」，掛載時不執行 startLogin（LINE 內也一樣，不自動再登入）。下方 filled block「使用 LINE 登入」（login 圖示；不用 LINE 綠，同 AddFriendCard 決策），點擊 → liff.login({ redirectUri: location.href })，按下後 loading 防連點直到轉址。',
     'error：ParentEmptyState error（48px error 色圖示、標題 = 錯誤訊息、tonal「重試」→ startLogin({ forceFresh: true })）。圖示依情況：未設定 LINE 登入 settings、id_token 逾時 timer_off、帳號停用 block、LINE 服務無法連線 cloud_off、嘗試次數過多 hourglass_top、其他 error。訊息文字照 PARENT-030 步驟 1 / 7（右側對照表）。',
-    '「聯絡安親班」（待裁定 1，稿照推薦 A 畫）：帳號停用、安親班尚未設定 LINE 登入（前後端兩種）三種錯誤，在「重試」下方加置中的 outlined 按鈕「聯絡安親班 {org_phone}」，是 <a href="tel:…">（call 圖示；撥號規則同 BindCodeErrorNotice，只取分機前的主號）；org_phone 沒有值時不顯示。',
+    '「聯絡安親班」（使用者裁定 A）：帳號停用、安親班尚未設定 LINE 登入（前端 LiffNotConfiguredError 與後端 line_login_not_configured 兩種）三種錯誤，在「重試」下方加置中的 outlined 按鈕「聯絡安親班 {org_phone}」，是 <a href="tel:…">（call 圖示；撥號規則同 BindCodeErrorNotice，只取分機前的主號）；org_phone 沒有值時不顯示。',
     '成功（status ok）→ 直接 router.replace(resolveSafeRedirect(redirect))，畫面不另顯示成功訊息；needs_binding → markBindPending(name_hint) 後 router.replace 到 /bind（redirect 有值才保留）。稿內以全頁示意層表示導頁結果，實作沒有這層。',
     '觸控目標：「使用 LINE 登入」「重試」「聯絡安親班」都是 48px 高按鈕。',
     '移植 ivy LoginView 的 startLogin 狀態機（init / loading / choice / error）與 manualRetry；去掉 consent modal、device-login 設定碼、staff session 偵測、clientEvents 回報、品牌 composable、錯誤的「下一步」提示列與「本服務由…提供」頁尾。',
   ]
-  const openQuestions = [
-    {
-      question: '登入錯誤是「帳號停用」或「安親班尚未設定 LINE 登入」時，家長按「重試」也不會成功。要不要在錯誤態加「聯絡安親班」撥號按鈕？',
-      options: [
-        { text: '加：這三種錯誤在「重試」下方顯示 outlined「聯絡安親班 {org_phone}」撥號鈕（org_phone 有值才顯示，與綁定錯誤提示一致）；需在 PARENT-030 description 與 red_case 補上', recommended: true },
-        { text: '不加：照 task 現況，錯誤態只有「重試」', recommended: false },
-      ],
-    },
-  ]
+  const openQuestions = []
 
   return {
     state, loggedOut, choiceBusy, err, navResult, orgPhone, telHref,
