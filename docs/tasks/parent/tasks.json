@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 174,
-  "last_updated": "2026-10-16T14:30:26Z",
+  "version": 175,
+  "last_updated": "2026-10-16T14:30:27Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1143,7 +1143,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/LoginView.vue",
       "source_ref": "FE:src/parent/views/LoginView.vue::startLogin",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -1158,7 +1158,7 @@
         "INFRA-013"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-p3 打回】登出後無法從登入頁再登入（迴圈）：logged_out=1 的 choice 頁按「使用 LINE 登入」→ liff.login({ redirectUri: location.href })。正式環境是 hash history，location.href 為「…/#/login?logged_out=1」（reviewer 探針：在該網址掛載、點擊後 fake.login 收到的 redirectUri 為 http://localhost:3000/#/login?logged_out=1）。本規格自己的前提就是 LINE 會把 redirectUri 原樣帶回（流程步驟 3 / 4 靠它保留 ?redirect=；ivy 家長端同為 hash history 並依賴此行為），所以 LINE 轉址回來後又是 /login?logged_out=1：掛載時不執行 startLogin，畫面仍是「您已登出」；此時 LIFF 已登入，再按一次又只呼叫 liff.login 同一網址（探針：isLoggedIn=true 時點擊仍只呼叫 liff.login，liff-login 請求 0 次）。外部瀏覽器的家長只能手動改網址才能再登入，LINE 內也要關掉重開。驗收：logged_out 頁按「使用 LINE 登入」最終要能完成登入，做法由實作者決定（例如按下時 LIFF 已登入就直接走 startLogin 送 id_token；未登入時 redirectUri 去掉 logged_out、保留站內 redirect）。寫回 description（流程步驟 3 與 choice 按鈕；稿 decisions 第 4 條的 redirectUri 屬技術細節，一併更新），並新增 red_case：(a) /login?logged_out=1、isLoggedIn=true，點「使用 LINE 登入」→ 送出 liff-login 並導到 redirect；(b) isLoggedIn=false 時 fake.login 收到的 redirectUri 不含 logged_out（以 hash 網址重現，例如 history.replaceState 到 /#/login?logged_out=1）。順帶（不擋）：流程步驟 7 的 id_token_replayed 沒有測試（突變「只處理 invalid_id_token」存活），補一條。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/LoginView.spec.ts",
@@ -1183,9 +1183,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-p3",
+        "notes": "打回 1 項（見 risk_notes【review-r10-p3 打回】）：logged_out 頁按「使用 LINE 登入」的 redirectUri 帶著 logged_out=1，LINE 轉址回來仍停在「您已登出」，再按也只會重複 liff.login，形成迴圈（reviewer 探針重現）。其餘檢查通過：12 條 red_case 皆有同名測試（另有成功時不安全 redirect、needs_binding 去掉不安全 redirect、id_token 快過期重登、LiffNotConfigured 也顯示聯絡、其餘錯誤對照、骨架、樣式 7 條）；tdd.run 19/19 綠，verbose 名稱清單含全部 12 條；commit 順序 d7fde6a（測試，當時 LoginView.vue 是 12 行佔位檔）→ 31d393c（實作）。31d393c 對 spec 的修改：按鈕改以結尾比對（M3Button 文字含圖示 ligature）、撥號文字改取 .login-call__label、noToken 案例的累計請求數 2 → 3（原數字算錯；斷言意思是沒有 id_token 不再送出），另補兩條（成功時不安全 redirect、重試先清舊 marker），都不是放寬。「聯絡安親班」（使用者裁定）：LiffNotConfiguredError / parent_disabled / line_login_not_configured 且 org_phone 有值才顯示，tel 只撥分機前主號、保留開頭 +，規則與 BindCodeErrorNotice 相同；too_many_attempts 與無電話不顯示，皆有測試。稿 parent-page-login.html 已 approved，decisions 9 條逐條核對（版面內距、識別區 160 / 狀態區 360×220、骨架與「家長端」退回、40px 轉圈與 reduced-motion、choice 文案、錯誤圖示、聯絡按鈕 48px）與實作一致。突變 28 個殺 27，存活「只處理 invalid_id_token（id_token_replayed 不重登）」（測試缺口，見 risk_notes）；還原後 git diff 乾淨。web-lint 乾淨；web-typecheck 3 個錯誤在他人檔案（bootstrap.ts、HomeworkItemRow.vue、AttendanceTodayView.spec.ts），不在本 task。"
       }
     },
     {
@@ -1195,7 +1195,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/BindView.vue",
       "source_ref": "FE:src/parent/views/BindView.vue::submit",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -1238,9 +1238,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。13 條 red_case 皆有同名測試（另有不安全 redirect、符號 / 長度、加綁空清單、refresh 期間持續 loading、另一分頁 409 視同成功、重新整理後載入小孩、重送遇業務錯誤、再次送出收起舊錯誤、網路錯誤、開始使用不安全 redirect、小孩載入中找新小孩、樣式 12 條）；tdd.run 25/25 綠，verbose 名稱清單含全部 13 條；commit 順序 2b1796f（測試，當時 BindView.vue 是 12 行佔位檔）→ 6959578（實作；spec 只新增案例與加強斷言，未放寬）。加綁 401（使用者裁定，domain_spec §4 /bind）：自行以 parentRefreshHttp refresh 一次並以同一組正規化綁定碼重送，期間「綁定」持續 loading；refresh 失敗或重送再 401 → parentAuth.clear()、children.clear() 後 replace(/login)；首綁 401 不 refresh、顯示逾時提示，皆有測試。depends_on 已含 PARENT-004（2569673）。未知錯誤碼與網路錯誤一律傳 code null、fallbackMessage 空字串（KNOWN_CODES 與 BindCodeErrorNotice 的對照表一致），不顯示後端原始訊息；綁定碼不寫進 console / storage（樣式測試以原始碼斷言）。稿 parent-page-bind.html 已 approved，decisions 14 條逐條核對與實作一致（模式在進頁時固定，避免 setParent 後畫面切成加綁）。突變 25 個全殺（正規化、格式檢查、清欄位錯誤、首綁 / 加綁 401 分流、409 視同成功、重送再 401、refresh 失敗、清小孩、未知碼、選新小孩、snackbar、回首頁、加好友網址、開始使用驗 redirect、回焦點、收起舊錯誤、防連點、模式固定、before 含登入資料、載入小孩、清 bindPending、返回 /more、班級 null）；還原後 git diff 乾淨。web-lint 乾淨；web-typecheck 錯誤不在本 task 檔案。殘留（不擋）：(1) refresh 因網路錯誤失敗也視同登入失效（規格如此），暫時斷線會被登出。(2) 測試用的是沒有守衛的 router；真實路由下登入失效的 replace(/login) 會經 /login 守衛探測 /parent/me（401 → refresh 401 → PARENT-013 handler 依目前路由 /bind 改導 /login?redirect=/bind），最終停在 /login?redirect=/bind，重新登入後回到加綁頁，行為可接受但未涵蓋。(3) 自行 refresh 不經 FRONTEND-001 的去重，與同時進行的自動 refresh 撞到時靠 409 refresh_in_progress 視同成功（有測試）。(4) 首綁成功要等公開設定回應才導頁，設定請求很慢時「綁定」持續 loading（最長 http 逾時）。"
       }
     },
     {
@@ -3689,7 +3689,7 @@
       "granularity_unit": "config",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-012"
@@ -3710,9 +3710,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。2 條 red_case 皆有同名測試，tdd.run 2/2 綠（其餘 15 條 skipped，名稱清單只選到這 2 條）；整檔 router.spec.ts 17/17 綠。commit 順序 986ac28（測試，當時 router.ts 沒有 scrollBehavior）→ 176275a（實作）。實作為 scrollBehavior: savedPosition ?? { top: 0 }，與 description 一致。突變 2 個全殺（一律回頂端、只回 savedPosition）；web-lint 乾淨。殘留（不擋）：測試直接呼叫 options.scrollBehavior，真實捲動在 happy-dom 無法驗證；同一路徑只改 query 也會回頂端，description 已註明照 savedPosition 規則即可。"
       }
     },
     {
@@ -3722,7 +3722,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-012"
@@ -3743,9 +3743,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。2 條 red_case 皆有同名測試（另有「已有快取 session 帶 logged_out 也停在 /login」1 條），tdd.run 3/3 綠；整檔 router.spec.ts 17/17 綠，lazy routes 案例已給 30_000 timeout。commit 順序 986ac28（測試）→ 176275a（實作）。測試以 PARENT-013 規格的 unauthenticated handler 重現：拿掉放行時最後網址變成 /login?redirect=/more（logged_out 遺失），加上後停在 /login?logged_out=1 且 /parent/me、refresh 皆 0 次。突變 3 個全殺（拿掉放行、放行移到探測之後、放行到非 public 頁）；web-lint 乾淨。殘留（不擋）：守衛以 logged_out !== undefined 判斷（?logged_out 無值時 query 為 null 也算），LoginView 則把 null 視為沒有 logged_out；PARENT-033 一律帶 logged_out=1，觀測不到差異。logged_out 頁再登入的迴圈屬 PARENT-030（已打回），與本守衛無關。"
       }
     }
   ]
