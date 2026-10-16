@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 190,
-  "last_updated": "2026-10-16T15:09:58Z",
+  "version": 191,
+  "last_updated": "2026-10-16T15:10:33Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2439,8 +2439,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/PickupProxyView.vue",
       "source_ref": "FE:src/parent/views/PickupView.vue::askRegenerate",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-010",
