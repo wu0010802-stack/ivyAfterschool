@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 199,
-  "last_updated": "2026-10-16T15:33:33Z",
+  "version": 200,
+  "last_updated": "2026-10-16T15:38:42Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1618,7 +1618,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ChildHubView.vue",
       "source_ref": "FE:src/parent/views/ChildHubView.vue::targetId",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-010",
@@ -1662,9 +1662,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。14 條 red_case 皆有同名測試（quick links 的停用部分在「quick links are disabled without children」；另有卡片導頁、我到了對進行中請求、終態請求視為沒有進行中、取消不送出、記住不再提醒、清單失敗停用、清單載入中可用、舊選取不在清單、下拉不顯示骨架等 10 條），tdd.run 24/24 綠，verbose 名稱清單含全部 14 條。commit 順序 9bc1e58（測試，當時 ChildHubView.vue 是 12 行佔位檔）→ 09a52c3（只補 wrapper.element 型別，斷言未改）→ 092d454（實作）。實作者回報的兩處偏離判斷：(1) useTodayStatus 傳「清單裡確實有這位小孩才給 id」的 computed，而非 toRef(children, selectedId)——清單回來前不拿 localStorage 殘留的舊 id 打 today，是 red_case「children skeleton」與「ignores a stale stored child」的必要做法；(2) 卡片以 watch(lastResult) 呼叫 applyPickup，涵蓋 confirm() 與「下次不再提醒」後直接送出兩條路，是 description「confirm() 回傳非 null 時 applyPickup」的超集。兩者行為正確，但 description 的寫法未同步，建議協調者把這兩句寫回 description（文件只記最終決定）。reviewer 以 Chromium（390×844，scratchpad 的 Vite dev 設定 dts: false，API 以 Playwright route 模擬）實開 /#/ 與核可稿 parent-page-child-hub.html 對照「有資料」「今日狀態載入失敗」「無綁定小孩」三種狀態，截圖逐項一致；量測：頁面內距 8px 16px 24px、錯誤列 358×48、「重試」52×48、常用功能三格各 114×94（≥ 88）、空清單時三格 aria-disabled 且 opacity 0.38、確認對話框標題 / 說明 / 「下次不再提醒」整列 48px、兩顆按鈕 48px，皆符合稿的 decisions。突變 26 個殺 23；存活 3 個：「停用仍導頁（拿掉 preventDefault 後的 return）」等價（RouterLink 的 navigate 遇 defaultPrevented 不導頁）、「重試改 children.load() 非 force」與「拿掉 children.loading 判斷」在目前情境等價（失敗後 loaded 為 false，非 force 也會重抓、狀態仍落在 loading）。還原後 git diff 乾淨（實作者看到的單行未提交改動是突變期間的暫時狀態，已以 cmp 確認還原）。web-lint 乾淨；web-typecheck 唯一錯誤在他人進行中的 views/LeavesView.spec.ts，不在本 task。實作者發現的「我到了遇 invalid_pickup_status / pickup_request_not_found 時，pickupRequests store 會 load(true)，但首頁卡片走 useTodayStatus 不跟著重抓」：description 與稿 decisions 第 6 條都規定業務錯誤「卡片不變」，本 task 照規格，不擋；實際影響是 snackbar 說「狀態已更新，請確認後再操作」而卡片仍是舊狀態，要等 ws 事件、poller、回到前景或下拉才更新（ws 連線中通常已先收到變動事件，機率低）。建議另開小 task：這兩個錯誤碼時首頁呼叫 useTodayStatus.refresh()（需同步改 description 與稿 decisions 第 6 條）。殘留（不擋）：身分卡骨架高 80px（description / 稿規定）而 ChildContextHeader 實際高 84px，載入完成時下方內容下移 4px。"
       }
     },
     {
