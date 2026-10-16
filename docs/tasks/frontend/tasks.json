@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 247,
-  "last_updated": "2026-10-16T14:19:12Z",
+  "version": 248,
+  "last_updated": "2026-10-16T14:19:56Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -649,11 +649,11 @@
     {
       "id": "FRONTEND-028",
       "title": "實作 bootstrap.ts 與 main.ts：建立後台 app、注入 http handler、掛載",
-      "description": "建立 `apps/web/src/bootstrap.ts`：\n```ts\nexport function createAdminApp(opts?: { history?: RouterHistory }): { app: App; router: Router; pinia: Pinia }\n```\n- `createApp(App)`、`createPinia()`、`createAdminRouter(opts.history)`（FRONTEND-026）。\n- `setAdminHttpHandlers`（FRONTEND-020）：\n  - `refresh`：`const user = await authApi.refresh(); useAuthStore().setUser(user)`（refresh 回來的權限可能已變更）。\n  - `authFailure`：`useAuthStore().reset()`；目前路由非 public 時 `router.replace({ path: '/login', query: { redirect: currentRoute.fullPath } })`。\n  - `passwordChangeRequired`：`router.replace('/change-password')`。\n- `app.config.errorHandler`：未捕捉錯誤以 `ElMessage.error(errorMessage(err, '發生未預期的錯誤'))` 顯示（`isCanceled` 略過）。\n`apps/web/src/main.ts` 取代 INFRA-005 的佔位：`import 'element-plus/dist/index.css'`、`import '@/styles/base.css'`（在 element-plus 樣式之後）、`createAdminApp().app.mount('#app')`。\n- 新增 `apps/web/src/styles/base.css`（全域基底樣式；已核可設計稿 page-login / page-error / page-change-password / page-admin-shell 都假設有，沒有的話整頁置中的頁面會多出 body 預設的 8px 邊與捲軸）：`body { margin: 0 }`、`*, *::before, *::after { box-sizing: border-box }`、`body` 的字型 / 文字色 / 背景用 Element Plus 變數（`var(--el-font-family)`、`var(--el-text-color-primary)`、`var(--el-bg-color-page)`）。\n- 測試策略：本 task 的測試一律 `vi.mock('@/router/viewLoaders')` 回傳 stub 元件（不載入真實 view），因此不需等 view task 完成即可轉綠，view 完成後也不受其內部依賴影響。\n\n**驗收標準**\n- authFailure 會清空登入狀態並導向 /login 帶 redirect。\n- refresh handler 呼叫 refresh endpoint 並更新 store 的權限。\n- passwordChangeRequired 導向 /change-password。",
+      "description": "建立 `apps/web/src/bootstrap.ts`：\n```ts\nexport function createAdminApp(opts?: { history?: RouterHistory }): { app: App; router: Router; pinia: Pinia }\n```\n- `createApp(App)`、`createPinia()`、`createAdminRouter(opts.history)`（FRONTEND-026）。\n- `setAdminHttpHandlers`（FRONTEND-020）：\n  - `refresh`：`const user = await authApi.refresh(); useAuthStore().setUser(user)`（refresh 回來的權限可能已變更）。\n  - `authFailure`：`useAuthStore().reset()`；目前路由非 public 時 `router.replace({ path: '/login', query: { redirect: currentRoute.fullPath } })`。第一次導航尚未完成時（`currentRoute` 仍是 `START_LOCATION`，例如 `restore()` 的 `/admin/auth/me` 401 且 refresh 也失敗）只清狀態、不導航，由 authGuard 看到未登入導向 `/login`（兩個導航同時進行會互相取消）。ws 以 4401 / 4403 關閉時（`triggerAuthFailure`）走同一個 handler。\n  - `passwordChangeRequired`：`router.replace('/change-password')`。\n- `app.config.errorHandler`：未捕捉錯誤以 `ElMessage.error(errorMessage(err, '發生未預期的錯誤'))` 顯示（`isCanceled` 略過），並 `console.error` 原始錯誤供除錯。\n- Element Plus 全域語系：`provideGlobalConfig({ locale: zhTw }, app, true)`（`zhTw` 取自 `element-plus/es/locale/lang/zh-tw`）。App.vue 的 `el-config-provider`（FRONTEND-027）只涵蓋元件樹；命令式的 `ElMessageBox` / `ElMessage` 在樹外渲染，沒有全域設定時按鈕預設文字是英文（OK / Cancel）；不用 `app.use(ElementPlus)` 整包安裝。\n`apps/web/src/main.ts` 取代 INFRA-005 的佔位：`import 'element-plus/dist/index.css'`、`import '@/styles/base.css'`（在 element-plus 樣式之後）、`createAdminApp().app.mount('#app')`。\n- 新增 `apps/web/src/styles/base.css`（全域基底樣式；已核可設計稿 page-login / page-error / page-change-password / page-admin-shell 都假設有，沒有的話整頁置中的頁面會多出 body 預設的 8px 邊與捲軸）：`body { margin: 0 }`、`*, *::before, *::after { box-sizing: border-box }`、`body` 的字型 / 文字色 / 背景用 Element Plus 變數（`var(--el-font-family)`、`var(--el-text-color-primary)`、`var(--el-bg-color-page)`）。\n- 測試策略：本 task 的測試一律 `vi.mock('@/router/viewLoaders')` 回傳 stub 元件（不載入真實 view），因此不需等 view task 完成即可轉綠，view 完成後也不受其內部依賴影響。\n\n**驗收標準**\n- authFailure 會清空登入狀態並導向 /login 帶 redirect。\n- refresh handler 呼叫 refresh endpoint 並更新 store 的權限。\n- passwordChangeRequired 導向 /change-password。",
       "granularity_unit": "config",
       "target_path": "apps/web/src/bootstrap.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-027",
@@ -671,7 +671,11 @@
           "createAdminApp auth failure resets store and redirects：createAdminApp({history: createMemoryHistory()})、已登入停在 /students → 觸發 GET /admin/classes 401 且 POST /admin/auth/refresh 401 → useAuthStore().status === 'anonymous'、router.currentRoute.value.fullPath === '/login?redirect=/students'",
           "createAdminApp refresh handler updates permissions：GET /admin/students 第一次 401、POST /admin/auth/refresh 回 user.permissions ['students:read','students:write']、重試 200 → 完成後 useAuthStore().hasPermission('students:write') === true",
           "createAdminApp password change required redirects：GET /admin/students 回 403 password_change_required → router.currentRoute.value.path === '/change-password'",
-          "createAdminApp loads global base styles：以 readFileSync 讀 src/styles/base.css 與 src/main.ts，base.css 含 body margin 0 與全域 border-box 規則；main.ts 在 'element-plus/dist/index.css' 之後匯入 '@/styles/base.css'（拿掉任一條 → 轉紅）"
+          "createAdminApp loads global base styles：以 readFileSync 讀 src/styles/base.css 與 src/main.ts，base.css 含 body margin 0 與全域 border-box 規則；main.ts 在 'element-plus/dist/index.css' 之後匯入 '@/styles/base.css'（拿掉任一條 → 轉紅）",
+          "createAdminApp auth failure from ws close also redirects with the current page：停在 /classes?academic_year=115 → triggerAuthFailure() → status anonymous、path /login、query.redirect === '/classes?academic_year=115'；停在 /login（public）時只清狀態、fullPath 仍為 /login；第一次導航完成前觸發 → router.replace 未被呼叫，最後由守衛導向 /login",
+          "createAdminApp shows uncaught errors as a message except cancellations：app.config.errorHandler(ApiError(500, '伺服器暫時無法處理')) → 畫面出現該訊息；一般 Error → 「發生未預期的錯誤」且不顯示原始英文；axios CanceledError → 不新增 .el-message；console.error 只記非取消的 2 次",
+          "createAdminApp sets zh-tw for imperative message boxes：createAdminApp 後 ElMessageBox.confirm('確定要刪除嗎？', '刪除')（不傳按鈕文字）→ 按鈕文字依序為 zhTw.el.messagebox.cancel、confirm（字串取自 locale 物件）；點取消 → promise 以 'cancel' 結束",
+          "createAdminApp mounts the app shell with router and pinia：push /login 後 app.mount → 渲染 view stub、沒有側欄、document.title === '登入 - 安親班管理系統'"
         ],
         "run": "just web-test src/bootstrap.spec.ts -t \"createAdminApp\"",
         "notes": ""
