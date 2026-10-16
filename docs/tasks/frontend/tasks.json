@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 203,
-  "last_updated": "2026-10-16T05:34:22Z",
+  "version": 204,
+  "last_updated": "2026-10-16T05:38:28Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5539,7 +5539,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/DashboardView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-260",
@@ -5566,10 +5566,18 @@
           "DashboardView keeps data on refresh failure：第二次 GET 回 500 → 畫面仍顯示 '80'，body 含錯誤訊息",
           "DashboardView colors counts only when positive：not_arrived 0、absent 0 → '未到'、'缺席' 卡根元素 class 含 'tone-info'；not_arrived 4、absent 1 → 分別含 'tone-warning'、'tone-danger'",
           "DashboardView homework placeholder without arrivals：homework {total:0,done:0,in_progress:0,not_started:0,completion_rate:0} → 文字含 '今天還沒有學生到班'，不含 '0%'",
-          "DashboardView updated time text：載入後文字含 '剛剛更新'；推進 30 秒 → 含 '30 秒前更新'；設 document.hidden=true 並觸發 visibilitychange 後再推進 60 秒 → 含 '1 分鐘前更新'"
+          "DashboardView updated time text：載入後文字含 '剛剛更新'；推進 30 秒 → 含 '30 秒前更新'；設 document.hidden=true 並觸發 visibilitychange 後再推進 60 秒 → 含 '1 分鐘前更新'",
+          "DashboardView homework card links with homework read：有 homework:read → 作業卡 role=link、tabindex 0、有箭頭，Enter → path '/homework'；有 attendance:read 時點 '缺席' → '/attendance'",
+          "DashboardView stops refreshing after unmount：unmount 後推進 180 秒並切換可見性 → GET 仍只有 1 次",
+          "DashboardView shows retry on first load failure：第一次 GET 500 → 文字含 '無法載入今日儀表板'、沒有統計卡、副標與更新時間不顯示；點 '重試' 且回 200 → 顯示 '80'",
+          "DashboardView shows skeletons while first loading：GET 未回應 → 9 個 [data-test=stat-skeleton]、作業卡 skeleton、近期請假 skeleton、沒有副標與更新時間、'重新整理' disabled；回應後 '剛剛更新'",
+          "DashboardView manual refresh shows loading：點 '重新整理' → GET +1 且按鈕 is-loading，請求中再點不重複送出；回應後顯示新數值且 '剛剛更新'",
+          "DashboardView marks full homework completion as success：completion_rate 100 → '100%' 且 el-progress 有 is-success",
+          "DashboardView keeps layout from mockup：?raw 斷言 .dash-grid--5 / --4 為 5 / 4 欄、.dash-row 為 2fr : 1fr、@media (max-width: 1199.98px) 改單欄、區塊標題 14px 600",
+          "DashboardView is wired in view loaders：(await VIEW_LOADERS.DashboardView()).default === DashboardView"
         ],
         "run": "just web-test src/views/DashboardView.spec.ts -t \"DashboardView\"",
-        "notes": ""
+        "notes": "fake timers 只 fake setTimeout / setInterval / Date（flushPromises 走 setImmediate）；document.hidden 以 defineProperty 模擬並派發 visibilitychange。版面另以 Playwright（真實 Chromium）實測 1440 / 1200 / 1199 / 1024 / 390 寬：≥ 1200 接送與作業 2 : 1 並排、< 1200 改上下、皆無水平捲動。"
       },
       "review": {
         "status": "pending",
