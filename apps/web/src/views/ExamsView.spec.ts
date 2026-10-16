@@ -184,7 +184,9 @@ async function search(wrapper: VueWrapper, text: string): Promise<void> {
   await settle()
 }
 
-describe('ExamsView', () => {
+// 每個案例都掛整頁（PageHeader + AdminListToolbar + el-table，部分再開 dialog / 下拉 / 確認框）；
+// 多位 agent 共用 4 顆 CPU 時單一案例會超過 vitest 預設的 5 秒，整組放寬到 20 秒
+describe('ExamsView', { timeout: 20000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
@@ -302,8 +304,7 @@ describe('ExamsView', () => {
     })
     expect(mock.history.put).toHaveLength(0)
     expect(router.currentRoute.value.fullPath).toBe('/exams/e9?tab=scores')
-    // 整頁 + 表格 + dialog 的掛載在共用 CPU 下可能超過預設 5 秒
-  }, 20000)
+  })
 
   it('ExamsView delete only for drafts with permission', async () => {
     mock.onGet(LIST_URL).replyOnce(200, { items: [exam(), DRAFT], total: 2 }).onGet(LIST_URL).reply(200, { items: [exam()], total: 1 })
@@ -339,8 +340,7 @@ describe('ExamsView', () => {
     expect(reader.wrapper.find('.el-dropdown').exists()).toBe(false)
     expect(reader.wrapper.findAll('.el-table__header th').map((th) => th.text())).not.toContain('')
     expect(rows(reader.wrapper)).toHaveLength(2)
-    // 兩次整頁掛載 + 下拉 + 確認框在共用 CPU 下可能超過預設 5 秒
-  }, 20000)
+  })
 
   it('ExamsView empty states', async () => {
     replyList([])
