@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 259,
-  "last_updated": "2026-10-16T14:33:49Z",
+  "version": 260,
+  "last_updated": "2026-10-16T14:35:41Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3624,7 +3624,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/AttendanceMonthlyView.vue",
       "source_ref": "FE:src/views/StudentAttendanceView.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
@@ -3660,9 +3660,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f5",
+        "notes": "通過。tdd.run 11/11 綠，11 條 red_case 依名稱一一對應；測試 46f2cff 先於實作 8fde4f2；788713e 事後補的「只採用最新回應」以突變（移除序號防護）證明會轉紅；c742126 修正月份欄寬（Chromium 實測 150px）。b5d7c26 規格調整逐處核對：網址 month 不合法或晚於本月退回本月、欄寬 150px、班級為 classOptions() 全部未封存班級且選「全部」移除 class_id、lookups 失敗仍可看報表、重抓序號防護、匯出預設檔名的班級名稱來源、載入失敗說明與匯出停用，皆與稿 decision 2、10、11 一致；red_case 擴充 2 條、新增 5 條，沒有刪改或放寬。API 與 api/attendance.ts（fetchMonthlyAttendance / exportMonthlyAttendance）、B321 / B322 一致；viewLoaders 已接上本頁。突變 16 處 15 處轉紅；存活：月份選擇器未來月份 disabled（description 有、無 red_case，實作正確）。稿 decisions 逐條：1 PageHeader + 副標 + 匯出、面板內篩選列 → 合計列 → 圖例 → 格狀表、整頁只看 attendance:read 符合；2 月份 type month「YYYY 年 M 月」不可清空、未來 disabled、班級全部 + 未封存班級、同步網址 query、改了立即重抓且保留舊表格蓋 loading、共 N 位學生符合；3 營業日以 days 計算並在本月附「統計到 MM/DD，已過 N 天」、應出勤 ? 提示、出席綠 / 缺席 > 0 紅 / 未登記 > 0 橘、皆為人次符合；4~9 由 MonthlyAttendanceGrid（FRONTEND-128）提供，選班級時傳 hideClassColumn 符合；10 匯出中轉圈「匯出中…」停用、成功不跳訊息、失敗顯示後端訊息、載入中 / 失敗 / 重抓 / 無學生停用符合；11 首次載入 skeleton、空清單 EmptyState 不顯示合計列與圖例、載入失敗 EmptyState error + 重試符合；12 沒有多做 ivy 的圖表等功能符合。Chromium 實測（以 200px 側欄 + 56px 頂欄 + 20px 內距模擬外框）：1366×768、1280×800、1180×820 合計列單行、表格底部距視窗 40px、主區不捲動，切換月份前後一致。殘留：(1) 1024×768 且側欄展開時，本月的合計列（含「統計到…」）換成兩行、過去月份為一行；格狀表只在掛載與 resize 時量高度，從本月切到過去月份後底部留白變 70px，反向（先開過去月份再切本月）會超出約 29px 讓主區捲動，與 FRONTEND-128 殘留同源；(2) today / 本月在頁面建立時決定，頁面跨月開著不會更新；(3) 換篩選後載入失敗再按重試時，回應前會短暫顯示前一個篩選的舊表格（有 loading 遮罩）；(4) lookups 載入失敗只剩「全部」的路徑沒有測試；(5) just web-lint 3 檔 exit 0；just web-typecheck exit 2，錯誤只在他人未追蹤的 src/parent/components/pickup/AuthorizationForm.vue。"
       }
     },
     {
