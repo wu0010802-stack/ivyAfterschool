@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 295,
-  "last_updated": "2026-10-16T15:34:03Z",
+  "version": 296,
+  "last_updated": "2026-10-16T15:34:39Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4920,7 +4920,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupReplyDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
@@ -4954,9 +4954,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 13 條皆有同名測試（另有前次回覆優先、摘要狀態、只送訊息、員工代建文案、重開重置、觸控尺寸 6 條），tdd.run 19 綠；26ee62e（紅，PickupReplyDialog.vue 尚不存在，spec 之後未再改）→ 197a810 → 8a90609。8a90609 的 description 補述（404 / 409 回 null 直接關、其他錯誤上方 alert 不關、送出期間已非 pending 不再確認、每次開啟重置、時間選單自開啟當下進位到 5 分至 21:00、快捷以點擊當下為準上限 23:55、訊息去空白、dirty 關閉確認、送出中 loading）與核可稿 page-pickup-pos.html 的回覆 dialog 兩條 decisions 一致。突變 16 項中 15 項轉紅（送空訊息、不去空白、非 pending 仍確認、確認失敗不鎖表單、重試重送回覆、null 仍 done、成功文案對調、預設時間順序、非 staff 也帶入訊息、快捷不進位、重開不重置、表單不鎖、非 pending 也顯示確認勾選、作業完成仍顯示未設定、不顯示員工代建提示），還原後 git diff 乾淨；唯一仍綠：dirty 恆為 false（關閉前確認未測，屬 FormDialog 既有行為，殘留）。Chromium 1024×768 實測（scratchpad 的 Vite harness，以虛擬模組載入 HEAD 版本，用完已關）：寬 560、標題「回覆預計可接送時間：王小明」、摘要淡灰底、快捷鈕 74×44 一列、提示在快捷列下方、「同時確認此請求」高 44、時間欄預設 17:40。footer 鈕 32px 與時間上限 21:00 對上 pickup.window 是協調者已列的既有議題。web-lint 乾淨；web-typecheck 唯一錯誤在他人進行中的 parent ChildHubView.vue。"
       }
     },
     {
@@ -4966,7 +4966,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupCompleteDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
@@ -4974,7 +4974,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f2 打回】選取的代理授權失效後，送出會變成以授權 id 當 guardian_id 的監護人交付：choice 仍是 a:{id}，但 studentAuthorizations 已不含它（authorizations 由 board 依 ws 重抓更新，例如家長取消代理授權後 effective_status 變 cancelled），chosenAuthorization 變 null、送出鈕從「前往核驗」變成可按的「完成交付」、畫面上沒有任何選項被選；按下後 bodyOf 把非 override 的 choice 一律當監護人，送出 POST /admin/pickup/requests/{id}/complete {method:\"guardian\", guardian_id:\"pa1\"}。反例（reviewer 以 spec 探針實測）：監護人 王大明、王阿嬤皆可接送 + active 授權 pa1 → 選「陳阿姨」→ setProps authorizations 改為 pa1 cancelled → 送出鈕「完成交付」且未停用 → 送出 body {method:\"guardian\",guardian_id:\"pa1\"}；後端回 422 invalid_guardian，使用者看到「監護人資料已變更，請重新選擇」。驗收：選取的授權不再出現在代理組時清掉選擇（送出鈕回到停用、文字「完成交付」），必要時提示授權已失效；bodyOf 只把 g: 開頭的選擇當監護人，其他未知選擇不送出；補對應測試（上述情境不送任何 complete 請求、不 emit verify-authorization）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/PickupCompleteDialog.spec.ts",
@@ -4997,9 +4997,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f2",
+        "notes": "打回 1 項（見 risk_notes【review-r10-f2 打回】）：選取的代理授權失效後，送出變成以授權 id 當 guardian_id 的監護人交付。其餘檢查通過：red_cases 10 條皆有同名測試（另有骨架、沒有監護人資料、其他錯誤、重開重載、觸控尺寸 5 條），tdd.run 15 綠；e3f2a14 / 088c2a5（紅，PickupCompleteDialog.vue 尚不存在）→ 10d0e61 → 3ecc6b5 → 0402e62。088c2a5 不是放寬：主管確認交付選項的說明（核可稿原文「沒有可接送的監護人或代理授權時，由主管確認後交付」）本身含「沒有可接送的監護人」，原本的部分字串否定斷言在 canOverride 時必然失敗；改為完整提示文案加上沒有 warning alert，仍驗得出警告不出現。0402e62 的實作細節補述與核可稿完成交付 dialog 兩條 decisions 一致。突變 18 項（含修正後重做的載入失敗兩項）中 15 項轉紅；仍綠的：關閉後才回來的監護人舊回應寫入（description 有寫、沒有測試）、dirty 恆為 false（關閉前確認未測）、載入中不停用送出（載入時選擇必為未選，等價）。Chromium 1024×768 實測（scratchpad 的 Vite harness，以虛擬模組載入 HEAD 版本，用完已關）：寬 560、標題「完成交付：王小明」、三組小標「監護人 / 代理接送（今日授權）/ 其他」、每個選項卡 528×56、唯一可接送者預選、主管確認交付顯示備註與「會記錄於稽核紀錄」、選代理後送出鈕「前往核驗」。web-lint 乾淨；web-typecheck 唯一錯誤在他人進行中的 parent ChildHubView.vue。"
       }
     },
     {
