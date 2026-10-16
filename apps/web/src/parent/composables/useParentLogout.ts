@@ -21,6 +21,14 @@ export interface ParentLogout {
   loggingOut: Readonly<Ref<boolean>>
 }
 
+// 模組層級：所有 useParentLogout() 實例與 PARENT-013 的 401 handler 共用同一個「登出進行中」狀態
+const loggingOut = ref(false)
+
+/** 登出流程進行中（PARENT-013 的 401 handler 據此略過導向，由登出流程自己導到 logged_out） */
+export function isParentLoggingOut(): boolean {
+  return loggingOut.value
+}
+
 export function useParentLogout(): ParentLogout {
   const router = useRouter()
   const parentAuth = useParentAuthStore()
@@ -30,8 +38,6 @@ export function useParentLogout(): ParentLogout {
   const pickupRequests = usePickupRequestsStore()
   const homeworkToday = useHomeworkTodayStore()
   const snackbar = useSnackbarStore()
-
-  const loggingOut = ref(false)
 
   /** 結束 LINE session；LIFF 未設定、SDK 載入或 init 失敗都忽略（伺服器端 session 已撤銷） */
   async function endLineSession(): Promise<void> {

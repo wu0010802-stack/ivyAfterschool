@@ -9,6 +9,7 @@ import './styles/m3-tokens.css'
 import './styles/base.css'
 import './styles/icons.css'
 import { setUnauthenticatedHandler } from './api/http'
+import { isParentLoggingOut } from './composables/useParentLogout'
 import ParentLayout from './layouts/ParentLayout.vue'
 import { createParentRouter } from './router'
 import { useChildrenStore } from './stores/children'
@@ -38,7 +39,8 @@ export function createParentApp(opts: ParentAppOptions = {}): { app: App; router
     useParentWsStore(pinia).disconnect()
     const current = router.currentRoute.value
     // 第一次導航還沒完成（START_LOCATION）時交給守衛導向，才會帶上原本要去的路徑，也避免兩個導航互相取消
-    if (current === START_LOCATION || current.meta.public || redirecting) return
+    // 登出進行中：登出流程自己會導到 /login?logged_out=1，這裡再導 redirect= 會取消它（LINE 內會自動再登入）
+    if (current === START_LOCATION || current.meta.public || redirecting || isParentLoggingOut()) return
     redirecting = true
     void router.replace({ path: LOGIN_PATH, query: { redirect: current.fullPath } }).finally(() => {
       redirecting = false
