@@ -55,6 +55,7 @@ describe('liff', () => {
     sessionStorage.clear()
     sdk.init.mockResolvedValue(undefined)
     sdk.isLoggedIn.mockReturnValue(true)
+    sdk.isInClient.mockReturnValue(true)
     config.getPublicConfig.mockResolvedValue(configWith('1650000000-abc'))
   })
 
@@ -71,10 +72,40 @@ describe('liff', () => {
     const third = await initLiff()
 
     expect(sdk.init).toHaveBeenCalledTimes(1)
-    expect(sdk.init.mock.calls[0]![0]).toEqual({ liffId: '1650000000-abc', withLoginOnExternalBrowser: true })
+    expect(sdk.init.mock.calls[0]![0]).toEqual({ liffId: '1650000000-abc', withLoginOnExternalBrowser: false })
     expect(first).toBe(sdk)
     expect(second).toBe(sdk)
     expect(third).toBe(sdk)
+  })
+
+  it('liff init does not auto login on external browser', async () => {
+    await expect(initLiff()).resolves.toBe(sdk)
+
+    expect(sdk.init).toHaveBeenCalledTimes(1)
+    expect(sdk.init.mock.calls[0]![0]).toStrictEqual({ liffId: '1650000000-abc', withLoginOnExternalBrowser: false })
+  })
+
+  it('liff init resolves on external browser without LINE login', async () => {
+    // 替身比照 @liff/init 2.31.1：withLoginOnExternalBrowser 為 true 且未登入時，init 直接 login() 轉址、promise 永不 resolve
+    sdk.isInClient.mockReturnValue(false)
+    sdk.isLoggedIn.mockReturnValue(false)
+    sdk.init.mockImplementation((cfg) => {
+      if (cfg.withLoginOnExternalBrowser && !sdk.isInClient() && !sdk.isLoggedIn()) {
+        sdk.login({ redirectUri: window.location.href })
+        return new Promise<void>(() => undefined)
+      }
+      return Promise.resolve()
+    })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(() => resolve('timeout'), 100)
+    })
+
+    const result = await Promise.race([initLiff(), timeout])
+    clearTimeout(timer)
+
+    expect(result).toBe(sdk)
+    expect(sdk.login).toHaveBeenCalledTimes(0)
   })
 
   it('liff init rejects when not configured', async () => {
