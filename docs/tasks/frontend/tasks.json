@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 317,
-  "last_updated": "2026-10-16T19:33:39Z",
+  "version": 318,
+  "last_updated": "2026-10-16T19:34:57Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3734,7 +3734,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/LeavesView.vue",
       "source_ref": "FE:src/views/StudentLeavesListView.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
@@ -3770,9 +3770,9 @@
         "notes": "13 passed（8 條 red_cases + 5 條延伸：清空日期／重設、單日／原因 fallback／學生連結、取消後重載、取消失敗關閉後重載、載入失敗重試）。describe timeout 20s（happy-dom 下 el-select／el-date-picker 渲染慢）；日期區間改值以 findComponent ElDatePicker 直接 emit update:modelValue（happy-dom 打字不會 emit）。日期「不限」以 date_from=all&date_to=all 寫入網址；除列表篩選與 page 外不需額外 query 參數（usePagedList 洗參數問題不影響本頁）。突變 13/14 抓到；未抓到者為等價突變（預設 status 改空字串，toApiParams 會 fallback 回 active）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 通過。tdd.run 13/13 綠，8 條 red_case 皆以同名測試選到；紅燈 f48cf48（LeavesView.vue 不存在全紅）→ 實作 d8cf7fb（含 viewLoaders 接線）→ in_review 1c517f4。description 與稿 page-leaves.html 的列表相關 decisions（版面、篩選列、日期區間、表格欄位與寬度、附件展開、操作欄、沒有 students:read、三態）逐條相符；description 沒有改寫，tdd.notes 的「不限日期以 date_from=all&date_to=all 寫入網址」為 description「可清除 = 不限日期」的實作細節，合理。usePagedList 改寫（fca1f1b，已在 HEAD）不影響本頁：本頁沒有非列表參數，真實 Chromium 實測篩選寫回網址（status、date_from=all&date_to=all 等）與重新載入後還原（狀態、班級、學生姓名、日期「不限」、重設可按）皆正確。真實 Chromium（Asia/Taipei，模擬 220px 側欄）：1024 寬表格可視 730px、中間欄橫向捲動且學生 / 操作欄固定、展開區 sticky 捲動後仍貼齊可視區（left 0、寬 = 可視寬）、expand 預設箭頭隱藏；1280 寬可視 986px 不需捲動；「取消 / 整筆取消」依 end_date 與今天、篩選已取消時出現「取消紀錄」欄且操作欄消失、唯讀者沒有代登記 / 操作欄 / 學生篩選 / 學生連結但附件可看、空清單文字正確。突變 16 項中 11 項轉紅（預設 29 天、進行中永不成立、取消紀錄欄不出現、操作欄不看 leaves:write、代登記不看 students:read、附件不展開、不帶 presetStudent、取消成功 / 失敗關閉後不重新整理、空狀態文字對調、學生連結路徑），還原後 diff 乾淨。不穩定測試查核：HEAD 上依序 5 次、4 路並行 8 次、8 路並行 16 次共 29 次全綠（8 路時最慢單測 13.4s / 上限 20s）；12 路並行（load 約 15~25）時每次 1~4 條失敗，訊息全是「Test timed out in 20000ms」、沒有任何斷言失敗、失敗的測試每次不同，判定為 CPU 飽和造成的逾時，不是競爭。web-lint 乾淨；web-typecheck 本檔無錯（全專案唯一錯誤在他人進行中的 DismissalPosBoard.vue）。殘留：(1) 5 個突變存活（實作目前正確、未測）：end_date 等於今天時的「取消」邊界、本頁沒有資料時依狀態篩選決定取消紀錄欄 / 操作欄、日期快捷「本月」、「重新整理」鈕。(2) 高負載逾時：兩次掛載的測試（shows cancel actions…、shows cancelled info）約為其他測試兩倍時間，測試也沒有 unmount 掛載的 app；可考慮拆成單次掛載並在 afterEach unmount，根本解法是降低並行負載。(3) 操作欄 84：「整筆取消」連結鈕寬 62px、可用 60px，溢出 2px（與 CJK 字型無關，稿同寬），建議 88。(4) 期間 180 / 建立者 128 在容器字型（DejaVu / 文泉驛）下會截斷或換行；以 Helvetica / Arial 字寬估算「2026-10-16~2026-10-18」約 151px 可容納，與稿同 CSS。(5) 今天在頁面建立時算一次：頁面跨台北午夜仍開著時，預設日期區間、「進行中」與取消 / 整筆取消的判斷要重新整理頁面才換日。(6) red_case 3 的唯讀權限寫 ['leaves:read']，測試用 ['leaves:read','students:read']（同樣沒有 leaves:write，判斷相同）。"
       }
     },
     {
