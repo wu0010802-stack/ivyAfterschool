@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 451,
-  "last_updated": "2026-10-16T04:33:53Z",
+  "version": 452,
+  "last_updated": "2026-10-16T04:46:46Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -11995,7 +11995,7 @@
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/parent/pickup.py",
       "source_ref": "BE:api/parent_portal/pickup.py::cancel_authorization",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-422",
@@ -12018,7 +12018,8 @@
           "test_parent_pickup_auth_cancel_401：無 cookie → 401",
           "test_parent_pickup_auth_cancel_idor：他人授權 → 404 pickup_authorization_not_found，body 與 uuid4() 相同",
           "test_parent_pickup_auth_cancel_409：completed → 409 authorization_not_active",
-          "test_parent_pickup_auth_cancel_suspended_student_allowed：學生 status='suspended'、其過去日期仍為 active 的授權 → 200 status == 'cancelled'（不回 student_not_active；取消是保護性操作，不套用寫入守衛）"
+          "test_parent_pickup_auth_cancel_suspended_student_allowed：學生 status='suspended'、其過去日期仍為 active 的授權 → 200 status == 'cancelled'（不回 student_not_active；取消是保護性操作，不套用寫入守衛）",
+          "test_parent_pickup_auth_cancel_twice：同一授權連續取消兩次 → 第一次 200、第二次 409 authorization_not_active，DB 仍為 cancelled"
         ],
         "run": "just test-int apps/api/tests/integration/api/parent/test_pickup_endpoints.py -k \"test_parent_pickup_auth_cancel_\"",
         "notes": "家長端無權限碼，403 以 IDOR 404 取代（業務上的 403 pickup_not_allowed 另測）。"
@@ -15507,7 +15508,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/exam_service.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-463"
@@ -15524,7 +15525,8 @@
           "test_exam_summary_roster_cleared_cell_is_missing：名單 3 人；數學 A 90、B 有成績列但 score null 且 is_absent false（清空過的格子）、C 沒有成績列 → scored_count 1、absent_count 0、missing_count 2、average == Decimal('90.00')",
           "test_exam_summary_roster_excludes_out_of_roster：名單 2 人（A 數學 70、B 未登分）+ 學生 D 不在名單（另一班）但有數學成績列 100 → roster_count 2、scored_count 1、missing_count 1、average == Decimal('70.00')、max == Decimal('70')（D 的成績不列入統計，也不抵掉 B 的未填）",
           "test_exam_summary_roster_absent_not_missing：名單 3 人；數學 A 缺考、B 60、C 未登分 → absent_count 1、scored_count 1、missing_count 1，且 scored_count + absent_count + missing_count == roster_count",
-          "test_exam_summary_roster_query_count_is_constant：一科、名單 2 人與三科、名單 6 人各呼叫一次 get_exam_summary → 兩次執行的 SQL 語句數相同（沿用 test_student_exam_history_query_count_is_constant 的 before_cursor_execute 計數寫法）"
+          "test_exam_summary_roster_query_count_is_constant：一科、名單 2 人與三科、名單 6 人各呼叫一次 get_exam_summary → 兩次執行的 SQL 語句數相同（沿用 test_student_exam_history_query_count_is_constant 的 before_cursor_execute 計數寫法）",
+          "test_exam_summary_roster_excludes_inactive_students_scores：名單 2 人（A 數學 60、B 未登分）+ 考後退班者（數學 100）+ 封存者（缺考）→ roster_count 2、scored_count 1、absent_count 0、missing_count 1、average == Decimal('60.00')"
         ],
         "run": "just test-int apps/api/tests/integration/services/test_exam_service.py -k \"test_exam_summary_\"",
         "notes": "tdd.run 同時選到 BACKEND-463 的 test_exam_summary_stats / rounding / empty_subject（同一函式的回歸）。另跑 just test-int apps/api/tests/integration/api/admin/test_exams_endpoints.py -k \"test_admin_exam_summary_\" 確認端點回應不變。"
@@ -15542,7 +15544,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/student_import_service.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-155",
@@ -15560,7 +15562,10 @@
         "red_cases": [
           "test_import_preview_withdrawn_future_enrollment_is_invalid：clock 固定 2026-10-02（台北），一列 狀態 '退班'、入學日 '2026-10-03' → result.invalid == 1、該列 data is None、errors 含 '退班學生的入學日不可晚於今天（退班日以匯入當天計）'",
           "test_import_preview_withdrawn_enrollment_boundaries_are_valid：同一 clock，三列：退班 + 入學日 '2026-10-02'、退班 + 入學日空白、在學 + 入學日 '2026-10-03' → result.valid == 3、invalid == 0",
-          "test_import_execute_withdrawn_future_enrollment_has_errors：同第一條的檔案 execute → ConflictError code 'import_has_errors'（不是 'import_conflict'），details['rows'][0]['errors'] 含該訊息；students 表筆數與執行前相同"
+          "test_import_execute_withdrawn_future_enrollment_has_errors：同第一條的檔案 execute → ConflictError code 'import_has_errors'（不是 'import_conflict'），details['rows'][0]['errors'] 含該訊息；students 表筆數與執行前相同",
+          "test_import_preview_withdrawn_future_enrollment_uses_taipei_today：退班 + 入學日 '2026-10-02'；clock 為 UTC 2026-10-01 15:59（台北 10/01）→ invalid == 1；UTC 16:00（台北 10/02）→ valid == 1",
+          "test_import_preview_withdrawn_unparsable_enrollment_reports_format_error_only：退班 + 入學日 '明天' → errors 只有「入學日格式不正確（請用 YYYY-MM-DD）」",
+          "test_admin_import_preview_withdrawn_future_enrollment_invalid（apps/api/tests/integration/api/admin/test_students_endpoints.py，BACKEND-166 的 tdd.run 選得到）：預設時鐘 2026-09-01，退班 + 入學日 '2026-09-02' → 預覽 invalid == 1 且錯誤訊息如上；同檔 dry_run=false → 409 import_has_errors，DB 沒有新增學生"
         ],
         "run": "just test-int apps/api/tests/integration/services/test_student_import_service.py -k \"test_import_preview_withdrawn or test_import_execute_withdrawn\"",
         "notes": "改完 preview 簽章後另跑 BACKEND-166 的 tdd.run（just test-int apps/api/tests/integration/api/admin/test_students_endpoints.py -k \"test_admin_import_\"）確認 endpoint 測試仍全綠。"
@@ -15578,7 +15583,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/attendance_service.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-314",
@@ -15593,9 +15598,10 @@
           "integration"
         ],
         "red_cases": [
-          "test_child_monthly_attendance_in_stats_flags：clock 2026-10-02、學生 enrolled_on 2026-10-01、10/04 為休息日 → 10/01 與 10/02 in_stats True；09/30 以前、10/03（今天以後）與 10/04 False；stats.service_days == sum(d.in_stats for d in days)",
+          "test_child_monthly_attendance_in_stats_flags：clock 2026-10-02、學生 enrolled_on 2026-10-01、10/04 為休息日 → 查 2026-10：10/01 與 10/02 in_stats True；10/03、10/04（休息日）與 10/05（今天以後的營業日）False；stats.service_days == sum(d.in_stats for d in days)；另查 2026-09（入學日以前）每天 False、stats.service_days == 0",
           "test_child_monthly_attendance_in_stats_without_enrolled_on：enrolled_on null、同一 clock → 10/01（營業日）True、10/05（今天以後）False",
-          "test_parent_attendance_in_stats_in_response（apps/api/tests/integration/api/parent/test_attendance_endpoints.py）：GET /api/parent/children/{id}/attendance?month=2026-10 → 每個 days 項目都有 'in_stats' 鍵且為 bool，今天那筆為 true"
+          "test_parent_attendance_in_stats_in_response（apps/api/tests/integration/api/parent/test_attendance_endpoints.py）：GET /api/parent/children/{id}/attendance?month=2026-10 → 每個 days 項目都有 'in_stats' 鍵且為 bool，今天那筆為 true",
+          "test_child_monthly_attendance_in_stats_follows_stats_rule：clock 2026-10-09、enrolled_on 2026-10-05、10/06 為 closed_day、10/12 有請假出勤列 → 10/02 False、10/05 True、10/06（休息日）False、10/09（今天）True、10/12 status 仍為 leave 但 in_stats False；service_days == 4、attended 1、unrecorded 3"
         ],
         "run": "just test-int apps/api/tests/integration/services/test_attendance_service.py apps/api/tests/integration/api/parent/test_attendance_endpoints.py -k \"in_stats\"",
         "notes": ""
