@@ -494,10 +494,22 @@ describe('AttendanceView', () => {
   })
 
   it('AttendanceView waits for the child list before requesting', async () => {
+    const kids = deferredReply()
+    mock.onGet('/parent/children').reply(kids.reply)
+    mock.onGet(url('s1')).reply(200, monthData('2026-10', [PRESENT_TODAY]))
+
     const { wrapper } = await mountView(null, { items: [], loaded: false })
 
-    expect(mock.history.get).toHaveLength(0)
+    // 小孩清單還沒回來：不打出勤 API，顯示骨架
+    expect(mock.history.get.map((r) => r.url)).toEqual(['/parent/children'])
     expect(wrapper.find('.skeleton--card').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('出勤紀錄載入失敗')
+
+    kids.resolve([200, KIDS])
+    await flushPromises()
+
+    expect(useChildrenStore().selectedId).toBe('s1')
+    expect(mock.history.get.map((r) => r.url)).toEqual(['/parent/children', '/parent/children/s1/attendance'])
+    expect(statTexts(wrapper)[0]).toBe('上課日 21')
   })
 })
