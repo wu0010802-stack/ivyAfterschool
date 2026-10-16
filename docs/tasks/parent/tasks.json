@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 163,
-  "last_updated": "2026-10-16T13:08:36Z",
+  "version": 164,
+  "last_updated": "2026-10-16T13:11:56Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1143,7 +1143,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/LoginView.vue",
       "source_ref": "FE:src/parent/views/LoginView.vue::startLogin",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -1195,7 +1195,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/BindView.vue",
       "source_ref": "FE:src/parent/views/BindView.vue::submit",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -3661,7 +3661,7 @@
       "granularity_unit": "config",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-012"
@@ -3694,7 +3694,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-012"
