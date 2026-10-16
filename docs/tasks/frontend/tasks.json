@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 280,
-  "last_updated": "2026-10-16T15:13:12Z",
+  "version": 281,
+  "last_updated": "2026-10-16T15:18:19Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4024,14 +4024,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-154",
         "FRONTEND-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "作業項目列的長按攔截（FRONTEND-154）在觸控長按放開沒有產生 click 時會留到下一次 pointerdown：此時以 Esc 關掉選單、再用鍵盤在本卡的按鈕（預計可接送列、新增作業、⋮）按 Enter，第一次 Enter 會被吞、第二次才生效（Chromium 實測）。觸控點擊會先解除攔截，不受影響。\n可寫入、非今天、且整體狀態依項目推導為 done 時，⋮ 沒有任何可用的選項，點開是空選單（與稿相同的出現條件）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/homework/HomeworkStudentCard.spec.ts",
@@ -4051,9 +4051,9 @@
         "notes": "紅燈測試 1f72acf、實作 00a3190。除 7 條 red_cases 外另有 2 條：項目列依 sort_order、pending 轉圈只在對應項目、set-status(item, status) / edit-item / remove-item / add-item 轉發；⋮ 44×44、預計可接送列與「＋ 新增作業」高 44px、淡化 55%（?raw 原始碼斷言）。手動標記沿用 FRONTEND-152 的 deriveOverallStatus（無項目卻標 done 也算手動）。卡片與項目列都有 ⋮，測試以觸發鈕的 aria-controls 找對應選單。出勤 chip 只在 expected / left / leave / absent 顯示，請假 / 缺席淡化、已離班不淡化（稿 decisions 第 8 條）。突變自檢：手動標記改成「有項目未完成」、徽章不看 isToday、預計列按鈕不看 isToday、已離班也淡化、present 也顯示 chip、done 也顯示「標記整體完成」、選單的預計時間不看 isToday、項目不依 sort_order、改回依項目判斷送 done、唯讀仍顯示新增作業 各使對應測試轉紅。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f5",
+        "notes": "通過。tdd.run 9/9 綠：7 條 red_case 依名稱一一對應，另有項目轉發 / 排序 / pending 與觸控尺寸 2 條；測試 1f72acf 先於實作 00a3190；6892519 只改 status 與 tdd.notes，沒有改 description 或 red_case。手動標記沿用 FRONTEND-152 匯出的 deriveOverallStatus（無項目卻標 done 也算手動），項目列沿用 FRONTEND-154。突變 15 處全部轉紅（手動標記改「有項目未完成」、徽章 / 預計列 / 選單的預計時間不看今天、已離班也淡化、present 也顯示 chip、done 也顯示標記整體完成、項目不排序、改回送 done、唯讀仍顯示新增或 ⋮、pending 不分項目、純顯示列也 emit、⋮ 寬 40、刪除轉發錯）。稿 decisions 逐條（卡片相關）：6 姓名 18px、學號・班級、出勤 chip 只在 expected / left / leave / absent、整體狀態 tag + 手動標記灰字、⋮ 44×44 三個選項的出現條件符合；7 整體完成且今天「可接送」綠徽章 + 框線轉成功色淡色、請假 / 缺席 55% 透明、已離班不淡化符合；8 / 20 預計可接送列（鬧鐘 icon、粗體時間、說明最多 2 行、未設定文案；今天且可寫時整列是按鈕 ≥ 44px、右側箭頭、hover 主色淡底、點擊同 ⋮；唯讀或非今天純顯示）符合；9 / 10 項目列與唯讀（沒有 ⋮、沒有新增）符合；11「＋ 新增作業」44px 與無項目文案符合；16 非今天沒有設定預計時間與徽章、項目仍可操作符合；其餘為頁面層。Chromium 1024×768（兩欄、卡寬 442px）實測：⋮ 44×44；預計可接送按鈕列 408×44（無說明）/ 408×56（有說明）；「新增作業」424×44；請假卡 computed opacity 0.55；今天且完成的卡有「可接送」徽章；無項目卻標 done 的卡顯示「手動標記」；唯讀卡沒有 ⋮ 與新增、預計列為 DIV；非今天的卡預計列為 DIV、無徽章。154 攔截對卡片的影響（實測後判定不打回，寫入 risk_notes）：選單開著時 Element Plus 把焦點留在下拉觸發鈕，鍵盤本來就按不到卡片按鈕（與攔截無關）；只有「觸控長按放開沒有產生 click → 以 Esc 關掉選單 → 鍵盤在卡片按鈕按 Enter」時第一次 Enter 被吞、第二次生效；觸控點擊會先解除攔截，實測點「新增作業」正常 emit。just web-lint 2 檔 exit 0；just web-typecheck exit 2，錯誤只在他人進行中的 src/components/exams/ScoreGrid.vue。"
       }
     },
     {
