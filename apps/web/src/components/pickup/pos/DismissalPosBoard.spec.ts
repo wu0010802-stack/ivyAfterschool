@@ -657,5 +657,7 @@ describe('DismissalPosBoard', () => {
     expect(css).toMatch(/\.pos-board\.is-narrow \{[^}]*grid-template-columns: 148px minmax\(0, 1fr\)[;\s}]/)
     expect(css).toMatch(/\.pos-board__search :deep\(\.el-input__wrapper\) \{[^}]*min-height: 44px/)
     expect(css).toMatch(/\.pos-board__fab \.el-button \{[^}]*min-height: 48px/)
+    // 窄版中欄底部留出浮動按鈕（bottom 20 + 高 48）的空間，最後一列卡片與 ⋮ 才捲得出來
+    expect(css).toMatch(/\.pos-board\.is-narrow \.pos-board__grid \{[^}]*padding-bottom: 84px/)
   })
 })
