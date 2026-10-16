@@ -172,10 +172,19 @@ describe('StudentImportDialog', () => {
     await previewWith(PREVIEW_ALL_VALID)
     expect(footerButton('匯入').attributes('disabled')).toBeUndefined()
 
+    // 取消確認：不送出
+    await footerButton('匯入').trigger('click')
+    await confirmMessageBox('取消')
+    expect(mock.history.post).toHaveLength(1)
+
     mock.onPost(IMPORT_URL).replyOnce(200, { created: 2, student_ids: ['a', 'b'] })
     await footerButton('匯入').trigger('click')
     await settle()
-    expect(document.body.querySelector('.el-message-box')?.textContent).toContain('將建立 2 位學生，確定匯入嗎？')
+    expect(Array.from(document.body.querySelectorAll('.el-message-box')).at(-1)?.textContent).toContain(
+      '將建立 2 位學生，確定匯入嗎？',
+    )
+    // 確認前不送出
+    expect(mock.history.post).toHaveLength(1)
     await confirmMessageBox('匯入')
 
     const form = sentForm(1)
