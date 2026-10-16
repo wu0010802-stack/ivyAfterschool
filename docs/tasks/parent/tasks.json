@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 150,
-  "last_updated": "2026-10-16T06:10:09Z",
+  "version": 151,
+  "last_updated": "2026-10-16T06:11:14Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1143,8 +1143,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/LoginView.vue",
       "source_ref": "FE:src/parent/views/LoginView.vue::startLogin",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
         "PARENT-005",
@@ -1195,8 +1195,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/BindView.vue",
       "source_ref": "FE:src/parent/views/BindView.vue::submit",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
         "PARENT-007",
