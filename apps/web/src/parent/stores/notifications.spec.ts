@@ -179,6 +179,19 @@ describe('notificationsStore', () => {
     expect(store.items).toHaveLength(2)
   })
 
+  it('notificationsStore markRead of read item keeps count', async () => {
+    // 未讀數 2 來自其他頁的通知：標記本頁已讀的 n2 不可減
+    mock.onGet('/parent/notifications').reply(200, { items: [N1, N2], total: 25, unread_count: 2 })
+    mock.onPost('/parent/notifications/n2/read').reply(200, N2)
+    const store = useNotificationsStore()
+    await store.load()
+
+    await store.markRead('n2')
+
+    expect(store.unreadCount).toBe(2)
+    expect(store.items[1]?.read_at).toBe('2026-10-02T08:40:00Z')
+  })
+
   it('notificationsStore markRead removes item in unreadOnly mode', async () => {
     mock.onGet('/parent/notifications').reply(200, { items: [N1], total: 1, unread_count: 1 })
     mock.onPost('/parent/notifications/n1/read').reply(200, { ...N1, read_at: '2026-10-02T09:00:00Z' })
