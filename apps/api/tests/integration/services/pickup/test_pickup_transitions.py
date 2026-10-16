@@ -138,7 +138,7 @@ def test_transition_request_not_found_and_scope(db_session: Session) -> None:
 
 @pytest.fixture
 def owner_cleanup_transition_rows() -> Iterator[dict[str, list[UUID]]]:
-    ids: dict[str, list[UUID]] = {"students": [], "staff": [], "roles": []}
+    ids: dict[str, list[UUID]] = {"students": [], "staff": []}
     yield ids
     with connect_owner() as conn:
         conn.execute("set lock_timeout = '5s'")
@@ -146,8 +146,6 @@ def owner_cleanup_transition_rows() -> Iterator[dict[str, list[UUID]]]:
             conn.execute("delete from public.students where id = %s", (student_id,))
         for staff_id in ids["staff"]:
             conn.execute("delete from public.staff_users where id = %s", (staff_id,))
-        for role_id in ids["roles"]:
-            conn.execute("delete from public.roles where id = %s", (role_id,))
         conn.commit()
 
 
@@ -161,13 +159,13 @@ def test_transition_request_concurrent(
     """兩位員工同時按「完成」：只有一個 UPDATE 命中，另一個 409；completed_by 為成功者。"""
     session = committing_db_session
     student = make_student(session)
-    staff_a = make_staff(session)
-    staff_b = make_staff(session)
+    # seed 角色：committing 測試不建自訂 test_* 角色（中斷時不在 roles 留殘列）
+    staff_a = make_staff(session, role_code="tutor")
+    staff_b = make_staff(session, role_code="tutor")
     request = make_pickup_request(session, student, service_date=_DATE)
     session.commit()
     owner_cleanup_transition_rows["students"].append(student.id)
     owner_cleanup_transition_rows["staff"] += [staff_a.id, staff_b.id]
-    owner_cleanup_transition_rows["roles"] += [staff_a.role.id, staff_b.role.id]
 
     barrier = threading.Barrier(2)
     outcomes: dict[UUID, str] = {}

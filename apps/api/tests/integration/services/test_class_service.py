@@ -445,7 +445,7 @@ _LOCK_NOT_AVAILABLE = "55P03"
 @pytest.fixture
 def owner_cleanup() -> Iterator[list[tuple[str, UUID]]]:
     """committing 測試建立的列以 owner 連線依登記的反序刪除；排在 committing_db_session 之前
-    （先 close session、truncate class_staff，再刪學生 / 班級 / 員工 / 角色）。"""
+    （先 close session、truncate class_staff，再刪學生 / 班級 / 員工）。"""
     rows: list[tuple[str, UUID]] = []
     yield rows
     with connect_owner() as conn:
@@ -463,9 +463,9 @@ def _committed_class(db: Session, cleanup: list[tuple[str, UUID]]) -> UUID:
 
 
 def _committed_staff(db: Session, cleanup: list[tuple[str, UUID]]) -> UUID:
-    staff = make_staff(db)
+    # seed 角色：committing 測試不建自訂 test_* 角色（中斷時不在 roles 留殘列）
+    staff = make_staff(db, role_code="tutor")
     db.commit()
-    cleanup.append(("roles", staff.role_id))
     cleanup.append(("staff_users", staff.id))
     return staff.id
 

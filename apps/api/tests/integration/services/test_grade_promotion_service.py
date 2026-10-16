@@ -27,7 +27,7 @@ from app.core.errors import AppError
 from app.core.request_meta import RequestMeta
 from app.models.audit import AuditLog
 from app.models.students import Student
-from app.schemas.students import StudentUpdateIn
+from app.schemas.students import StudentDetailOut, StudentUpdateIn
 from app.services import audit_service, grade_promotion_service
 from app.services.grade_promotion_service import (
     PromotionItem,
@@ -523,8 +523,8 @@ def _committed_targets(
     return ids
 
 
-def _withdraw(db: Session, student_id: UUID, clock: FakeClock) -> None:
-    update_student(
+def _withdraw(db: Session, student_id: UUID, clock: FakeClock) -> StudentDetailOut:
+    return update_student(
         db,
         student_id,
         StudentUpdateIn(status="withdrawn"),
@@ -646,7 +646,7 @@ def test_promotion_execute_lock_update_student_waits_and_sees_promoted_grade(
         try:
             a_locked.wait(timeout=15)
             sb.execute(text(_LOCK_TIMEOUT))
-            _withdraw(sb, ming_id, fake_clock)
+            outcome["b_grade"] = _withdraw(sb, ming_id, fake_clock).grade_level
             sb.commit()
             outcome["b"] = "ok"
         except BaseException as exc:
@@ -669,6 +669,8 @@ def test_promotion_execute_lock_update_student_waits_and_sees_promoted_grade(
 
     assert outcome.get("a") == PromotionResult(promoted=total, graduated=0), outcome
     assert outcome.get("b") == "ok", outcome
+    # 不依賴時間的判別：B 的 FOR UPDATE 重讀到 A commit 後的年級（缺鎖時 B 先完成、讀到 3）
+    assert outcome.get("b_grade") == 4, outcome
     with Session(bind=db_engine) as check:
         assert _grades(check, [ming_id, hua_id]) == {
             ming_id: (4, "withdrawn", fake_clock.today()),  # 升級後才退班

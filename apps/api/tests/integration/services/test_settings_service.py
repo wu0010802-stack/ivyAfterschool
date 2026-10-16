@@ -588,12 +588,12 @@ def test_put_setting_cache_not_polluted_before_commit(
 
 
 @pytest.fixture
-def owner_restore_pickup_window() -> Iterator[list[tuple[UUID, UUID]]]:
-    """測試結束以 owner 連線把 pickup.window 還原為 seed 值，並刪掉測試建立的 (staff, role)。
+def owner_restore_pickup_window() -> Iterator[list[UUID]]:
+    """測試結束以 owner 連線把 pickup.window 還原為 seed 值，並刪掉測試建立的員工。
 
     排在 committing_db_session 之前（先 close session 再刪列）。
     """
-    ids: list[tuple[UUID, UUID]] = []
+    ids: list[UUID] = []
     yield ids
     default = PICKUP_WINDOW.definition().default.model_dump(mode="json")
     with connect_owner() as conn:
@@ -603,22 +603,22 @@ def owner_restore_pickup_window() -> Iterator[list[tuple[UUID, UUID]]]:
             "where key = 'pickup.window'",
             (json.dumps(default),),
         )
-        for staff_id, role_id in ids:
+        for staff_id in ids:
             conn.execute("delete from public.staff_users where id = %s", (staff_id,))
-            conn.execute("delete from public.roles where id = %s", (role_id,))
         conn.commit()
     clear_settings_cache()
 
 
 @pytest.mark.cleanup_tables("audit_logs")
 def test_put_setting_invalidate_after_commit(
-    owner_restore_pickup_window: list[tuple[UUID, UUID]], committing_db_session: Session
+    owner_restore_pickup_window: list[UUID], committing_db_session: Session
 ) -> None:
     install_tx_hooks()
     session = committing_db_session
-    staff = make_staff(session, permissions=["settings:write"])
+    # seed 角色：committing 測試不建自訂 test_* 角色（中斷時不在 roles 留殘列）
+    staff = make_staff(session, role_code="director")  # director 含 settings:write
     session.commit()
-    owner_restore_pickup_window.append((staff.id, staff.role.id))
+    owner_restore_pickup_window.append(staff.id)
     actor = _current(staff)
     assert get_setting(session, PICKUP_WINDOW).auto_expire_minutes == 120
     value = {

@@ -262,7 +262,7 @@ def test_generate_binding_code_retries_on_hash_collision(
 @pytest.fixture
 def owner_cleanup_rows() -> Iterator[dict[str, list[UUID]]]:
     """committing 測試建立的列以 owner 連線依 id 刪除；排在 committing_db_session 之前。"""
-    ids: dict[str, list[UUID]] = {"guardians": [], "students": [], "staff": [], "roles": []}
+    ids: dict[str, list[UUID]] = {"guardians": [], "students": [], "staff": []}
     yield ids
     with connect_owner() as conn:
         conn.execute("set lock_timeout = '5s'")
@@ -275,8 +275,6 @@ def owner_cleanup_rows() -> Iterator[dict[str, list[UUID]]]:
             conn.execute("delete from public.students where id = %s", (student_id,))
         for staff_id in ids["staff"]:
             conn.execute("delete from public.staff_users where id = %s", (staff_id,))
-        for role_id in ids["roles"]:
-            conn.execute("delete from public.roles where id = %s", (role_id,))
         conn.commit()
 
 
@@ -289,14 +287,14 @@ def test_generate_binding_code_concurrent_same_guardian(
 ) -> None:
     """同一 guardian 併發 generate：後到者等前者 commit 後才執行，最後只剩一筆有效碼。"""
     session = committing_db_session
-    staff = make_staff(session, permissions=["guardians:write"])
+    # seed 角色：committing 測試不建自訂 test_* 角色（中斷時不在 roles 留殘列）
+    staff = make_staff(session, role_code="clerk")  # clerk 含 guardians:write
     student = make_student(session)
     g = make_guardian(session, student)
     session.commit()
     owner_cleanup_rows["guardians"].append(g.id)
     owner_cleanup_rows["students"].append(student.id)
     owner_cleanup_rows["staff"].append(staff.id)
-    owner_cleanup_rows["roles"].append(staff.role.id)
     actor = current_staff_of(staff)
 
     a_generated = threading.Event()
@@ -510,7 +508,6 @@ def owner_cleanup_claim_rows() -> Iterator[dict[str, list[UUID]]]:
         "students": [],
         "parents": [],
         "staff": [],
-        "roles": [],
     }
     yield ids
     with connect_owner() as conn:
@@ -526,8 +523,6 @@ def owner_cleanup_claim_rows() -> Iterator[dict[str, list[UUID]]]:
             conn.execute("delete from public.parent_accounts where id = %s", (parent_id,))
         for staff_id in ids["staff"]:
             conn.execute("delete from public.staff_users where id = %s", (staff_id,))
-        for role_id in ids["roles"]:
-            conn.execute("delete from public.roles where id = %s", (role_id,))
         conn.commit()
 
 
@@ -540,7 +535,8 @@ def test_claim_binding_code_concurrent(
 ) -> None:
     """兩條連線同時兌換同一碼：恰一條成功，另一條 400 binding_code_used。"""
     session = committing_db_session
-    staff = make_staff(session, permissions=["guardians:write"])
+    # seed 角色：committing 測試不建自訂 test_* 角色（中斷時不在 roles 留殘列）
+    staff = make_staff(session, role_code="clerk")  # clerk 含 guardians:write
     student = make_student(session)
     g = make_guardian(session, student)
     p1 = make_parent(session)
@@ -551,7 +547,6 @@ def test_claim_binding_code_concurrent(
     owner_cleanup_claim_rows["students"].append(student.id)
     owner_cleanup_claim_rows["parents"] += [p1.id, p2.id]
     owner_cleanup_claim_rows["staff"].append(staff.id)
-    owner_cleanup_claim_rows["roles"].append(staff.role.id)
 
     barrier = threading.Barrier(2)
     outcomes: dict[UUID, str] = {}
