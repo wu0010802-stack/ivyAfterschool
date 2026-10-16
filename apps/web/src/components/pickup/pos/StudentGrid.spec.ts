@@ -158,11 +158,17 @@ describe('StudentGrid', () => {
     await card(wrapper, 'S1003').trigger('click')
     expect(wrapper.emitted('focus-request')?.[0]).toEqual(['r3'])
 
-    await card(wrapper, 'S1004').find('button[aria-label="吳承翰 的選項"]').trigger('click')
+    // 多張卡的 ⋮ 選單都會留在 body：以觸發鈕的 aria-controls 找到這張卡自己的選單
+    const more = card(wrapper, 'S1004').find('button[aria-label="吳承翰 的選項"]')
+    await more.trigger('click')
     await settle()
-    const item = Array.from(document.body.querySelectorAll<HTMLElement>('.el-dropdown-menu__item')).find(
+    const menuId = more.attributes('aria-controls')
+    expect(menuId).toBeTruthy()
+    const menu = document.getElementById(menuId ?? '')
+    const item = Array.from(menu?.querySelectorAll<HTMLElement>('.el-dropdown-menu__item') ?? []).find(
       (el) => el.textContent?.trim() === '代建接送請求…',
     )
+    expect(item?.textContent?.trim()).toBe('代建接送請求…')
     item?.click()
     await settle()
     expect((wrapper.emitted('create-request') as [RosterStudent][])[0]?.[0].student_id).toBe('s4')
