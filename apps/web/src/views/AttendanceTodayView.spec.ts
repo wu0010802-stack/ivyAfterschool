@@ -109,7 +109,7 @@ async function mountView(
   return { wrapper: wrapper as VueWrapper, router }
 }
 
-function dailyGets(): { params: unknown }[] {
+function dailyGets() {
   return mock.history.get.filter((r) => r.url === DAILY_URL)
 }
 
@@ -137,7 +137,8 @@ function chip(wrapper: VueWrapper, label: string): DOMWrapper<Element> {
   return c
 }
 
-describe('AttendanceTodayView', () => {
+// 頁面含日期元件、兩個下拉與多張帶 el-dropdown 的卡片，happy-dom 下單一案例 3~6 秒，多 agent 並行時易超過預設 5 秒
+describe('AttendanceTodayView', { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     // 台北 2026-10-02 09:00
