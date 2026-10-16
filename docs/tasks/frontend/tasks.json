@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 319,
-  "last_updated": "2026-10-16T19:36:46Z",
+  "version": 320,
+  "last_updated": "2026-10-16T19:38:48Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4648,7 +4648,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/DismissalPosBoard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosBoard.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-185",
@@ -4660,7 +4660,7 @@
         "FRONTEND-199"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "FRONTEND-185 殘留（review-r10-f6）：`queue.cancel(active)` 只回 boolean、board 沒有 cancel，取消成功後卡片要等 ws 推播才移到已結束；本元件 cancel 成功後呼叫 `board.reload()` 讓畫面立即更新。倒數到 0、POST 已送出後再取消，請求仍會建立（185 已知行為）。\nFRONTEND-192 殘留（review-r10-f7）：中欄含 64px 收合側欄時 grid 寬 468px，一列 3 張只剩 4px 餘裕（需 464px）；桌機若是非覆蓋式捲軸（約 15px）會掉成 2 欄，平板覆蓋式捲軸不受影響。本元件排版時留意中欄 padding 與捲軸。\nChromium 實測（impl-frontend-r10b，含 64px 收合側欄）：1024×768 三欄 148 / 492 / 320、中欄一列 3 張（無頭預設的覆蓋式捲軸）；改用傳統 15px 捲軸量測時中欄卡片區 453px，一列掉成 2 張（FRONTEND-192 殘留的情況成立），1280 寬一列 4 張不受影響。依核可稿維持中欄 padding 12px、未另做補償；桌機 1024 寬也要維持 3 張需調整欄寬或卡片最小寬（設計決策）。800×1024：中欄 588px、一列 3 張，抽屜高 70%、「收合」44px、點遮罩關閉，點家長已到的學生卡先開抽屜並定位閃爍。",
+      "risk_notes": "FRONTEND-185 殘留（review-r10-f6）：`queue.cancel(active)` 只回 boolean、board 沒有 cancel，取消成功後卡片要等 ws 推播才移到已結束；本元件 cancel 成功後呼叫 `board.reload()` 讓畫面立即更新。倒數到 0、POST 已送出後再取消，請求仍會建立（185 已知行為）。\nFRONTEND-192 殘留（review-r10-f7）：中欄含 64px 收合側欄時 grid 寬 468px，一列 3 張只剩 4px 餘裕（需 464px）；桌機若是非覆蓋式捲軸（約 15px）會掉成 2 欄，平板覆蓋式捲軸不受影響。本元件排版時留意中欄 padding 與捲軸。\nChromium 實測（impl-frontend-r10b，含 64px 收合側欄）：1024×768 三欄 148 / 492 / 320、中欄一列 3 張（無頭預設的覆蓋式捲軸）；改用傳統 15px 捲軸量測時中欄卡片區 453px，一列掉成 2 張（FRONTEND-192 殘留的情況成立），1280 寬一列 4 張不受影響。依核可稿維持中欄 padding 12px、未另做補償；桌機 1024 寬也要維持 3 張需調整欄寬或卡片最小寬（設計決策）。800×1024：中欄 588px、一列 3 張，抽屜高 70%、「收合」44px、點遮罩關閉，點家長已到的學生卡先開抽屜並定位閃爍。\n已知限制（協調者裁定，維持核可稿 padding）：桌機 1024 寬且使用傳統約 15px 捲軸時中欄一列只有 2 張；主要裝置是平板（覆蓋式捲軸），1280 桌機一列 4 張不受影響。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/pos/DismissalPosBoard.spec.ts",
@@ -4693,9 +4693,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 20 條皆有同名測試，tdd.run 20 綠；9765c62 / f453342（紅，DismissalPosBoard.vue 尚不存在）→ c02c7b9 → 8e92e64 （補 busy 中重送、抽屜計數與 resize 監聽）→ 86878c2（紅：當時沒有窄版 84px）→ 58576bc → 6b8fc71 → c8fac81。f453342 不是放寬：mountWithApp 不把元件掛到 document，改從元件根（再退到傳送到 body 的抽屜）找佇列卡；happy-dom 的 message box 離場動畫不結束，取最新一個；代建 dialog 原本斷言「沒有 el-select」在時間選單也是 el-select 時必然失敗，改為 [data-test=preset-student] 的完整文字「王小明（S1001・低年級A班）」，內容檢查更嚴。突變 22 項中 20 項轉紅（busy 不擋重送、busy 不清、取消成功不 reload、失敗也 reload、倒數卡也開 prompt、全部班級寫入 query、不在名單的班級不退回全部、浮動按鈕計數含已結束、徽章計所有進行中、窄版 focus 不開抽屜、回到寬版不收抽屜、確認失敗不提示、骨架永不顯示、原因不去空白、核驗導頁 query 錯、代建不帶班級名、窄版沒有 84px、busy 中仍開 prompt、搜尋不套用、右欄跟著班級過濾），還原後 git diff 乾淨；兩項仍綠屬等價：quickDispatch / acknowledge 拿掉 canOperate 判斷（唯讀時子元件本來就不 emit）。Chromium 實測（chromium-1243；scratchpad 的 Vite harness，dts: false，DismissalPosBoard 以虛擬模組載入 HEAD 版本，外框模擬 64px 收合側欄與 56px 頂欄，用完已關）：1024×768 三欄 148 / 492 / 320、中欄一列 3 張（無頭預設覆蓋式捲軸）、搜尋框 200×44、頁面不捲動；194 打回時的觸控連點反例在整合後重跑——120ms 內 tap「確認」兩次，board.acknowledge 只被呼叫 1 次，送出中「確認」loading + 停用、「回覆時間」停用，800ms 後恢復；點「中年級B班」→ 網址 ?class=c2、標題「中年級B班（9 人）」、右欄仍 2 張。800×1024：沒有右欄、中欄 588px 一列 3 張、浮動按鈕「佇列（2）」131×48 距右下 20px、家長已到徽章 1、中欄 padding-bottom 84px，捲到底時最後一張卡的 ⋮（44×44）不被浮動按鈕蓋住；抽屜高 717px（70%）、「收合」高 44、2 張請求卡、點遮罩關閉。實作者寫回的偏離都合理：board 型別改為本元件 export 的 PosBoardSource（usePickupBoard 的 Pick）；defineExpose focusRequest 給 189；倒數卡取消直接移除（稿 decision：倒數卡「取消」直接取消）、請求卡才問原因；窄版中欄底部 84px（稿沒畫，實測避免浮動按鈕蓋住最後一列與 ⋮）；首次載入以 roster / queue 是否為 null 判斷（避免取消後 reload 閃骨架）；≥ 1025 與 AdminLayout 斷點一致。web-lint 乾淨；web-typecheck 全綠。待協調者處理：FRONTEND-189 的 description 還沒寫家長到達時呼叫本元件 expose 的 focusRequest（稿 decision「家長到達時佇列卡移到最前並閃爍」）。"
       }
     },
     {
