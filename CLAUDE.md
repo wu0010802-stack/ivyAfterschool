@@ -22,7 +22,7 @@
 
 ## 禁止全量執行 lint / typecheck / test
 
-任何 lint、format、typecheck、test 指令都必須指定路徑、檔案或 marker（例如 `just test apps/api/tests/unit/test_x.py`、`just web-test src/x.spec.ts`）。禁止無參數的 `pytest`、`ruff check .`、`pnpm lint`、`pnpm vitest run`。唯一例外是 `just web-typecheck`，只在 PR 前跑一次。
+任何 lint、format、typecheck、test 指令都必須指定路徑、檔案或 marker（例如 `just test apps/api/tests/unit/test_x.py`、`just web-test src/x.spec.ts`）。禁止無參數的 `pytest`、`ruff check .`、`pnpm lint`、`pnpm vitest run`。唯一例外是 `just web-typecheck`（vue-tsc 只能全專案跑，約 5 秒）：每批前端 task 改 `in_review` 前、reviewer 審查前端批次時、送 PR 前各跑一次。
 
 ## 設定值規則
 

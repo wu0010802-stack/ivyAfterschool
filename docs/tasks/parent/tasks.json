@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 127,
-  "last_updated": "2026-10-08T08:33:08Z",
+  "version": 128,
+  "last_updated": "2026-10-16T04:32:02Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2559,7 +2559,7 @@
     {
       "id": "PARENT-132",
       "title": "移植 AttendanceView：月出勤日曆、統計與單日明細",
-      "description": "建立 `apps/web/src/parent/views/AttendanceView.vue`（路由 `/attendance`）。版面、文案與互動以已核可稿 `docs/mockups/parent-page-attendance.html`（含其 decisions）為準。\n\n- 版面由上而下：PARENT-050 ChildContextHeader → 月份列 → 統計卡 → 單日明細卡 → PARENT-131 AttendanceCalendar（卡片內）→「申請請假」；整頁內容（含身分卡）包在 PARENT-027 PullToRefresh 內。\n- 月份列：「‹」上個月、`YYYY 年 M 月`（aria-live polite）、「›」下個月，右側「本月」。顯示中的月份就是台北本月時「›」與「本月」都 disabled（不隱藏）；往前沒有下限。\n- 依 `children.selectedId` + month 呼叫 PARENT-130；切換小孩或月份以序號丟棄過期回應。換月份時，顯示本月則預設選中今天，否則不選；換小孩保留目前月份與選中日。\n- 統計卡：上課日 `service_days`、出席 `attended`、請假 `leave`、缺席 `absent`、未登記 `unrecorded`（數字照後端 stats，前端不重算）。卡片下方小字：`service_days` 為 0 →「這個月沒有出勤紀錄」；否則顯示中的月份是本月時「統計到今天（MM/DD）為止」，且台北今日是營業日、當天 status 為 `expected` 或 null 時接「；今天還沒到班，先算在「未登記」」（後端把今天還沒到班也算進 unrecorded，月曆上今天卻是「預計到班」）；其他月份不顯示。\n- 單日明細卡放在月曆上方、固定兩行高（點不同日子時月曆不跳動），aria-live polite。第一行：日期「MM/DD（X）」（今天加「今天」標記）+ 狀態 PARENT-051 StatusPill（tone 照 FRONTEND-005；今天以前仍是 expected 的日子為「未登記」neutral，與月曆一致）。第二行依狀態：`present` / `left` / 今天的 `expected` →「到班 HH:MM」「離班 HH:MM」（FRONTEND-003，null 顯示「—」）；`leave` →「假別 病假 / 事假 / 其他」；`absent` →「這天沒有到班，也沒有請假紀錄」；今天以前仍是 `expected` →「老師沒有登記這天的到班情形」；非營業日 →「安親班休息」；無紀錄 →「這天沒有出勤紀錄」。未選取時「未選擇日期」/「點月曆上的日期，查看當天的到班、離班時間」。\n- 「申請請假」（tonal 全寬）→ `/leaves`；只在有資料時顯示。\n- 首次載入、換月份、換小孩：統計卡、明細卡、月曆改顯示 SkeletonBlock（card），不保留上一個月或上一位小孩的資料；失敗 → ParentEmptyState error「出勤紀錄載入失敗」+ 重試（月份列照常可操作）。PullToRefresh 重抓目前小孩與月份，期間保留內容；失敗時保留內容並以 PARENT-011 snackbar（error）顯示「更新失敗，請稍後再試」，不切成錯誤頁；載入中停用下拉。\n\n移植 ivy `FE:src/parent/views/AttendanceView.vue::prevMonth` / `nextMonth` / `goToday` 的月份切換與 `selectCell` 單日明細；**去掉** 遲到等 ivy 狀態、remark 欄位。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-attendance.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：本月（含今天選中與明細）、上個月、各種單日明細（到班+離班 / 請假 / 缺席 / 休息 / 無紀錄）、下個月按鈕停用、首次載入、載入失敗、多位小孩切換。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `AttendanceView.vue`。\n\n**驗收標準**：每一條對應 red_case（系統時間固定 2026-10-02 台北）。",
+      "description": "建立 `apps/web/src/parent/views/AttendanceView.vue`（路由 `/attendance`）。版面、文案與互動以已核可稿 `docs/mockups/parent-page-attendance.html`（含其 decisions）為準。\n\n- 顯示規則（domain_spec M4「家長端月出勤日曆」）：未來的請假日不顯示在月曆上（月曆照出勤列顯示，未來日子沒有出勤列即「無紀錄」），家長到請假頁查看；計入統計卻沒有登記的日子一律顯示「未登記」，與統計卡一致。\n- 版面由上而下：PARENT-050 ChildContextHeader → 月份列 → 統計卡 → 單日明細卡 → PARENT-131 AttendanceCalendar（卡片內）→「申請請假」；整頁內容（含身分卡）包在 PARENT-027 PullToRefresh 內。\n- 月份列：「‹」上個月、`YYYY 年 M 月`（aria-live polite）、「›」下個月，右側「本月」。顯示中的月份就是台北本月時「›」與「本月」都 disabled（不隱藏）；往前沒有下限。\n- 依 `children.selectedId` + month 呼叫 PARENT-130；切換小孩或月份以序號丟棄過期回應。換月份時，顯示本月則預設選中今天，否則不選；換小孩保留目前月份與選中日。\n- 統計卡：上課日 `service_days`、出席 `attended`、請假 `leave`、缺席 `absent`、未登記 `unrecorded`（數字照後端 stats，前端不重算）。卡片下方小字：`service_days` 為 0 →「這個月沒有出勤紀錄」；否則顯示中的月份是本月時「統計到今天（MM/DD）為止」，且台北今日是營業日、當天 status 為 `expected` 或 null 時接「；今天還沒到班，先算在「未登記」」（後端把今天還沒到班也算進 unrecorded，月曆上今天卻是「預計到班」）；其他月份不顯示。\n- 單日明細卡放在月曆上方、固定兩行高（點不同日子時月曆不跳動），aria-live polite。第一行：日期「MM/DD（X）」（今天加「今天」標記）+ 狀態 PARENT-051 StatusPill（tone 照 FRONTEND-005；今天以前仍是 expected 的日子為「未登記」neutral，與月曆一致）。第二行依狀態：`present` / `left` / 今天的 `expected` →「到班 HH:MM」「離班 HH:MM」（FRONTEND-003，null 顯示「—」）；`leave` →「假別 病假 / 事假 / 其他」；`absent` →「這天沒有到班，也沒有請假紀錄」；今天以前仍是 `expected`，或 `in_stats` 為 true 且 status 為 null（PARENT-194）→ StatusPill「未登記」+「老師沒有登記這天的到班情形」；非營業日 →「安親班休息」；無紀錄 →「這天沒有出勤紀錄」。未選取時「未選擇日期」/「點月曆上的日期，查看當天的到班、離班時間」。\n- 「申請請假」（tonal 全寬）→ `/leaves`；只在有資料時顯示。\n- 首次載入、換月份、換小孩：統計卡、明細卡、月曆改顯示 SkeletonBlock（card），不保留上一個月或上一位小孩的資料；失敗 → ParentEmptyState error「出勤紀錄載入失敗」+ 重試（月份列照常可操作）。PullToRefresh 重抓目前小孩與月份，期間保留內容；失敗時保留內容並以 PARENT-011 snackbar（error）顯示「更新失敗，請稍後再試」，不切成錯誤頁；載入中停用下拉。\n\n移植 ivy `FE:src/parent/views/AttendanceView.vue::prevMonth` / `nextMonth` / `goToday` 的月份切換與 `selectCell` 單日明細；**去掉** 遲到等 ivy 狀態、remark 欄位。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-attendance.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：本月（含今天選中與明細）、上個月、各種單日明細（到班+離班 / 請假 / 缺席 / 休息 / 無紀錄）、下個月按鈕停用、首次載入、載入失敗、多位小孩切換。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `AttendanceView.vue`。\n\n**驗收標準**：每一條對應 red_case（系統時間固定 2026-10-02 台北）。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/AttendanceView.vue",
       "source_ref": "FE:src/parent/views/AttendanceView.vue::prevMonth",
@@ -2576,10 +2576,11 @@
         "PARENT-131",
         "INFRA-013",
         "PARENT-011",
-        "PARENT-051"
+        "PARENT-051",
+        "PARENT-194"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "尚待使用者裁定、本 task 照現有 API 實作：未來的請假日不會出現在月曆上（BACKEND-342 只把請假套用到今天、BACKEND-303 每日初始化當天才建 leave 列，家長請了之後日子的假，月曆那幾天仍是無紀錄）；營業日卻沒有出勤列的過去日子（例如暫停後恢復的期間）月曆顯示「無紀錄」、統計卻算進「未登記」。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/AttendanceView.spec.ts",
@@ -2594,7 +2595,8 @@
           "AttendanceView load error retry：回 500 → 含「出勤紀錄載入失敗」，點重試再送出 1 次",
           "AttendanceView stats note：month '2026-10'、days 的 10/02 is_service_day true 且 status 'expected' → 含「統計到今天（10/02）為止；今天還沒到班，先算在「未登記」」；10/02 改為 status 'present' → 含「統計到今天（10/02）為止」且不含「先算在」；切到 '2026-09' → 不含「統計到今天」；回應 stats.service_days 為 0 → 含「這個月沒有出勤紀錄」",
           "AttendanceView day detail texts：點 status 'absent' 的日子 → 含「這天沒有到班，也沒有請假紀錄」；點今天以前 status 'expected' 的 10/01 → 含「未登記」與「老師沒有登記這天的到班情形」；點 status 'leave'、leave_type 'personal' 的日子 → 含「假別 事假」；點「‹」切到 9 月 → 含「未選擇日期」",
-          "AttendanceView pull refresh failure keeps data：10 月載入完成後呼叫 PullToRefresh 的 onRefresh，GET 回 500 → 仍含「上課日」與月曆、不含「出勤紀錄載入失敗」，snackbar store 有一則 tone 'error' 的「更新失敗，請稍後再試」"
+          "AttendanceView pull refresh failure keeps data：10 月載入完成後呼叫 PullToRefresh 的 onRefresh，GET 回 500 → 仍含「上課日」與月曆、不含「出勤紀錄載入失敗」，snackbar store 有一則 tone 'error' 的「更新失敗，請稍後再試」",
+          "AttendanceView counted day without record shows unrecorded：days 的 10/01 為 {is_service_day:true, in_stats:true, status:null} → 點 10/01 → 明細含「未登記」與「老師沒有登記這天的到班情形」；10/23 為 {is_service_day:true, in_stats:false, status:null} → 點 10/23 → 含「這天沒有出勤紀錄」"
         ],
         "run": "just web-test src/parent/views/AttendanceView.spec.ts -t \"AttendanceView\"",
         "notes": ""
@@ -3575,6 +3577,42 @@
         "status": "pass",
         "reviewer": "review-r9-p",
         "notes": "複審通過（只核對打回項與回歸）。打回項已修正：tableName 改為「前綴字 + ICON(S) + 選擇性的 _MAP / _BY_XXX」，另認 icons、iconMap、xxxIcons、xxxIconMap；賦值前允許型別註記，右式可為 {…}、[…] 或 Object.freeze(…)。驗證：①把 BindCodeErrorNotice.vue 的 ICONS 裡的 info 換成 help_center，「covers every icon used in src/parent」轉紅；②在 src/parent 放一個暫時檔：ICONS、ICON_MAP、ICON_BY_KIND、FOO_ICONS、XXX_ICON_MAP 各用型別註記與 Object.freeze 兩種寫法（共 10 個清單外圖示），加上 export const … as const 與多行物件，12 個全部被列為缺字；ICON_SIZES、ICON_COLORS、iconSize 的哨兵值沒有誤抓（暫時檔已刪除）；③新舊掃描器對 src/parent 與 34 張已核可稿逐檔比對，沒有任何檔案少抓，只多了 BindCodeErrorNotice 的 error、hourglass_top、info；④原有突變（src 加清單外 M3Icon、加清單外 XXX_ICONS、清單缺字、亂序、重複、woff2 截斷）仍各自轉紅，把 tableName 換回打回前的規則時新增的自測轉紅。tdd.run 6/6 綠、名稱與 red_cases 逐條對應；bd49888、bca3955（spec）先於 706f81f（實作）。web-lint 乾淨、web-typecheck 全專案 exit 0。字型沿用第一輪的獨立驗證：wOF2 檔頭、length 欄位與 16 個標準 table，沒有 metadata 與 private 區塊；cmap + GSUB 確認 75 個名稱都有 ligature glyph，fvar 只有 FILL 0..1；真實 Chromium 渲染 75 個全部正常，負向對照溢出。殘留（不擋；現存元件沒有這些寫法，也沒有缺字）：跨行函式或 computed 內回傳的名稱、new Map([...]) 對照表、Options API 的方法簡寫（設計稿的 resolvedIcon()）、跨行的型別註記，仍然掃不到。PARENT-100 的 risk_notes 移除站得住（delete 已正常顯示）。"
+      }
+    },
+    {
+      "id": "PARENT-194",
+      "title": "AttendanceCalendar 依 in_stats 顯示未登記：計入統計但沒有出勤列的日子不再顯示「無紀錄」",
+      "description": "修改 `apps/web/src/parent/api/attendance.ts`（PARENT-130）與 `apps/web/src/parent/components/attendance/AttendanceCalendar.vue`（PARENT-131）。domain_spec M4「家長端月出勤日曆」：計入統計卻沒有登記的日子，月曆與統計一律顯示「未登記」。\n\n- `AttendanceDay` 型別加 `in_stats: boolean`（BACKEND-561；營業日、不晚於今天、不早於入學日）。\n- 月曆格判斷改為：非營業日 →「休息」；`in_stats` 為 true 且 status 為 null → 「未登記」（kind `unrecorded`，與今天以前仍是 expected 同一種格）；其餘 status 為 null（今天以後、入學日以前）→「無紀錄」；其他狀態規則不變（今天以前仍是 expected →「未登記」，今天與之後的 expected →「預計到班」）。\n- 同步更新已核可稿 `docs/mockups/parent-component-attendance-calendar.html` 與 `docs/mockups/parent-page-attendance.html` 的示範資料判斷邏輯與 decisions 文字（這是使用者第 10 輪裁定的顯示規則，格子外觀沿用稿中既有的「未登記」，稿維持 approved、不需重新核可）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-130",
+        "PARENT-131",
+        "BACKEND-561"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "AttendanceCalendar shows unrecorded for counted days without a record：today '2026-10-22'，days 10/15 {is_service_day:true, in_stats:true, status:null} → 該格 aria-label '10月15日 未登記'、class 含 'att-day--unrecorded'；10/23 {is_service_day:true, in_stats:false, status:null} → '10月23日 無紀錄'",
+          "AttendanceCalendar keeps no-record before enrollment：10/01 {is_service_day:true, in_stats:false, status:null}（入學日以前）→ '10月1日 無紀錄'；非營業日 in_stats false → '休息'",
+          "attendanceApi passes in_stats through（apps/web/src/parent/api/attendance.spec.ts）：mock 回應 days[0].in_stats true → getChildAttendance 回傳的 days[0].in_stats === true"
+        ],
+        "run": "just web-test src/parent/components/attendance/AttendanceCalendar.spec.ts -t \"AttendanceCalendar\" && just web-test src/parent/api/attendance.spec.ts -t \"attendanceApi\"",
+        "notes": "既有 AttendanceCalendar.spec.ts 的 day() 測資 helper 要補 in_stats 預設值（依日期與 today 推算），既有案例的期望值不變。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]

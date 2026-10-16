@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 449,
-  "last_updated": "2026-10-08T08:18:24Z",
+  "version": 450,
+  "last_updated": "2026-10-16T04:32:02Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15528,6 +15528,77 @@
         ],
         "run": "just test-int apps/api/tests/integration/services/test_exam_service.py -k \"test_exam_summary_\"",
         "notes": "tdd.run 同時選到 BACKEND-463 的 test_exam_summary_stats / rounding / empty_subject（同一函式的回歸）。另跑 just test-int apps/api/tests/integration/api/admin/test_exams_endpoints.py -k \"test_admin_exam_summary_\" 確認端點回應不變。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-560",
+      "title": "修正 StudentImportService.preview：退班且入學日晚於今天的列判為錯誤（與 execute 一致）",
+      "description": "修改 `apps/api/app/services/student_import_service.py` 的 `preview`（BACKEND-155）。domain_spec M3「Excel 匯入」：預覽與實際匯入的判斷必須一致。\n\n現況：狀態「退班」的列沒有退班日欄位，`execute`（BACKEND-156）經 `student_service.insert_student` 以 `clock.today()` 當退班日，入學日晚於今天時 `_check_dates` 拋 `invalid_dates`，整批回 409 `import_conflict`；但 `preview` 不知道今天，把這一列判為合法。\n\n- `preview` 簽章加上 keyword-only `clock: Clock`：`preview(session, upload, *, academic_year, actor, clock) -> ImportPreview`。`execute` 呼叫 `preview` 時傳自己的 `clock`；`POST /api/admin/students/import`（BACKEND-166，`apps/api/app/api/admin/students.py`）的預覽分支改傳 handler 已注入的 clock（沒有的話以 `get_clock` dependency 注入，與 execute 分支同一個）。\n- 逐列驗證新增：狀態解析為 `withdrawn` 且入學日（解析成功）晚於 `clock.today()`（Asia/Taipei）→ 該列 errors 加上「退班學生的入學日不可晚於今天（退班日以匯入當天計）」，`data` 為 None。入學日等於今天合法；沒有入學日合法；在學 / 暫停的列不受此限。\n- 因為 preview 已判為錯誤，`execute` 對這種檔案改回 409 `import_has_errors`（不再是 `import_conflict`），不寫入任何學生。\n\n**驗收標準**\n- 退班 + 入學日晚於今天 → 該列錯誤訊息如上、invalid 計數 +1。\n- 退班 + 入學日等於今天、退班 + 沒有入學日、在學 + 入學日晚於今天 → 皆合法。\n- 同一檔案 execute → 409 `import_has_errors`，details.rows 含該列，DB 沒有新增學生。\n- 預覽 endpoint 照常可用（既有 BACKEND-166 測試全綠）。",
+      "granularity_unit": "method",
+      "target_path": "apps/api/app/services/student_import_service.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-155",
+        "BACKEND-156",
+        "BACKEND-166"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/services/test_student_import_service.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_import_preview_withdrawn_future_enrollment_is_invalid：clock 固定 2026-10-02（台北），一列 狀態 '退班'、入學日 '2026-10-03' → result.invalid == 1、該列 data is None、errors 含 '退班學生的入學日不可晚於今天（退班日以匯入當天計）'",
+          "test_import_preview_withdrawn_enrollment_boundaries_are_valid：同一 clock，三列：退班 + 入學日 '2026-10-02'、退班 + 入學日空白、在學 + 入學日 '2026-10-03' → result.valid == 3、invalid == 0",
+          "test_import_execute_withdrawn_future_enrollment_has_errors：同第一條的檔案 execute → ConflictError code 'import_has_errors'（不是 'import_conflict'），details['rows'][0]['errors'] 含該訊息；students 表筆數與執行前相同"
+        ],
+        "run": "just test-int apps/api/tests/integration/services/test_student_import_service.py -k \"test_import_preview_withdrawn or test_import_execute_withdrawn\"",
+        "notes": "改完 preview 簽章後另跑 BACKEND-166 的 tdd.run（just test-int apps/api/tests/integration/api/admin/test_students_endpoints.py -k \"test_admin_import_\"）確認 endpoint 測試仍全綠。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-561",
+      "title": "家長端月出勤每日資料加 in_stats：標示這一天是否計入統計",
+      "description": "修改 `apps/api/app/schemas/attendance.py` 的 `ParentAttendanceDayOut` 與 `apps/api/app/services/attendance_service.py::get_child_monthly_attendance`（BACKEND-314）。\n\ndomain_spec M4「家長端月出勤日曆」：計入統計卻沒有登記的日子，月曆與統計都顯示「未登記」。前端要知道哪些日子計入統計才能一致顯示，因此每日資料加上 `in_stats: bool`，值就是 stats 使用的同一個判斷：營業日、不晚於今天（Asia/Taipei）、且不早於學生 `enrolled_on`（null 時不限）。`stats` 的計算與既有欄位不變；`GET /api/parent/children/{id}/attendance`（BACKEND-323）回應的每個 day 多出這個欄位。同步更新 `docs/tasks/api_index.md` B323 的回應形狀。\n\n**驗收標準**\n- 每個 day 都有 `in_stats`；`stats.service_days` 等於 `in_stats` 為 true 的天數。\n- 非營業日、今天以後、入學日以前的營業日 → false；入學日當天與今天 → true。\n- endpoint 回應 JSON 每個 day 含 `in_stats`。",
+      "granularity_unit": "method",
+      "target_path": "apps/api/app/services/attendance_service.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-314",
+        "BACKEND-323"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/services/test_attendance_service.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_child_monthly_attendance_in_stats_flags：clock 2026-10-02、學生 enrolled_on 2026-10-01、10/04 為休息日 → 10/01 與 10/02 in_stats True；09/30 以前、10/03（今天以後）與 10/04 False；stats.service_days == sum(d.in_stats for d in days)",
+          "test_child_monthly_attendance_in_stats_without_enrolled_on：enrolled_on null、同一 clock → 10/01（營業日）True、10/05（今天以後）False",
+          "test_parent_attendance_in_stats_in_response（apps/api/tests/integration/api/parent/test_attendance_endpoints.py）：GET /api/parent/children/{id}/attendance?month=2026-10 → 每個 days 項目都有 'in_stats' 鍵且為 bool，今天那筆為 true"
+        ],
+        "run": "just test-int apps/api/tests/integration/services/test_attendance_service.py apps/api/tests/integration/api/parent/test_attendance_endpoints.py -k \"in_stats\"",
+        "notes": ""
       },
       "review": {
         "status": "pending",

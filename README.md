@@ -63,7 +63,7 @@ just web-test src/components/pickup/QueueCard.spec.ts
 just web-lint src/components/pickup/QueueCard.vue
 ```
 
-禁止無參數的 `pytest`、`pytest apps/api/tests/`、`ruff check .`、`pnpm lint`、無檔案的 `pnpm vitest run`。唯一例外是 `just web-typecheck`（vue-tsc 只能全專案跑），只在送 PR 前執行一次。全量執行只在 CI。
+禁止無參數的 `pytest`、`pytest apps/api/tests/`、`ruff check .`、`pnpm lint`、無檔案的 `pnpm vitest run`。唯一例外是 `just web-typecheck`（vue-tsc 只能全專案跑，約 5 秒）：每批前端 task 改 `in_review` 前、reviewer 審查前端批次時、送 PR 前各執行一次。其他全量執行只在 CI。
 
 ## 文件索引
 

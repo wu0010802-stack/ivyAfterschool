@@ -4,7 +4,7 @@
 # - 各 app 自己讀自己的 .env，root 不載入（dotenv-load := false）。
 # - 所有 recipe 用 justfile_directory() 組絕對路徑，不依賴呼叫端 cwd。
 # - 本專案禁止全量 lint / typecheck / test：標 ★ 的 recipe 無參數時印用法並 exit 1。
-#   唯一例外是 web-typecheck（vue-tsc 只能全專案跑），只在送 PR 前執行一次。
+#   唯一例外是 web-typecheck（vue-tsc 只能全專案跑）：每批前端 task 送審前、審查前端批次時、送 PR 前各跑一次。
 # - Python 類 recipe 的路徑路由見 scripts/_pyroute.sh（只支援 apps/api/ 與 scripts/ 底下）。
 # - pnpm / uv / docker 一律從 PATH 找執行檔（回歸測試會用假執行檔替換）。
 
@@ -107,7 +107,7 @@ web-lint *ARGS:
     cd "{{ root }}/apps/web"
     pnpm exec eslint "$@"
 
-# 前端 vue-tsc 全專案型別檢查（唯一允許無參數的檢查類 recipe，只在送 PR 前跑一次）
+# 前端 vue-tsc 全專案型別檢查（唯一允許無參數的檢查類 recipe：前端批次送審前、審查時、送 PR 前各跑一次）
 web-typecheck:
     #!/usr/bin/env bash
     set -euo pipefail

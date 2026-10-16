@@ -62,7 +62,7 @@
 - 身分證字號與健康備註只有持 `students:sensitive` 的員工能檢視與寫入。
 - 學生狀態改為 `suspended` 或 `withdrawn` 時，同一交易內自動收尾：取消進行中的接送請求與 active 代理授權、刪除今天起尚未登記（`expected`）的出勤列、取消未來的請假（已開始的截到昨天）；已發生的紀錄保留。
 - 個資保存：退班學生資料封存保留；admin（權限 `students:purge`）可對已封存且 `withdrawn` 的學生執行「永久刪除」——匿名化姓名、清除身分證 / 健康備註 / 照片 / 監護人聯絡資料與綁定，出勤、成績等統計紀錄保留但不再可識別（自由文字備註與含學生資訊的站內通知一併清除），寫 audit。`audit_logs` 為 append-only，既有稽核紀錄不改寫（敏感欄位本來就遮罩）。退班 / 暫停的自動收尾只推 ws 更新畫面，不另發通知。
-- Excel 匯入只支援後台提供的範本（範本由後端依匯入欄位定義產生下載）。
+- Excel 匯入只支援後台提供的範本（範本由後端依匯入欄位定義產生下載）。預覽與實際匯入的判斷一致：範本沒有退班日欄，狀態「退班」的列以匯入當天為退班日，因此入學日晚於今天的退班列在預覽就判為錯誤。
 
 **parent_accounts**：`line_user_id`（unique）、`display_name`、`picture_url`、`phone`、`status`（`active` / `disabled`）、`token_version`、`last_login_at`。
 **guardians**：`student_id`、`parent_account_id`（nullable，綁定後填入）、`name`、`relation`（`father` / `mother` / `grandparent` / `other`）、`phone`、`is_primary bool`、`can_pickup bool`、`receives_notifications bool`、`archived_at`。同一學生只能有一位 `is_primary`。
@@ -84,6 +84,7 @@ expected ──到班──▶ present ──離班/接送完成──▶ left
 - 每日初始化：營業日（非 `closed_days`、在 `org.service_hours` 內）為所有 `active` 學生建立 `expected` 紀錄；當日已有請假者直接建 `leave`。冪等。
 - 到班時通知家長（`attendance.checked_in`）；離班時通知家長（`attendance.checked_out`）。
 - 接送完成（M7）自動把出勤改為 `left`、`check_out_source = pickup`。
+- 家長端月出勤日曆：統計只計入營業日、不晚於今天、不早於入學日的日子（每日資料以 `in_stats` 標示）；這些日子仍是 `expected` 或沒有出勤列時，月曆、單日明細與統計一律顯示「未登記」（今天仍是 `expected` 的格子顯示「預計到班」，由統計卡小字說明今天先算在未登記）。未來的請假日不顯示在月曆上（出勤列只在請假生效當天建立），家長到請假頁查看。
 
 ### M5 請假
 
@@ -133,7 +134,7 @@ expected ──到班──▶ present ──離班/接送完成──▶ left
 **exam_subjects**：`exam_id`、`subject_id`、`full_score numeric`（預設 100）、`sort_order`。
 **exam_scores**：`exam_id`、`student_id`、`subject_id`、`score numeric`（nullable，0 ≤ score ≤ full_score）、`is_absent bool`、`note`、`updated_by`。unique(`exam_id`, `student_id`, `subject_id`)。
 
-- 後台以「學生 × 科目」格狀表格輸入，逐格自動儲存（批次 upsert）。
+- 後台以「學生 × 科目」格狀表格輸入，逐格自動儲存（批次 upsert）。每格可輸入備註（`note`，最多 200 字，空白視為無備註），與分數一起自動儲存；家長端成績明細顯示該備註。
 - 發布後家長端才看得到，並通知家長（`exam.published`）。發布後修改分數寫 audit，且可選擇是否重新通知。
 - 科目、考試類型由後台自訂（M2）。後台可看單次考試各科平均與個人歷次成績列表（不做排名）。
 - 單次考試各科統計（已填、缺考、未填、平均、最高、最低）只計**目前應考名單**內的學生，因此每科「已填 + 缺考 + 未填 = 應考人數」：格子有分數算已填，標缺考算缺考，其餘（沒有成績列、或清空過分數且未標缺考）算未填；缺考不算未填、不計入平均。不在目前名單內的學生（考後退班、範圍變更）的成績列照樣保留並在成績格標示，但不列入統計，也不抵掉未填數。

@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 173,
-  "last_updated": "2026-10-08T08:28:24Z",
+  "version": 174,
+  "last_updated": "2026-10-16T04:32:02Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5219,7 +5219,7 @@
     {
       "id": "FRONTEND-235",
       "title": "實作 components/exams/ScoreGrid.vue：學生 × 科目成績輸入格（鍵盤導覽、逐格自動儲存）",
-      "description": "建立 `apps/web/src/components/exams/ScoreGrid.vue`（domain_spec M8：後台以「學生 × 科目」格狀表格輸入，逐格自動儲存）。鍵盤導覽參考 ivy `FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-exam-detail.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：考試 header（狀態、發布 / 取消發布 / 編輯 / 刪除依權限）、成績輸入格（學生 × 科目，格子五種狀態：未填 / 編輯中 / 儲存中 / 已儲存 / 錯誤，缺考勾選、超出滿分錯誤、已不在名單的學生）、已發布後修改的重新通知選擇、各科平均表、科目設定（草稿可改 / 已發布唯讀）、只有 exams:read 時唯讀、無科目時的引導、載入中。\n\n**props / emits / expose**：`examId: string`、`canWrite: boolean`；emits `dirty-change(hasUnsaved: boolean)`；expose `hasUnsaved`、`failedCount`、`flush(): Promise<void>`（送出未儲存的格子並等請求結束，不開 RenotifyChoiceDialog）、`reload(): Promise<void>`（重新 `fetchScoreGrid`）。\n**內容**\n- 載入 `fetchScoreGrid(examId)`；列 = students（依班級、學號），欄 = subjects（依 sort_order，表頭「{subject_name}（滿分 {full_score}）」）；左側固定「學號 / 姓名 / 班級」，表頭固定，表格高度填滿內容區剩餘高度（只捲表格本體）；科目欄最小寬 140，表頭的「（滿分 {full_score}）」換到第二行灰字。列高 ≥ 48px，點格子任何位置（不是輸入框或「缺」本身）都聚焦該格輸入框。`in_roster === false` 的學生列淡化並標「已不在名單」（仍可編輯既有分數；只淡化儲存格內容，固定欄底色保持不透明）。\n- 每格 `ScoreCell`（FRONTEND-236），狀態由 `useScoreAutosave`（FRONTEND-237）提供。\n- 鍵盤：Enter / ↓ 往下一列同科、Shift+Enter / ↑ 上一列；Tab 右一格（最後一科換到下一列第一科）、Shift+Tab 左一格（第一科換到上一列最後一科），表格最後一格的 Tab 與第一格的 Shift+Tab 交給瀏覽器（離開表格）；→ / ← 只在輸入框游標位於結尾 / 開頭時換格；到表格邊界停在原格。移入的格子全選內容；缺考格（輸入框停用）改聚焦該格的「缺」勾選。被左側固定欄遮住的格子要捲到可見（捲動容器 scroll-padding-left = 固定欄總寬）。工具列灰字提示「Enter 下一位　Tab 下一科　Esc 還原　輸入「缺」標記缺考」。\n- Esc 還原該格尚未送出的輸入：ScoreCell（FRONTEND-236）沒有 reset 介面，ScoreGrid 遞增該格的 `key` 重建 ScoreCell（輸入框回到 props 值）並聚焦同一格；重建前先標記該格，忽略卸載時 blur 觸發的 change。\n- 工具列（只有 canWrite 才顯示）：儲存狀態摘要（「所有變更已儲存」/「{n} 格尚未儲存」/「儲存中…」/「{n} 格儲存失敗」+「重試」）、`exam.status === 'published'` 時「修改後通知家長：{開 / 關 / 尚未選擇}」切換（FRONTEND-238）。\n- RenotifyChoiceDialog 以 Esc / X 關閉（未選擇）後，格子維持未儲存、工具列顯示「尚未選擇」；之後再有格子變更觸發自動儲存且仍 `awaitingNotifyChoice` 時重新開啟 dialog；使用者也可直接在工具列切換選擇（選擇後立即 flush）。view 呼叫的 `flush()`（離開、發布、重新載入前）不開 dialog。\n- `!canWrite`：沒有工具列，所有格唯讀（ScoreCell readonly）。\n- 無科目：EmptyState「尚未設定科目」；canWrite 時說明「設定考試科目與滿分後才能輸入成績」+「前往科目設定」（`router.replace({query: {tab: 'subjects'}})`），唯讀時說明「有成績編輯權限的人設定科目後，這裡才會出現成績表」、沒有按鈕；無學生：「此考試沒有應考學生，請確認年級或班級設定」。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/exams/ScoreGrid.vue`（domain_spec M8：後台以「學生 × 科目」格狀表格輸入，逐格自動儲存）。鍵盤導覽參考 ivy `FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-exam-detail.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：考試 header（狀態、發布 / 取消發布 / 編輯 / 刪除依權限）、成績輸入格（學生 × 科目，格子五種狀態：未填 / 編輯中 / 儲存中 / 已儲存 / 錯誤，缺考勾選、超出滿分錯誤、已不在名單的學生）、已發布後修改的重新通知選擇、各科平均表、科目設定（草稿可改 / 已發布唯讀）、只有 exams:read 時唯讀、無科目時的引導、載入中。\n\n**props / emits / expose**：`examId: string`、`canWrite: boolean`；emits `dirty-change(hasUnsaved: boolean)`；expose `hasUnsaved`、`failedCount`、`flush(): Promise<void>`（送出未儲存的格子並等請求結束，不開 RenotifyChoiceDialog）、`reload(): Promise<void>`（重新 `fetchScoreGrid`）。\n**內容**\n- 載入 `fetchScoreGrid(examId)`；列 = students（依班級、學號），欄 = subjects（依 sort_order，表頭「{subject_name}（滿分 {full_score}）」）；左側固定「學號 / 姓名 / 班級」，表頭固定，表格高度填滿內容區剩餘高度（只捲表格本體）；科目欄最小寬 140，表頭的「（滿分 {full_score}）」換到第二行灰字。列高 ≥ 48px，點格子任何位置（不是輸入框或「缺」本身）都聚焦該格輸入框。`in_roster === false` 的學生列淡化並標「已不在名單」（仍可編輯既有分數；只淡化儲存格內容，固定欄底色保持不透明）。\n- 每格 `ScoreCell`（FRONTEND-236，備註由 FRONTEND-296 擴充），值（含 `note`）與狀態由 `useScoreAutosave`（FRONTEND-237）提供；ScoreCell 的 `change({score, is_absent, note})` 原樣交給 `edit`。備註入口的鍵盤與滑鼠行為依 FRONTEND-296 的核可稿，不影響本頁的鍵盤導覽。\n- 鍵盤：Enter / ↓ 往下一列同科、Shift+Enter / ↑ 上一列；Tab 右一格（最後一科換到下一列第一科）、Shift+Tab 左一格（第一科換到上一列最後一科），表格最後一格的 Tab 與第一格的 Shift+Tab 交給瀏覽器（離開表格）；→ / ← 只在輸入框游標位於結尾 / 開頭時換格；到表格邊界停在原格。移入的格子全選內容；缺考格（輸入框停用）改聚焦該格的「缺」勾選。被左側固定欄遮住的格子要捲到可見（捲動容器 scroll-padding-left = 固定欄總寬）。工具列灰字提示「Enter 下一位　Tab 下一科　Esc 還原　輸入「缺」標記缺考」。\n- Esc 還原該格尚未送出的輸入：ScoreCell（FRONTEND-236）沒有 reset 介面，ScoreGrid 遞增該格的 `key` 重建 ScoreCell（輸入框回到 props 值）並聚焦同一格；重建前先標記該格，忽略卸載時 blur 觸發的 change。\n- 工具列（只有 canWrite 才顯示）：儲存狀態摘要（「所有變更已儲存」/「{n} 格尚未儲存」/「儲存中…」/「{n} 格儲存失敗」+「重試」）、`exam.status === 'published'` 時「修改後通知家長：{開 / 關 / 尚未選擇}」切換（FRONTEND-238）。\n- RenotifyChoiceDialog 以 Esc / X 關閉（未選擇）後，格子維持未儲存、工具列顯示「尚未選擇」；之後再有格子變更觸發自動儲存且仍 `awaitingNotifyChoice` 時重新開啟 dialog；使用者也可直接在工具列切換選擇（選擇後立即 flush）。view 呼叫的 `flush()`（離開、發布、重新載入前）不開 dialog。\n- `!canWrite`：沒有工具列，所有格唯讀（ScoreCell readonly）。\n- 無科目：EmptyState「尚未設定科目」；canWrite 時說明「設定考試科目與滿分後才能輸入成績」+「前往科目設定」（`router.replace({query: {tab: 'subjects'}})`），唯讀時說明「有成績編輯權限的人設定科目後，這裡才會出現成績表」、沒有按鈕；無學生：「此考試沒有應考學生，請確認年級或班級設定」。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": "FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav",
@@ -5230,7 +5230,8 @@
         "FRONTEND-236",
         "FRONTEND-237",
         "FRONTEND-238",
-        "FRONTEND-042"
+        "FRONTEND-042",
+        "FRONTEND-296"
       ],
       "suggested_model": "opus-5",
       "risk_notes": "「缺」勾選沿用 component-exams.html 的 small checkbox（約 24px 高，低於 44px 觸控建議）；平板上可在輸入框輸入「缺」或「-」標記缺考，要放大需改元件稿與 FRONTEND-236。",
@@ -5243,14 +5244,15 @@
         "red_cases": [
           "ScoreGrid renders students by subjects with existing scores：GET /admin/exams/e1/scores 回 students [王小明, 林小華(in_roster false)]、subjects [國語 100, 數學 100]、cells [{s1,sub1,score:95}] → 表頭含 '國語（滿分 100）'；王小明國語格值 '95'；林小華列含 '已不在名單'",
           "ScoreGrid enter moves to next row same subject：聚焦王小明國語格按 Enter → document.activeElement 為林小華國語格的 input",
-          "ScoreGrid autosaves edited cell：王小明數學輸入 88 → 800ms 後 PUT /admin/exams/e1/scores body.cells 深等於 [{student_id:'s1',subject_id:'sub2',score:88,is_absent:false}]、notify_parents false；成功後工具列文字 '所有變更已儲存'",
+          "ScoreGrid autosaves edited cell：王小明數學輸入 88 → 800ms 後 PUT /admin/exams/e1/scores body.cells 深等於 [{student_id:'s1',subject_id:'sub2',score:88,is_absent:false,note:null}]、notify_parents false；成功後工具列文字 '所有變更已儲存'",
           "ScoreGrid readonly without write permission：canWrite false → 所有 input 為 readonly 或 disabled，沒有通知切換",
           "ScoreGrid empty states：canWrite true、subjects [] → 文字含 '尚未設定科目'，點 '前往科目設定' → query.tab === 'subjects'；canWrite false、subjects [] → 文字含 '有成績編輯權限的人設定科目後'、沒有 '前往科目設定'；students [] → '此考試沒有應考學生，請確認年級或班級設定'",
           "ScoreGrid reports unsaved state：輸入後尚未送出 → emitted('dirty-change') 最後一筆 [true]；儲存成功 → [false]",
           "ScoreGrid reopens renotify dialog after dismiss：exam.status 'published'、notifyParents null，王小明數學輸入 88 → dialog 開啟；按 Esc → dialog 關閉、沒有 PUT、工具列含 '尚未選擇'；再把林小華數學輸入 70 → dialog 再次開啟",
           "ScoreGrid keyboard wraps rows and respects caret：聚焦王小明最後一科的 input 按 Tab → activeElement 為林小華第一科的 input；再按 Shift+Enter → 王小明第一科；在值為 '95' 的 input 游標位於開頭時按 → → activeElement 不變，游標移到結尾再按 → → 右一格；另一組資料陳小美國語缺考（input disabled）時從上一列國語按 Enter → activeElement 為陳小美國語的「缺」checkbox input",
           "ScoreGrid escape reverts typing：王小明國語（95）輸入 '70' 不 blur 按 Esc → 該格 input 值為 '95'、activeElement 仍為該格 input、沒有 PUT、emitted('dirty-change') 沒有 [true]",
-          "ScoreGrid exposes failure count：PUT networkError 後 vm.failedCount === 1、vm.hasUnsaved === true；點工具列 '重試' 且回 200 → vm.failedCount === 0"
+          "ScoreGrid exposes failure count：PUT networkError 後 vm.failedCount === 1、vm.hasUnsaved === true；點工具列 '重試' 且回 200 → vm.failedCount === 0",
+          "ScoreGrid autosaves note edits：王小明國語（95、note null）以 ScoreCell 的備註編輯輸入 '補考' 並確定 → 800ms 後 PUT body.cells 深等於 [{student_id:'s1',subject_id:'sub1',score:95,is_absent:false,note:'補考'}]"
         ],
         "run": "just web-test src/components/exams/ScoreGrid.spec.ts -t \"ScoreGrid\"",
         "notes": ""
@@ -5304,7 +5306,7 @@
     {
       "id": "FRONTEND-237",
       "title": "實作 composables/useScoreAutosave.ts：成績格變更佇列、防抖批次 upsert、逐格狀態與重試",
-      "description": "建立 `apps/web/src/composables/useScoreAutosave.ts`（domain_spec M8：逐格自動儲存（批次 upsert）；api_index §11：每次只送有變動的格子）。\n\n**介面**\n```ts\nexport function useScoreAutosave(opts: {\n  examId: Ref<string>\n  initial: Ref<ScoreCell[]>\n  notifyParents: Ref<boolean | null>     // 已發布考試：null = 尚未選擇（此時暫不送出，等待選擇）；草稿固定 false\n  debounceMs?: number                    // 預設 800\n}): {\n  cellValue(studentId, subjectId): { score: number | null; is_absent: boolean }\n  cellState(studentId, subjectId): 'idle' | 'dirty' | 'saving' | 'saved' | 'error'\n  cellError(studentId, subjectId): string | undefined\n  edit(studentId, subjectId, v: { score: number | null; is_absent: boolean }): void\n  flush(): Promise<void>; retryFailed(): Promise<void>\n  hasUnsaved: ComputedRef<boolean>; failedCount: ComputedRef<number>; saving: ComputedRef<boolean>\n  awaitingNotifyChoice: ComputedRef<boolean>\n}\n```\n- `edit` → 標 dirty、重設 debounce；debounce 到期送出所有 dirty 格（一次 `saveScores`，最多 2000 格，超過分批）。\n- 同一時間只有一個 PUT 進行中；進行中又有新編輯 → 結束後再送新的 dirty（同格以最新值為準）。送出中的格子若在回應前又被編輯，回應後維持 dirty。\n- 成功：送出的格子（且未再被編輯）標 saved（1 秒後轉 idle），並更新基準值。\n- 422 `invalid_score_cells`：details 中的格子標 error（訊息對照：score_out_of_range「分數超出 0~滿分」、student_not_in_exam「學生不在應考名單」、subject_not_in_exam「此科目不在考試中」、未知 code 顯示 code），其餘送出的格子視為未寫入、維持 dirty 後重送一次。\n- 網路錯誤 / 5xx：送出的格子全部標 error「儲存失敗，請重試」；`retryFailed` 重新送出。\n- **每格備註 `note`**：後台沒有每格備註的輸入介面，但 PUT 的 upsert 會以請求值覆寫 `note`（沒帶就洗成 NULL）。因此 `initial` 的每格 `note` 要保留在內部基準中，送出時原樣帶回 `ScoreCellIn.note`：沒有成績列的格子帶 `null`（不得省略或帶 `undefined`）；`edit` 只改 `score` / `is_absent`、不動 `note`；成功後以回應值更新基準（含 `note`）。\n- `notifyParents === null`（已發布且尚未選擇）時不送出，`awaitingNotifyChoice` 為 true（由 FRONTEND-238 要求使用者選擇）；選擇後立即 flush。\n- 離開頁面前 `flush()`；`hasUnsaved` = dirty / saving / error 任一。\n\n**驗收標準**：每一條對應下列 red_case（fake timers）。",
+      "description": "建立 `apps/web/src/composables/useScoreAutosave.ts`（domain_spec M8：逐格自動儲存（批次 upsert）；api_index §11：每次只送有變動的格子）。\n\n**介面**\n```ts\nexport function useScoreAutosave(opts: {\n  examId: Ref<string>\n  initial: Ref<ScoreCell[]>\n  notifyParents: Ref<boolean | null>     // 已發布考試：null = 尚未選擇（此時暫不送出，等待選擇）；草稿固定 false\n  debounceMs?: number                    // 預設 800\n}): {\n  cellValue(studentId, subjectId): { score: number | null; is_absent: boolean; note: string | null }\n  cellState(studentId, subjectId): 'idle' | 'dirty' | 'saving' | 'saved' | 'error'\n  cellError(studentId, subjectId): string | undefined\n  edit(studentId, subjectId, v: { score: number | null; is_absent: boolean; note?: string | null }): void\n  flush(): Promise<void>; retryFailed(): Promise<void>\n  hasUnsaved: ComputedRef<boolean>; failedCount: ComputedRef<number>; saving: ComputedRef<boolean>\n  awaitingNotifyChoice: ComputedRef<boolean>\n}\n```\n- `edit` → 標 dirty、重設 debounce；debounce 到期送出所有 dirty 格（一次 `saveScores`，最多 2000 格，超過分批）。\n- 同一時間只有一個 PUT 進行中；進行中又有新編輯 → 結束後再送新的 dirty（同格以最新值為準）。送出中的格子若在回應前又被編輯，回應後維持 dirty。\n- 成功：送出的格子（且未再被編輯）標 saved（1 秒後轉 idle），並更新基準值。\n- 422 `invalid_score_cells`：details 中的格子標 error（訊息對照：score_out_of_range「分數超出 0~滿分」、student_not_in_exam「學生不在應考名單」、subject_not_in_exam「此科目不在考試中」、未知 code 顯示 code），其餘送出的格子視為未寫入、維持 dirty 後重送一次。\n- 網路錯誤 / 5xx：送出的格子全部標 error「儲存失敗，請重試」；`retryFailed` 重新送出。\n- **每格備註 `note`**（domain_spec M8：後台可輸入每格備註）：`note` 與 `score` / `is_absent` 一起構成每格的值。PUT 的 upsert 會以請求值覆寫 `note`（沒帶就洗成 NULL），因此送出時一律帶 `ScoreCellIn.note`：沒有成績列且沒編輯過備註的格子帶 `null`（不得省略或帶 `undefined`）。`edit` 的 `v.note` 省略（`undefined`）時沿用該格目前的 note；有給（字串或 null）就改成該值。只改 note 也算變更（標 dirty、照常 debounce 送出）。`cellValue` 回傳 `{score, is_absent, note}`。成功後以回應值更新基準（含 `note`）。\n- `notifyParents === null`（已發布且尚未選擇）時不送出，`awaitingNotifyChoice` 為 true（由 FRONTEND-238 要求使用者選擇）；選擇後立即 flush。\n- 離開頁面前 `flush()`；`hasUnsaved` = dirty / saving / error 任一。\n\n**驗收標準**：每一條對應下列 red_case（fake timers）。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useScoreAutosave.ts",
       "source_ref": null,
@@ -5315,7 +5317,7 @@
         "FRONTEND-009"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "並發與順序：同一格在請求進行中再次被編輯，回應不得把較新的值標為已儲存或覆蓋基準；序列化 PUT 並以每格版本號比對。\n後台目前沒有每格備註的輸入介面，送出時原樣帶回載入時的 note 避免 upsert 洗成 NULL；日後若要提供每格備註輸入，需另開 task（ScoreCell 與 FRONTEND-235）。",
+      "risk_notes": "並發與順序：同一格在請求進行中再次被編輯，回應不得把較新的值標為已儲存或覆蓋基準；序列化 PUT 並以每格版本號比對（note 與分數共用同一個版本號）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useScoreAutosave.spec.ts",
@@ -5330,7 +5332,8 @@
           "useScoreAutosave waits for notify choice on published exam：notifyParents null → edit 後 2 秒無請求、awaitingNotifyChoice true；設 notifyParents = true → 立即送出且 body.notify_parents === true",
           "useScoreAutosave saved returns to idle and hasUnsaved：成功後 cellState 'saved'，1 秒後 'idle'；全部完成後 hasUnsaved === false",
           "useScoreAutosave maps cell error codes：PUT 回 422 invalid_score_cells details [{student_id:'s1',subject_id:'sub1',code:'student_not_in_exam'},{student_id:'s2',subject_id:'sub1',code:'subject_not_in_exam'},{student_id:'s3',subject_id:'sub1',code:'absent_with_score'}] → cellError 依序為 '學生不在應考名單'、'此科目不在考試中'、'absent_with_score'",
-          "useScoreAutosave echoes the loaded note：initial 含 s1/sub1 {score:80, is_absent:false, note:'遲到'} 與沒有成績列的 s2/sub1（note null）；edit(s1,sub1,90)、edit(s2,sub1,70) 送出後 PUT body 的 cells 為 s1 {score:90, is_absent:false, note:'遲到'}、s2 {score:70, is_absent:false, note:null}（note 欄位必須存在，不得省略或為 undefined）"
+          "useScoreAutosave echoes the loaded note：initial 含 s1/sub1 {score:80, is_absent:false, note:'遲到'} 與沒有成績列的 s2/sub1（note null）；edit(s1,sub1,90)、edit(s2,sub1,70) 送出後 PUT body 的 cells 為 s1 {score:90, is_absent:false, note:'遲到'}、s2 {score:70, is_absent:false, note:null}（note 欄位必須存在，不得省略或為 undefined）",
+          "useScoreAutosave edits note with or without score：initial s1/sub1 {score:80, is_absent:false, note:'遲到'}；edit(s1,sub1,{score:80,is_absent:false,note:'補考'}) → 該格 'dirty'，800ms 後 PUT cells[0] 深等於 {student_id:'s1',subject_id:'sub1',score:80,is_absent:false,note:'補考'}；成功後 cellValue(s1,sub1).note === '補考'；再 edit(s1,sub1,{score:85,is_absent:false})（省略 note）→ 下一個 PUT 的 note 仍為 '補考'；edit(s1,sub1,{score:85,is_absent:false,note:null}) → PUT 的 note 為 null"
         ],
         "run": "just web-test src/composables/useScoreAutosave.spec.ts -t \"useScoreAutosave\"",
         "notes": ""
@@ -6017,6 +6020,42 @@
         "status": "pass",
         "reviewer": "review-r9-f",
         "notes": "pass：tdd.notes 四條逐一實跑——① 修正前基準（reviewer 在 1930ea5 自跑）`just web-typecheck` 8 個 error（AuditLogView 7、JsonSchemaFields 1）；修正後 exit 0、error 0 行；② AuditLogView.spec 16/16、JsonSchemaForm.spec 19/19 全綠，2a3475a 未動任何 spec 檔，測試名稱與斷言與修正前完全相同；③ 兩檔 `just web-lint` 乾淨；④ `git diff 2a3475a^ 2a3475a` 只有 AuditLogView.vue 的 2 行 script 註解 + 6 個 `<!-- @vue-generic {AuditLog} -->` 與 JsonSchemaFields.vue 的一處括號型別斷言，沒有 template 結構 / class / 文字變動，沒有 @ts-ignore / @ts-expect-error / any。反例（scratchpad 複本 + symlink node_modules，未動 repo）：保留 `@vue-generic` 但拿掉 slot 參數型別註記、改用 `row.no_such_prop_r9f` → vue-tsc 報 TS2339 Property 'no_such_prop_r9f' does not exist on type 'AuditLog'；再拿掉 `@vue-generic` → 零錯誤（row 退回 Record<PropertyKey, any>），證明註解確實讓 row 成為 AuditLog。DOM 探針（vitest，未留檔）：`.hidden-columns` 有 8 個 childNodes = 6 個欄位元素 + 2 個 fragment 文字錨點、comment node 0 個；表頭順序 ['時間','操作者','動作','對象','IP','']、首列 6 格內容正確。以 vue/compiler-sfc 在 NODE_ENV 未設 / test / development / production、isProd true / false 編譯本檔模板：輸出都不含 `@vue-generic`（HTML 註解在各模式都被 SFC 編譯器移除），所以 risk_notes 所說「開發模式（含 vitest）每個註解會在 .hidden-columns 多一個 comment node」實測不成立，無任何 DOM 影響；即使日後開啟 compilerOptions.comments，Element Plus 2.14.7 以 `Array.prototype.indexOf.call(hiddenColumns.children, el)`（HTMLCollection 不含 comment）計算欄位索引，順序仍不受影響。殘留（不打回）：risk_notes 那句 comment node 敘述與實測不符，下次編輯該 task 時可刪去；`(valueOf(f) as string | number | boolean | undefined)` 是對 unknown 的純型別斷言、無執行期守衛，對 el-select 的 model-value 綁定足夠。"
+      }
+    },
+    {
+      "id": "FRONTEND-296",
+      "title": "擴充 components/exams/ScoreCell.vue：每格備註輸入與顯示",
+      "description": "修改 `apps/web/src/components/exams/ScoreCell.vue`（FRONTEND-236 已完成的元件；本 task 只擴充備註，分數 / 缺考 / 狀態行為不變）。domain_spec M8：後台成績格可輸入每格備註（最多 200 字，家長端成績明細會顯示）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），在既有元件稿 `docs/mockups/component-exams.html` 補上備註的外觀與互動（`preview-tasks` 需列入本 task id），頁面稿 `docs/mockups/page-exam-detail.html` 同步引用（`preview-tasks` 加 FRONTEND-296）；兩張稿的 `preview-status` 重新為 `approved` 後才可進 `in_progress`。稿必須呈現：沒有備註 / 有備註（格子上的提示標記）、編輯備註（開啟、輸入、字數上限、確定 / 取消）、清空備註、缺考格的備註、readonly 檢視備註、已不在名單學生的格子。備註入口不得增加列高（≥ 48px 的列高與 140px 科目欄最小寬維持），也不得擋住 ScoreGrid 的鍵盤導覽（Enter / Tab / 方向鍵只在分數輸入框之間移動）。\n\n**props / emits 變更**：新增 prop `note: string | null`；`change` 的 payload 改為 `{score, is_absent, note}`（分數或缺考變更時帶目前的 note 原值）。\n- 備註編輯：入口與編輯 UI 依核可稿；確定時 trim，空字串視為 null；與 props 相同不 emit；超過 200 字不可送出並提示「備註最多 200 字」；取消或 Esc 還原、不 emit。\n- 有備註時格子顯示提示標記，滑過 / 聚焦時可看到全文（title 或 tooltip，依稿）。\n- readonly：不顯示編輯入口，有備註時仍可檢視全文。\n- 更新既有 ScoreCell.spec.ts：分數 / 缺考 emit 的期望 payload 加上 `note`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/components/exams/ScoreCell.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-236"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/components/exams/ScoreCell.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ScoreCell note edit emits trimmed note：score 90、note null → 開啟備註編輯、輸入 '  補考  ' 並確定 → emitted('change') 最後一筆深等於 {score:90,is_absent:false,note:'補考'}",
+          "ScoreCell note clear and unchanged：note '補考' → 清空並確定 → emit {score:90,is_absent:false,note:null}；內容不變按確定 → 不 emit；取消 → 不 emit 且顯示的備註仍為 '補考'",
+          "ScoreCell note length limit：輸入 201 個字 → 顯示「備註最多 200 字」、確定鈕不可用或按下不 emit；200 個字 → 可以 emit",
+          "ScoreCell score change keeps note：note '遲到'、setValue('88') 並 blur → emit {score:88,is_absent:false,note:'遲到'}；勾選 '缺' → emit {score:null,is_absent:true,note:'遲到'}",
+          "ScoreCell note indicator and readonly view：note '遲到' → 有備註標記且全文 '遲到' 可在 title / tooltip 取得；readonly → 沒有備註編輯入口但仍可取得 '遲到'；note null → 沒有標記"
+        ],
+        "run": "just web-test src/components/exams/ScoreCell.spec.ts -t \"ScoreCell\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]
