@@ -451,7 +451,7 @@ describe('HomeworkView', () => {
     await flushPromises()
 
     expect(text(wrapper)).toContain('作業進度載入失敗')
-    expect(mock.history.get.filter((r) => r.url.startsWith('/parent/children/'))).toHaveLength(0)
+    expect(mock.history.get.filter((r) => (r.url ?? '').startsWith('/parent/children/'))).toHaveLength(0)
 
     mock.onGet('/parent/children').replyOnce(200, [child('s1', '王小明')])
     mock.onGet(url('s1')).reply(200, homework('s1'))
