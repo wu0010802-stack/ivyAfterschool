@@ -100,7 +100,7 @@ expected ──到班──▶ present ──離班/接送完成──▶ left
 
 **homework_items**：`student_id`、`service_date`、`subject_id`（nullable）、`title`（例如「數學習作 p.12-13」）、`status`（`todo` / `doing` / `correcting` 訂正中 / `done`）、`sort_order`、`updated_by`。
 **homework_daily_progress**：`student_id`、`service_date`、`overall_status`（`not_started` / `in_progress` / `done`）、`ready_eta`（time，預計可接送時間）、`eta_updated_by`、`eta_updated_at`、`note`（給家長看的說明）。unique(`student_id`, `service_date`)。
-- `overall_status` 由 items 推導：無 item 或全部 `todo` → `not_started`；全部 `done` → `done`；其餘 `in_progress`。員工也可以直接把整體標 `done`（例如當天無作業）。
+- `overall_status` 由 items 推導：無 item 或全部 `todo` → `not_started`；全部 `done` → `done`；其餘 `in_progress`。員工也可以直接把整體標 `done`（例如當天無作業）；之後任何項目異動（新增、改狀態、刪除）都會重新推導並覆蓋這個手動 `done`。
 - 員工可對整班批次新增同一份作業項目（例如全班「國語第 5 課生字」）。
 - 整體轉為 `done` 時通知家長（`homework.done`，文案「作業已完成，可以來接送了」）；`ready_eta` 被設定或變更時通知家長（`homework.eta_updated`）。
 - 家長端可看當日每一項作業的狀態、整體狀態、預計可接送時間與說明。
@@ -289,8 +289,8 @@ NFC 管理權限碼 `nfc:manage`（預設只有 admin）在 NFC 解除 blocked �
 ### 家長端（`apps/web/src/parent/views/`）
 | 路由 | 頁面 | ivy 參考 |
 |---|---|---|
-| `/login` | LIFF 登入 | `FE:src/parent/views/LoginView.vue` |
-| `/bind` | 綁定碼綁定 / 加綁 | `FE:src/parent/views/BindView.vue`、`BindAdditionalView.vue` |
+| `/login` | LIFF 登入（帳號停用、安親班尚未設定 LINE 登入等重試無效的錯誤，另提供「聯絡安親班」撥號按鈕，電話來自 `org.profile`，未設定時不顯示） | `FE:src/parent/views/LoginView.vue` |
+| `/bind` | 綁定碼綁定 / 加綁（加綁時登入狀態過期回 401，先自動 refresh 一次並重送同一組碼，refresh 也失敗才導回登入） | `FE:src/parent/views/BindView.vue`、`BindAdditionalView.vue` |
 | `/` | 首頁：小孩切換 + 今日狀態卡（出勤、作業進度、預計可接送時間、接送按鈕） | `FE:src/parent/views/ChildHubView.vue` |
 | `/more` | 更多（通知、出勤、請假、接送人、登出入口） | — |
 | `/homework` | 今日作業明細 | 新做 |

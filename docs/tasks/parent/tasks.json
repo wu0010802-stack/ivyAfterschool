@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 145,
-  "last_updated": "2026-10-16T05:43:41Z",
+  "version": 146,
+  "last_updated": "2026-10-16T05:55:15Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -904,7 +904,7 @@
         "INFRA-013"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "版面內距慣例：家長端頁面（例如 PARENT-178 NotificationPrefsView）自帶左右 16px、底部 24px 內距（對應設計稿 screen__content），ParentLayout 的 main 區不要再加左右內距，否則會疊成兩倍；之後家長端頁面統一由頁面自帶內距。",
+      "risk_notes": "版面內距慣例：家長端頁面（例如 PARENT-178 NotificationPrefsView）自帶左右 16px、底部 24px 內距（對應設計稿 screen__content），ParentLayout 的 main 區不要再加左右內距，否則會疊成兩倍；之後家長端頁面統一由頁面自帶內距。\n頂部列返回鍵不可用 `window.history.length > 1` 判斷能否返回：LIFF 進入時 liff.state 轉址會讓第一頁的 history.length 就大於 1，`router.back()` 可能退出 SPA。改看 vue-router 的 `window.history.state?.back`（有值才 `router.back()`，否則 `router.replace('/')`）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/layouts/ParentLayout.spec.ts",
@@ -3615,6 +3615,39 @@
         "status": "pass",
         "reviewer": "review-r10-p1",
         "notes": "通過（review-r10-p1）。3 條 red_case 都有同名測試：AttendanceCalendar.spec 的『shows unrecorded for counted days without a record』『keeps no-record before enrollment』與 attendance.spec 的『passes in_stats through』；tdd.run 兩條指令分別 29/29、4/4 綠，verbose 名稱清單都選得到。commit 順序 b5086a4（測試，當時 AttendanceCalendar.vue 與 attendance.ts 都沒有 in_stats）→ 215db50（實作）。規格核對：AttendanceDay 加 in_stats: boolean，與後端 ParentAttendanceDayOut（BACKEND-561，in_stats: bool 非 null）一致；月曆判斷依序為非營業日 → 休息（不看 in_stats）、沒有出勤列且 in_stats → 未登記（與今天以前的 expected 同一種格：同 class、同 remove 圖示）、其餘沒有出勤列 → 無紀錄，有狀態的日子規則不變（今天以前 expected 未登記、今天與之後預計到班），符合 domain_spec M4『家長端月出勤日曆』與使用者第 10 輪裁定。突變 6 個全殺：還原舊規則、沒有出勤列一律未登記、in_stats 先於休息、in_stats 覆蓋有狀態的 expected、未登記改用 none 樣式，以及 api 在執行期丟掉 in_stats。attendanceApi passthrough 案例可以接受：getChildAttendance 原樣回傳 res.data，前端能釘住的就是型別契約；我把型別欄位拿掉後跑 web-typecheck 確認轉紅（attendance.spec.ts 6 處、AttendanceCalendar.spec.ts 11 處、AttendanceCalendar.vue 1 處），而且執行期案例在 api 改成轉換回應、丟掉欄位時也會轉紅，不是恆真測試。設計稿：parent-component-attendance-calendar.html（preview-tasks 為 PARENT-131,PARENT-194）與 parent-page-attendance.html 只改示範判斷邏輯 describeDay、示範資料（10/14 改成計入統計、沒有出勤列）、統計示範的 in_stats 欄位、明細選項與 decisions 文字，CSS 與格子樣式沒有變；內嵌 script 以 node --check 檢查語法正確；preview-status 維持 approved，符合 description。web-lint 四檔乾淨；本輪 web-typecheck 全專案 0 錯誤。殘留（不擋）：(1) spec 的 day() helper 用 DEFAULT_TODAY 推算 in_stats 預設，不跟著 mountCalendar 的 today，日後新增 today 不同又沒有出勤列的案例時要自己覆寫 in_stats（目前沒有受影響的案例）。(2) docs/mockups/index.html 的 tasks 欄仍只列 PARENT-131（見 risk_notes，待協調者補）。(3) 單日明細的 in_stats 未登記由 PARENT-132 負責（description 已寫）。"
+      }
+    },
+    {
+      "id": "PARENT-195",
+      "title": "家長端路由加 scrollBehavior：換頁回到頂端、上一頁還原捲動位置",
+      "description": "修改 `apps/web/src/parent/router.ts`（PARENT-012 的產物）的 `createParentRouter`：`createRouter` 加 `scrollBehavior(to, from, savedPosition) { return savedPosition ?? { top: 0 } }`。理由：已核可稿 `docs/mockups/parent-component-layout.html` 以「換頁回頂端、返回還原位置」示意；不加時換頁會保留上一頁的捲動位置，新頁一打開就捲在中間。同一路徑只改 query（例如切換分頁參數）也回頂端以外的行為不在本 task 範圍，照 savedPosition 規則即可。\n\n**驗收標準**\n- 新導航回傳 `{ top: 0 }`。\n- 瀏覽器上一頁 / 下一頁（有 savedPosition）回傳該位置。",
+      "granularity_unit": "config",
+      "target_path": "apps/web/src/parent/router.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-012"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/router.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "parentRouter scroll behavior resets to top：取得 createParentRouter() 的 options.scrollBehavior，呼叫 (to, from, null) → 深等於 { top: 0 }",
+          "parentRouter scroll behavior restores saved position：呼叫 (to, from, { left: 0, top: 480 }) → 深等於 { left: 0, top: 480 }"
+        ],
+        "run": "just web-test src/parent/router.spec.ts -t \"parentRouter scroll behavior\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]
