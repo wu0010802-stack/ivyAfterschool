@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 199,
-  "last_updated": "2026-10-16T05:29:11Z",
+  "version": 200,
+  "last_updated": "2026-10-16T05:29:40Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3110,8 +3110,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ClassesView.vue",
       "source_ref": "FE:src/views/ClassroomView.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-080",
         "FRONTEND-083",
