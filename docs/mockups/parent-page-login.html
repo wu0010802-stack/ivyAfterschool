@@ -1391,7 +1391,7 @@ function pageSetup({ snack }) {
       if (sim.config === 'no_liff') { fail('liff_not_configured'); return }
       if (forceFresh) { goLine('clearLiffTokenRefreshMarker() → forceLiffReloginOnce()：liff.logout() + liff.login()'); return }
       if (!sim.lineLoggedIn) {
-        if (sim.inClient && sim.query !== 'logged_out') { goLine('LINE 內、未登入 → liff.login({ redirectUri: location.href })'); return }
+        if (sim.inClient && sim.query !== 'logged_out') { goLine('LINE 內、未登入 → liff.login({ redirectUri: 目前網址去掉 logged_out })'); return }
         state.value = 'choice'
         addLog(`→ choice（${sim.query === 'logged_out' ? '剛登出，不自動登入' : '外部瀏覽器'}）`)
         return
@@ -1446,7 +1446,7 @@ function pageSetup({ snack }) {
   function startLineLogin() {
     if (choiceBusy.value) return
     choiceBusy.value = true
-    addLog('點「使用 LINE 登入」→ await initLiff() → liff.login({ redirectUri: location.href })（按鈕 loading 防連點）')
+    addLog('點「使用 LINE 登入」→ await initLiff() → LIFF 已登入：直接送 id_token；未登入：liff.login({ redirectUri: 目前網址去掉 logged_out })（按鈕 loading 防連點）')
     later(1500, () => { choiceBusy.value = false })
   }
   function retry() {
@@ -1460,7 +1460,7 @@ function pageSetup({ snack }) {
     '版面：公開頁，ParentLayout 不渲染頂部列、底部導覽與連線橫幅。內容由上而下：安親班識別區（最小高 160px）→ 狀態區（寬度上限 360px、最小高 220px）；兩區都固定最小高，init → loading → choice / error 切換時識別區不位移。頁面自帶左右 16px、上 96px、底部 24px 內距。',
     '安親班識別（getPublicConfig）：logo_url 有值 → 80px 圓形 img（object-fit: cover、alt=""），載入失敗退回首字；沒有 logo → 80px primary-container 圓 + 名稱首字。下方名稱 headline-small（h1）、副標「家長端」body-medium。設定載入中 → 圓形與名稱骨架（SkeletonBlock 外觀）；取不到（失敗或名稱空白）→ 名稱顯示「家長端」、首字「家」、不顯示副標。',
     'init / loading：40px 轉圈（primary，reduced-motion 時停成靜止弧形）+ body-large 文案「正在連線 LINE…」/「登入中…」，外層 role="status"。LINE 內未登入自動呼叫 liff.login()、id_token 快過期或 invalid_id_token 第一次自動重登、錯誤態按「重試」（forceFresh）時，都停在 init 畫面直到 LINE 轉址回來，不顯示錯誤。',
-    'choice：外部瀏覽器未登入 LINE → 標題「請使用 LINE 帳號登入」+ 說明「登入後即可查看小孩的到班、作業與接送狀態」；query logged_out=1 → 標題「您已登出」+ 說明「需要時可再以 LINE 登入」，掛載時不執行 startLogin（LINE 內也一樣，不自動再登入）。下方 filled block「使用 LINE 登入」（login 圖示；不用 LINE 綠，同 AddFriendCard 決策），點擊 → liff.login({ redirectUri: location.href })，按下後 loading 防連點直到轉址。',
+    'choice：外部瀏覽器未登入 LINE → 標題「請使用 LINE 帳號登入」+ 說明「登入後即可查看小孩的到班、作業與接送狀態」；query logged_out=1 → 標題「您已登出」+ 說明「需要時可再以 LINE 登入」，掛載時不執行 startLogin（LINE 內也一樣，不自動再登入）。下方 filled block「使用 LINE 登入」（login 圖示；不用 LINE 綠，同 AddFriendCard 決策），點擊 → LIFF 已登入（例如剛登出、LINE 端仍是登入狀態）就直接送 id_token 登入（同 startLogin）；未登入 → liff.login，redirectUri 為目前網址去掉 logged_out（保留 redirect），LINE 轉址回來會自動登入。按下後 loading 防連點直到轉址。',
     'error：ParentEmptyState error（48px error 色圖示、標題 = 錯誤訊息、tonal「重試」→ startLogin({ forceFresh: true })）。圖示依情況：未設定 LINE 登入 settings、id_token 逾時 timer_off、帳號停用 block、LINE 服務無法連線 cloud_off、嘗試次數過多 hourglass_top、其他 error。訊息文字照 PARENT-030 步驟 1 / 7（右側對照表）。',
     '「聯絡安親班」（使用者裁定 A）：帳號停用、安親班尚未設定 LINE 登入（前端 LiffNotConfiguredError 與後端 line_login_not_configured 兩種）三種錯誤，在「重試」下方加置中的 outlined 按鈕「聯絡安親班 {org_phone}」，是 <a href="tel:…">（call 圖示；撥號規則同 BindCodeErrorNotice，只取分機前的主號）；org_phone 沒有值時不顯示。',
     '成功（status ok）→ 直接 router.replace(resolveSafeRedirect(redirect))，畫面不另顯示成功訊息；needs_binding → markBindPending(name_hint) 後 router.replace 到 /bind（redirect 有值才保留）。稿內以全頁示意層表示導頁結果，實作沒有這層。',
