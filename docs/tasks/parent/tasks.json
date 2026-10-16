@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 132,
-  "last_updated": "2026-10-16T05:00:57Z",
+  "version": 133,
+  "last_updated": "2026-10-16T05:02:10Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -427,7 +427,7 @@
     {
       "id": "PARENT-012",
       "title": "移植 parent/router.ts：家長端路由表與登入 / 綁定守衛",
-      "description": "建立 `apps/web/src/parent/router.ts`：\n```ts\nexport const parentRoutes: RouteRecordRaw[]\nexport function installParentGuards(router: Router): void\nexport function createParentRouter(history?: RouterHistory): Router  // 預設 createWebHashHistory()，並呼叫 installParentGuards\n```\n**路由**（view 一律 lazy import；meta：`title`、`tab`、`public`、`showBack`、`hideTabBar`）：\n| path | view | meta |\n|---|---|---|\n| `/login` | LoginView（PARENT-030） | public, hideTabBar, title 登入 |\n| `/bind` | BindView（PARENT-031） | bindable, hideTabBar, title 綁定小孩 |\n| `/` | ChildHubView（PARENT-054） | tab home, title 首頁 |\n| `/homework` | HomeworkView（PARENT-073） | tab homework, title 今日作業 |\n| `/pickup` | PickupView（PARENT-097） | tab pickup, title 接送 |\n| `/pickup/proxy` | PickupProxyView（PARENT-104） | tab pickup, showBack, title 代理接送 |\n| `/exams` | ExamsView（PARENT-153） | tab exams, title 成績 |\n| `/exams/:examId` | ExamDetailView（PARENT-154） | tab exams, showBack, title 成績明細 |\n| `/more` | MoreView（PARENT-034） | tab more, title 更多 |\n| `/attendance` | AttendanceView（PARENT-132） | tab more, showBack, title 出勤紀錄 |\n| `/leaves` | LeavesView（PARENT-138） | tab more, showBack, title 請假 |\n| `/notifications` | NotificationsView（PARENT-177） | tab more, showBack, title 通知 |\n| `/notifications/preferences` | NotificationPrefsView（PARENT-178） | tab more, showBack, title 通知設定 |\n| `/:pathMatch(.*)*` | redirect `/` | |\n\n**佔位 view**：本 task 為上表 13 個 view 各建立最小佔位檔 `apps/web/src/parent/views/<Name>.vue`（`<template><main data-placeholder=\"<Name>\"><h1>{meta.title}</h1></main></template>`，不含業務邏輯），讓 router / main / layout 可以先建置、typecheck 與手動瀏覽；各 view task 實作時直接覆寫該檔。佔位檔不是 UI 實作，不需設計稿。已存在的 view 檔不得覆蓋。\n\n**守衛**（`installParentGuards`，使用 PARENT-009 parentAuth store）：\n1. `meta.public`：`/login` 在已登入（`ensureSession()` 為 true）時導向 `resolveSafeRedirect(to.query.redirect)`（PARENT-003），否則放行。\n2. `/bind`（meta `bindable`）：`ensureSession()` 為 true → 放行（加綁模式）；否則 `bindPending` 存在 → 放行（首綁模式）；兩者皆無 → `{ path: '/login', replace: true }`。\n3. 其他：`await ensureSession()`；false → `{ path: '/login', replace: true, query: { redirect: to.fullPath } }`。\n4. `afterEach` 設定 `document.title = \\`${meta.title}｜家長端\\``。\n\n移植 ivy `FE:src/parent/router.ts::router` 的 hash history 與 meta 設計、`FE:src/parent/main.ts::ensureSessionProbed` 的首次探測；**去掉** device-login、maintenance、聯絡簿 / 娃娃車 / 用藥 / 費用 / 簽署 / 調查等幼稚園路由與舊路徑 redirect。\n\n**驗收標準**：每一條對應 red_case（以 `createMemoryHistory()` 建立 router，`parentRoutes` 的 component 換成 stub，mock `/parent/me`；測試不 import 任何真實 view）。",
+      "description": "建立 `apps/web/src/parent/router.ts`：\n```ts\nexport const parentRoutes: RouteRecordRaw[]\nexport function installParentGuards(router: Router): void\nexport function createParentRouter(history?: RouterHistory): Router  // 預設 createWebHashHistory()，並呼叫 installParentGuards\n```\n**路由**（view 一律 lazy import；meta：`title`、`tab`、`public`、`showBack`、`hideTabBar`）：\n| path | view | meta |\n|---|---|---|\n| `/login` | LoginView（PARENT-030） | public, hideTabBar, title 登入 |\n| `/bind` | BindView（PARENT-031） | bindable, hideTabBar, title 綁定小孩 |\n| `/` | ChildHubView（PARENT-054） | tab home, title 首頁 |\n| `/homework` | HomeworkView（PARENT-073） | tab homework, title 今日作業 |\n| `/pickup` | PickupView（PARENT-097） | tab pickup, title 接送 |\n| `/pickup/proxy` | PickupProxyView（PARENT-104） | tab pickup, showBack, title 代理接送 |\n| `/exams` | ExamsView（PARENT-153） | tab exams, title 成績 |\n| `/exams/:examId` | ExamDetailView（PARENT-154） | tab exams, showBack, title 成績明細 |\n| `/more` | MoreView（PARENT-034） | tab more, title 更多 |\n| `/attendance` | AttendanceView（PARENT-132） | tab more, showBack, title 出勤紀錄 |\n| `/leaves` | LeavesView（PARENT-138） | tab more, showBack, title 請假 |\n| `/notifications` | NotificationsView（PARENT-177） | tab more, showBack, title 通知 |\n| `/notifications/preferences` | NotificationPrefsView（PARENT-178） | tab more, showBack, title 通知設定 |\n| `/:pathMatch(.*)*` | redirect `/` | |\n\n**佔位 view**：本 task 為上表 13 個 view 各建立最小佔位檔 `apps/web/src/parent/views/<Name>.vue`（`<template><main data-placeholder=\"<Name>\"><h1>{meta.title}</h1></main></template>`，不含業務邏輯），讓 router / main / layout 可以先建置、typecheck 與手動瀏覽；各 view task 實作時直接覆寫該檔。佔位檔不是 UI 實作，不需設計稿。已存在的 view 檔不得覆蓋。\n\n**守衛**（`installParentGuards`，使用 PARENT-009 parentAuth store）：\n1. `meta.public`：`/login` 在已登入（`ensureSession()` 為 true）時導向 `resolveSafeRedirect(to.query.redirect)`（PARENT-003），否則放行。\n2. `/bind`（meta `bindable`）：先看 `bindPending`——存在 → 直接放行（首綁模式，**不探測** `/parent/me`）；否則 `ensureSession()` 為 true → 放行（加綁模式）；兩者皆無 → `{ path: '/login', replace: true }`。順序不可對調：首綁時瀏覽器只有 `parent_bind` cookie（path `/api/parent/auth`），探測 `/parent/me` 必定 401 → refresh 401 → PARENT-013 的 unauthenticated handler 呼叫 `parentAuth.clear()` 會連 `bindPending` 一起清掉，家長會被導回 `/login`。`bindPending` 過期（bind cookie 逾時）由 PARENT-031 處理（綁定 401 →「綁定時間已逾時」→ `clearBindPending` → `/login`）。\n3. 其他：`await ensureSession()`；false → `{ path: '/login', replace: true, query: { redirect: to.fullPath } }`。\n4. `afterEach` 設定 `document.title = \\`${meta.title}｜家長端\\``。\n\n移植 ivy `FE:src/parent/router.ts::router` 的 hash history 與 meta 設計、`FE:src/parent/main.ts::ensureSessionProbed` 的首次探測；**去掉** device-login、maintenance、聯絡簿 / 娃娃車 / 用藥 / 費用 / 簽署 / 調查等幼稚園路由與舊路徑 redirect。\n\n**驗收標準**：每一條對應 red_case（以 `createMemoryHistory()` 建立 router，`parentRoutes` 的 component 換成 stub，mock `/parent/me`；測試不 import 任何真實 view）。",
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": "FE:src/parent/router.ts::router",
@@ -439,7 +439,7 @@
         "INFRA-013"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "通知設定頁（PARENT-178，稿 parent-page-notification-prefs.html decision 1）的頂部列標題與返回鍵由本 router 負責：該路由 meta 要設 showBack，返回目標 /notifications；實作時對照稿 decision 1。",
+      "risk_notes": "通知設定頁（PARENT-178，稿 parent-page-notification-prefs.html decision 1）的頂部列標題與返回鍵由本 router 負責：該路由 meta 要設 showBack，返回目標 /notifications；實作時對照稿 decision 1。\nPARENT-009 的 ensureSession 成功分支沒有比照失敗分支「探測期間已由別處 setParent 就以較新的為準」；守衛都會先等探測結束才進頁面，目前構造不出反例，改守衛時不要讓頁面在探測完成前就呼叫 setParent。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/router.spec.ts",
@@ -453,7 +453,8 @@
           "parentRouter bind allowed for authed parent：GET /parent/me 200 → push('/bind') → path === '/bind'",
           "parentRouter login redirects authed user safely：已登入 → push('/login?redirect=/exams') → path === '/exams'；push('/login?redirect=//evil.com') → path === '/'",
           "parentRouter probes me only once：未登入狀態連續 push('/') 與 push('/homework') 都被導回 login，mock.history.get 中 /parent/me 恰 1 次（第二次因探測失敗後 ensureSession 回快取結果）",
-          "parentRouter lazy routes resolve placeholder views：對 parentRoutes 中每一筆有 component 的路由呼叫其 lazy loader → 全部 resolve 出 default export（佔位或已實作的 view），共 13 個"
+          "parentRouter lazy routes resolve placeholder views：對 parentRoutes 中每一筆有 component 的路由呼叫其 lazy loader → 全部 resolve 出 default export（佔位或已實作的 view），共 13 個",
+          "parentRouter bind pending skips session probe：GET /parent/me 設為 401（refresh 401）；markBindPending('王媽媽') 後 push('/bind') → currentRoute.path === '/bind'、mock.history.get 中 /parent/me 為 0 次、parentAuth.bindPending.nameHint === '王媽媽'"
         ],
         "run": "just web-test src/parent/router.spec.ts -t \"parentRouter\"",
         "notes": ""
@@ -485,7 +486,7 @@
         "INFRA-029"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "沒有 session 時直接開 `/login`，第一次導航時 unauthenticated handler 看到的目前路由是起始位置 `/`（非 public），網址會變成 `/login?redirect=/`；無害，實作時可判斷 router 尚未完成第一次導航（`currentRoute.value === START_LOCATION`）就不附 redirect。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/main.spec.ts",
@@ -495,7 +496,8 @@
         "red_cases": [
           "parentMain redirects to login on unauthenticated：createParentApp() 後 router.push('/leaves') 時 /parent/me 200；之後 GET /parent/children/s1/leaves 401 且 refresh 401 → router.currentRoute.fullPath === '/login?redirect=/leaves'，parentAuth.isAuthed === false，children.items.length === 0",
           "parentMain does not redirect from public route：目前在 '/login'，觸發 unauthenticated handler → currentRoute.path 仍為 '/login'（無多餘 query）",
-          "parentMain mounts layout with router view：createParentApp().app.mount(div)，/parent/me 200 → 等待 router.isReady 後 div 內含底部導覽 nav 元素"
+          "parentMain mounts layout with router view：createParentApp().app.mount(div)，/parent/me 200 → 等待 router.isReady 後 div 內含底部導覽 nav 元素",
+          "parentMain keeps bind pending through first bind：createParentApp() 停在 '/login'，GET /parent/me 401（refresh 401）；parentAuth.markBindPending('王媽媽') 後 router.push('/bind') → currentRoute.path === '/bind'、parentAuth.bindPending.nameHint === '王媽媽'"
         ],
         "run": "just web-test src/parent/main.spec.ts -t \"parentMain\"",
         "notes": ""
