@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 185,
-  "last_updated": "2026-10-16T15:02:23Z",
+  "version": 186,
+  "last_updated": "2026-10-16T15:03:10Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1612,7 +1612,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ChildHubView.vue",
       "source_ref": "FE:src/parent/views/ChildHubView.vue::targetId",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-010",
