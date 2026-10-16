@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 221,
-  "last_updated": "2026-10-16T06:15:00Z",
+  "version": 222,
+  "last_updated": "2026-10-16T06:18:01Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3133,7 +3133,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ClassesView.vue",
       "source_ref": "FE:src/views/ClassroomView.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-080",
@@ -3171,9 +3171,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f1",
+        "notes": "通過（review-r10-f1）。tdd.run 實跑 13 passed，13 條 red_case 逐條對應同名測試；8fc1348（測試）先於 c868d12（實作含 viewLoaders 接線）。1a31fbd 補的 description（副標、篩選三值同步 query、右側「共 N 班」、不分頁、在學人數 0 淡灰不可點、狀態欄只在含已封存時出現且整列變灰、已封存列操作「—」、沒有 classes:write 移除操作欄、封存成功「已封存 {name}」並重載、載入失敗 EmptyState + 重試）逐條出自已核可稿 page-classes.html decisions #1~#8；「學年度不在選項內時用目前學年度」是 query 同步的防呆，不與稿衝突。皆為補述，不是放寬。稿 decisions 屬本 task 的 #1~#9 在 Chromium 實測符合（白底面板、篩選列 學年度 / 只看我的班 / 含已封存 + 右側「共 2 班」、學年度選項 116~113 新到舊、0 人淡灰不可點、勾含已封存後出現「狀態」欄且封存列 cls-row-archived 灰字「已封存 2026/09/01」操作「—」、query 寫入 academic_year / mine / include_archived、操作欄固定右側、1440 / 1024 無水平捲動）；#10~#14 屬 098 / 099。介面：ClassFormDialog（klass / defaultAcademicYear / saved）、ClassStaffDialog（klass / saved）、academicYearOptions / currentAcademicYear 用法正確；409 class_has_students 人數取 details.student_count。突變 14 種中 12 種轉紅（0 人可點、老師順序、狀態欄恆顯示、不寫學年度 query、封存不失效 lookups、409 人數取表格、mine 空狀態、無權限仍有操作欄、封存列仍有操作、只依名稱排序、「顯示全部班級」不取消勾選、409 不顯示引導框）；還原後乾淨。web-lint exit 0；web-typecheck exit 0。殘留（不擋）：1) 網址學年度不在選項內時退回目前學年度沒有測試（改成照收仍綠）；2) load 的序號防競態沒有測試（拿掉仍綠）；3) 載入中與載入失敗時「新增班級」disabled，稿未提及，無害。"
       }
     },
     {
@@ -5571,7 +5571,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/DashboardView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-260",
@@ -5612,9 +5612,9 @@
         "notes": "fake timers 只 fake setTimeout / setInterval / Date（flushPromises 走 setImmediate）；document.hidden 以 defineProperty 模擬並派發 visibilitychange。版面另以 Playwright（真實 Chromium）實測 1440 / 1200 / 1199 / 1024 / 390 寬：≥ 1200 接送與作業 2 : 1 並排、< 1200 改上下、皆無水平捲動。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f1",
+        "notes": "通過（review-r10-f1）。tdd.run 實跑 16 passed，16 條 red_case 逐條對應同名測試，斷言具體；2da7518（測試）先於 d024b01（實作含 viewLoaders 接線）。83a9b9b 只改 status 與加 red_case / notes（作業卡連結、卸載停止、首次失敗重試、骨架、手動重新整理、100% success、版面、viewLoaders），description 未動，屬加嚴。4cc74e1 改 FRONTEND-260 的 api/dashboard.ts 註解（0~100，1 位小數）與 dashboard.spec fixture 57.1：description 自 7b5502e 起即要求，後端 dashboard_service 以 done / total * 100 計算，api 只是轉傳、行為不變（dashboard.spec 2 passed）。稿 page-dashboard.html decisions：#1 版面（Chromium 1440 / 1200 接送 : 作業 = 920 : 460、760 : 380 並排，1199 / 1024 / 390 改上下，皆無水平捲動；區塊標題 14px / 600 / regular 色）、#2 出勤卡（無 attendance:read 時五張無 role / tabindex / 箭頭）、#3 接送卡（有 pickup:read 時 role=link）、#4 作業卡（57%、role=link、Enter 到 /homework、progress 高 10、100% success、total 0 顯示「—」）、#6 非營業日、#7 自動更新與更新時間文字、#8 載入與錯誤、#9 權限皆符合；#5 近期請假清單內部屬 FRONTEND-262，本頁只傳 items / loading 與「今天起 7 天內」。突變 15 種中 14 種轉紅（乘 100、未到恆 warning、隱藏不暫停、回可見不立即重抓、更新失敗清空資料、5 秒門檻、卸載不移除監聽、出勤恆可點、作業卡恆可點、100% 不 success、total 0 顯示 0%、非營業日仍顯示統計、回可見不重新計時、不顯示骨架）；還原後乾淨。web-lint exit 0；web-typecheck exit 0。殘留（不擋）：refresh() 的「請求中不重複送出」守衛拿掉仍綠——按鈕 loading 時已不可點，守衛只在手動與自動 / 回到可見的重抓重疊時生效，沒有測試；手機 390 寬出勤 5 張卡同一列（每張約 60px，稿未定義手機版）。"
       }
     },
     {
