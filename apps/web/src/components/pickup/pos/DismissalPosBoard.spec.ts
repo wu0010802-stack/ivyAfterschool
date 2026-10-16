@@ -131,6 +131,8 @@ const ackUrl = (id: string): string => `${REQUESTS_URL}/${id}/acknowledge`
 const cancelUrl = (id: string): string => `${REQUESTS_URL}/${id}/cancel`
 
 let mock: MockAdapter
+/** 掛載的元件根元素（mountWithApp 不掛到 document；抽屜與 dialog 傳送到 body） */
+let root: Element
 
 async function settle(): Promise<void> {
   await nextTick()
@@ -153,7 +155,14 @@ async function mountBoard(
     initialRoute,
   })
   await settle()
+  root = wrapper.element
   return { wrapper: wrapper as VueWrapper, router, board }
+}
+
+/** 佇列卡根元素（id 為 qc-{item id}）：先找元件內的右欄，再找傳送到 body 的抽屜 */
+function cardEl(cardId: string): Element | null {
+  const selector = `[id="qc-${cardId}"]`
+  return root.querySelector(selector) ?? document.body.querySelector(selector)
 }
 
 function railButton(wrapper: VueWrapper, label: string): DOMWrapper<Element> {
@@ -180,14 +189,14 @@ function queueColumn(wrapper: VueWrapper): Element {
 }
 
 function cardButton(cardId: string, text: string): HTMLButtonElement {
-  const card = document.getElementById(`qc-${cardId}`)
+  const card = cardEl(cardId)
   const btn = Array.from(card?.querySelectorAll('button') ?? []).find((b) => b.textContent?.trim() === text)
   if (!btn) throw new Error(`卡片 ${cardId} 沒有「${text}」`)
   return btn as HTMLButtonElement
 }
 
 async function swipeOpen(cardId: string): Promise<void> {
-  const body = document.getElementById(`qc-${cardId}`)?.querySelector('.queue-card')
+  const body = cardEl(cardId)?.querySelector('.queue-card')
   if (!body) throw new Error(`找不到卡片 ${cardId}`)
   const pointer = (clientX: number): PointerEventInit => ({ clientX, clientY: 100, pointerId: 1, bubbles: true })
   body.dispatchEvent(new PointerEvent('pointerdown', pointer(300)))
@@ -196,8 +205,9 @@ async function swipeOpen(cardId: string): Promise<void> {
   await settle()
 }
 
+/** 最新的 message box（關閉的那個在 happy-dom 裡離場動畫不會結束，仍留在 DOM） */
 function messageBox(): DOMWrapper<Element> {
-  const el = document.body.querySelector('.el-message-box')
+  const el = Array.from(document.body.querySelectorAll('.el-message-box')).at(-1)
   if (!el) throw new Error('沒有 message box')
   return new DOMWrapper(el)
 }
@@ -392,7 +402,7 @@ describe('DismissalPosBoard', () => {
     expect(queueCards(queueColumn(wrapper)).map((c) => c.id)).not.toContain('qc-staging:s1')
     expect(mock.history.post).toHaveLength(0)
     // 唯讀：佇列卡沒有操作鈕
-    expect(document.getElementById('qc-r1')?.querySelectorAll('[data-test=queue-actions] button')).toHaveLength(0)
+    expect(cardEl('r1')?.querySelectorAll('[data-test=queue-actions] button')).toHaveLength(0)
   })
 
   it('DismissalPosBoard narrow width uses bottom drawer', async () => {
@@ -505,7 +515,7 @@ describe('DismissalPosBoard', () => {
     await settle()
 
     expect(scroll.mock.contexts.map((el) => (el as Element).id)).toEqual(['qc-r1'])
-    expect(document.getElementById('qc-r1')?.classList.contains('is-flash')).toBe(true)
+    expect(cardEl('r1')?.classList.contains('is-flash')).toBe(true)
   })
 
   it('DismissalPosBoard narrow focus opens the drawer first', async () => {
@@ -585,9 +595,7 @@ describe('DismissalPosBoard', () => {
     await settle()
 
     const dialog = Array.from(document.body.querySelectorAll('.el-dialog')).find((d) => d.textContent?.includes('代建接送請求'))
-    expect(dialog?.textContent).toContain('王小明')
-    expect(dialog?.textContent).toContain('S1001')
-    expect(dialog?.querySelector('.el-select')).toBeNull()
+    expect(dialog?.querySelector('[data-test=preset-student]')?.textContent?.trim()).toBe('王小明（S1001・低年級A班）')
   })
 
   it('DismissalPosBoard shows skeletons until the first load', async () => {
