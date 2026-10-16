@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 202,
-  "last_updated": "2026-10-16T05:31:45Z",
+  "version": 203,
+  "last_updated": "2026-10-16T05:34:22Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -686,7 +686,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/layouts/AdminLayout.vue",
       "source_ref": "FE:src/layouts/AdminLayout.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-031",
@@ -695,7 +695,7 @@
         "FRONTEND-037"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "登出後的清理依賴本元件卸載：AdminHeader（FRONTEND-032）登出只呼叫 auth store 並導向 /login，不會停 adminWs、不清通知 store；/login 是 blank layout，AdminLayout 因此卸載並在 onUnmounted 停掉 ws，重新登入時 onMounted 重新抓通知。App.vue（FRONTEND-027）必須讓 blank layout 路由真的卸載 AdminLayout（不得用 v-show / keep-alive 包住）。",
+      "risk_notes": "登出後的清理依賴本元件卸載：AdminHeader（FRONTEND-032）登出只呼叫 auth store 並導向 /login，不會停 adminWs、不清通知 store；/login 是 blank layout，AdminLayout 因此卸載並在 onUnmounted 停掉 ws，重新登入時 onMounted 重新抓通知。App.vue（FRONTEND-027）必須讓 blank layout 路由真的卸載 AdminLayout（不得用 v-show / keep-alive 包住）。\n【review-r10-f2 打回】換人登入後仍顯示上一位使用者的通知：AdminLayout 卸載（登出導向 /login）只解除通知 ws 綁定並停 ws，通知 store（同一個 pinia，整個分頁共用）的 items / unreadCount / total / loaded 原樣保留，下一位使用者登入、AdminLayout 重新掛載時只靠背景 fetch 覆寫。反例（reviewer 以同一個 pinia 與 router 卸載後再 mount 實測）：(1) A 掛載時 GET /admin/notifications 回 1 筆未讀 nA → 卸載 → B 掛載時 GET 回 500 → store.items 仍為 [nA]、unreadCount 1、loaded true、鈴鐺徽章顯示 1；loaded 為 true，B 開啟通知面板也不會重新載入（NotificationBell 只在 !loaded 時載入），直接看到 A 的通知標題與內文。(2) A 的背景預載還在途中就登出、B 登入：B 掛載時 fetch() 共用 A 的 in-flight promise，A 的回應（以 A 的 cookie 取得）回來後寫進 store，結果同 (1)。重抓成功時，回應前的空窗也會顯示 A 的未讀數。與 description「背景預載通知失敗不提示（鈴鐺的未讀數維持 0，loaded 仍為 false…）」及本欄「登出後的清理依賴本元件卸載」的前提不符。驗收：新增以「同一個 pinia 與 router 卸載後再掛載」的測試（mountWithApp 每次都建新 pinia，既有的 restarts ws and reloads notifications when mounted again 驗不出來）——情境 (1) 第二次掛載後 items 為空、unreadCount 0、loaded false、沒有徽章；情境 (2) 上一輪在途的回應不得寫回；第二次掛載載入成功時只有新回應的資料。修正方式由實作者決定（例如卸載時清空通知 store 並讓在途請求的結果失效；若在 stores/notifications.ts 新增 reset 類 action，要同步更新 FRONTEND-034 的 description 與 red_cases），並改寫 description「實作細節」中背景預載失敗那一句。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/layouts/AdminLayout.spec.ts",
@@ -714,9 +714,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f2",
+        "notes": "打回 1 項（見 risk_notes【review-r10-f2 打回】）：換人登入後仍顯示上一位使用者的通知。其餘檢查通過：red_cases 6 條（含 652e9c7 補的「頂欄接線」）皆有同名測試，另有 18 條；tdd.run 24 綠。fd05294（紅）/ 6ebfae3（紅，AdminLayout.vue 尚不存在）→ 5ca9cb7。6ebfae3 改的三處是原斷言寫錯 Element Plus / VTU 行為、不是放寬：橫幅改以 .admin-layout__banner 找（VTU 把 transition 換成 stub 元素，class 落在 stub 上，同樣斷言前一個是 HEADER、後一個是 MAIN）；抽屜關閉時 el-drawer 仍會 teleport 外殼、內容延遲渲染，改斷言 modelValue false 且抽屜內沒有側欄；resize 測試原本卸載後才改寬度幾乎恆真，改為掛載期間加上的每個 resize 監聽卸載後都已移除（更嚴）。稿 page-admin-shell.html decisions 14 條中與外框有關的逐條核對，並以 Chromium（Playwright，scratchpad 內的 Vite harness，不在 repo 建檔）實測：桌機 1280×800 頂欄 56、側欄 220 → 收合 64、只有內容區捲動（document scrollHeight = clientHeight，滾輪後 main.scrollTop 2000、頂欄與側欄 y 仍為 0）、padding 20；斷線 4 秒無橫幅、5.6 秒橫幅在頂欄正下方（y 56、寬 1216 與內容欄同寬）、不可關閉、圓角 0、內容區被推到 y 96、頁面不捲動，重連 open 後消失；平板 1024×768 的 meta.tablet 頁沒有記錄時側欄 64、padding 16；手機 390×844 沒有內嵌側欄、padding 12、抽屜在左側寬 240、role dialog 且 aria-label「導覽選單」、body padding 0、沒有收合按鈕，點「接送」後導到 #/pickup 並關閉抽屜。其餘 decisions 屬 031 / 032 / 035 / 036。2e38fa6 的 description 補述中，收合預設隨路由（與稿的 remembered ?? meta.tablet 相同）、非 true / false 視為沒有記錄、橫幅計時語意、抽屜屬性、padding 斷點（平板 1024 → 16，與稿一致）都合理；只有「背景預載失敗…未讀數維持 0、loaded 仍為 false」在重新掛載時不成立（見打回項）。risk_notes「登出後的清理依賴本元件卸載」：停 ws、解除通知綁定、重新掛載重抓都有測試，但通知 store 沒有清（打回項）。突變 20 項中 19 項轉紅（拿掉 stop / unbind / resize 移除、延遲 3 秒、open 不隱藏、connecting 也計時、不看 meta.tablet、不寫 localStorage、768 判斷用 <=、手機切換也收合、選單不關抽屜、回桌機不關抽屜、抽屜 260 / rtl、橫幅可關、padding 24、不 fetch、側欄 toggle 未接、mobile 固定 false），還原後 git diff 乾淨。web-lint 乾淨、web-typecheck 全綠。殘留：拿掉 fetch().catch 仍綠（未處理的 rejection 沒有被 vitest 判紅；使用者看不到差別）；harness 以 html, body margin 0 量測，正式的全域樣式由 App 啟動 task 提供。"
       }
     },
     {
@@ -4416,14 +4416,14 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalChime.ts",
       "source_ref": "FE:src/composables/useDismissalChime.ts::drawChimeTones",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
         "INFRA-012"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r10-f2 打回】unlock 前的提示音會在第一次手勢時補播：onArrived / onNewRequest 在 unlock 前就以 audioContextFactory 建立 context（未經使用者手勢 → suspended）並呼叫 resume()。Web Audio 規範（context 未獲允許啟動時，resume() 的 promise 放進 pending resume promises、不 reject，之後被允許啟動時一併 resolve）與 Chromium 都是這個行為，所以 playTone 的 Promise.resolve(audioCtx.resume()).then(drawSafely, ...) 會在 POS 頁第一次 pointerdown 呼叫 unlock() 時，把之前所有「略過」的音一次畫出。反例（reviewer 以符合規範的 fake 實測）：fake AudioContext 的 resume() 在允許前回傳 pending promise、允許後 state 轉 running 並 resolve 全部 pending；unlock 前 onArrived(r1)、onNewRequest(r2)、60 秒後 onArrived(r3)（期間 createOscillator 0 次）→ unlock() + flushPromises 後 createOscillator 被呼叫 5 次（兩次雙音 + 一次單音同時響起）。第一次手勢若是按「提示音：關」，同樣會在剛靜音時響。這與 description「AudioContext 尚未 unlock 時靜默略過」、設計稿 docs/mockups/page-pickup-pos.html 提示音 decision（未 unlock 前只顯示「點一下畫面以啟用提示音」、不播放）、FRONTEND-189 的 unlock 流程，以及 playTone 註解「避免日後解鎖時補播舊音」都不符。驗收：以上述 pending-resume fake 新增測試——unlock 前的 onArrived / onNewRequest 在 unlock() + flushPromises 後 createOscillator 仍為 0；unlock 之後的新 onArrived 照常產生 2 個 oscillator；resume 在靜音之後才 resolve 的音也不得播出；既有 resume reject 系列測試維持綠。修正方式由實作者決定（例如 unlock 前不呼叫 resume、直接略過；或 resume resolve 當下已超過批次視窗 / 已靜音就丟棄），並改寫 description「實作細節」中「AudioContext 非 running 時先 resume，resume 失敗（尚未解鎖）略過該次雙音並重置視窗」一句，使其涵蓋 resume 一直 pending 的情境。",
+      "risk_notes": "提示音依賴 FRONTEND-189 在使用者手勢內呼叫 unlock()：沒有 unlock 前（context 不是 running）的提示音一律不播、事後也不補播，是刻意的取捨；unlock 後 context 被暫停且 resume 超過 RESUME_STALE_MS 才完成的提示音同樣丟棄。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useDismissalChime.spec.ts",
@@ -4446,9 +4446,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f2",
-        "notes": "打回 1 項（見 risk_notes【review-r10-f2 打回】）：unlock 前的提示音在第一次手勢時補播。其餘檢查通過：red_cases 6 條皆有同名測試（另有 15 條：無班名語音、靜音後不補響、storage 不可用、新請求去重、視窗外再響、resume 成功 / 失敗後重試、新請求後到達、跨台北午夜、unlock、zh-TW voice 選擇、無中文 voice 不播、voice 未載入退化、無 speechSynthesis），tdd.run 21 綠；e7abba5（紅）→ 16bc1a1。ivy 移植保留了 triangle 包絡、C5 單音、zh-TW → zh 前綴 voice 選擇、清單已載入但沒有中文 voice 不播、清單未載入帶 lang 退化、無聲 utterance 預熱、speechSupported 偵測；雙音依 red_case 改為 C5 → G5 兩個 oscillator。突變 11 項（新請求不看 arrivedIds、arrived 不去重、批次視窗 0、靜音不記 id、suspended 直接畫、不跨日清空、不寫 localStorage、語音缺班名、失敗不重置視窗、錯語系 voice 照播、resume reject 未處理）皆轉紅。883c89d 的 description 補述（雙音組成、批次視窗自雙音起算、onNewRequest 去重＝稿「同一請求只播一次」、靜音仍記 id、ChimeRequest 參數型別）屬澄清；「AudioContext 非 running 時先 resume，resume 失敗略過」一句沒有涵蓋 resume 一直 pending 的情境，需隨本次修正改寫。web-lint（14 個檔）乾淨；web-typecheck 的錯誤都在他人進行中的檔案（AttendanceStudentCard.vue、MonthlyAttendanceGrid.spec.ts、parent LeaveForm.vue、parentWs.ts、parent ExamsView.spec.ts、RolesView.spec.ts），不在本 task 檔案。突變後以備份還原，git status / git diff 確認乾淨。"
+        "notes": "複審通過（只核對 review-r10-f2 的打回項）。5f1fe32（紅）/ 9e24b4a（補測，修正前為紅）→ 35f7df2 → 2e38fa6。修法：unlock 前且 context 非 running 直接略過、不呼叫 resume()；unlock 後被暫停才 resume，resolve 當下已靜音或超過 RESUME_STALE_MS（2 秒）丟棄，reject 略過；略過時只重置自己開的批次視窗。以 reviewer 原本的 pending-resume 探針（unlock 前 onArrived(r1)、onNewRequest(r2)、60 秒後 onArrived(r3)，再允許 + unlock）重驗：unlock 前後 createOscillator 皆為 0（原為 5）。tdd.run 27 綠，新增的 4 條 red_case 與既有 resume reject 系列（survives suspended / retries after failed resume / unlock tolerates rejected resume）皆選到且綠。突變 7 項（拿掉 unlock 判斷、resolve 不看靜音、不看逾時、無條件重置視窗、unlock 不設旗標、RESUME_STALE_MS 改 100 秒、reject 不略過）皆轉紅，還原後 git diff 乾淨。description 改寫正確：「尚未 unlock（state 不是 running）時靜默略過、不呼叫 resume()」，實作細節寫明 pending 的原因、unlock 後被暫停的 resume / 丟棄條件與視窗重置規則。web-lint 乾淨、web-typecheck 全綠。"
       }
     },
     {
