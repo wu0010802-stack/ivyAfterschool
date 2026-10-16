@@ -33,7 +33,7 @@ export const VIEW_LOADERS: Record<ViewName, () => Promise<Component>> = {
   StudentWorkbenchView: placeholder,
   ClassesView: () => import('@/views/ClassesView.vue'),
   AttendanceTodayView: placeholder,
-  AttendanceMonthlyView: placeholder,
+  AttendanceMonthlyView: () => import('@/views/AttendanceMonthlyView.vue'),
   LeavesView: placeholder,
   HomeworkBoardView: placeholder,
   PickupPosView: placeholder,
