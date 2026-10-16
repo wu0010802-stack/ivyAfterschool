@@ -54,8 +54,17 @@ function isStudentStatus(v: unknown): v is StudentStatus {
   return typeof v === 'string' && Object.hasOwn(STUDENT_STATUS_META, v)
 }
 
+interface NormalizedFilters {
+  q: string | undefined
+  class_id: string | undefined
+  grade_level: number | undefined
+  status: StudentStatus | typeof ALL_STATUS
+  school_id: string | undefined
+  include_archived: boolean
+}
+
 /** 網址還原的值都是字串：年級轉數字、含封存轉布林；不認得的狀態視為預設 */
-function normalized(f: StudentFilters) {
+function normalized(f: StudentFilters): NormalizedFilters {
   const grade = Number(f.grade_level)
   const status = f.status === ALL_STATUS ? ALL_STATUS : isStudentStatus(f.status) ? f.status : DEFAULT_STATUS
   return {
