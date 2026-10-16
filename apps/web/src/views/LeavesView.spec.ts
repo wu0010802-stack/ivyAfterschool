@@ -444,4 +444,98 @@ describe('LeavesView', { timeout: 20_000 }, () => {
     expect((dialog.props('presetStudent') as { id: string } | undefined)?.id).toBe('s1')
     expect(document.body.textContent).toContain('代登記請假')
   })
+
+  it('LeavesView restores student label from url without matching rows', async () => {
+    mock.onGet(LIST_URL).reply(200, page([]))
+    mock.onGet('/admin/students/s9').reply(200, {
+      id: 's9',
+      student_no: 'S11301',
+      name: '王小明',
+      gender: 'male',
+      grade_level: 2,
+      school: null,
+      school_class: null,
+      class: { id: 'c1', name: '低年級A班' },
+      status: 'active',
+      archived_at: null,
+      birthday: null,
+      enrolled_on: null,
+      withdrawn_on: null,
+      note: null,
+      photo_url: null,
+      has_id_number: false,
+      has_health_note: false,
+      sensitive: null,
+      guardians: [],
+    })
+    const { wrapper } = await mountView(WRITER, '/leaves?student_id=s9')
+    await settle()
+
+    expect(listParams()[0]).toMatchObject({ student_id: 's9' })
+    expect(mock.history.get.filter((r) => r.url === '/admin/students/s9')).toHaveLength(1)
+    expect(filterItem(wrapper, '學生')!.text()).toContain('王小明')
+  })
+
+  it('LeavesView restores student label from url without matching rows: skips lookup when rows have the student or no students:read', async () => {
+    mock.onGet(LIST_URL).reply(
+      200,
+      page([leave({ student: { id: 's9', student_no: 'S11301', name: '王小明', class_name: '低年級A班' } })]),
+    )
+    mock.onGet('/admin/students/s9').reply(500)
+    const { wrapper } = await mountView(WRITER, '/leaves?student_id=s9')
+    await settle()
+    expect(mock.history.get.filter((r) => r.url === '/admin/students/s9')).toHaveLength(0)
+    expect(filterItem(wrapper, '學生')!.text()).toContain('王小明')
+    document.body.innerHTML = ''
+
+    mock.onGet(LIST_URL).reply(200, page([]))
+    await mountView(['leaves:read'], '/leaves?student_id=s9')
+    await settle()
+    expect(mock.history.get.filter((r) => r.url === '/admin/students/s9')).toHaveLength(0)
+  })
+
+  it('LeavesView keeps id when student lookup fails', async () => {
+    mock.onGet(LIST_URL).reply(200, page([]))
+    mock.onGet('/admin/students/s9').reply(404, { error: { code: 'not_found', message: '找不到學生' } })
+    const { wrapper } = await mountView(WRITER, '/leaves?student_id=s9')
+    await settle()
+
+    expect(mock.history.get.filter((r) => r.url === '/admin/students/s9')).toHaveLength(1)
+    expect(listParams().at(-1)).toMatchObject({ student_id: 's9' })
+    expect(document.querySelector('.el-message--error')).toBeNull()
+    expect(wrapper.text()).not.toContain('無法載入請假紀錄')
+    expect(filterItem(wrapper, '學生')!.text()).toContain('s9')
+  })
+
+  it('LeavesView action column width', async () => {
+    mock.onGet(LIST_URL).reply(200, page([leave({})]))
+    const { wrapper } = await mountView()
+    const actions = wrapper
+      .findAllComponents({ name: 'ElTableColumn' })
+      .find((c) => c.props('label') === '操作')
+    expect(actions).toBeDefined()
+    expect(actions!.props('width')).toBe('88')
+  })
+
+  it('LeavesView recomputes today on reload', async () => {
+    // 台北 2026-10-14 23:59
+    vi.setSystemTime(new Date('2026-10-14T15:59:00Z'))
+    mock.onGet(LIST_URL).reply(200, page([leave({ id: 'l1', start_date: '2026-10-15', end_date: '2026-10-15' })]))
+    const { wrapper } = await mountView()
+    const before = rowOf(wrapper, '王小明')
+    expect(before.findAll('button').map((b) => b.text())).toContain('取消')
+    expect(before.text()).not.toContain('進行中')
+    const firstParams = listParams()[0]
+    expect(firstParams).toMatchObject({ date_from: '2026-10-14', date_to: '2026-11-13' })
+
+    // 台北 2026-10-15 00:01
+    vi.setSystemTime(new Date('2026-10-14T16:01:00Z'))
+    await button(wrapper, '重新整理')!.trigger('click')
+    await settle()
+    const after = rowOf(wrapper, '王小明')
+    expect(after.text()).toContain('進行中')
+    expect(after.findAll('button').map((b) => b.text())).toContain('取消')
+    // 預設日期區間不因換日改動
+    expect(listParams().at(-1)).toMatchObject({ date_from: '2026-10-14', date_to: '2026-11-13' })
+  })
 })
