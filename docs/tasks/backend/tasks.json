@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 457,
-  "last_updated": "2026-10-16T15:32:30Z",
+  "version": 458,
+  "last_updated": "2026-10-16T15:37:20Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15619,7 +15619,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/pickup/authorizations.py",
       "source_ref": "BE:services/pickup_verification.py::verify_pickup_code",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-426",
@@ -15643,9 +15643,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-b",
+        "notes": "通過。4 條 red_case 皆有對應測試，tdd.run（-k test_verify_code_）選到並實跑 10 passed（含 426 既有 6 條）；BACKEND-437 endpoint 回歸 test_admin_pickup_verify_ 8 passed。規格修正 cfe4746 → 測試 b54d5e0 → 實作 b32cbda，順序正確。red_case 3 的修正合理：已鎖定在 load_verifiable_authorization 就 409（BACKEND-426 的 test_verify_code_locked_rejects_correct 已釘住），原寫的 outcome.locked True 不可能發生；改成載入 409 與 monkeypatch 放行模擬漏鎖、由 WHERE 守衛擋下的 409 兩情境，後者是唯一能驗到『推播放在 attempts is None 檢查之後』的方式。實作：推播在 attempts is None 檢查之後、session.expire(auth) 之後組 authorization_out，只送 admin:pickup（沒帶 student_id / parent_data），正確碼路徑仍只由 complete_via_authorization 推一次。endpoint 層以暫時探針（審查後已刪除）確認：錯碼 400 推 1 則、第 5 次鎖定 409 推 1 則、鎖定後再送碼 409 不推，訊息不含 code_hash 與明碼；把 endpoint 改成錯碼不先 commit 時探針轉紅，證明推播是因 commit 才送出、不會被 rollback 掉。突變驗證全部轉紅：拿掉推播、推播移到 attempts is None 之前、多帶 student_id + parent_data、正確碼路徑多推一次、只在鎖定時推播。lint / typecheck（動到的 2 個檔）乾淨。殘留（不擋）：(1) after_lock 與 success_broadcasts_once 兩條在舊實作就是綠的（commit message 已註明），以突變證明有效；(2) 推播資料不含 code_attempts / locked，前端靠重抓 BACKEND-436 清單取得（符合 description），因此 session.expire 在 expire 前後組輸出結果相同、觀測不到；(3) endpoint 層沒有已提交的推播測試，靠 437 的 mismatch_persists 釘住『先 commit』加上 tx_hooks 語意保證，之後可在 test_pickup_endpoints.py 補一條。"
       }
     }
   ]
