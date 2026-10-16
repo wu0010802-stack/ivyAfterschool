@@ -39,7 +39,8 @@ async function tick(ms: number): Promise<void> {
 function setup(opts: { initial?: ScoreCell[]; notify?: boolean | null; debounceMs?: number } = {}) {
   const examId = ref('e1')
   const initial = ref<ScoreCell[]>(opts.initial ?? [])
-  const notifyParents = ref<boolean | null>(opts.notify ?? false)
+  // null 是合法值（已發布尚未選擇），不能用 ?? 補預設
+  const notifyParents = ref<boolean | null>(opts.notify === undefined ? false : opts.notify)
   const api = useScoreAutosave({ examId, initial, notifyParents, debounceMs: opts.debounceMs })
   return { api, examId, initial, notifyParents }
 }
@@ -108,31 +109,40 @@ describe('useScoreAutosave', () => {
         }, 500),
       )
     })
-    const { api } = setup()
+    // debounce 縮成 100ms，讓請求進行中（500ms）就有第二次 debounce 到期
+    const { api } = setup({ debounceMs: 100 })
 
     api.edit('s1', 'sub1', v(95))
-    await tick(800)
+    await tick(100)
     expect(mock.history.put).toHaveLength(1)
     expect(api.cellState('s1', 'sub1')).toBe('saving')
     expect(api.saving.value).toBe(true)
 
-    // 送出後 200ms 再編輯同一格
+    // 送出後 200ms 再編輯同一格與另一格；debounce 在 t = 400 到期時第一個請求仍在進行中
     await tick(200)
     api.edit('s1', 'sub1', v(96))
+    api.edit('s2', 'sub1', v(88))
     expect(api.cellState('s1', 'sub1')).toBe('dirty')
     expect(api.cellValue('s1', 'sub1').score).toBe(96)
+    await tick(150)
+    expect(mock.history.put).toHaveLength(1)
+    expect(inFlight).toBe(1)
 
-    // 第一個回應（t = 1300）：較新的值不得被標成已儲存；結束後才送第二個請求
-    await tick(300)
+    // 第一個回應（t = 600）：較新的值不得被標成已儲存；結束後才送第二個請求
+    await tick(150)
     expect(api.cellState('s1', 'sub1')).not.toBe('saved')
     expect(api.cellState('s1', 'sub1')).not.toBe('idle')
     expect(api.cellValue('s1', 'sub1').score).toBe(96)
     expect(mock.history.put).toHaveLength(2)
-    expect(putBodies()[1]!.cells).toEqual([{ student_id: 's1', subject_id: 'sub1', score: 96, is_absent: false, note: null }])
+    expect(putBodies()[1]!.cells).toEqual([
+      { student_id: 's1', subject_id: 'sub1', score: 96, is_absent: false, note: null },
+      { student_id: 's2', subject_id: 'sub1', score: 88, is_absent: false, note: null },
+    ])
     expect(api.cellState('s1', 'sub1')).toBe('saving')
 
     await tick(500)
     expect(api.cellState('s1', 'sub1')).toBe('saved')
+    expect(api.cellState('s2', 'sub1')).toBe('saved')
     expect(api.cellValue('s1', 'sub1').score).toBe(96)
     expect(maxInFlight).toBe(1)
     expect(mock.history.put).toHaveLength(2)
