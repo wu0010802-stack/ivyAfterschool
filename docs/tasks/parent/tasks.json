@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 129,
-  "last_updated": "2026-10-16T04:33:53Z",
+  "version": 130,
+  "last_updated": "2026-10-16T04:48:30Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -303,7 +303,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/parentAuth.ts",
       "source_ref": "FE:src/parent/stores/parentAuth.ts::useParentAuthStore",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-006",
@@ -311,7 +311,7 @@
         "INFRA-013"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "",
+      "risk_notes": "跨 task 互動（已回報協調者，待裁定，不影響本 task 的驗收）：瀏覽器只持有 `parent_bind` cookie（`bindPending` 狀態）時，`ensureSession()` 的探測必定 401 → refresh 401 → PARENT-004 `onAuthFailure`；PARENT-013 的 unauthenticated handler 依規格呼叫 `parentAuth.clear()` 會順帶清掉 `bindPending`，而 PARENT-012 的 `/bind` 守衛規格是先 `ensureSession()` 再看 `bindPending`，首綁流程（LoginView needs_binding → /bind）會被導回 /login。建議 PARENT-012 的 `/bind` 守衛改為先檢查 `bindPending` 再呼叫 `ensureSession()`（`markBindPending` 只在後端剛回 needs_binding 時設定，當下不可能有 parent session）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/stores/parentAuth.spec.ts",
@@ -3195,7 +3195,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/parentWs.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-002",
@@ -3205,7 +3205,7 @@
         "BACKEND-227"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "`ready` 到達時若 PARENT-010 children store 尚未載入（`items` 為空）或正在載入，id 集合必定不同而觸發一次 `load(true)`（會取代進行中的請求），啟動時最多多一次 GET /parent/children；屬規格行為，未另做抑制。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/stores/parentWs.spec.ts",
