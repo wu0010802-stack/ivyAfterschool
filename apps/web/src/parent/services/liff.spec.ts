@@ -9,6 +9,7 @@ import {
   initLiff,
   type LiffClient,
 } from './liff'
+import specSource from './liff.spec.ts?raw'
 
 const sdk = vi.hoisted(() => ({
   init: vi.fn<(config: { liffId: string; withLoginOnExternalBrowser: boolean }) => Promise<void>>(),
@@ -85,6 +86,7 @@ describe('liff', () => {
     expect(sdk.init.mock.calls[0]![0]).toStrictEqual({ liffId: '1650000000-abc', withLoginOnExternalBrowser: false })
   })
 
+  // 「不得卡住」由單一測試逾時保護：init 永不 resolve 時本案例以逾時失敗（不用真實計時器搭 race，高負載時會誤紅）
   it('liff init resolves on external browser without LINE login', async () => {
     // 替身比照 @liff/init 2.31.1：withLoginOnExternalBrowser 為 true 且未登入時，init 直接 login() 轉址、promise 永不 resolve
     sdk.isInClient.mockReturnValue(false)
@@ -96,17 +98,14 @@ describe('liff', () => {
       }
       return Promise.resolve()
     })
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const timeout = new Promise<'timeout'>((resolve) => {
-      timer = setTimeout(() => resolve('timeout'), 100)
-    })
 
-    const result = await Promise.race([initLiff(), timeout])
-    clearTimeout(timer)
+    const result = await initLiff()
 
     expect(result).toBe(sdk)
     expect(sdk.login).toHaveBeenCalledTimes(0)
-  })
+    expect(specSource).not.toMatch(/setTimeout\([^)]*,\s*100\s*\)/)
+    expect(specSource).not.toMatch(/Promise\.race/)
+  }, 2000)
 
   it('liff init rejects when not configured', async () => {
     config.getPublicConfig.mockResolvedValue(configWith(''))
