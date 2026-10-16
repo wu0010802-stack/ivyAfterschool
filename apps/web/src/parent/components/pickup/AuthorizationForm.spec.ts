@@ -373,6 +373,16 @@ describe('AuthorizationForm', () => {
     expect(w.text()).not.toContain('還沒有常用接送人')
   })
 
+  it('AuthorizationForm action buttons are equal width', () => {
+    const w = mountForm()
+
+    const actions = w.get('.af-actions')
+    expect(actions.findAll('button').map((b) => b.text())).toEqual(['取消', '建立代理接送'])
+    // happy-dom 不算版面：以樣式規則斷言兩欄等寬（真實寬度由 Playwright 量測）
+    const css = source.slice(source.indexOf('<style'))
+    expect(css).toMatch(/\.af-actions \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
+  })
+
   it('AuthorizationForm shows the handover note and uses a novalidate form', () => {
     const w = mountForm()
 
