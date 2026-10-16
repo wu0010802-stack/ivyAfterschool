@@ -111,6 +111,9 @@ export function installParentGuards(router: Router): void {
     const auth = useParentAuthStore()
 
     if (to.meta.public) {
+      // 剛登出（PARENT-033 導向 /login?logged_out=1）：session 必然已失效，不探測。探測的 401 會讓 PARENT-013 的
+      // handler 依「目前路由（登出前的頁面）非 public」改導 /login?redirect=…，logged_out 遺失，LINE 內就會自動再登入
+      if (to.query.logged_out !== undefined) return true
       // 已登入不停在登入頁：導回 redirect（站內相對路徑，不安全或缺值一律回首頁）
       if (await auth.ensureSession()) return resolveSafeRedirect(to.query.redirect)
       return true
@@ -133,7 +136,12 @@ export function installParentGuards(router: Router): void {
 }
 
 export function createParentRouter(history: RouterHistory = createWebHashHistory()): Router {
-  const router = createRouter({ history, routes: parentRoutes })
+  const router = createRouter({
+    history,
+    routes: parentRoutes,
+    // 換頁回到頂端；瀏覽器上一頁 / 下一頁還原原本的捲動位置
+    scrollBehavior: (_to, _from, savedPosition) => savedPosition ?? { top: 0 },
+  })
   installParentGuards(router)
   return router
 }
