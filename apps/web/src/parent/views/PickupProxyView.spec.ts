@@ -77,6 +77,15 @@ function auth(id: string, overrides: Partial<ParentAuthorization> = {}): ParentA
 
 const LI_AUNT = person('pp1', '李阿姨')
 
+/** 可手動決定何時回應的 reply */
+function deferredReply() {
+  let resolve!: (value: [number, unknown]) => void
+  const promise = new Promise<[number, unknown]>((r) => {
+    resolve = r
+  })
+  return { reply: () => promise, resolve }
+}
+
 let mock: MockAdapter
 let mounted: MountedApp | null = null
 
@@ -580,6 +589,28 @@ describe('PickupProxyView', () => {
     expect(m.wrapper.text()).not.toContain('李阿姨')
     // 過去的授權回到收合
     expect(m.wrapper.get('button.px-expander').attributes('aria-expanded')).toBe('false')
+  })
+
+  it('PickupProxyView discards stale responses after switching child', async () => {
+    const slowPersons = deferredReply()
+    const slowAuths = deferredReply()
+    mock.onGet(personsUrl('s1')).reply(slowPersons.reply)
+    mock.onGet(authsUrl('s1')).reply(slowAuths.reply)
+    const m = await mountView({ persons: null, auths: null })
+    expect(m.wrapper.findAll('.skeleton--row')).toHaveLength(2)
+
+    mock.onGet(personsUrl('s2')).reply(200, [person('pp7', '王伯伯', { student_id: 's2' })])
+    mock.onGet(authsUrl('s2')).reply(200, [])
+    useChildrenStore(m.pinia).select('s2')
+    await flushPromises()
+    slowPersons.resolve([200, [LI_AUNT]])
+    slowAuths.resolve([200, [auth('a1', { proxy_name: '舊資料' })]])
+    await flushPromises()
+
+    expect(m.wrapper.text()).toContain('王伯伯')
+    expect(m.wrapper.text()).not.toContain('李阿姨')
+    expect(m.wrapper.text()).not.toContain('舊資料')
+    expect(sectionCard(m.wrapper, '代理接送授權').textContent).toContain('目前沒有代理接送授權')
   })
 
   it('PickupProxyView pull to refresh keeps content and reports failure', async () => {
