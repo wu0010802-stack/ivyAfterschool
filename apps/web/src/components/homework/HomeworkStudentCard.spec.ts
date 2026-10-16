@@ -188,6 +188,28 @@ describe('HomeworkStudentCard', () => {
     expect(inProgress.find('.hw-card__ready').exists()).toBe(false)
   })
 
+  it('HomeworkStudentCard hides menu when no actions apply', async () => {
+    // 非今天、項目全部完成推導出 done（非手動標記）：三個選項都不適用 → 不渲染 ⋮
+    const wrapper = await mountCard(
+      makeStudent({
+        items: [makeItem({ id: 'h1', status: 'done' }), makeItem({ id: 'h2', status: 'done', sort_order: 2 })],
+        progress: makeProgress({ overall_status: 'done' }),
+      }),
+      { isToday: false },
+    )
+    expect(wrapper.text()).not.toContain('手動標記')
+    expect(menuButton(wrapper).exists()).toBe(false)
+    expect(wrapper.find('.hw-card__head .el-dropdown').exists()).toBe(false)
+    // 仍可寫：「＋ 新增作業」照常顯示
+    expect(wrapper.text()).toContain('新增作業')
+  })
+
+  it('HomeworkStudentCard keeps menu when an action applies', async () => {
+    const wrapper = await mountCard(makeStudent(), { isToday: false })
+    expect(menuButton(wrapper).exists()).toBe(true)
+    expect(labels(await openMenu(wrapper))).toEqual(['標記整體完成'])
+  })
+
   it('HomeworkStudentCard dims leave students and empty items', async () => {
     const leave = await mountCard(makeStudent({ attendance_status: 'leave' }))
     expect(leave.classes()).toContain('is-dimmed')
