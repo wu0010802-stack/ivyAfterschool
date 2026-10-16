@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 300,
-  "last_updated": "2026-10-16T15:39:24Z",
+  "version": 301,
+  "last_updated": "2026-10-16T15:39:29Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2667,8 +2667,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/StudentWorkbenchView.vue",
       "source_ref": "FE:src/views/StudentWorkbenchView.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-086",
         "FRONTEND-087",
