@@ -1,7 +1,9 @@
+import { createTestingPinia } from '@pinia/testing'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
+import type { WsStatus } from '@/shared/ws/createWsClient'
 import { useParentWsStore } from '../stores/parentWs'
 import ConnectionBanner from './ConnectionBanner.vue'
 import source from './ConnectionBanner.vue?raw'
@@ -228,6 +230,20 @@ describe('ConnectionBanner', () => {
     await advance(10000)
 
     expect(banner(wrapper).exists()).toBe(false)
+  })
+
+  it('ConnectionBanner treats closed status as disconnected', async () => {
+    // 真實 store 的 closed 一定伴隨 enabled=false（4401 / 4403）；以 testing pinia 覆寫 getter 驗證 closed 也算斷線
+    const testing = createTestingPinia({ createSpy: vi.fn, stubActions: false })
+    const ws = useParentWsStore(testing)
+    ws.enabled = true
+    ;(ws as { status: WsStatus }).status = 'closed'
+    const wrapper = mount(ConnectionBanner, { global: { plugins: [testing] } })
+
+    await advance(2999)
+    expect(banner(wrapper).exists()).toBe(false)
+    await advance(1)
+    expect(banner(wrapper).text()).toContain(WS_TEXT)
   })
 
   it('ConnectionBanner cleans up on unmount', async () => {
