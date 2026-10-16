@@ -116,8 +116,25 @@ function mapLoginError(e: unknown): LoginError {
   }
 }
 
+/**
+ * LINE 登入完成後轉址回來的網址：目前網址去掉 logged_out（hash 路由的 query 與一般 query 都去掉，redirect 等其餘保留）。
+ * LINE 會把 redirectUri 原樣帶回；帶著 logged_out 回來會停在「您已登出」而不自動登入，形成迴圈。
+ */
+function loginRedirectUri(): string {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('logged_out')
+  const queryStart = url.hash.indexOf('?')
+  if (queryStart >= 0) {
+    const params = new URLSearchParams(url.hash.slice(queryStart + 1))
+    params.delete('logged_out')
+    const rest = params.toString()
+    url.hash = url.hash.slice(0, queryStart) + (rest ? `?${rest}` : '')
+  }
+  return url.toString()
+}
+
 function relogin(): boolean {
-  return forceLiffReloginOnce({ redirectUri: window.location.href, nowMs: Date.now() })
+  return forceLiffReloginOnce({ redirectUri: loginRedirectUri(), nowMs: Date.now() })
 }
 
 async function completeLogin(liff: LiffClient): Promise<void> {
@@ -163,7 +180,7 @@ async function startLogin({ forceFresh = false }: { forceFresh?: boolean } = {})
   if (!liff.isLoggedIn()) {
     // 只在 LINE App 內自動觸發 OAuth；外部瀏覽器停在 choice 讓家長自選
     if (liff.isInClient()) {
-      liff.login({ redirectUri: window.location.href })
+      liff.login({ redirectUri: loginRedirectUri() })
       return
     }
     state.value = 'choice'
@@ -194,17 +211,28 @@ function retry(): void {
   void startLogin({ forceFresh: true })
 }
 
-/** choice 狀態下使用者主動選 LINE 登入；按下後 loading 直到轉址 */
+/**
+ * choice 狀態下使用者主動選 LINE 登入；按下後 loading 直到轉址。
+ * LIFF 仍是登入狀態（例如剛登出、LINE 那邊沒登出）→ 直接走 startLogin 送 id_token（含快過期時的強制重登）；
+ * 未登入 → liff.login，redirectUri 不帶 logged_out，LINE 轉址回來會自動登入。
+ */
 async function startLineLogin(): Promise<void> {
   if (choiceBusy.value) return
   choiceBusy.value = true
+  let liff: LiffClient
   try {
-    const liff = await initLiff()
-    liff.login({ redirectUri: window.location.href })
+    liff = await initLiff()
   } catch (e) {
     choiceBusy.value = false
     showError(mapInitError(e))
+    return
   }
+  if (liff.isLoggedIn()) {
+    choiceBusy.value = false
+    await startLogin()
+    return
+  }
+  liff.login({ redirectUri: loginRedirectUri() })
 }
 
 onMounted(() => {
