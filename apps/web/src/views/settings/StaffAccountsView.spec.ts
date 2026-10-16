@@ -6,6 +6,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import { adminHttp } from '@/api/http'
 import type { PermissionCatalog, Role } from '@/api/roles'
 import type { StaffUser } from '@/api/staffUsers'
+import TempPasswordDialog from '@/components/settings/TempPasswordDialog.vue'
 import { VIEW_LOADERS } from '@/router/viewLoaders'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import StaffAccountsView from './StaffAccountsView.vue'
@@ -342,6 +343,8 @@ describe('StaffAccountsView', { timeout: 20_000 }, () => {
     await click(new DOMWrapper(Array.from(document.body.querySelectorAll('.el-dialog')).at(-1)!), '我已記下')
     await answerMessageBox('確定關閉')
     expect(document.body.textContent).not.toContain('Tmp-8f3K2q9x')
+    // 父層也清掉密碼字串，不留在 props / 記憶體
+    expect(wrapper.findComponent(TempPasswordDialog).props('tempPassword')).toBe('')
   })
 
   it('StaffAccountsView hides self dangerous actions', async () => {
