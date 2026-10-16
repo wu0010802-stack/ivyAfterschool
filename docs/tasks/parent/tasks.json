@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 178,
-  "last_updated": "2026-10-16T14:38:45Z",
+  "version": 179,
+  "last_updated": "2026-10-16T14:47:54Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1143,7 +1143,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/LoginView.vue",
       "source_ref": "FE:src/parent/views/LoginView.vue::startLogin",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -1158,7 +1158,7 @@
         "INFRA-013"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "【review-r10-p3 打回】登出後無法從登入頁再登入（迴圈）：logged_out=1 的 choice 頁按「使用 LINE 登入」→ liff.login({ redirectUri: location.href })。正式環境是 hash history，location.href 為「…/#/login?logged_out=1」（reviewer 探針：在該網址掛載、點擊後 fake.login 收到的 redirectUri 為 http://localhost:3000/#/login?logged_out=1）。本規格自己的前提就是 LINE 會把 redirectUri 原樣帶回（流程步驟 3 / 4 靠它保留 ?redirect=；ivy 家長端同為 hash history 並依賴此行為），所以 LINE 轉址回來後又是 /login?logged_out=1：掛載時不執行 startLogin，畫面仍是「您已登出」；此時 LIFF 已登入，再按一次又只呼叫 liff.login 同一網址（探針：isLoggedIn=true 時點擊仍只呼叫 liff.login，liff-login 請求 0 次）。外部瀏覽器的家長只能手動改網址才能再登入，LINE 內也要關掉重開。驗收：logged_out 頁按「使用 LINE 登入」最終要能完成登入，做法由實作者決定（例如按下時 LIFF 已登入就直接走 startLogin 送 id_token；未登入時 redirectUri 去掉 logged_out、保留站內 redirect）。寫回 description（流程步驟 3 與 choice 按鈕；稿 decisions 第 4 條的 redirectUri 屬技術細節，一併更新），並新增 red_case：(a) /login?logged_out=1、isLoggedIn=true，點「使用 LINE 登入」→ 送出 liff-login 並導到 redirect；(b) isLoggedIn=false 時 fake.login 收到的 redirectUri 不含 logged_out（以 hash 網址重現，例如 history.replaceState 到 /#/login?logged_out=1）。順帶（不擋）：流程步驟 7 的 id_token_replayed 沒有測試（突變「只處理 invalid_id_token」存活），補一條。",
+      "risk_notes": "redirectUri 去掉 logged_out 的規則建立在「LINE 會把 redirectUri 原樣帶回（含 hash 路由的 query）」的前提上（ivy 家長端同為 hash 路由並依賴此行為），尚未在真實 LINE App 與外部瀏覽器驗證；一般 query（非 hash）裡的 logged_out 去除沒有測試，正式流程（PARENT-033 以 hash 路由 replace）只會出現在 hash 內。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/LoginView.spec.ts",
@@ -1185,9 +1185,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-p3",
-        "notes": "打回 1 項（見 risk_notes【review-r10-p3 打回】）：logged_out 頁按「使用 LINE 登入」的 redirectUri 帶著 logged_out=1，LINE 轉址回來仍停在「您已登出」，再按也只會重複 liff.login，形成迴圈（reviewer 探針重現）。其餘檢查通過：12 條 red_case 皆有同名測試（另有成功時不安全 redirect、needs_binding 去掉不安全 redirect、id_token 快過期重登、LiffNotConfigured 也顯示聯絡、其餘錯誤對照、骨架、樣式 7 條）；tdd.run 19/19 綠，verbose 名稱清單含全部 12 條；commit 順序 d7fde6a（測試，當時 LoginView.vue 是 12 行佔位檔）→ 31d393c（實作）。31d393c 對 spec 的修改：按鈕改以結尾比對（M3Button 文字含圖示 ligature）、撥號文字改取 .login-call__label、noToken 案例的累計請求數 2 → 3（原數字算錯；斷言意思是沒有 id_token 不再送出），另補兩條（成功時不安全 redirect、重試先清舊 marker），都不是放寬。「聯絡安親班」（使用者裁定）：LiffNotConfiguredError / parent_disabled / line_login_not_configured 且 org_phone 有值才顯示，tel 只撥分機前主號、保留開頭 +，規則與 BindCodeErrorNotice 相同；too_many_attempts 與無電話不顯示，皆有測試。稿 parent-page-login.html 已 approved，decisions 9 條逐條核對（版面內距、識別區 160 / 狀態區 360×220、骨架與「家長端」退回、40px 轉圈與 reduced-motion、choice 文案、錯誤圖示、聯絡按鈕 48px）與實作一致。突變 28 個殺 27，存活「只處理 invalid_id_token（id_token_replayed 不重登）」（測試缺口，見 risk_notes）；還原後 git diff 乾淨。web-lint 乾淨；web-typecheck 3 個錯誤在他人檔案（bootstrap.ts、HomeworkItemRow.vue、AttendanceTodayView.spec.ts），不在本 task。"
+        "notes": "複審通過（review-r10-p3）。打回項「登出頁按『使用 LINE 登入』繞回『您已登出』的迴圈」已修正：按下時 LIFF 已登入 → 直接走 startLogin 送 id_token 並導到 redirect；未登入時 liff.login 與所有強制重登的 redirectUri 改為目前網址去掉 logged_out（hash 內 query 與一般 query 都去掉，redirect 保留）。description 新增 redirectUri 規則段並改寫步驟 2、3 與 choice 按鈕；稿 parent-page-login.html decisions 第 4 條與示範 log 同步（版面不動、仍 approved）。新增 red_case (a)(b) 皆有同名測試，另有 hash 網址下 id_token 快過期強制重登、id_token_replayed 只重登一次 2 條；tdd.run 23/23 綠，verbose 名稱清單含全部 14 條 red_case。commit 順序 8fe5a45（紅：以 31d393c 的實作跑該 commit 的 spec，新增 3 條全紅；id_token_replayed 為補測既有行為，原本即綠）→ b237d7a（修正）→ 4270ff8（規格與稿）。reviewer 探針重跑原反例（/#/login?logged_out=1、LIFF 已登入、按鈕）：不再呼叫 liff.login、送出 liff-login 1 次並導頁；另驗沒有 redirect 時 redirectUri 為「/#/login」、LINE 內未登入、登入失敗後按「重試」的強制重登、一般 query 與 hash 同時帶 logged_out（liff.state 等其餘參數保留）、已登入時連點只送一次，全部符合。突變 11 個殺 7（已登入不直接送 id_token、redirectUri 用 location.href、不處理 hash 內 query、強制重登用 location.href、choice 按鈕用 location.href、連 redirect 一起去掉、id_token_replayed 不重登）；存活 4 個：「LINE 內自動登入用 location.href」與「已登入分支不重設 busy」在正式流程中等價（自動登入只在沒有 logged_out 時執行；已登入分支之後不會回到 choice）；「空 query 留下 ?」（#/login? 與 #/login 對路由相同）；「不處理一般 query」沒有測試（見 risk_notes）。還原後 git diff 乾淨。web-lint 乾淨；web-typecheck 錯誤皆在他人進行中的檔案（LeaveFormDialog.vue、PickupCreateDialog.vue、AuthorizationForm.vue、ChildHubView.spec.ts、NotificationsView.vue、PickupAuthorizationsView.spec.ts），不在本 task。前一輪已核對且未變動的部分（12 條原 red_case、「聯絡安親班」使用者裁定、稿 decisions、突變 28 殺 27）照舊成立。"
       }
     },
     {
