@@ -359,4 +359,149 @@ describe('AttendanceTodayView', { timeout: 20_000 }, () => {
     expect(cards(wrapper)[0]!.find('.el-tag').text()).toBe('已到班')
     expect(cardButtons(wrapper)).toEqual(['離班'])
   })
+
+  it('AttendanceTodayView loads today with class filter from query: loading skeleton', async () => {
+    let release: () => void = () => {}
+    mock.onGet(DAILY_URL).reply(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve([200, daily([WANG, LIN])])
+        }),
+    )
+    const { wrapper } = await mountView()
+
+    expect(wrapper.findAll('.acard-skeleton')).toHaveLength(8)
+    expect(wrapper.findAll('.summary-bar [data-test=stat-skeleton]').length).toBeGreaterThan(0)
+    expect(cards(wrapper)).toHaveLength(0)
+
+    release()
+    await settle()
+
+    expect(wrapper.findAll('.acard-skeleton')).toHaveLength(0)
+    expect(wrapper.find('.summary-bar [data-test=stat-skeleton]').exists()).toBe(false)
+    expect(cardNames(wrapper)).toEqual(['王小明', '林小華'])
+  })
+
+  it('AttendanceTodayView refresh failure keeps current data', async () => {
+    mock.onGet(DAILY_URL).replyOnce(200, daily([WANG, LIN]))
+    mock.onGet(DAILY_URL).replyOnce(500, {
+      error: { code: 'internal_error', message: '出勤資料暫時無法讀取', details: null },
+    })
+    const { wrapper } = await mountView()
+    expect(cards(wrapper)).toHaveLength(2)
+
+    await button(wrapper, '重新整理')!.trigger('click')
+    await settle()
+
+    expect(dailyGets()).toHaveLength(2)
+    expect(document.body.textContent).toContain('出勤資料暫時無法讀取')
+    expect(cardNames(wrapper)).toEqual(['王小明', '林小華'])
+    expect(wrapper.text()).not.toContain('無法載入出勤資料')
+  })
+
+  it('AttendanceTodayView amend opens dialog and applies returned row', async () => {
+    mock.onGet(DAILY_URL).reply(200, daily([LEE]))
+    mock.onPatch('/admin/attendance/a4').reply(200, {
+      ...LEE,
+      status: 'absent',
+      check_in_at: null,
+      check_in_source: null,
+      updated_at: '2026-10-02T08:00:00Z',
+    })
+    const { wrapper } = await mountView()
+
+    await wrapper.find('.acard [aria-label=更多操作]').trigger('click')
+    await settle()
+    const item = Array.from(document.body.querySelectorAll<HTMLElement>('.el-dropdown-menu__item')).find(
+      (el) => el.textContent?.trim() === '改判',
+    )
+    item!.click()
+    await settle()
+
+    const dialog = new DOMWrapper(Array.from(document.body.querySelectorAll('.el-dialog')).at(-1)!)
+    expect(dialog.find('.el-dialog__title').text()).toBe('改判出勤：李承恩')
+    const formItem = (label: string) =>
+      dialog.findAll('.el-form-item').find((i) => i.find('.el-form-item__label').text().trim() === label)!
+    await formItem('狀態')
+      .findAll('.el-radio-button')
+      .find((o) => o.text().trim() === '缺席')!
+      .find('input')
+      .setValue(true)
+    await formItem('改判原因').find('textarea').setValue('家長來電說明今天沒有到班')
+    await settle()
+    await dialog
+      .findAll('.el-dialog__footer button')
+      .find((b) => b.text() === '儲存')!
+      .trigger('click')
+    await settle()
+
+    expect(JSON.parse(mock.history.patch[0]?.data as string)).toMatchObject({ status: 'absent' })
+    expect(cards(wrapper)[0]!.find('.el-tag').text()).toBe('缺席')
+  })
+
+  it('AttendanceTodayView past date is amend-only: future dates are not selectable', async () => {
+    mock.onGet(DAILY_URL).reply(200, daily([WANG]))
+    const { wrapper } = await mountView()
+    const gets = dailyGets().length
+
+    const picker = wrapper.findComponent({ name: 'ElDatePicker' })
+    const disabledDate = picker.props('disabledDate') as (d: Date) => boolean
+    expect(disabledDate(new Date(2026, 9, 3))).toBe(true)
+    expect(disabledDate(new Date(2026, 9, 2))).toBe(false)
+
+    // 即使日期元件送出未來日期（例如鍵盤輸入），也不切換
+    picker.vm.$emit('update:modelValue', '2026-10-03')
+    await settle()
+
+    expect(dailyGets()).toHaveLength(gets)
+    expect(wrapper.text()).not.toContain('僅可改判')
+    expect(button(wrapper, '批次到班')).toBeDefined()
+  })
+
+  it('AttendanceTodayView batch check-in reports skipped students: select all only visible', async () => {
+    mock.onGet(DAILY_URL).reply(200, daily([WANG, LIN, CHEN, LEE]))
+    mock.onPost(BATCH_URL).reply(200, { succeeded: [{ ...LIN, status: 'present' }], skipped: [] })
+    const { wrapper } = await mountView()
+
+    await wrapper.find('.att__search input').setValue('林')
+    await settle()
+    await button(wrapper, '批次到班')!.trigger('click')
+    await settle()
+    await button(wrapper, '全選未到（1）')!.trigger('click')
+    await settle()
+    await button(wrapper, '確認到班')!.trigger('click')
+    await settle()
+
+    expect(JSON.parse(mock.history.post[0]?.data as string)).toEqual({ student_ids: ['s2'] })
+  })
+
+  it('AttendanceTodayView batch check-in reports skipped students: leaving on class or date change', async () => {
+    mock.onGet(DAILY_URL).reply((config) => {
+      const date = (config.params as { date: string }).date
+      return [200, daily([WANG, LIN, LEE].map((r) => ({ ...r, service_date: date })), date)]
+    })
+    const { wrapper, router } = await mountView()
+
+    await button(wrapper, '批次到班')!.trigger('click')
+    await cards(wrapper)[0]!.trigger('click')
+    await settle()
+    expect(wrapper.find('.batch-bar__count').text()).toBe('已選 1 位')
+
+    // 換班級：離開選取模式，再進入時已選為 0
+    await router.replace({ query: { class_id: 'c1' } })
+    await settle()
+    expect(wrapper.find('.batch-bar').exists()).toBe(false)
+    await button(wrapper, '批次到班')!.trigger('click')
+    await settle()
+    expect(wrapper.find('.batch-bar__count').text()).toBe('已選 0 位')
+
+    // 換到過去日期：同樣離開選取模式
+    await cards(wrapper)[0]!.trigger('click')
+    await settle()
+    wrapper.findComponent({ name: 'ElDatePicker' }).vm.$emit('update:modelValue', '2026-10-01')
+    await settle()
+    expect(wrapper.text()).toContain('檢視 2026-10-01，僅可改判')
+    expect(wrapper.find('.batch-bar').exists()).toBe(false)
+    expect(wrapper.find('.batch-hint').exists()).toBe(false)
+  })
 })
