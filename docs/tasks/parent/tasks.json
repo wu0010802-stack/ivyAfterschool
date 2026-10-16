@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 187,
-  "last_updated": "2026-10-16T15:06:04Z",
+  "version": 188,
+  "last_updated": "2026-10-16T15:06:26Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1774,11 +1774,11 @@
     {
       "id": "PARENT-073",
       "title": "建立 HomeworkView：今日作業明細（每項狀態、整體狀態、預計可接送時間、老師說明）",
-      "description": "建立 `apps/web/src/parent/views/HomeworkView.vue`（路由 `/homework`，底部導覽「作業」；頂部列「今日作業」由 ParentLayout 負責）。外觀與互動以已核可稿 `docs/mockups/parent-page-homework.html` 為準。\n\n**版面**（頁面自帶左右 16px、上 8px、底部 24px 內距，區塊間距 12px；整頁內容包在 PARENT-027 PullToRefresh 內）：PARENT-050 ChildContextHeader → 小標「作業進度」+ 右側日期（`homework.date`，「MM/DD（X）」，FRONTEND-003；尚無資料時不顯示）→ 錯誤列（見下）→ 摘要卡 → 小標「作業項目」+ 右側「共 {n} 項」（無項目時不顯示）→ 項目卡。\n\n- **小孩清單**：掛載時呼叫 `children.load()`（PARENT-010；深層連結直接進入時尚未載入）；`children.loading` 且 items 為空 → 身分卡位置 PARENT-028 SkeletonBlock `variant=\"row\"`（高 80px）。切換 → `children.select(id)`。\n- **資料**：依 `children.selectedId` 呼叫 PARENT-071 `homeworkToday.load(id, { force: true })`（掛載與切換時），畫面讀 `get(id)`；ws 更新由 store 原地套用，畫面直接反映，不重新請求、不顯示骨架。\n- **摘要卡**（PARENT-017 M3Card elevated、padding none，兩個區塊以 1px outline-variant 分隔）：\n  - 第一區：「已完成 {done}/{total} 項」（done = status 為 done 的項目數，數字 tabular-nums）+ 右側整體狀態 PARENT-051 StatusPill（FRONTEND-005 `HOMEWORK_OVERALL_STATUS_META`）+ 4px primary 進度條（aria-hidden）；items 為空時文字改「今日作業」、不畫進度條。\n  - 第二區（預計可接送）：overall done → filled check_circle（primary）+「作業已完成，可以來接送了」；否則 `ready_eta` 有值 → schedule 圖示 +「預計 HH:MM 可接送」；否則「老師尚未提供預計時間」（on-surface-variant）。`note` 有值 → 下方「老師說明：{note}」（保留換行、純文字）。\n  - 卡片底部 `updated_at` 有值 →「最後更新 HH:MM」（FRONTEND-003，台北時間）。\n- **項目卡**：outlined M3Card 內 `<ul role=\"list\" aria-label=\"今日作業項目\">` + PARENT-072 HomeworkItemRow，依後端順序，不另排序。\n- **空狀態**（卡內 PARENT-029 ParentEmptyState）：items 為空且 overall 非 done →（assignment）「今天還沒有作業項目」/「老師登記作業後會顯示在這裡」；items 為空且 overall done →（done_all）「老師已標記今日作業完成」，此時摘要卡照常顯示「作業已完成，可以來接送了」與老師說明。\n- **載入**：這個小孩尚無資料且載入中 → 摘要卡位置 SkeletonBlock `variant=\"card\"`（高 168px）+ 項目卡內 SkeletonBlock `variant=\"row\"` count 3；已有資料（切回看過的小孩、下拉重新整理、ws 斷線輪詢）→ 照常顯示並背景重抓，不顯示骨架。\n- **錯誤**：`errorByChild[id]` 有值且這個小孩沒有資料 → 摘要與項目卡換成 ParentEmptyState error「作業進度載入失敗」/「請檢查網路連線後再試一次」/「重試」（→ `load(id, { force: true })`，重試期間回到骨架）；有舊資料 → 照常顯示舊資料，摘要卡上方加錯誤列（error-container、filled error 圖示、「作業進度載入失敗」、右側 48px 文字按鈕「重試」，`role=\"alert\"`，同首頁錯誤列）；PullToRefresh 失敗只以錯誤列呈現，不另跳 snackbar。\n- PullToRefresh：`homeworkToday.load(selectedId, { force: true })`。本頁只呈現，沒有可點的列。\n\n新寫頁面（domain_spec §4 家長端 `/homework`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-homework.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：進行中（多項不同狀態 + ready_eta + 老師說明 + 最後更新）、全部完成、無項目、老師標記完成但無項目、首次載入骨架、載入失敗、有舊資料時的錯誤列、多位小孩切換。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `HomeworkView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；PullToRefresh 以 `findComponent(PullToRefresh).props('onRefresh')()` 觸發）。",
+      "description": "建立 `apps/web/src/parent/views/HomeworkView.vue`（路由 `/homework`，底部導覽「作業」；頂部列「今日作業」由 ParentLayout 負責）。外觀與互動以已核可稿 `docs/mockups/parent-page-homework.html` 為準。\n\n**版面**（頁面自帶左右 16px、上 8px、底部 24px 內距，區塊間距 12px；整頁內容包在 PARENT-027 PullToRefresh 內）：PARENT-050 ChildContextHeader → 小標「作業進度」+ 右側日期（`homework.date`，「MM/DD（X）」，FRONTEND-003；尚無資料時不顯示）→ 錯誤列（見下）→ 摘要卡 → 小標「作業項目」+ 右側「共 {n} 項」（無項目時不顯示）→ 項目卡。\n\n- **小孩清單**：掛載時呼叫 `children.load()`（PARENT-010；深層連結直接進入時尚未載入）；`children.loading` 且 items 為空 → 身分卡位置 PARENT-028 SkeletonBlock `variant=\"row\"`（高 80px）。切換 → `children.select(id)`。 沒有選中的小孩時不呼叫作業 API：清單載入中 → 摘要與項目位置照「載入」顯示骨架；清單載入失敗（沒有任何小孩可選）→ 摘要與項目位置顯示 ParentEmptyState error「作業進度載入失敗」/「請檢查網路連線後再試一次」/「重試」，重試改呼叫 `children.load(true)`；清單已載入但沒有任何小孩 → 項目卡內「今天還沒有作業項目」空狀態（同 ExamsView / LeavesView / AttendanceView 的處理）。\n- **資料**：依 `children.selectedId` 呼叫 PARENT-071 `homeworkToday.load(id, { force: true })`（掛載與切換時），畫面讀 `get(id)`；ws 更新由 store 原地套用，畫面直接反映，不重新請求、不顯示骨架。\n- **摘要卡**（PARENT-017 M3Card elevated、padding none，兩個區塊以 1px outline-variant 分隔）：\n  - 第一區：「已完成 {done}/{total} 項」（done = status 為 done 的項目數，數字 tabular-nums）+ 右側整體狀態 PARENT-051 StatusPill（FRONTEND-005 `HOMEWORK_OVERALL_STATUS_META`）+ 4px primary 進度條（aria-hidden）；items 為空時文字改「今日作業」、不畫進度條。\n  - 第二區（預計可接送）：overall done → filled check_circle（primary）+「作業已完成，可以來接送了」；否則 `ready_eta` 有值 → schedule 圖示 +「預計 HH:MM 可接送」；否則「老師尚未提供預計時間」（on-surface-variant）。`note` 有值 → 下方「老師說明：{note}」（保留換行、純文字）。\n  - 卡片底部 `updated_at` 有值 →「最後更新 HH:MM」（FRONTEND-003，台北時間）。\n- **項目卡**：outlined M3Card 內 `<ul role=\"list\" aria-label=\"今日作業項目\">` + PARENT-072 HomeworkItemRow，依後端順序，不另排序。\n- **空狀態**（卡內 PARENT-029 ParentEmptyState）：items 為空且 overall 非 done →（assignment）「今天還沒有作業項目」/「老師登記作業後會顯示在這裡」；items 為空且 overall done →（done_all）「老師已標記今日作業完成」，此時摘要卡照常顯示「作業已完成，可以來接送了」與老師說明。\n- **載入**：這個小孩尚無資料且載入中 → 摘要卡位置 SkeletonBlock `variant=\"card\"`（高 168px）+ 項目卡內 SkeletonBlock `variant=\"row\"` count 3；已有資料（切回看過的小孩、下拉重新整理、ws 斷線輪詢）→ 照常顯示並背景重抓，不顯示骨架。\n- **錯誤**：`errorByChild[id]` 有值且這個小孩沒有資料 → 摘要與項目卡換成 ParentEmptyState error「作業進度載入失敗」/「請檢查網路連線後再試一次」/「重試」（→ `load(id, { force: true })`，重試期間回到骨架）；有舊資料 → 照常顯示舊資料，摘要卡上方加錯誤列（error-container、filled error 圖示、「作業進度載入失敗」、右側 48px 文字按鈕「重試」，`role=\"alert\"`，同首頁錯誤列）；PullToRefresh 失敗只以錯誤列呈現，不另跳 snackbar。\n- PullToRefresh：`homeworkToday.load(selectedId, { force: true })`。本頁只呈現，沒有可點的列。\n\n新寫頁面（domain_spec §4 家長端 `/homework`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-homework.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：進行中（多項不同狀態 + ready_eta + 老師說明 + 最後更新）、全部完成、無項目、老師標記完成但無項目、首次載入骨架、載入失敗、有舊資料時的錯誤列、多位小孩切換。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `HomeworkView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；PullToRefresh 以 `findComponent(PullToRefresh).props('onRefresh')()` 觸發）。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/HomeworkView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -1794,7 +1794,7 @@
         "INFRA-013"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "規格未定義的邊界（實作者依 ExamsView 慣例補，若使用者另有裁定請調整）：小孩清單載入失敗（沒有任何小孩可選）→ 摘要與項目位置顯示 ParentEmptyState error「作業進度載入失敗」，重試改抓小孩清單；小孩清單已載入但沒有任何小孩 → 項目卡內「今天還沒有作業項目」空狀態、不打作業 API。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/HomeworkView.spec.ts",
@@ -1817,9 +1817,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。10 條 red_case 皆有同名測試且斷言具體（GET 次數與 url、摘要文字、膠囊、eta 時間元素、li 數、aria-busy、role=alert 錯誤列、ws 套用後文字）；tdd.run 15 綠，-t 選到每條。32e9aad（測試，對佔位檔全紅）先於 3e87045（實作）。cca1627 不是放寬：原 red_case「含『老師尚未提供預計時間』且不含『預計』」自相矛盾（退回文案本身含「預計」），改為不得出現「預計 HH:MM 可接送」（正規式）且沒有 .hws-eta__time 元素，仍鎖住「沒有預計時間那一行」的原意；把退回分支改成照樣顯示 ETA 的突變會轉紅。894659d 只是型別寫法。小孩清單失敗 / 沒有小孩兩個自訂狀態與 ExamsView、LeavesView、AttendanceView 一致（都是不打資料 API；清單失敗走 error + 重試 children.load(true)；清單已載入但沒有小孩顯示本頁空狀態），兩者都有測試；已寫回 description 定案，原 risk_notes 的「規格未定義」說明隨之移除。（ChildHubView 的「尚未綁定小孩 / 輸入綁定碼」是首頁專屬的引導，不屬同一慣例。）資料流：掛載與切換時 load(id, { force: true })、讀 get(id)；有快取時不閃骨架、背景重抓；沒有資料且失敗 → error 頁、有舊資料 → 錯誤列；下拉 force 重抓；ws 由 store 原地套用、不重新請求。只用 children store 的選中小孩，不讀 route 參數。對照 parent-page-homework.html decisions 9 條逐條符合；390×844 Chromium 實測（時鐘固定 2026-10-07）身分卡、小標、摘要卡各區、項目列（72 / 64px）與空狀態的位置與尺寸和稿相同，無水平溢出。差異見殘留：稿的老師說明受稿件框架 .m3-card p { margin: 0 } 覆寫，渲染成不縮排、無上距，實作照 decision 文字縮排 36px、上距 8px，摘要卡因此比稿高 8px。突變（掛載不 force、拿掉 children.load、有快取仍顯示骨架、拿掉錯誤列、無 ETA 仍顯示預計、完成數改算全部、空項目已完成文案拿掉、最後更新改 UTC、重試不分清單 / 作業、沒有小孩當載入中、拿掉錯誤頁、下拉不 force）共 12 處各有測試轉紅，還原後 git diff 乾淨。圖示皆在子集，icons.spec 綠；web-lint 乾淨；web-typecheck exit 2 的錯誤都在他人未提交的檔案（components/pickup/PickupCompleteDialog.vue、views/ExamsView.vue），本頁 0 錯。 殘留：老師說明 <p> 內文字與模板縮排同在一個文字節點，Vue 壓縮空白後留下開頭一個空白，white-space: pre-wrap 讓它可見——Chromium 實測「老」字比框左緣右移 4px，與上方預計時間文字差 4px 不對齊；測試用 .text()（會 trim）所以沒抓到。TodayStatusCard（PARENT-053）以 span 包文字並以 textContent 斷言避開，可比照修正。"
       }
     },
     {
