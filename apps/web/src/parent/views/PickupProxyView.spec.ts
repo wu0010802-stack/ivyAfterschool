@@ -154,7 +154,10 @@ function button(scope: ParentNode, label: string): HTMLButtonElement {
   return found
 }
 
-const root = (w: Wrapper): ParentNode => w.element.parentNode ?? w.element
+function root(w: Wrapper): ParentNode {
+  const el = w.element as HTMLElement
+  return el.parentNode ?? el
+}
 
 async function click(el: Element | null | undefined): Promise<void> {
   if (!el) throw new Error('找不到要點擊的元素')
@@ -201,7 +204,9 @@ async function fill(input: HTMLInputElement, value: string): Promise<void> {
 }
 
 function sectionCard(w: Wrapper, title: string): HTMLElement {
-  const heading = Array.from(w.element.querySelectorAll('h2')).find((el) => el.textContent?.trim() === title)
+  const heading = Array.from((w.element as HTMLElement).querySelectorAll('h2')).find(
+    (el) => el.textContent?.trim() === title,
+  )
   const section = heading?.closest('.px-section')
   let next = section?.nextElementSibling ?? null
   while (next && !next.classList.contains('px-card')) next = next.nextElementSibling
