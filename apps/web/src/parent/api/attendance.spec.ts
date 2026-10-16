@@ -12,6 +12,7 @@ const MONTH: MonthlyAttendance = {
     {
       date: '2026-10-01',
       is_service_day: true,
+      in_stats: true,
       status: 'left',
       check_in_at: '2026-10-01T08:05:00Z',
       check_out_at: '2026-10-01T10:30:00Z',
@@ -20,6 +21,7 @@ const MONTH: MonthlyAttendance = {
     {
       date: '2026-10-02',
       is_service_day: true,
+      in_stats: true,
       status: 'leave',
       check_in_at: null,
       check_out_at: null,
@@ -28,6 +30,7 @@ const MONTH: MonthlyAttendance = {
     {
       date: '2026-10-03',
       is_service_day: false,
+      in_stats: false,
       status: null,
       check_in_at: null,
       check_out_at: null,
@@ -69,6 +72,17 @@ describe('attendanceApi', () => {
     expect(mock.history.get).toHaveLength(1)
     expect(mock.history.get[0]!.url).toBe('/parent/children/s1/attendance')
     expect(mock.history.get[0]!.params).toEqual({ month: '2026-10' })
+  })
+
+  it('attendanceApi passes in_stats through', async () => {
+    mock.onGet('/parent/children/s1/attendance', { params: { month: '2026-10' } }).reply(200, MONTH)
+
+    const attendance = await getChildAttendance('s1', '2026-10')
+
+    // BACKEND-561：每個 day 都帶 in_stats，前端原樣交給月曆判斷「未登記」
+    expect(attendance.days[0]!.in_stats).toBe(true)
+    expect(attendance.days[2]!.in_stats).toBe(false)
+    expect(attendance.days.map((d) => d.in_stats)).toEqual([true, true, false])
   })
 
   it('attendanceApi propagates 422', async () => {

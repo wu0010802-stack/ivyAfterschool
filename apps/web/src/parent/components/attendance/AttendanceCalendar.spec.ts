@@ -12,10 +12,15 @@ interface CalendarProps {
   selectedDate: string | null
 }
 
-function day(date: string, overrides: Partial<AttendanceDay> = {}): AttendanceDay {
+const DEFAULT_TODAY = '2026-10-22'
+
+/** in_stats 預設依後端規則推算：營業日且不晚於 today（入學日以前的案例自行覆寫為 false） */
+function day(date: string, overrides: Partial<AttendanceDay> = {}, today = DEFAULT_TODAY): AttendanceDay {
+  const isServiceDay = overrides.is_service_day ?? true
   return {
     date,
-    is_service_day: true,
+    is_service_day: isServiceDay,
+    in_stats: isServiceDay && date <= today,
     status: null,
     check_in_at: null,
     check_out_at: null,
@@ -25,7 +30,7 @@ function day(date: string, overrides: Partial<AttendanceDay> = {}): AttendanceDa
 }
 
 function mountCalendar(overrides: Partial<CalendarProps> = {}) {
-  const props: CalendarProps = { month: '2026-10', days: [], today: '2026-10-22', selectedDate: null, ...overrides }
+  const props: CalendarProps = { month: '2026-10', days: [], today: DEFAULT_TODAY, selectedDate: null, ...overrides }
   return mount(AttendanceCalendar, { props })
 }
 
@@ -200,6 +205,67 @@ describe('AttendanceCalendar', () => {
     expect(cell(wrapper, 23).classes()).toContain('att-day--none')
     expect(cell(wrapper, 28).find('.m3-icon').exists()).toBe(false)
     expect(cell(wrapper, 28).get('.att-day__mark').text()).toBe('')
+  })
+
+  it('AttendanceCalendar shows unrecorded for counted days without a record', () => {
+    const wrapper = mountCalendar({
+      today: '2026-10-22',
+      days: [
+        day('2026-10-15', { is_service_day: true, in_stats: true, status: null }),
+        day('2026-10-23', { is_service_day: true, in_stats: false, status: null }),
+        // 今天計入統計卻沒有出勤列：與統計一致，也是未登記
+        day('2026-10-22', { is_service_day: true, in_stats: true, status: null }),
+      ],
+    })
+
+    expect(label(wrapper, 15)).toBe('10月15日 未登記')
+    expect(cell(wrapper, 15).classes()).toContain('att-day--unrecorded')
+    expect(cell(wrapper, 15).classes()).not.toContain('att-day--none')
+    // 與「今天以前仍是 expected」同一種格：同底色、同圖示
+    expect(cell(wrapper, 15).get('.att-day__mark .m3-icon').text()).toBe('remove')
+    expect(label(wrapper, 22)).toBe('10月22日 未登記')
+    expect(cell(wrapper, 22).classes()).toContain('att-day--unrecorded')
+
+    expect(label(wrapper, 23)).toBe('10月23日 無紀錄')
+    expect(cell(wrapper, 23).classes()).toContain('att-day--none')
+    expect(cell(wrapper, 23).classes()).not.toContain('att-day--unrecorded')
+  })
+
+  it('AttendanceCalendar keeps no-record before enrollment', () => {
+    const wrapper = mountCalendar({
+      today: '2026-10-22',
+      days: [
+        // 入學日以前的營業日：後端 in_stats 為 false
+        day('2026-10-01', { is_service_day: true, in_stats: false, status: null }),
+        day('2026-10-04', { is_service_day: false, in_stats: false, status: null }),
+        // 防禦：非營業日一律休息，不看 in_stats
+        day('2026-10-11', { is_service_day: false, in_stats: true, status: null }),
+      ],
+    })
+
+    expect(label(wrapper, 1)).toBe('10月1日 無紀錄')
+    expect(cell(wrapper, 1).classes()).toContain('att-day--none')
+    expect(label(wrapper, 4)).toBe('10月4日 休息')
+    expect(cell(wrapper, 4).classes()).toContain('att-day--closed')
+    expect(label(wrapper, 11)).toBe('10月11日 休息')
+    expect(cell(wrapper, 11).classes()).toContain('att-day--closed')
+  })
+
+  it('AttendanceCalendar in_stats does not change days that have a status', () => {
+    const wrapper = mountCalendar({
+      today: '2026-10-22',
+      days: [
+        day('2026-10-02', { in_stats: true, status: 'present' }),
+        day('2026-10-15', { in_stats: true, status: 'expected' }),
+        day('2026-10-22', { in_stats: true, status: 'expected' }),
+        day('2026-10-26', { in_stats: false, status: 'expected' }),
+      ],
+    })
+
+    expect(label(wrapper, 2)).toBe('10月2日 已到班')
+    expect(label(wrapper, 15)).toBe('10月15日 未登記')
+    expect(label(wrapper, 22)).toBe('10月22日 預計到班')
+    expect(label(wrapper, 26)).toBe('10月26日 預計到班')
   })
 
   it('AttendanceCalendar draws status as colour class plus icon', () => {
