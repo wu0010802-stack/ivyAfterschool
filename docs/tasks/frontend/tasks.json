@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 212,
-  "last_updated": "2026-10-16T05:54:26Z",
+  "version": 213,
+  "last_updated": "2026-10-16T05:55:20Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4607,7 +4607,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/ClassroomRail.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosClassroomRail.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-182"
@@ -4625,7 +4625,7 @@
           "ClassroomRail emits selection and marks active：selectedKey 'all' → '全部班級' 項 aria-current 'true'；點 '高年級B班' → emitted('update:selectedKey')[0] 深等於 ['c2']"
         ],
         "run": "just web-test src/components/pickup/pos/ClassroomRail.spec.ts -t \"ClassroomRail\"",
-        "notes": ""
+        "notes": "紅燈 commit c550a5a、實作 commit 3b89791。除 2 條 red_cases 外另有 2 條：↑↓ 鍵切換（首尾不動）、觸控高度 ≥ 56px（happy-dom 不計算版面，以 ?raw 讀原始碼斷言 min-height 規則）。突變自檢：徽章優先順序對調使 red_case 1 轉紅。"
       },
       "review": {
         "status": "pending",
@@ -4672,11 +4672,11 @@
     {
       "id": "FRONTEND-193",
       "title": "實作 components/pickup/pos/StudentCard.vue：POS 學生卡（狀態徽章、作業與預計時間、⋮ 選單）",
-      "description": "建立 `apps/web/src/components/pickup/pos/StudentCard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosStudentCard.vue` 的卡片密度（姓名大字 + 狀態徽章 + ⋮）、`div[role=button]` 包巢狀按鈕的作法、busy 時停用選單；選單項目改為本專案（**去掉** 娃娃車 / 請假補登）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`student: RosterStudent`、`status: PosStudentStatusResult`、`staging: boolean`、`canOperate: boolean`；emits `quick-dispatch(student)`、`focus-request(requestId)`、`create-request(student)`。\n**內容**\n- 姓名（大字）、學號；狀態徽章（POS_STATUS_META；on_leave 時為「請假（{假別}）」，假別由 detail.leaveType 代碼 sick / personal / other 查 LEAVE_TYPE_META 轉中文）；requested 時加請求小字：needsReply →「待回覆」（danger）、pending →「等待確認」、acknowledged →「已確認」，並顯示家長預計抵達「預計 {expected_arrival_at} 到」（有值時）；arrived 時狀態徽章已是「家長已到」，小字只在 needsReply 時補「待回覆」。\n- 作業：HOMEWORK_OVERALL_STATUS_META 標籤 + `ready_eta`「{ready_eta} 可接送」（有值時）。\n- 代理授權：`authorizationCount > 0` 顯示 Postcard icon +「代理 {n}」（不用 emoji）。\n- staging 顯示「建立中…」遮罩並停用點擊。\n**點擊**\n- requested / arrived → emit `focus-request(requestId)`（唯讀者也可）。\n- waiting / not_arrived 且 canOperate 且非 staging → emit `quick-dispatch`。\n- 其他狀態點擊無動作。\n**⋮ 選單**（canOperate，且選單至少一項時才顯示）：「代建接送請求…」（waiting / not_arrived）→ emit `create-request`；「查看代理授權」（authorizationCount > 0）→ `router.push({ path: '/pickup/authorizations', query: { student_id } })`；picked_up 顯示說明「今天已離班」（disabled）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/pickup/pos/StudentCard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosStudentCard.vue` 的卡片密度（姓名大字 + 狀態徽章 + ⋮）、`div[role=button]` 包巢狀按鈕的作法、busy 時停用選單；選單項目改為本專案（**去掉** 娃娃車 / 請假補登）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`student: RosterStudent`、`status: PosStudentStatusResult`、`staging: boolean`、`canOperate: boolean`；emits `quick-dispatch(student)`、`focus-request(requestId)`、`create-request(student)`。\n**內容**\n- 姓名（大字）、學號；狀態徽章（POS_STATUS_META；on_leave 時為「請假（{假別}）」，假別由 detail.leaveType 代碼 sick / personal / other 查 LEAVE_TYPE_META 轉中文）；requested 時加請求小字：needsReply →「待回覆」（danger）、pending →「等待確認」、acknowledged →「已確認」，並顯示家長預計抵達「預計 {expected_arrival_at} 到」（有值時）；arrived 時狀態徽章已是「家長已到」，小字只在 needsReply 時補「待回覆」。\n- 作業：HOMEWORK_OVERALL_STATUS_META 標籤 + `ready_eta`「{ready_eta} 可接送」（有值時）。\n- 代理授權：`authorizationCount > 0` 顯示 Postcard icon +「代理 {n}」（不用 emoji）。\n- staging 顯示「建立中…」遮罩並停用點擊。\n**點擊**\n- requested / arrived → emit `focus-request(requestId)`（唯讀者也可）。\n- waiting / not_arrived 且 canOperate 且非 staging → emit `quick-dispatch`。\n- 其他狀態點擊無動作。\n**⋮ 選單**（canOperate，且選單至少一項時才顯示）：「代建接送請求…」（waiting / not_arrived）→ emit `create-request`；「查看代理授權」（authorizationCount > 0）→ 元件直接 `router.push({ path: '/pickup/authorizations', query: { student_id } })`（稿內以 emit view-authorizations 交由頁面導頁，實作以本 description 為準，頁面不需另接事件）；picked_up 顯示說明「今天已離班」（disabled）。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentCard.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
@@ -4699,7 +4699,7 @@
           "StudentCard shows leave type label from code：status on_leave、detail.leaveType 'sick' → 文字含 '請假（病假）'；leaveType 'personal' → 文字含 '請假（事假）'"
         ],
         "run": "just web-test src/components/pickup/pos/StudentCard.spec.ts -t \"StudentCard\"",
-        "notes": ""
+        "notes": "紅燈 commit c550a5a（補強 903d4a3）、實作 commit 3b89791。除 6 條 red_cases 外另有 2 條：⋮ 選單 emit create-request 與已離班停用說明 / 請假無選單 / 倒數中選單停用、⋮ 44×44 與 role=button aria-label（?raw 原始碼斷言）。選單項目「代建接送請求…」依核可稿在 staging 時不列出、el-dropdown 以 :disabled=staging 停用；「查看代理授權」由元件直接 router.push（稿內為 emit view-authorizations，依 description 改為導頁）。突變自檢：唯讀者可 quick-dispatch、唯讀者顯示選單、家長已到也顯示請求小字各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
@@ -4747,11 +4747,11 @@
     {
       "id": "FRONTEND-195",
       "title": "實作 components/pickup/pos/QueueCard.vue：佇列卡（狀態、家長 ETA、作業、回覆、等候急迫、操作、左滑取消）",
-      "description": "建立 `apps/web/src/components/pickup/pos/QueueCard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosQueueCard.vue` 的卡片結構、`useSwipeReveal` 左滑露出取消（鬆手只開合、需再點按鈕）、staging 倒數條、ETA 相對文字；**去掉** proxy 明碼顯示與一鍵確認（代理核驗改在 FRONTEND-201）、bus 來源。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`item: PosQueueItem`、`now: number`、`canOperate: boolean`；emits `reply(req)`、`acknowledge(req)`、`complete(req)`、`cancel(item)`。\n**staging**：姓名 + 班級 +「{剩餘秒} 秒後送出」+ `CountdownBar`（FRONTEND-196）+「取消」按鈕（直接 emit cancel，不需左滑）。\n**active**\n- 第一列：姓名（大字）+ 右側 tag。狀態 tag 用 POS 用語：pending「等待確認」（warning）、acknowledged「已確認」（info）、arrived「家長已到」（danger）；acknowledged / arrived 沿用 PICKUP_REQUEST_STATUS_META，pending 的「待回覆」是家長端用語，員工端不用。`needs_reply` 時在狀態 tag 前加 danger 實心徽章「待回覆」（needs_reply 由後端計算，員工代建的請求在自動回覆沒有預計時間時也會是 true，照常顯示）。\n- 第二列（整列寬，不和 tag 搶寬度）：「{class_name}・{來源}・{requested_by_name}・{formatTime(created_at)}」，來源用 PICKUP_SOURCE_LABELS（家長發起 / 員工代建 / 代理接送）。\n- 「我已經到了」捷徑建立的請求（未經 pending 直接 arrived，`expected_arrival_at` 為 null）：不顯示預計抵達那一行，直接顯示「家長已到」與等候時間；按鈕同 arrived。\n- 時間：家長預計抵達「預計 {expected_arrival_at} 到」+（未到時）`etaRelativeText`；arrived 時「{formatWaited(waitedMinutes)}」+「{formatTime(arrived_at)} 到達」，並依 `urgencyLevel` 套用 `urgency-warning`（warning 框）/ `urgency-critical`（danger 框 + 淡紅底）（FRONTEND-184）。\n- 作業：current_homework_status 標籤 + current_ready_eta「作業預計 {HH:MM} 完成」。\n- 回覆：reply_message（多行）+ 來源「系統自動回覆」/「{replied_by_name} 回覆」；無回覆「尚未回覆」。\n- 按鈕（canOperate，觸控 ≥ 44px）：pending →「回覆時間」「確認」兩鈕等寬（needs_reply 時「回覆時間」為 primary，否則「確認」為 primary）；acknowledged →「修改回覆」+「完成交付」（primary）兩鈕等寬；arrived →「完成交付」（primary、佔 2/3 寬、放左邊）+「修改回覆」。\n- 左滑露出「取消」（canOperate；`useSwipeReveal` FRONTEND-186，`pointerdown` / `pointermove` / `pointerup` / `pointercancel` 四個事件都要綁），點擊 emit cancel 後收合。\n**closed**：狀態 tag；completed：「{picked_up_by_name} 接走・{completion_method label}・{completed_by_name}・{formatTime(completed_at)}」；cancelled：「已取消・{cancel_reason}」（沒有原因時只寫「已取消」）；expired：「逾時未完成」。無按鈕、不可左滑。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/pickup/pos/QueueCard.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosQueueCard.vue` 的卡片結構、`useSwipeReveal` 左滑露出取消（鬆手只開合、需再點按鈕）、staging 倒數條、ETA 相對文字；**去掉** proxy 明碼顯示與一鍵確認（代理核驗改在 FRONTEND-201）、bus 來源。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits**：`item: PosQueueItem`、`now: number`、`canOperate: boolean`；emits `reply(req)`、`acknowledge(req)`、`complete(req)`、`cancel(item)`。\n**staging**：姓名 + 班級 +「{剩餘秒} 秒後送出」+ `CountdownBar`（FRONTEND-196）+「取消」按鈕（直接 emit cancel，不需左滑）。\n**active**\n- 第一列：姓名（大字）+ 右側 tag。狀態 tag 用 POS 用語：pending「等待確認」（warning）、acknowledged「已確認」（info）、arrived「家長已到」（danger）；acknowledged / arrived 沿用 PICKUP_REQUEST_STATUS_META，pending 的「待回覆」是家長端用語，員工端不用。`needs_reply` 時在狀態 tag 前加 danger 實心徽章「待回覆」（needs_reply 由後端計算，員工代建的請求在自動回覆沒有預計時間時也會是 true，照常顯示）。\n- 第二列（整列寬，不和 tag 搶寬度）：「{class_name}・{來源}・{requested_by_name}・{formatTime(created_at)}」，來源用 PICKUP_SOURCE_LABELS（家長發起 / 員工代建 / 代理接送）。\n- 「我已經到了」捷徑建立的請求（未經 pending 直接 arrived，`expected_arrival_at` 為 null）：不顯示預計抵達那一行，直接顯示「家長已到」與等候時間；按鈕同 arrived。\n- 時間：家長預計抵達「預計 {expected_arrival_at} 到」+（未到時）`etaRelativeText`；arrived 時「{formatWaited(waitedMinutes)}」+「{formatTime(arrived_at)} 到達」，並依 `urgencyLevel` 套用 `urgency-warning`（warning 框）/ `urgency-critical`（danger 框 + 淡紅底）（FRONTEND-184）。\n- 作業：current_homework_status 標籤 + current_ready_eta「作業預計 {HH:MM} 完成」。\n- 回覆：reply_message（多行）+ 來源「系統自動回覆」/「{replied_by_name} 回覆」；無回覆「尚未回覆」。\n- 按鈕（canOperate，觸控 ≥ 44px）：pending →「回覆時間」「確認」兩鈕等寬（needs_reply 時「回覆時間」為 primary，否則「確認」為 primary）；acknowledged →「修改回覆」+「完成交付」（primary）兩鈕等寬；arrived →「完成交付」（primary、佔 2/3 寬、放左邊）+「修改回覆」。\n- 左滑露出「取消」（canOperate；`useSwipeReveal` FRONTEND-186，`pointerdown` / `pointermove` / `pointerup` / `pointercancel` 四個事件都要綁），點擊 emit cancel 後收合。\n**定位**：根元素 `id=\"qc-{item.id}\"`，父層加上 class `is-flash` 時卡片閃爍 1.5 秒（QueuePanel FRONTEND-194 的 focus 用）。\n**closed**：狀態 tag；completed：「{picked_up_by_name} 接走・{completion_method label}・{completed_by_name}・{formatTime(completed_at)}」；cancelled：「已取消・{cancel_reason}」（沒有原因時只寫「已取消」）；expired：「逾時未完成」。無按鈕、不可左滑。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/QueueCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosQueueCard.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-184",
@@ -4779,7 +4779,7 @@
           "QueueCard closed cancelled summary：status cancelled、cancel_reason '家長改明天' → 文字含 '已取消・家長改明天'；cancel_reason null → 文字含 '已取消' 且不含 '已取消・'"
         ],
         "run": "just web-test src/components/pickup/pos/QueueCard.spec.ts -t \"QueueCard\"",
-        "notes": ""
+        "notes": "紅燈 commit c550a5a（補強 903d4a3）、實作 commit 3b89791。除 9 條 red_cases 外另有 1 條：按鈕 44px / 取消鈕 84px / 急迫框線規則（?raw 原始碼斷言）。red_case 7「不含 '預計'」以 current_ready_eta 為 null 的請求驗證（有作業預計完成時間時「作業預計 HH:MM 完成」本就含「預計」，另以 .queue-card__eta 不存在斷言）。倒數秒數以 250ms 自有 interval 用真實時鐘計算（now prop 每 30 秒一跳太粗）；根元素 id=qc-{id} 與 is-flash 樣式供 QueuePanel（FRONTEND-194）定位閃爍；拖曳超過 6px 後鬆手的 click 以 capture 攔截避免誤觸卡內按鈕。fake timers 只 fake Date / setTimeout / setInterval。突變自檢：不套急迫 class、唯讀者可左滑、取消後不收合、pending 用家長端用語各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
@@ -4992,7 +4992,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationVerifyDialog.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::submitVerify",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
@@ -5016,7 +5016,7 @@
           "AuthorizationVerifyDialog treats broken photo as no photo：photo_url 'https://storage/p.jpg' 的 img 觸發 error 事件後 → 文字含 '此代理人沒有照片，請核對身分證件上的姓名：陳阿姨'"
         ],
         "run": "just web-test src/components/pickup/AuthorizationVerifyDialog.spec.ts -t \"AuthorizationVerifyDialog\"",
-        "notes": ""
+        "notes": "紅燈 commit 17b9d39（補強 a833d14）、實作 commit 9905486。除 7 條 red_cases 外另有 6 條：逐格輸入自動跳格 / 非數字忽略 / Backspace 回上一格 / 貼上含空白與「-」、已鎖定授權開啟即在強制完成分頁（無 override 只剩關閉）、送出中只送一次（格子與 footer 停用，直接派發 paste / Enter 也不重送）、其他錯誤顯示後端 message 且表單保留、關閉再開同一張授權與開著時換授權都重設、接送碼格 52×60 / 分頁 48px / 關閉鈕 44px（?raw 原始碼斷言）。聚焦：FormDialog 的 @opened 在 happy-dom 不會觸發、且 el-dialog 的 focus trap（focus-start-el=container）會在開啟後幾個 tick 無條件把焦點放到容器，故元件自己在 setTimeout 0 聚焦（開啟 / 切分頁 / 碼錯清空後），FormDialog 傳 autofocus=false；spec 的 settle 多等 20ms 真實 timer。成功畫面的方式標籤取自本次操作（code / visual_match / override），不依賴回應欄位。突變自檢：鎖定回應不進鎖定、碼錯不清空、強制完成不檢查備註、鎖定無 override 仍顯示 footer、busy 不擋重送、貼上不去分隔符、成功不 emit verified、圖片失敗不退回、重開不重設各使對應測試轉紅（busy 守衛集中在 run()，submitCode 不再重複檢查，否則為等價突變）。"
       },
       "review": {
         "status": "pending",
@@ -5031,7 +5031,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationCard.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::recordSummary",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
@@ -5053,7 +5053,7 @@
           "AuthorizationCard photo fallback：photo_url null → [data-test=monogram] 文字 '姨'"
         ],
         "run": "just web-test src/components/pickup/AuthorizationCard.spec.ts -t \"AuthorizationCard\"",
-        "notes": ""
+        "notes": "紅燈 commit 17b9d39、實作 commit 9905486。除 4 條 red_cases 外另有 1 條：核驗鈕 44px（?raw 原始碼斷言）與根元素 article；photo fallback 另驗 img @error 退回 monogram、photo_url 變更時重試載入。突變自檢：鎖定時仍顯示錯誤次數、核驗鈕不看 canVerify 各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
