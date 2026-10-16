@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 239,
-  "last_updated": "2026-10-16T13:09:07Z",
+  "version": 240,
+  "last_updated": "2026-10-16T13:12:38Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2688,11 +2688,11 @@
     {
       "id": "FRONTEND-086",
       "title": "實作 components/student/StudentListPanel.vue：學生列表（搜尋、篩選、分頁、批次功能入口）",
-      "description": "建立 `apps/web/src/components/student/StudentListPanel.vue`。移植 ivy `FE:src/components/student/workbench/StudentListPanel.vue` 的工具列 + 表格 + 分頁 + query 記憶；**去掉** dismissal 快速發起、bonus impact、匯出、學期篩選、更多欄位切換。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits / expose**：`selectedId: string | null`；emits `select(id)`；expose `reload()`。\n**內容**\n- `AdminListToolbar`：搜尋（學號 / 姓名）、班級（lookups classOptions 當前學年度 FRONTEND-083 / FRONTEND-084）、年級（GRADE_OPTIONS）、狀態（在學 / 暫停 / 退班，預設在學）、就讀國小、含封存（checkbox）。`usePagedList`（FRONTEND-045，syncQuery）+ `listStudents`。\n- 表格欄：學號、姓名、年級（gradeLabel）、就讀國小（short_name）＋學校班級、安親班班級、狀態 tag（FRONTEND-005）；封存學生整列淡化並加「已封存」tag。選中列高亮。\n- 有 `students:write`：工具列「新增學生」（`StudentFormDialog` FRONTEND-089，建立後 emit select 新 id）、下拉「匯入 Excel」（FRONTEND-094）、「學年升級」（FRONTEND-095）；完成後 reload。\n- 空清單：有篩選時「沒有符合條件的學生」+「清除篩選」；無篩選時「還沒有學生」（有寫入權限時附「新增學生」「匯入 Excel」）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/student/StudentListPanel.vue`。移植 ivy `FE:src/components/student/workbench/StudentListPanel.vue` 的工具列 + 表格 + 分頁 + query 記憶；**去掉** dismissal 快速發起、bonus impact、匯出、學期篩選、更多欄位切換。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits / expose**：`selectedId: string | null`；emits `select(id)`；expose `reload()`。\n**內容**\n- `AdminListToolbar`：搜尋（學號 / 姓名）、班級（lookups classOptions 當前學年度 FRONTEND-083 / FRONTEND-084）、年級（GRADE_OPTIONS）、狀態（全部 / 在學 / 暫停 / 退班，預設在學；選「全部」時不送 status，網址記成 `status=all`，否則重新整理會退回預設）、就讀國小、含封存（checkbox，放 extra-filters slot）。`usePagedList`（FRONTEND-045，syncQuery，每頁 20）+ `listStudents`；網址還原的年級 / 含封存是字串，送 API 前轉成數字 / 布林。載入失敗 EmptyState error「無法載入學生列表」+「重試」。\n- 表格欄：學號、姓名、年級（gradeLabel）、就讀國小（short_name）＋學校班級（溢出 tooltip，都沒有時「—」）、安親班班級（溢出 tooltip，無「—」）、狀態 tag（FRONTEND-005）；封存學生整列淡化並加「已封存」tag。點整列 emit select；`selectedId` 對應的列以主色淡底高亮（資料或 selectedId 變動後同步）。\n- 有 `students:write`：工具列「新增學生」（`StudentFormDialog` FRONTEND-089，建立後 emit select 新 id）、「批次作業 ▾」下拉「匯入 Excel」（FRONTEND-094）、「學年升級」（FRONTEND-095）；完成後 reload。缺 `students:write` 時三者都不出現、dialog 不掛載。\n- 空清單：有篩選時「沒有符合條件的學生」+「清除篩選」（回到預設：狀態在學、其餘清空）；無篩選時「還沒有學生」（有寫入權限時附說明「新增第一位學生，或用 Excel 一次匯入」與「新增學生」「匯入 Excel」）。狀態維持預設「在學」或選「全部」不算篩選。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentListPanel.vue",
       "source_ref": "FE:src/components/student/workbench/StudentListPanel.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
@@ -2706,7 +2706,7 @@
         "FRONTEND-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "usePagedList（FRONTEND-045）的 writeQuery 以篩選與頁碼重組整個 route.query，會丟掉同一路由上的其他 query（例如學生工作台 FRONTEND-085 若以 `?student=` 記住選中學生，改篩選或換頁時會被清掉）；085 實作時需處理（例如選中學生不放 query，或擴充 usePagedList 保留未知 key）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentListPanel.spec.ts",
@@ -2718,10 +2718,18 @@
           "StudentListPanel filters by class and archived：選班級 '低年級A班'、勾 '含封存' → 最後一次 params 含 {class_id:'c1',include_archived:true,page:1}；封存列含 '已封存'",
           "StudentListPanel emits select on row click：點 '王小明' 列 → emitted('select')[0] 深等於 ['s1']",
           "StudentListPanel write actions depend on permission：permissions ['students:read'] → 沒有 '新增學生'、'匯入 Excel'、'學年升級'；加 students:write → 三者皆出現",
-          "StudentListPanel empty states：無篩選回 [] → 文字含 '還沒有學生'；搜尋 '不存在' 回 [] → 文字含 '沒有符合條件的學生' 與 '清除篩選'，點清除後 params.q 不存在"
+          "StudentListPanel empty states：無篩選回 [] → 文字含 '還沒有學生'；搜尋 '不存在' 回 [] → 文字含 '沒有符合條件的學生' 與 '清除篩選'，點清除後 params.q 不存在",
+          "StudentListPanel filters by grade school and status：選年級 '三年級' → params 含 {grade_level:3,status:'active',page:1}；選國小 '某某國小' → 含 school_id 'sc1'；狀態選 '全部' → params 沒有 status、query.status === 'all'；選 '暫停' → status 'suspended'",
+          "StudentListPanel restores filters from query：initialRoute '/students?status=all&grade_level=3&include_archived=true&q=王&page=2' → 第一次 params 深等於 {q:'王',grade_level:3,include_archived:true,page:2,page_size:20}，狀態顯示 '全部'、年級 '三年級'、含封存為勾選、搜尋框為 '王'",
+          "StudentListPanel highlights selected row：selectedId 's3' → '陳小美' 列有 current-row；setProps({selectedId:'s1'}) → 改為 '王小明' 列",
+          "StudentListPanel creates student then selects it：點 '新增學生' → StudentFormDialog modelValue true；dialog emit saved({id:'s9'}) → emitted('select') 深等於 [['s9']] 且 GET 再呼叫一次",
+          "StudentListPanel opens import and promotion and reloads after done：批次作業選 '匯入 Excel' → StudentImportDialog 開啟，emit imported → 重新載入；選 '學年升級' → GradePromotionDialog 開啟，emit promoted → 重新載入",
+          "StudentListPanel empty state counts non default status as filter：query status=suspended 回 [] → '沒有符合條件的學生'；清除後 params 深等於 {status:'active',page:1,page_size:20}，無寫入權限時 '還沒有學生' 不附按鈕",
+          "StudentListPanel paginates：total 45 → 點下一頁 → params page 2、query.page === '2'",
+          "StudentListPanel shows retry on load failure and exposes reload：GET 500 → '無法載入學生列表'、沒有表格；'重試' 回 200 → 1 列；呼叫 expose 的 reload() → GET 再一次"
         ],
         "run": "just web-test src/components/student/StudentListPanel.spec.ts -t \"StudentListPanel\"",
-        "notes": ""
+        "notes": "StudentFormDialog / StudentImportDialog / GradePromotionDialog 以 vi.mock 替身驗證開關與完成事件（各自已有完整測試；也避免多個 el-select 讓 happy-dom 超線性變慢）。el-dropdown 以 setTimeout 開關，spec 用 fake timers（setTimeout + Date，Date 固定讓目前學年度為 115）。"
       },
       "review": {
         "status": "pending",
