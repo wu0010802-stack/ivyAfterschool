@@ -195,6 +195,69 @@ describe('LoginView', () => {
     expect(fake.login).toHaveBeenCalledTimes(1)
   })
 
+  it('LoginView logged out login sends id token when LIFF is logged in', async () => {
+    const fake = fakeLiff({ isLoggedIn: vi.fn(() => true), isInClient: vi.fn(() => true) })
+    installLiff(fake)
+    mock.onPost(LOGIN_URL).reply(200, { status: 'ok', parent: ME, name_hint: null })
+
+    const { wrapper, router } = await mountLogin('/login?logged_out=1&redirect=/exams')
+    expect(wrapper.text()).toContain('您已登出')
+    expect(loginPosts()).toHaveLength(0)
+
+    await button(wrapper, '使用 LINE 登入')!.trigger('click')
+    await flushPromises()
+
+    // LIFF 仍是登入狀態：直接送 id_token 完成登入，不再繞回 LINE（否則轉址回來又是「您已登出」）
+    expect(loginPosts()).toHaveLength(1)
+    expect(JSON.parse(loginPosts()[0]!.data as string)).toEqual({ id_token: 'tok' })
+    expect(fake.login).not.toHaveBeenCalled()
+    expect(router.currentRoute.value.path).toBe('/exams')
+  })
+
+  describe('with hash url', () => {
+    const HASH_URL = '/#/login?logged_out=1&redirect=%2Fexams'
+
+    beforeEach(() => {
+      window.history.replaceState(null, '', HASH_URL)
+    })
+
+    afterEach(() => {
+      window.history.replaceState(null, '', '/')
+    })
+
+    it('LoginView logged out login redirect uri drops logged_out', async () => {
+      const fake = fakeLiff({ isLoggedIn: vi.fn(() => false), isInClient: vi.fn(() => false) })
+      installLiff(fake)
+      expect(location.href).toContain('logged_out=1')
+
+      const { wrapper } = await mountLogin('/login?logged_out=1&redirect=/exams')
+      await button(wrapper, '使用 LINE 登入')!.trigger('click')
+      await flushPromises()
+
+      expect(fake.login).toHaveBeenCalledTimes(1)
+      const { redirectUri } = fake.login.mock.calls[0]![0] as { redirectUri: string }
+      expect(redirectUri).not.toContain('logged_out')
+      expect(redirectUri).toBe(`${location.origin}/#/login?redirect=%2Fexams`)
+    })
+
+    it('LoginView logged out relogin redirect uri drops logged_out', async () => {
+      // LIFF 已登入但 id_token 快過期：強制重登的 redirectUri 同樣不可帶 logged_out
+      const fake = fakeLiff({ getDecodedIDToken: vi.fn(() => ({ exp: Math.floor(Date.now() / 1000) + 10 })) })
+      installLiff(fake)
+
+      const { wrapper } = await mountLogin('/login?logged_out=1&redirect=/exams')
+      await button(wrapper, '使用 LINE 登入')!.trigger('click')
+      await flushPromises()
+
+      expect(fake.logout).toHaveBeenCalledTimes(1)
+      expect(fake.login).toHaveBeenCalledTimes(1)
+      expect((fake.login.mock.calls[0]![0] as { redirectUri: string }).redirectUri).toBe(
+        `${location.origin}/#/login?redirect=%2Fexams`,
+      )
+      expect(loginPosts()).toHaveLength(0)
+    })
+  })
+
   it('LoginView shows disabled account error', async () => {
     const fake = fakeLiff()
     installLiff(fake)
@@ -245,6 +308,26 @@ describe('LoginView', () => {
     expect(second.wrapper.text()).toContain('LINE 登入已逾時，請關閉後重新開啟')
     expect(second.wrapper.get('.empty-state__icon').text()).toBe('timer_off')
     expect(telLinks(second.wrapper)).toHaveLength(0)
+  })
+
+  it('LoginView relogins once on replayed token', async () => {
+    const fake = fakeLiff()
+    installLiff(fake)
+    mock.onPost(LOGIN_URL).reply(401, apiError('id_token_replayed', 'id_token 已使用過'))
+
+    const first = await mountLogin()
+
+    expect(fake.logout).toHaveBeenCalledTimes(1)
+    expect(fake.login).toHaveBeenCalledTimes(1)
+    expect(first.wrapper.get('[role="status"]').text()).toContain('正在連線 LINE…')
+    first.wrapper.unmount()
+    mounted = null
+
+    _resetLiffForTests()
+    const second = await mountLogin()
+
+    expect(fake.login).toHaveBeenCalledTimes(1)
+    expect(second.wrapper.text()).toContain('LINE 登入已逾時，請關閉後重新開啟')
   })
 
   it('LoginView relogins when id token is about to expire', async () => {
