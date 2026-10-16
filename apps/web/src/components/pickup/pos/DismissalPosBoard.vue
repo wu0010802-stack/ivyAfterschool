@@ -436,6 +436,11 @@ defineExpose({ focusRequest })
   background: var(--el-bg-color-page);
 }
 
+/* 窄版：底部留出浮動按鈕（bottom 20 + 高 48 + 16）的空間，最後一列卡片與 ⋮ 才捲得出來 */
+.pos-board.is-narrow .pos-board__grid {
+  padding-bottom: 84px;
+}
+
 .pos-board__head {
   position: sticky;
   top: 0;
