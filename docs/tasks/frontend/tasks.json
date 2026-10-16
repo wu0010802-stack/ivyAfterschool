@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 201,
-  "last_updated": "2026-10-16T05:30:17Z",
+  "version": 202,
+  "last_updated": "2026-10-16T05:31:45Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5142,7 +5142,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamFormDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5170,9 +5170,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f4",
+        "notes": "通過。tdd.run 實跑 6/6 綠，名稱與 6 條 red_case 一一對應；commit 先測試 648af1c 後實作 997ae5e。實作 commit 的 spec 改動只有一處：半選斷言由 input 的 aria-checked=mixed 改為 .el-checkbox__input.is-indeterminate——查 element-plus 2.14.7 原始碼，aria-checked=\"mixed\" 掛在根 label 而非 input，原斷言寫錯；新斷言仍要求半選，非放寬。api 用法對照 api/exams.ts 與 BACKEND-455/456/468/470/472（create 只送有值欄位、edit 只送變更欄位且清除送 null、PUT subjects items sort_order 1..n、422 invalid_exam_type / invalid_class / grade_not_in_class、409 exam_published 的 message 與後端一致）。突變 12 處全部轉紅：送空 class_id、sort_order 從 0、已發布不停用類型、編輯送全部欄位、grade_not_in_class 標錯欄、exam_published 改 toast、拿掉年級或班級檢查、科目失敗不 emit saved、拿掉範圍變更提示、無變更可儲存、全選不半選、預設不勾選；還原後 cmp 與 git diff 皆乾淨。page-exams.html（approved）decisions 逐條：1~7 屬 FRONTEND-231 列表頁不適用；8 FormDialog lg / 標題 / 送出鈕 / 編輯無變更停用 / 欄位與字數 / 應考對象小標與灰字 / 不限可清除 / 兩框紅色與「請選擇年級或班級」/ 兩者皆選灰字 一致；9 科目框預設全勾滿分 100、取消勾選停用、全選半選、小標灰字、無科目文案 一致；10 POST→PUT subjects→「已建立考試」、科目失敗 warning 照樣 emit saved 一致（導頁由 231 依 saved 處理）；11 編輯無科目區、草稿底部灰字、只送變更、清除送 null、已發布 info + 三欄停用、範圍變更橘字、舊學年度班級顯示原名 一致；12 三種 422 標欄位、409 頂端紅 alert 不關、前端三條必填訊息 一致；13 觸控沿用元件尺寸 一致。web-lint 乾淨；web-typecheck 的錯誤全在他人進行中的檔案（pickup/pos 三個 spec、parent LeaveDetailSheet.spec、DashboardView.spec 找不到 .vue），本 task 檔案無錯。殘留（不擋）：考試類型在參考資料被停用後，編輯 dialog 的類型下拉沒有像班級那樣的原名 fallback，會顯示 UUID；只改前後空白時「儲存」可按但 patchBody 為空、按下沒有任何回饋。"
       }
     },
     {
@@ -5182,7 +5182,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSubjectsEditor.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5209,9 +5209,9 @@
         "notes": "「blocks empty list and caps at twenty」掛載 20 列 × 20 個 el-option，在共用 CPU 下可能超過 vitest 預設 5 秒，該案例設 20 秒 timeout。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f4",
+        "notes": "通過。tdd.run 實跑 7/7 綠，名稱與 7 條 red_case 一一對應；commit 先測試 caec2bf 後實作 d60b64f，17cf5a4 只對 20 科案例加 20 秒 timeout（實測負載下 4.2 秒，斷言未改）。api 用法對照 api/exams.ts 與 BACKEND-458/472（items 1~20、409 full_score_below_existing details {subject_id, max_score}、409 exam_published、422 invalid_subject details.subject_ids）一致；lookups 的 subjects 以 active_only 載入，停用科目判定正確。突變 10 處全部轉紅：sort_order 從 0、不確認移除、已發布不唯讀、滿分錯誤不附最高分、上限 21、不 emit conflict、invalid_subject 不標列、停用科目不加（已停用）、空清單儲存鈕不停用、確認框不列筆數；還原後 cmp 與 git diff 皆乾淨。page-exam-detail.html（approved）相關 decisions 逐條：11 只有 exams:read 時科目設定為唯讀表 一致（canWrite=false 唯讀、無已發布提示）；14 上方灰字、每列順序 / 科目下拉（他列已選 disabled）/ 滿分 >0 ≤1000 一位小數 / 「n 筆」與「—」/ 上移下移移除 44px、新增科目 + n / 20、還原變更有變更才出現、儲存有變更才可按、移除有成績科目逐行確認「移除並儲存」、成功「已儲存科目設定」並 emit saved 一致；15 滿分錯誤紅框 + 目前最高分、exam_published 紅 alert + conflict、invalid_subject 紅 alert + 已停用 tag + 說明、全部移除文案且不能儲存、已發布 info + 唯讀表、無科目引導 一致。其餘 decisions 屬 234/235/236/238/296。web-lint 乾淨；web-typecheck 本 task 檔案無錯（錯誤在他人進行中的檔案）。"
       }
     },
     {
@@ -5357,7 +5357,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useScoreAutosave.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5386,9 +5386,9 @@
         "notes": "序列化以單一 running promise 實作；請求結束後若仍有 dirty（進行中的編輯、422 後的重送）立即再送、不等 debounce。awaitingNotifyChoice = notifyParents === null && hasUnsaved。422 整批退回的「重送一次」以每格 retriedAfterInvalid 旗標實作，再次被退回才標「儲存失敗，請重試」，不會無限重送。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f4",
+        "notes": "通過。tdd.run 實跑 12/12 綠，9 條 red_case 全部選到（另 3 條：flush、2001 格分成 2000 + 1、initial 重載合併）；commit 先測試 1a295df 後實作 e9d1646。實作 commit 的 spec 改動兩處皆為修正：setup 原本 opts.notify ?? false 會把 null 變 false，使「waits for notify choice」案例根本測不到 null；序列化案例原本 debounce 800 > 請求 500，第二次 debounce 到期時第一個請求早已結束，「進行中 PUT ≤ 1」驗不出東西，改 debounce 100 並加第二格與 inFlight 斷言——比原斷言更嚴格，非放寬。api 用法對照 api/exams.ts saveScores 與 BACKEND-460/474（cells 1~2000、ScoreCellIn.note 未帶即洗成 NULL、422 invalid_score_cells 整批不寫入、details code）一致，送出一律帶 note（null 也帶，JSON body 以 Object.hasOwn 斷言）。突變 16 處：拿掉序列化（kick 每次新開迴圈）、onSuccess 拿掉版本比對、note 為 null 時省略、edit 省略 note 不沿用、notify null 仍送、選擇通知後不立即送、分批上限 3000、initial 重載不重設、回應後不立即再送、422 其餘格直接標錯、saved 停留 2 秒、debounce 不重設、retryFailed 不改回 dirty —— 皆轉紅；422 不限重送次數（拿掉 retriedAfterInvalid）時測試以無限 microtask 迴圈卡住、靠外層 timeout 才中止（等同紅，但不是乾淨失敗）。還原後 cmp 與 git diff 皆乾淨。另以暫時探針（已刪）實測：網路錯誤 / 422 點名的格子若在請求中被再次編輯，回應後維持 dirty 並以最新值立即重送；flush 在請求進行中呼叫會等到全部送完；notifyParents null→false 立即送出且 notify_parents false；initial 重載保留 saving / error 格的值——行為皆正確。page-exam-detail.html 相關 decisions：8 PUT 每一格都帶 note 一致；9 已發布尚未選擇時格子維持未儲存、選完立即送出（awaitingNotifyChoice）一致（dialog 本身屬 238 / 235）；10 停 800ms 一次 PUT、草稿 notify_parents false、同時一個請求、送出中又改的格子維持未儲存再送、422 標錯與同批重送一次、網路錯誤 / 5xx「儲存失敗，請重試」與重試 一致。web-lint 乾淨；web-typecheck 本 task 檔案無錯。殘留（不擋，建議 chore 補測試）：網路錯誤與 422 分支的版本比對（請求中再被編輯的格子維持 dirty）沒有測試保護，拿掉這兩處比對 12 條仍全綠；所有進行中格子都被再次編輯時 saving 為 false（工具列會顯示「n 格尚未儲存」而非「儲存中…」）；同一格 details 有多個 code 時只顯示最後一個；runLoop 在 2000 格分批之間不重新檢查 notifyParents。"
       }
     },
     {
@@ -5434,7 +5434,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSummaryTable.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230"
@@ -5457,9 +5457,9 @@
         "notes": "平均欄的得分率小字依核可稿顯示為「得分率 82%」。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f4",
+        "notes": "通過。tdd.run 實跑 4/4 綠，名稱與 4 條 red_case 一一對應；commit 先測試 1f76ff1 後實作 4ac3df5。實作 commit 的 spec 改動只把平均格整格文字由「82.4得分率 82%」改成「82.4 得分率 82%」（兩個 div 經 Vue 空白壓縮後中間有一個空白），仍逐值斷言 82.4 與 82%，非放寬。「得分率 82%」文字已核對 page-exam-detail.html（approved）decision 13 與稿的 ExamSummaryTable 範本（`得分率 {{ rate(row) }}`），實作依稿正確。api 用法對照 api/exams.ts fetchExamSummary 與 BACKEND-463/477/559 一致。突變 6 處全部轉紅：平均兩位小數、得分率不取整、未填警示 >= 0、refreshKey 不重載、null 不顯示「—」、重試不重載；還原後 cmp 與 git diff 皆乾淨。decisions 逐條：13 應考人數 + 灰字、八欄、平均一位小數 + 下一行灰字得分率、null「—」、未填 > 0 橘色粗體、refreshKey 重載、無科目「尚未設定科目」、skeleton、error + 重試 一致（切分頁觸發 refreshKey 屬 234）；11 唯讀身分各科平均照常 一致。web-lint 乾淨；web-typecheck 本 task 檔案無錯。殘留（不擋）：description 寫「平均欄附「平均得分率」小字」，與核可稿顯示文字「得分率 82%」字面不一致（tdd.notes 已記），建議協調者把 description 改成「下一行灰字「得分率 {n}%」」；載入失敗的說明文字用後端 message（稿是固定「伺服器暫時沒有回應，請稍後再試」，實作只在沒有 message 時用它）；toFixed(1) 對 x.x5 類兩位小數有二進位捨入誤差（例如 0.15 顯示 0.1）。"
       }
     },
     {
