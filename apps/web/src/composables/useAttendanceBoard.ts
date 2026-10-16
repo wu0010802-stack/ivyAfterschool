@@ -2,8 +2,10 @@
 // - date / classId 變更時重新載入；以序號防護，只採用最新一次請求的回應。
 // - summary 一律由 items 重算（total = 列數、各狀態計數），與後端未帶 status 篩選時一致。
 // - 同一學生操作進行中再呼叫直接忽略；失敗以 ElMessage 提示後端訊息，畫面過期類的 409 另重抓當日資料。
-// - ws（FRONTEND-038）：attendance.updated / batch_updated 只合併「同日且（全部班級或同班）」的列，
-//   不在清單中的列依班級（沿用清單既有的班級順序）與學號插入；bulk_updated 的 dates 含目前日期時重抓。
+// - 套用列（操作 / 批次的回傳、ws、applyRow）一律只合併「符合目前篩選」的列：service_date 等於目前 date 且
+//   （全部班級或同班），並與目前資料同日；篩選切換期間晚到的回應不會把別班 / 別日的學生插進清單。
+//   不在清單中的列依班級（沿用清單既有的班級順序）與學號插入。
+// - ws（FRONTEND-038）：attendance.updated / batch_updated 依上述條件合併；bulk_updated 的 dates 含目前日期時重抓。
 //   改判過去日期也會推播，所以不論 date 是否為今天都訂閱。
 import { ElMessage } from 'element-plus'
 import { ref, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
@@ -43,7 +45,10 @@ export interface AttendanceBoard {
   markAbsent(row: AttendanceRow): Promise<void>
   /** 成功列直接套用；失敗時已以 ElMessage 提示，並 reject 原錯誤（呼叫端只需決定畫面狀態） */
   batchCheckIn(studentIds: string[]): Promise<BatchCheckInResult>
-  /** 以 student_id 取代（不在清單中則依班級、學號插入）並重算 summary；與目前資料不同日的列忽略 */
+  /**
+   * 以 student_id 取代（不在清單中則依班級、學號插入）並重算 summary；
+   * 不符合目前篩選（date、classId）或與目前資料不同日的列忽略
+   */
   applyRow(row: AttendanceRow): void
   wsStatus: ComputedRef<WsStatus>
   wsDenied: ComputedRef<boolean>
@@ -115,13 +120,18 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     }
   }
 
+  function matchesFilter(row: AttendanceRow): boolean {
+    const cls = currentClassId()
+    return row.service_date === date.value && (cls === null || row.class_id === cls)
+  }
+
   function applyRows(rows: AttendanceRow[]): void {
     const current = data.value
     if (!current) return
     const items = [...current.items]
     let changed = false
     for (const row of rows) {
-      if (row.service_date !== current.date) continue
+      if (row.service_date !== current.date || !matchesFilter(row)) continue
       const index = items.findIndex((r) => r.student_id === row.student_id)
       if (index >= 0) items[index] = row
       else items.splice(insertionIndex(items, row), 0, row)
@@ -169,20 +179,12 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     return result
   }
 
-  function matchesFilter(row: AttendanceRow): boolean {
-    const cls = currentClassId()
-    return row.service_date === date.value && (cls === null || row.class_id === cls)
-  }
-
   const ws = useAdminWsTopic(
     'attendance',
     {
-      'attendance.updated': (row: AttendanceRow) => {
-        if (matchesFilter(row)) applyRow(row)
-      },
+      'attendance.updated': (row: AttendanceRow) => applyRow(row),
       'attendance.batch_updated': (payload: { items?: AttendanceRow[] }) => {
-        const items = Array.isArray(payload?.items) ? payload.items : []
-        applyRows(items.filter(matchesFilter))
+        applyRows(Array.isArray(payload?.items) ? payload.items : [])
       },
       'attendance.bulk_updated': (payload: { student_id?: string; dates?: string[] }) => {
         if (Array.isArray(payload?.dates) && payload.dates.includes(date.value)) void reload()
