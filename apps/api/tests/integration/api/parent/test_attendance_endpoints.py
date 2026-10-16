@@ -1,4 +1,5 @@
-"""BACKEND-323：GET /api/parent/children/{student_id}/attendance?month=YYYY-MM。"""
+"""BACKEND-323：GET /api/parent/children/{student_id}/attendance?month=YYYY-MM。
+BACKEND-561：每個 day 帶 in_stats（是否計入統計）。"""
 
 from __future__ import annotations
 
@@ -50,6 +51,7 @@ def test_parent_attendance_success(parent_client: ParentClientFactory, db_sessio
     assert set(body["days"][0]) == {
         "date",
         "is_service_day",
+        "in_stats",
         "status",
         "check_in_at",
         "check_out_at",
@@ -109,3 +111,24 @@ def test_parent_attendance_idor(
     assert_error(theirs, 404, "student_not_found")
     assert theirs.json() == missing.json()
     assert "left" not in theirs.text
+
+
+@pytest.mark.clock("2026-10-02T09:00:00+08:00")
+def test_parent_attendance_in_stats_in_response(
+    parent_client: ParentClientFactory, db_session: Session
+) -> None:
+    client, parent = parent_client()
+    student_id = _seed(db_session, parent)
+
+    resp = client.get(_url(student_id), params={"month": "2026-10"})
+
+    assert resp.status_code == 200
+    body = resp.json()
+    days = {day["date"]: day for day in body["days"]}
+    assert len(days) == 31
+    assert all(type(day["in_stats"]) is bool for day in days.values())
+    assert days["2026-10-02"]["in_stats"] is True  # 今天
+    assert days["2026-10-01"]["in_stats"] is True
+    assert days["2026-10-05"]["in_stats"] is False  # 今天以後的營業日
+    assert days["2026-10-04"]["in_stats"] is False  # 週日
+    assert body["stats"]["service_days"] == sum(day["in_stats"] for day in days.values()) == 2

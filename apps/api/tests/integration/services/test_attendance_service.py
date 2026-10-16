@@ -6,7 +6,7 @@
 - BACKEND-312：``get_monthly_attendance``（月出勤報表）。
 - BACKEND-303：``initialize_daily_attendance``（每日初始化，冪等）。
 - BACKEND-305 / 309：``check_in`` / ``mark_absent``（條件式更新、通知、推播）。
-- BACKEND-314：``get_child_monthly_attendance``（家長端月出勤）。
+- BACKEND-314 / 561：``get_child_monthly_attendance``（家長端月出勤；每日 ``in_stats``）。
 - BACKEND-306 / 307 / 308：``check_out`` / ``mark_left_by_pickup`` / ``batch_check_in``。
 
 營業時段讀 seed 預設（週一到週五營業、週六不營業、週日不列）；每個測試前後清空設定快取。
@@ -1475,6 +1475,84 @@ def test_child_monthly_attendance_enrolled_mid_month(
     out = get_child_monthly_attendance(db_session, ming.id, "2026-09", clock=fake_clock)
 
     assert (out.stats.service_days, out.stats.unrecorded) == (3, 3)
+
+
+@pytest.mark.clock("2026-10-02T09:00:00+08:00")
+def test_child_monthly_attendance_in_stats_flags(
+    db_session: Session, fake_clock: FakeClock
+) -> None:
+    ming = make_student(db_session)
+    ming.enrolled_on = date(2026, 10, 1)
+    db_session.flush()
+
+    october = get_child_monthly_attendance(db_session, ming.id, "2026-10", clock=fake_clock)
+    september = get_child_monthly_attendance(db_session, ming.id, "2026-09", clock=fake_clock)
+
+    flags = {day.date: day.in_stats for day in october.days}
+    assert len(flags) == 31
+    # 入學日當天與今天為 true；今天以後（含週六休息、週日、下週一營業日）為 false
+    assert flags[date(2026, 10, 1)] is True
+    assert flags[date(2026, 10, 2)] is True
+    assert flags[date(2026, 10, 3)] is False
+    assert flags[date(2026, 10, 4)] is False
+    assert flags[date(2026, 10, 5)] is False
+    assert [d for d, flag in flags.items() if flag] == [date(2026, 10, 1), date(2026, 10, 2)]
+    assert october.days[4].is_service_day is True  # 10/05 是營業日，false 的原因是還沒到
+    assert october.stats.service_days == sum(day.in_stats for day in october.days) == 2
+    assert october.stats.unrecorded == 2
+    # 入學日以前的營業日（上個月）全部 false，統計也是 0 天
+    assert september.days[0].is_service_day is True  # 9/01 是營業日
+    assert not any(day.in_stats for day in september.days)
+    assert september.stats.service_days == 0
+
+
+@pytest.mark.clock("2026-10-02T09:00:00+08:00")
+def test_child_monthly_attendance_in_stats_without_enrolled_on(
+    db_session: Session, fake_clock: FakeClock
+) -> None:
+    ming = make_student(db_session)
+    assert ming.enrolled_on is None
+
+    out = get_child_monthly_attendance(db_session, ming.id, "2026-10", clock=fake_clock)
+
+    flags = {day.date: day.in_stats for day in out.days}
+    assert flags[date(2026, 10, 1)] is True  # 營業日
+    assert flags[date(2026, 10, 5)] is False  # 今天以後
+    assert out.stats.service_days == sum(flags.values()) == 2
+
+
+@pytest.mark.clock("2026-10-09T09:00:00+08:00")
+def test_child_monthly_attendance_in_stats_follows_stats_rule(
+    db_session: Session, fake_clock: FakeClock
+) -> None:
+    """in_stats 與 stats 是同一個判斷：休息日（closed_days）、今天以後的請假日為 false，
+    入學日當天、今天、已登記的過去日子為 true；service_days 等於 true 的天數。"""
+    ming = make_student(db_session)
+    ming.enrolled_on = date(2026, 10, 5)
+    db_session.add(ClosedDay(date=date(2026, 10, 6), reason="颱風假"))
+    leave = make_leave(db_session, ming, start_date=date(2026, 10, 12))
+    make_attendance(db_session, ming, service_date=date(2026, 10, 12), status="leave", leave=leave)
+    make_attendance(db_session, ming, service_date=date(2026, 10, 5), status="present")
+    db_session.flush()
+
+    out = get_child_monthly_attendance(db_session, ming.id, "2026-10", clock=fake_clock)
+
+    by_date = {day.date: day for day in out.days}
+    assert by_date[date(2026, 10, 2)].in_stats is False  # 入學日以前的營業日
+    assert by_date[date(2026, 10, 5)].in_stats is True  # 入學日當天
+    closed = by_date[date(2026, 10, 6)]
+    assert (closed.is_service_day, closed.in_stats) == (False, False)  # 休息日
+    assert by_date[date(2026, 10, 9)].in_stats is True  # 今天
+    future_leave = by_date[date(2026, 10, 12)]
+    assert (future_leave.status, future_leave.in_stats) == ("leave", False)  # 今天以後
+    assert [d for d, day in by_date.items() if day.in_stats] == [
+        date(2026, 10, 5),
+        date(2026, 10, 7),
+        date(2026, 10, 8),
+        date(2026, 10, 9),
+    ]
+    assert out.stats.service_days == 4
+    assert (out.stats.attended, out.stats.unrecorded) == (1, 3)
 
 
 def test_child_monthly_attendance_no_internal_fields(
