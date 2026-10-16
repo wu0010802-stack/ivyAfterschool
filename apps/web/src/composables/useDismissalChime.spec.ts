@@ -341,6 +341,25 @@ describe('useDismissalChime', () => {
     expect(audio.createOscillator).toHaveBeenCalledTimes(2)
   })
 
+  it('useDismissalChime dropping a stale tone keeps the batch window of a later tone', async () => {
+    const audio = pendingResumeAudio()
+    const chime = useDismissalChime({ audioContextFactory: () => audio.ctx, speech: fakeSpeech() })
+    chime.unlock()
+
+    chime.onArrived(req('r1'))
+    vi.advanceTimersByTime(2500)
+    chime.onArrived(req('r2'))
+    audio.allow()
+    await flushPromises()
+    // r1 的 resume 已逾時丟棄，只有 r2 響
+    expect(audio.createOscillator).toHaveBeenCalledTimes(2)
+
+    vi.advanceTimersByTime(500)
+    chime.onArrived(req('r3'))
+
+    expect(audio.createOscillator).toHaveBeenCalledTimes(2)
+  })
+
   it('useDismissalChime plays for first-seen arrived request', () => {
     const { chime, createOscillator, speech } = setup()
 
