@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 231,
-  "last_updated": "2026-10-16T12:59:27Z",
+  "version": 232,
+  "last_updated": "2026-10-16T13:00:20Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3553,7 +3553,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
@@ -3561,7 +3561,7 @@
         "FRONTEND-009"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f5 打回】操作回傳列未套用目前的班級篩選：checkIn / checkOut / markAbsent / batchCheckIn 成功後以 applyRow 套用回傳列，applyRow 只比對日期、不在清單中就插入，沒有比對 classId。反例（已以暫時 spec 重現）：全部班級下對 s1（c2）按到班，POST 尚未回應時改選 c1，c1 的 GET 先回 [s4]、POST 才回 s1 present → c1 清單變成 [s4, s1]、summary.total 2、present 1；ws 連線中不會自動重抓，錯班學生與錯誤統計會留到下次重抓。修正方向：操作與批次的回傳列和 ws 走同一條件（service_date === date 且 classId 為 null 或相同）才套用，或操作回傳只取代清單中既有的列、不插入；description 的 applyRow 與操作段落同步改寫，並新增 red_case（例如：classId 由 null 改 c1 後才收到 c2 學生的 check-in 回應 → items 不含該生、summary 不變；批次同理）。",
+      "risk_notes": "進行中的重抓（手動重新整理、bulk_updated、409 過期、斷線輪詢、重連補抓）若在操作回應或 ws 事件之後才回來，會以較舊的快照覆蓋較新的列，直到下一筆該生事件或下一次重抓才修正（review-r10-f5 以暫時 spec 重現：重抓進行中 checkIn 成功為 present，重抓回應到後變回 expected）；同一學生連續兩次操作時，較早的 ws 事件晚於較新的操作回應抵達也會暫時倒退。跨 FRONTEND-126 / 152 / 188 的合併順序（例如以 updated_at 保留較新列）由協調者另開 chore。\n學生轉班後，在班級篩選下收到該生的他班事件會被忽略，原班清單中的舊列留到下次重抓。\n篩選切換、新清單尚未回來時，符合新篩選的回傳列會先套用到畫面上的舊清單，新清單回來後即被取代（只影響轉場期間）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useAttendanceBoard.spec.ts",
@@ -3586,9 +3586,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f5",
-        "notes": "打回（concern）。tdd.run 9/9 綠，9 條 red_case 一一對應；測試 6238724 先於實作 0c1c6b5；eb926a5 事後補的載入失敗測試以突變（換篩選失敗不清 data）證明會轉紅。突變 12 處 9 處轉紅；存活：applyRow 的同日檢查（操作路徑沒有測試）、成功時清 error（沒有測試）、class_id 以 undefined 鍵傳遞（等價）。ws 用法與 api_index ws 表、FRONTEND-038 介面一致；序號防護、409 過期類重抓、422 不重抓、bulk_updated 只在含當日時重抓、ws 依日期與班級合併、新列依班級與學號插入皆有測試保護。9e34c79：沒有刪改任何 red_case；但把 applyRow 從「以 student_id 取代」改寫成對所有呼叫端「同日即取代或插入」，使操作回傳列不經班級篩選即可插入，構成下列打回項（已追加至 risk_notes）。打回項：操作 / 批次的回傳列沒有套用目前的班級篩選，篩選切換期間回應晚到時會把別班學生插進清單（已以暫時 spec 重現，跑完已刪除）。殘留（不打回，建議協調者開跨 126 / 152 / 188 的 chore 決定合併語意）：(1) 進行中的 reload 回應晚於操作回應或 ws 事件時，會以較舊的快照覆蓋較新的列（暫時 spec 重現：reload 進行中 checkIn 成功為 present，reload 回應到後變回 expected），可考慮以 updated_at 比較保留較新列；(2) 同一學生先後兩次操作時，較早的 ws 事件晚於較新的操作回應抵達也會暫時倒退；(3) 學生轉班後在班級篩選下收到他班事件會被忽略，舊列留在清單直到重抓；(4) description 的「成功時清 error」「applyRow 只套用同日」沒有 red_case。共通：just web-lint 8 個檔（4 元件/composable + 4 spec）exit 0；just web-typecheck exit 2，錯誤只在他人進行中的 src/composables/useHomeworkBoard.ts（FRONTEND-152）與 src/parent/stores/notifications.spec.ts，本批檔案無錯誤（殘留不打回）。9e34c79 規格逐處判定：沒有任何 red_case 被刪除或放寬，新增的 description 與 red_case 皆與已核可稿或 BACKEND-310 一致，屬「原規格不清 / 與稿對齊」的補充。"
+        "notes": "複審通過（只核對 review-r10-f5 的打回項）。紅燈測試 80dc1ae（操作、批次各一條，即原反例）先於修正 718030d；修正後操作、批次、ws 與公開 applyRow 共用同一條件（service_date 等於目前 date、classId 為 null 或相同、且與目前資料同日）。原反例的暫時 spec 重跑已轉綠（全部班級下對 c2 的 s1 到班、回應前改選 c1 → 清單仍為 [s4]、summary 不變）。tdd.run 12/12 綠，12 條 red_case 依名稱一一對應（d664786 只新增 3 條、改寫 applyRow / 操作 / 批次 / ws 段落為同一條件，沒有刪改或放寬既有 red_case）。突變 5 處全部轉紅：拿掉篩選條件（4 條紅）、拿掉與目前資料同日、篩選不比日期、篩選不比班級（3 條紅）、成功不清 error；9035e89 補的測試即由後三者證明有效。just web-lint 2 檔 exit 0；just web-typecheck exit 2，錯誤只在他人進行中、未提交的 src/composables/usePickupBoard.spec.ts（殘留不打回）。初審的其他結論維持：序號防護、409 過期才重抓、422 不重抓、bulk_updated 只在含當日時重抓、新列依班級與學號插入、載入失敗只保留同篩選資料，皆有測試保護。殘留見 risk_notes（跨 composable 的合併順序由協調者另開 chore）。"
       }
     },
     {
