@@ -176,6 +176,20 @@ async function typeDate(value: string): Promise<void> {
   await settle()
 }
 
+function dateInputValues(wrapper: VueWrapper): string[] {
+  return wrapper.findAll('[data-test=toolbar-extra-filters] input').map((i) => (i.element as HTMLInputElement).value)
+}
+
+/** 清除日期區間：滑過日期框才會出現清除 icon（Element Plus 的 showClearBtn） */
+async function clearDateRange(wrapper: VueWrapper): Promise<void> {
+  const editor = wrapper.find('[data-test=toolbar-extra-filters] .el-date-editor')
+  await editor.trigger('mouseenter')
+  await settle()
+  await editor.find('.el-range__close-icon').trigger('click')
+  await settle()
+  await settle()
+}
+
 async function search(wrapper: VueWrapper, text: string): Promise<void> {
   const input = wrapper.find('.list-toolbar__search input')
   await input.setValue(text)
@@ -309,7 +323,7 @@ describe('ExamsView', { timeout: 20000 }, () => {
   it('ExamsView delete only for drafts with permission', async () => {
     mock.onGet(LIST_URL).replyOnce(200, { items: [exam(), DRAFT], total: 2 }).onGet(LIST_URL).reply(200, { items: [exam()], total: 1 })
     mock.onDelete('/admin/exams/e2').reply(204)
-    const { wrapper } = await mountView()
+    const { wrapper, router } = await mountView()
 
     const draft = rowOf(wrapper, '國語第四課小考')
     const more = draft.find('button[aria-label="更多操作：國語第四課小考"]')
@@ -319,6 +333,8 @@ describe('ExamsView', { timeout: 20000 }, () => {
 
     await more.trigger('click')
     await settle()
+    // 點 ⋮ 只開選單，不觸發整列導頁
+    expect(router.currentRoute.value.path).toBe('/exams')
     const item = menuItem('刪除')
     expect(item).toBeDefined()
     item!.click()
@@ -330,6 +346,7 @@ describe('ExamsView', { timeout: 20000 }, () => {
     expect(document.body.textContent).toContain('已刪除')
     expect(listParams()).toHaveLength(2)
     expect(rows(wrapper)).toHaveLength(1)
+    expect(router.currentRoute.value.path).toBe('/exams')
 
     wrapper.unmount()
     document.body.innerHTML = ''
@@ -358,6 +375,47 @@ describe('ExamsView', { timeout: 20000 }, () => {
     expect(wrapper.text()).toContain('試著調整搜尋文字、篩選條件或日期區間')
     expect(wrapper.text()).not.toContain('還沒有考試紀錄')
     expect(buttonsText(wrapper.find('.el-table__empty-block'))).toEqual([])
+  })
+
+  it('ExamsView restores cleared date range from url', async () => {
+    replyList([])
+    const first = await mountView()
+    expect(first.wrapper.text()).toContain('還沒有考試紀錄')
+
+    await clearDateRange(first.wrapper)
+
+    expect(listParams()).toHaveLength(2)
+    expect(listParams()[1]).not.toHaveProperty('date_from')
+    expect(listParams()[1]).not.toHaveProperty('date_to')
+    expect(dateInputValues(first.wrapper)).toEqual(['', ''])
+    // 不限日期不是預設篩選：空清單用 inline 文案
+    expect(first.wrapper.text()).toContain('沒有符合條件的考試')
+    expect(first.wrapper.text()).not.toContain('還沒有考試紀錄')
+    const fullPath = first.router.currentRoute.value.fullPath
+    expect(fullPath).not.toBe('/exams?page=1')
+
+    // 以同一個網址重新進入（上一頁、重新整理、分享連結）：仍是不限日期
+    first.wrapper.unmount()
+    document.body.innerHTML = ''
+    mock.resetHistory()
+    const restored = await mountView(WRITER, fullPath)
+    expect(listParams()).toHaveLength(1)
+    expect(listParams()[0]).not.toHaveProperty('date_from')
+    expect(listParams()[0]).not.toHaveProperty('date_to')
+    expect(listParams()[0]).toMatchObject({ page: 1, page_size: 20 })
+    expect(dateInputValues(restored.wrapper)).toEqual(['', ''])
+    expect(restored.wrapper.text()).toContain('沒有符合條件的考試')
+    expect(restored.wrapper.text()).not.toContain('還沒有考試紀錄')
+
+    restored.wrapper.unmount()
+    document.body.innerHTML = ''
+    mock.resetHistory()
+
+    // 網址只剩一端日期（手改網址）：日期框與請求一致，都視為不限日期
+    const half = await mountView(WRITER, '/exams?date_from=&page=1')
+    expect(listParams()[0]).not.toHaveProperty('date_from')
+    expect(listParams()[0]).not.toHaveProperty('date_to')
+    expect(dateInputValues(half.wrapper)).toEqual(['', ''])
   })
 
   it('ExamsView shows retry on load failure', async () => {
