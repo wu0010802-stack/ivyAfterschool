@@ -606,6 +606,8 @@ describe('HomeworkBoardView', { timeout: 30_000 }, () => {
     // el-date-picker 的根節點不帶本元件的 scoped 屬性：寬度規則要從工具列以 :deep() 選取才會生效（稿：日期 190px，
     // 平板 1024 寬時篩選列維持單行）。happy-dom 不計算版面，以原始碼斷言規則。
     expect(viewSource).toMatch(/\.hw-toolbar\s+:deep\(\.hw-toolbar__date\.el-date-editor\)\s*{[^}]*width:\s*190px/)
+    // 根節點高度也要 44px：只有內層 wrapper 44px 時會溢出根節點，比同列其他控制項低 6px
+    expect(viewSource).toMatch(/\.hw-toolbar\s+:deep\(\.hw-toolbar__date\.el-date-editor\)\s*{[^}]*height:\s*44px/)
     expect(viewSource).not.toMatch(/(^|\n)\.hw-toolbar__date\s*{/)
   })
 
