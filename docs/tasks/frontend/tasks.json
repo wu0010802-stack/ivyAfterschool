@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 267,
-  "last_updated": "2026-10-16T14:48:37Z",
+  "version": 268,
+  "last_updated": "2026-10-16T14:53:36Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6217,7 +6217,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useSwipeReveal.ts",
       "source_ref": "FE:src/composables/useSwipeReveal.ts::useSwipeReveal",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-186",
@@ -6240,9 +6240,9 @@
         "notes": "紅燈測試 291d354（補強 3d586a4：替身另記 release 呼叫，點一下與判定為垂直捲動時不 release、拖曳結束 release 該 pointer）、實作 10ed594。替身為真實 div，事件經由它派發（currentTarget 為替身），記錄目前 capture 中的 pointerId、曾 capture 的歷史與 release 呼叫。QueueCard.vue 未改動，其 spec 10/10 仍綠。突變自檢：按下就 capture（舊行為）、每次 move 都 capture、結束不 release、沒 capture 也 release（舊行為）各使對應測試轉紅。Chromium 實測（/opt/pw-browsers/chromium-1243，1024×768，harness 只在 scratchpad：Vite 虛擬模組掛 4 張 canOperate 進行中 QueueCard，對照組以 alias 換回修正前的 useSwipeReveal）：(1) 滑鼠點「回覆時間」「確認」（pending）、「完成交付」（arrived）各 emit 一次，另以原始 mouse down/up 點acknowledged 卡「完成交付」emit 一次；修正前同一流程 emit 0 次（重現打回問題）。(2) 滑鼠拖曳左移 70px → translateX(-84px)、「取消」可按，點「取消」emit cancel 並收合；CDP Input.dispatchTouchEvent 觸控左滑同樣露出，tap「取消」emit cancel；從「確認」按鈕上按下再左拖只開啟卡片、不 emit acknowledge；觸控 tap「確認」emit 一次。(3) 已開啟時滑鼠往右拖 80px 與觸控往右滑都收合為 translateX(0px)、「取消」停用。事件記錄顯示觸控時隱含 capture 先在按下的元素，水平拖曳確立後轉到卡片本體。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f2",
+        "notes": "通過。red_cases 3 條皆有同名測試（替身是真實 div、記錄 capture 中的 pointerId / 歷史 / release，斷言狀態而非只斷言呼叫），tdd.run 12 綠；291d354 / 3d586a4（紅：當時 onPointerDown 一按下就 capture）→ 10ed594，spec 之後未再改。改寫範圍與 description 一致：按下不 capture、水平位移第一次超過 SCROLL_SLOP_PX 才 capture、只 release 本次 capture 過的元素，其餘 186 行為不變。突變 5 項（按下就 capture、每次 move 都 capture、結束不 release、沒 capture 也 release、完全不 capture）皆轉紅，還原後 git diff 乾淨。Chromium 實測（chromium-1243，1024×768；scratchpad 的 Vite harness，QueueCard / QueuePanel 以虛擬模組載入 HEAD 版本，避開他人進行中的未提交改動；用完已關）：(1) reviewer 原反例 qp4 重跑——滑鼠點 pending「確認」「回覆時間」、arrived「完成交付」、acknowledged「完成交付」「修改回覆」各 emit 一次（修正前 0 次）；(2) 滑鼠拖曳左移 70px → translateX(-84px)、「取消」可按，點「取消」emit cancel 並收合；CDP Input.dispatchTouchEvent 觸控左滑同樣露出，tap「取消」emit cancel；從「確認」上按下再左拖只開卡、不 emit acknowledge；(3) 已開啟時滑鼠與觸控往右拖 80px 都收合為 translateX(0px)、「取消」停用。觸控 tap「確認」emit 一次；194 打回時的觸控連點反例（120ms 內兩次）仍 emit 兩次、滑鼠連點現在也是兩次——行為未因本修正改變，防連點由 194 的 busyIds 處理。web-lint 乾淨；web-typecheck 的錯誤都在他人進行中的檔案（parent AuthorizationForm.vue / ChildHubView.spec.ts / NotificationsView.vue、PickupAuthorizationsView.vue）。"
       }
     }
   ]
