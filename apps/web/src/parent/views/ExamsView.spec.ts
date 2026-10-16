@@ -360,6 +360,43 @@ describe('ExamsView', () => {
     expect(rows(wrapper)).toHaveLength(21)
   })
 
+  it('ExamsView pull refresh while a load more is in flight discards that page and clears its progress', async () => {
+    mock.onGet(url('s1'), { params: { page: 1, page_size: 20 } }).replyOnce(200, { items: exams(1, 20), total: 40 })
+    const more = deferredReply()
+    mock.onGet(url('s1'), { params: { page: 2, page_size: 20 } }).replyOnce(more.reply)
+    const { wrapper } = await mountView('s1')
+    await button(wrapper, '載入更多').trigger('click')
+    expect(button(wrapper, '載入更多').attributes('aria-busy')).toBe('true')
+    mock.onGet(url('s1'), { params: { page: 1, page_size: 20 } }).replyOnce(200, { items: exams(1, 20), total: 40 })
+
+    await wrapper.getComponent(PullToRefresh).props('onRefresh')()
+    await flushPromises()
+    more.resolve([200, { items: exams(21, 40), total: 40 }])
+    await flushPromises()
+
+    // 舊的第 2 頁被丟棄，按鈕不再轉圈、仍可載入下一頁
+    expect(rows(wrapper)).toHaveLength(20)
+    expect(button(wrapper, '載入更多').attributes('aria-busy')).toBeUndefined()
+  })
+
+  it('ExamsView pull refresh failing after the child was switched shows no error', async () => {
+    mock.onGet(url('s1')).replyOnce(200, { items: [exam(1)], total: 1 })
+    const { wrapper } = await mountView('s1')
+    const refreshing = deferredReply()
+    mock.onGet(url('s1')).replyOnce(refreshing.reply)
+    mock.onGet(url('s2')).reply(200, { items: [exam(21)], total: 1 })
+    const pending = wrapper.getComponent(PullToRefresh).props('onRefresh')()
+
+    useChildrenStore().select('s2')
+    await flushPromises()
+    refreshing.resolve([500, SERVER_ERROR])
+    await pending
+    await flushPromises()
+
+    expect(useSnackbarStore().items).toEqual([])
+    expect(names(wrapper)).toEqual(['第 21 次考試'])
+  })
+
   it('ExamsView pull refresh recovers from the error state', async () => {
     mock.onGet(url('s1')).replyOnce(500, SERVER_ERROR)
     const { wrapper } = await mountView('s1')
