@@ -105,9 +105,11 @@ describe('createAdminApp', () => {
     triggerAuthFailure()
     await flushPromises()
 
+    // handler 當下第一次導航（app.use(router) 啟動的 '/'）還沒完成：不另外 replace，由 authGuard 看到未登入導向 /login
     expect(useAuthStore(created.pinia).status).toBe('anonymous')
     expect(replace).not.toHaveBeenCalled()
-    expect(created.router.currentRoute.value).toBe(START_LOCATION)
+    expect(created.router.currentRoute.value).not.toBe(START_LOCATION)
+    expect(created.router.currentRoute.value.fullPath).toBe('/login')
   })
 
   it('createAdminApp refresh handler updates permissions', async () => {
@@ -173,12 +175,10 @@ describe('createAdminApp', () => {
     await nextTick()
     await flushPromises()
 
-    const buttons = Array.from(document.body.querySelectorAll<HTMLButtonElement>('.el-message-box__btns button')).map(
-      (b) => b.textContent?.trim(),
-    )
-    expect(buttons).toEqual([zhTw.el.messagebox.cancel, zhTw.el.messagebox.confirm])
+    const buttons = Array.from(document.body.querySelectorAll<HTMLButtonElement>('.el-message-box__btns button'))
+    expect(buttons.map((btn) => btn.textContent?.trim())).toEqual([zhTw.el.messagebox.cancel, zhTw.el.messagebox.confirm])
 
-    ElMessageBox.close()
+    buttons[0]?.click()
     expect(await result).toBe('cancel')
   })
 
