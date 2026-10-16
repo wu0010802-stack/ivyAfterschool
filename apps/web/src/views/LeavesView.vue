@@ -9,10 +9,12 @@
 //   （沒有資料時依狀態篩選決定，表頭不會在載入前後跳動）。
 // - 附件以 el-table expand 展開（預設箭頭欄隱藏，只由附件欄按鈕觸發）；展開區固定在表格可視寬度內。
 // - 不訂閱 ws：代登記、取消成功後重新整理；取消失敗則在 dialog 關閉後重新整理。
+// - 網址還原的學生篩選：本頁資料沒有該生時以 getStudent 補姓名（需 students:read，失敗維持顯示 id）。
+// - today 每次列表載入時以 todayTaipei() 更新；預設日期區間只在頁面建立時套用（FRONTEND-300）。
 // - el-table-column 是泛型元件，每欄前的 `@vue-generic {Leave}` 註解讓 slot 的 row 型別為 Leave（vue-tsc 專用）。
 import { ArrowDown, Paperclip, Plus, Refresh } from '@element-plus/icons-vue'
 import { computed, ref, shallowRef, watch } from 'vue'
-import type { StudentListItem } from '@/api/students'
+import { getStudent, type StudentListItem } from '@/api/students'
 import { listLeaves, type Leave, type LeaveQuery } from '@/api/leaves'
 import EmptyState from '@/components/common/EmptyState.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -64,7 +66,9 @@ const canWrite = computed(() => can(PERMISSIONS.LEAVES_WRITE))
 /** 代登記的 StudentSelect 需要 GET /admin/students（students:read） */
 const canCreate = computed(() => canWrite.value && canReadStudents.value)
 
-const today = todayTaipei()
+/** 預設日期區間只在頁面建立時套用；「進行中」與取消按鈕的判斷用 today，每次列表重新載入時更新（跨台北午夜不必重新整理頁面） */
+const initialToday = todayTaipei()
+const today = ref<ISODate>(initialToday)
 const academicYear = currentAcademicYear()
 
 function defaultFilters(): LeaveFilters {
@@ -74,8 +78,8 @@ function defaultFilters(): LeaveFilters {
     status: 'active',
     leave_type: '',
     created_by_type: '',
-    date_from: today,
-    date_to: addDays(today, DEFAULT_RANGE_DAYS),
+    date_from: initialToday,
+    date_to: addDays(initialToday, DEFAULT_RANGE_DAYS),
   }
 }
 
@@ -107,7 +111,10 @@ function toApiParams(params: LeaveFilters & { page: number; page_size: number })
 }
 
 const list = usePagedList<Leave, LeaveFilters>({
-  fetch: (params) => listLeaves(toApiParams(params)),
+  fetch: (params) => {
+    today.value = todayTaipei()
+    return listLeaves(toApiParams(params))
+  },
   initialFilters: defaultFilters(),
   pageSize: PAGE_SIZE,
   syncQuery: true,
@@ -135,8 +142,9 @@ const statusSelection = computed({
   set: (v: string) => list.setFilters({ status: v }),
 })
 
-/** 篩選中的學生：StudentSelect 選取時帶完整資料；從網址還原時由本頁資料補上，讓下拉顯示姓名 */
+/** 篩選中的學生：StudentSelect 選取時帶完整資料；從網址還原時由本頁資料補上，本頁沒有該生的紀錄則查 getStudent，讓下拉顯示姓名 */
 const filterStudent = shallowRef<StudentSelectInitialOption | null>(null)
+const restoredStudent = shallowRef<StudentSelectInitialOption | null>(null)
 const studentSelectKey = ref(0)
 
 const studentSelection = computed({
@@ -155,8 +163,26 @@ const studentInitialOption = computed<StudentSelectInitialOption | undefined>(()
   if (!id) return undefined
   if (filterStudent.value?.id === id) return filterStudent.value
   const row = items.value.find((l) => l.student.id === id)
-  return row ? { ...row.student } : undefined
+  if (row) return { ...row.student }
+  return restoredStudent.value?.id === id ? restoredStudent.value : undefined
 })
+
+/** 第一次載入完成後，網址還原的學生不在本頁資料中 → 查學生姓名；失敗（404 等）維持顯示 id、不提示 */
+const urlStudentId = filters.student_id
+if (urlStudentId && canReadStudents.value) {
+  const stop = watch(loading, (isLoading) => {
+    if (isLoading) return
+    stop()
+    if (filters.student_id !== urlStudentId || filterStudent.value || studentInitialOption.value) return
+    getStudent(urlStudentId)
+      .then((s) => {
+        restoredStudent.value = { id: s.id, name: s.name, student_no: s.student_no, class_name: s.class?.name ?? null }
+      })
+      .catch(() => {
+        // 查不到就維持顯示 id
+      })
+  })
+}
 
 /** 從網址還原的學生篩選：第一次拿到該生的資料時重建 StudentSelect，讓它以 initialOption 顯示姓名 */
 let restoredStudentShown = false
@@ -180,15 +206,15 @@ function localDate(iso: ISODate): Date {
 }
 
 function monthRange(offset: number): [Date, Date] {
-  const [y, m] = today.split('-').map(Number)
+  const [y, m] = today.value.split('-').map(Number)
   return [new Date(y!, m! - 1 + offset, 1), new Date(y!, m! + offset, 0)]
 }
 
 const dateShortcuts = [
-  { text: '今天起 30 天', value: () => [localDate(today), localDate(addDays(today, DEFAULT_RANGE_DAYS))] },
+  { text: '今天起 30 天', value: () => [localDate(today.value), localDate(addDays(today.value, DEFAULT_RANGE_DAYS))] },
   { text: '本月', value: () => monthRange(0) },
   { text: '上個月', value: () => monthRange(-1) },
-  { text: '過去 90 天', value: () => [localDate(addDays(today, -89)), localDate(today)] },
+  { text: '過去 90 天', value: () => [localDate(addDays(today.value, -89)), localDate(today.value)] },
 ]
 
 const isDefaultFilters = computed(() => {
@@ -217,7 +243,7 @@ function formatRange(start: ISODate, end: ISODate): string {
 }
 
 function isOngoing(l: Leave): boolean {
-  return l.status === 'active' && l.start_date <= today && today <= l.end_date
+  return l.status === 'active' && l.start_date <= today.value && today.value <= l.end_date
 }
 
 function actorLabel(type: ActorCreatedByType | null, name: string | null): string {
@@ -603,7 +629,7 @@ function onCancelClosed(): void {
           <el-table-column
             v-if="showActions"
             label="操作"
-            width="84"
+            width="88"
             fixed="right"
           >
             <template #default="{ row }: { row: Leave }">
