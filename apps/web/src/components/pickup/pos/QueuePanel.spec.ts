@@ -249,6 +249,8 @@ describe('QueuePanel', () => {
       .findAll('[data-test=queue-actions] button')
       .find((b) => b.text() === '確認')
     expect(ack?.classes()).toContain('is-loading')
+    // 先推進 1ms：Vue 會略過時間戳不晚於 handler 綁定時間的事件（凍結的假時鐘會讓斷言恆真）
+    vi.advanceTimersByTime(1)
     ack?.element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await nextTick()
     expect(wrapper.emitted('acknowledge')).toBeUndefined()

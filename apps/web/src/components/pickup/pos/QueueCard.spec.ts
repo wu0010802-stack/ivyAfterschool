@@ -73,8 +73,12 @@ async function mountCard(item: PosQueueItem, canOperate = true, now = NOW, busy?
   return wrapper as VueWrapper
 }
 
-/** 直接派發 click（不經 VTU 對 disabled 的略過），驗證 busy 時元件本身也不 emit */
+/**
+ * 直接派發 click（不經 VTU 對 disabled 的略過），驗證 busy 時元件本身也不 emit。
+ * 先推進 1ms：Vue 會略過時間戳不晚於 handler 綁定時間的事件，凍結的假時鐘會讓所有 click 都被吃掉（斷言變成恆真）。
+ */
 function forceClick(button: DOMWrapper<Element> | undefined): void {
+  vi.advanceTimersByTime(1)
   button?.element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 }
 
