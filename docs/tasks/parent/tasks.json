@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 140,
-  "last_updated": "2026-10-16T05:26:17Z",
+  "version": 141,
+  "last_updated": "2026-10-16T05:27:04Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2786,8 +2786,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveDetailSheet.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveDetailSheet.vue::emit",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-025",
