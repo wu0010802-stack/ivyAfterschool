@@ -210,6 +210,12 @@ describe('AttendanceStudentCard', () => {
     expect((expected.emitted('toggle-select') as [AttendanceRow][])[0]?.[0].student_id).toBe('s1')
     expect(expected.attributes('role')).toBe('checkbox')
     expect(expected.attributes('aria-checked')).toBe('false')
+    expect(expected.attributes('tabindex')).toBe('0')
+    // 鍵盤：空白鍵切換選取
+    await expected.trigger('keydown', { key: ' ' })
+    expect(expected.emitted('toggle-select')).toHaveLength(2)
+    await present.trigger('keydown', { key: ' ' })
+    expect(present.emitted('toggle-select')).toBeUndefined()
 
     await expected.setProps({ selected: true })
     expect(expected.attributes('aria-checked')).toBe('true')
