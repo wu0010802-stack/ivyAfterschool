@@ -437,13 +437,11 @@ function onSubmit(): void {
   margin-top: 1px;
 }
 
+/* 等寬並排：用 grid 而非 flex 1 1 0（flex 的基準寬會被左右 padding 撐開，送出中的按鈕少 8px 左內距就變窄） */
 .af-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   padding-top: 4px;
-}
-
-.af-actions > * {
-  flex: 1 1 0;
 }
 </style>
