@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 453,
-  "last_updated": "2026-10-16T04:56:28Z",
+  "version": 454,
+  "last_updated": "2026-10-16T15:28:08Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15610,6 +15610,42 @@
         "status": "pass",
         "reviewer": "review-r10-b",
         "notes": "通過。4 條 red_case 皆有對應測試且被 tdd.run 選到，實跑 4 passed；child_monthly / parent_attendance 回歸17 passed。測試 commit 99934d4 早於實作 98187a1。in_stats 在每日迴圈只算一次，stats 改由 [day.in_stats for day in days] 計算（_monthly_stats 的 counted 即 in_stats），兩者是同一個判斷、不會分歧；ParentAttendanceDayOut 加 in_stats: bool，endpoint 回應每個 day 含此欄，api_index B323 已同步。突變驗證全部轉紅：漏不晚於今天（4 條紅）、漏入學日（flags / follows_stats_rule 紅）、漏營業日（follows_stats_rule 紅）、入學日 null 變全不計（without_enrolled_on / endpoint 紅）、入學日 >= 改 >（flags / follows_stats_rule 紅）。lint / typecheck 乾淨。殘留（不擋）：家長端前端型別尚未帶 in_stats，由 PARENT-194 / PARENT-132 處理。"
+      }
+    },
+    {
+      "id": "BACKEND-562",
+      "title": "verify_code 錯碼累計與鎖定後推播 pickup.authorization_updated（其他平板即時同步錯誤次數）",
+      "description": "部分改寫 `apps/api/app/services/pickup/authorizations.py::verify_code`（BACKEND-426）：錯碼累計（含第 5 次寫入 code_locked_at 鎖定）之後，以 `broadcast_after_commit(session, topic='pickup', type='pickup.authorization_updated', data=authorization_out(auth, today).model_dump(), clock=clock)` 推播，與 create / cancel 同一形狀、只送 admin:pickup（不帶 parent_data，家長端收不到）。BACKEND-437 endpoint 在拋 400 / 409 前一律先 commit，所以推播會在錯碼落地後送出。授權已鎖定後再送碼（WHERE 守衛沒有更新任何列）不推播；正確碼核銷路徑維持原本由 complete_via_authorization 推播，不重複推兩次。\n\n**原因**：已核可稿 docs/mockups/page-pickup-authorizations.html 要求錯誤次數與鎖定在各平板同步更新；FRONTEND-188 收到 `pickup.authorization_updated` 會重抓 BACKEND-436 清單（含 code_attempts / locked）。review-r10-f6 審 FRONTEND-200 時確認後端在錯碼與鎖定時都不推播，另一台平板上的連錯鎖定無法即時反映。\n\n**驗收標準**：每一條對應下列 red_case（沿用測試檔既有的 `published` fixture 斷言 admin:pickup 頻道的訊息）。",
+      "granularity_unit": "method",
+      "target_path": "apps/api/app/services/pickup/authorizations.py",
+      "source_ref": "BE:services/pickup_verification.py::verify_pickup_code",
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-426",
+        "BACKEND-437"
+      ],
+      "suggested_model": "fable-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/services/pickup/test_pickup_authorizations.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_verify_code_mismatch_broadcasts_update：錯碼 '000000' 並 commit → admin:pickup 頻道收到 1 則 type 'pickup.authorization_updated'，data.id 為該授權 id、data.status 'active'；student 頻道沒有任何訊息",
+          "test_verify_code_lock_broadcasts_update：連續 5 次錯碼（每次 commit）→ admin:pickup 共收到 5 則 'pickup.authorization_updated'，最後一則對應的授權在 DB code_locked_at 不為 null",
+          "test_verify_code_after_lock_does_not_broadcast：已鎖定的授權再送任意碼並 commit → outcome.locked True，admin:pickup 沒有新增 'pickup.authorization_updated'",
+          "test_verify_code_success_broadcasts_once：正確碼核銷並 commit → admin:pickup 的 'pickup.authorization_updated' 只有 1 則（不因本次改寫重複推播）"
+        ],
+        "run": "just test-int apps/api/tests/integration/services/pickup/test_pickup_authorizations.py -k \"test_verify_code_\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]

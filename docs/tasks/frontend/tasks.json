@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 289,
-  "last_updated": "2026-10-16T15:27:35Z",
+  "version": 290,
+  "last_updated": "2026-10-16T15:28:08Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5060,7 +5060,7 @@
         "FRONTEND-024"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f6 打回】(1) 碼錯與鎖定後清單不會更新（核可稿 decision「碼錯 → ……摘要與清單上的錯誤次數同步更新」與鎖定那條沒有落實）：後端 verify_code（BACKEND-426）錯碼累計與第 5 次鎖定都不推播 pickup.authorization_updated，推播只在建立、家長取消、重新產生接送碼、核銷、停讀退班收尾；本頁又只在推播時重抓，核驗 dialog 只 emit verified。反例（reviewer 以臨時 probe 實測，probe 已刪除）：pa1 尚無錯誤 → dialog 輸錯 1 次 → dialog 顯示「已錯誤 1 次，還可嘗試 4 次」，卡片仍沒有錯誤標示；連錯 5 次鎖定 → 關閉 dialog 後卡片仍是「有效」+「核驗」、沒有「已鎖定」，授權清單的 GET 次數仍為 1；再按「核驗」開啟的 dialog 顯示「尚無錯誤（連續錯誤 5 次會鎖定）」與 6 格輸入，要再送一次才收到 409 pickup_code_locked 回到鎖定。description「dialog 的 authorization 以 id 從今天的清單取現值（推播重抓後的錯誤次數 / 鎖定即時反映）」的前提在錯碼 / 鎖定時不成立；spec「passes the current authorization to the open dialog」的情境註解「另一台平板輸錯碼：推播」也不是後端目前的行為。要求：本頁的核驗嘗試失敗（碼錯 / 鎖定）後，卡片與之後重開的 dialog 都要反映最新的錯誤次數與鎖定（例如 dialog 關閉時或收到錯誤後重抓清單；若要改由 FRONTEND-201 emit 事件，由協調者決定），並補測試與修正該註解。(2) 跨午夜：頁面的 today 在 setup 時固定，usePickupBoard 跨午夜會以新的一天重抓清單，頁面的日期欄、isToday 與可選範圍卻停在昨天。反例：頁面開著跨過午夜 → 日期欄仍顯示昨天、沒有「僅供查詢」提示，清單卻是今天的資料；日期選擇器把真正的今天當成未來而停用，選不到。平板常駐此頁會遇到。要求「今天」隨跨日更新並與 board 一致，補測試。(3) description 的條目沒有測試（突變實測照綠）：過去日期的序號防護（晚到的舊日期回應覆蓋新日期）、?verify 處理後與「清除」只顯示時保留其他 query（改成清空整個 query 照綠）、載入中計數顯示「—」與 4 張骨架卡、不可選未來日期（disabled-date 拿掉上限照綠）。",
+      "risk_notes": "【review-r10-f6 打回】(1) 碼錯與鎖定後清單不會更新（核可稿 decision「碼錯 → ……摘要與清單上的錯誤次數同步更新」與鎖定那條沒有落實）：後端 verify_code（BACKEND-426）錯碼累計與第 5 次鎖定都不推播 pickup.authorization_updated，推播只在建立、家長取消、重新產生接送碼、核銷、停讀退班收尾；本頁又只在推播時重抓，核驗 dialog 只 emit verified。反例（reviewer 以臨時 probe 實測，probe 已刪除）：pa1 尚無錯誤 → dialog 輸錯 1 次 → dialog 顯示「已錯誤 1 次，還可嘗試 4 次」，卡片仍沒有錯誤標示；連錯 5 次鎖定 → 關閉 dialog 後卡片仍是「有效」+「核驗」、沒有「已鎖定」，授權清單的 GET 次數仍為 1；再按「核驗」開啟的 dialog 顯示「尚無錯誤（連續錯誤 5 次會鎖定）」與 6 格輸入，要再送一次才收到 409 pickup_code_locked 回到鎖定。description「dialog 的 authorization 以 id 從今天的清單取現值（推播重抓後的錯誤次數 / 鎖定即時反映）」的前提在錯碼 / 鎖定時不成立；spec「passes the current authorization to the open dialog」的情境註解「另一台平板輸錯碼：推播」也不是後端目前的行為。要求：本頁的核驗嘗試失敗（碼錯 / 鎖定）後，卡片與之後重開的 dialog 都要反映最新的錯誤次數與鎖定（例如 dialog 關閉時或收到錯誤後重抓清單；若要改由 FRONTEND-201 emit 事件，由協調者決定），並補測試與修正該註解。(2) 跨午夜：頁面的 today 在 setup 時固定，usePickupBoard 跨午夜會以新的一天重抓清單，頁面的日期欄、isToday 與可選範圍卻停在昨天。反例：頁面開著跨過午夜 → 日期欄仍顯示昨天、沒有「僅供查詢」提示，清單卻是今天的資料；日期選擇器把真正的今天當成未來而停用，選不到。平板常駐此頁會遇到。要求「今天」隨跨日更新並與 board 一致，補測試。(3) description 的條目沒有測試（突變實測照綠）：過去日期的序號防護（晚到的舊日期回應覆蓋新日期）、?verify 處理後與「清除」只顯示時保留其他 query（改成清空整個 query 照綠）、載入中計數顯示「—」與 4 張骨架卡、不可選未來日期（disabled-date 拿掉上限照綠）。\n【協調者裁定（review-r10-f6 打回項 1）】本頁不改 FRONTEND-201：核驗 dialog 關閉時（不論結果）一律重抓授權清單（沿用 board 的序號防護），卡片與之後重開的 dialog 即反映最新錯誤次數與鎖定；dialog 開著時由 201 自己顯示錯誤次數。另一台平板的錯碼 / 鎖定改由新開的 BACKEND-562（錯碼累計後推播 pickup.authorization_updated）觸發 188 重抓。spec 裡「另一台平板輸錯碼：推播」的註解改為引用 BACKEND-562。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/PickupAuthorizationsView.spec.ts",
