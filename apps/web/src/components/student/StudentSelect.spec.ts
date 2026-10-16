@@ -71,7 +71,7 @@ function optionTexts(wrapper: VueWrapper): string[] {
   )
 }
 
-function studentGets(): { params: unknown }[] {
+function studentGets() {
   return mock.history.get.filter((r) => r.url === '/admin/students')
 }
 
