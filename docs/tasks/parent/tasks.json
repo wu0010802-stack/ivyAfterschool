@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 169,
-  "last_updated": "2026-10-16T14:14:34Z",
+  "version": 170,
+  "last_updated": "2026-10-16T14:15:18Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1561,7 +1561,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/home/TodayStatusCard.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -1598,9 +1598,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。11 條 red_case 皆有同名測試且斷言具體（文字、膠囊文字與 tone class、按鈕 disabled、emit 次數、進度條寬度）；tdd.run 22 綠，-t 選到每條。f1c22cf（測試）先於 649a902（實作）；實作 commit 只追加一條「老師說明不夾帶模板縮排空白」的測試，未改既有斷言。規格核對：on_leave 優先於 attendance.status（expected + on_leave 顯示「請假」膠囊與「今日請假（事假）」）；時間以 formatTime 轉台北（UTC 07:40 → 15:40）；ready_eta 為後端 TimeHM（HH:MM）原樣顯示；作業 0 項非 done 才顯示「今天尚無作業項目」；接送無請求或 cancelled / expired 顯示兩按鈕，請假 / 缺席 / 已離班兩鈕都 disabled 並顯示原因；pending / acknowledged / arrived 顯示膠囊 + PickupReplyMessage compact（含系統自動回覆 / 老師回覆）+「查看接送」，can_mark_arrived 才有「我到了」；completed 顯示「HH:MM 已由 {name} 接走」，任一欄位 null 退回「今天已接走」，沒有按鈕；非營業日只剩「今天安親班休息」；null 顯示佔位。對照 parent-component-today-status-card.html decisions 10 條逐條符合，並以 390×844 Chromium 用稿內同一組 17 個情境資料逐卡比對：卡片高度與四個區塊、標題列、說明、進度條、ETA、老師說明、回覆、停用原因、按鈕列、接走列、膠囊的位置與尺寸全部相同（elevated、圓角 12px、surface-container-low + 陰影），無水平溢出；唯一差異是 textContent 的模板空白，畫面看不出來，老師說明的 pre-wrap 已以包 span 避開並有測試。突變（on_leave 不優先膠囊 / 文字、時間改 UTC、完成時仍顯示 ETA、拿掉已離班 / 缺席停用、「我已經到了」不停用、忽略 can_mark_arrived、接走退回條件放寬、cancelled 當進行中、0 項完成仍顯示尚無作業、查看接送 emit 錯事件、非營業日不攔截）共 13 處各有測試轉紅；進度百分比分母寫死 3 不轉紅（測資都是 3 項，見殘留）。還原後 git diff 乾淨。圖示皆在子集，icons.spec 綠；web-lint 乾淨；web-typecheck exit 2 的錯誤都在他人未提交的檔案（src/bootstrap.ts TS6133、views/AttendanceTodayView.spec.ts TS2322），本元件 0 錯。 殘留：進度條寬度只以 item_count 3 的資料測（1/3 → 33%、3/3 → 100%），分母寫錯不會轉紅；進度條為 aria-hidden 裝飾，數字在標題，不影響驗收。attendance.status 為 leave 但 on_leave 為 false 的不一致資料會顯示「請假」膠囊配「尚無出勤紀錄」，規格未定義（後端兩者同源，正常不會發生）。"
       }
     },
     {
