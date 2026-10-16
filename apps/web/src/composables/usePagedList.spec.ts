@@ -198,6 +198,43 @@ describe('usePagedList', () => {
     expect(router.currentRoute.value.query).toEqual({ status: 'active', page: '1' })
   })
 
+  it('usePagedList keeps unrelated query params', async () => {
+    const fetch = vi.fn<Fetch>(() => Promise.resolve(pageOf('s1')))
+    const { list, router } = await mountList<{ status: string; q: string }>(
+      { fetch, initialFilters: { status: 'active', q: '' }, syncQuery: true },
+      '/students?student=s1&page=1&q=王&page_size=50',
+    )
+    expect(fetch.mock.calls[0]?.[0]).toEqual({ status: 'active', q: '王', page: 1, page_size: 20 })
+
+    // 改篩選：student 保留；清空的篩選與 page_size 由列表管理，不寫回
+    list.setFilters({ status: 'suspended', q: '' })
+    await flushPromises()
+    expect(router.currentRoute.value.query).toEqual({ student: 's1', status: 'suspended', page: '1' })
+
+    // 換頁：以當下網址為準，之後才加上的參數（例如詳情分頁）也保留
+    await router.replace({ query: { ...router.currentRoute.value.query, student: 's2', tab: 'guardians' } })
+    list.setPage(3)
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/students')
+    expect(router.currentRoute.value.query).toEqual({ student: 's2', tab: 'guardians', status: 'suspended', page: '3' })
+  })
+
+  it('usePagedList keeps only string values of unrelated params', async () => {
+    // vue-router 解析 __proto__ 時會讓 constructor 變成 [Array 建構子, 'y']：只寫回字串值，網址不出現函式原始碼
+    const fetch = vi.fn<Fetch>(() => Promise.resolve(pageOf('s1')))
+    const { list, router } = await mountList<{ status: string }>(
+      { fetch, initialFilters: { status: 'active' }, syncQuery: true },
+      '/students?student=s1&__proto__=x&constructor=y',
+    )
+    list.setPage(2)
+    await flushPromises()
+
+    expect(router.currentRoute.value.query.student).toBe('s1')
+    expect(router.currentRoute.value.query.page).toBe('2')
+    expect(router.currentRoute.value.fullPath).not.toContain('function')
+    expect(router.currentRoute.value.fullPath).not.toContain('__proto__')
+  })
+
   it('usePagedList converts query values by initialFilters type', async () => {
     type F = { status: string; academic_year: number; archived: boolean }
     const initialFilters: F = { status: 'active', academic_year: 115, archived: false }
@@ -217,11 +254,13 @@ describe('usePagedList', () => {
 
     list.setPage(2)
     await flushPromises()
+    // unknown 不是篩選：不讀進 filters，但寫回 query 時原樣保留
     expect(router.currentRoute.value.query).toEqual({
       status: 'active',
       academic_year: '114',
       archived: 'true',
       page: '2',
+      unknown: '1',
     })
 
     const fetch2 = vi.fn<Fetch>(() => Promise.resolve(pageOf('s1')))
