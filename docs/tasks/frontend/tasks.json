@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 236,
-  "last_updated": "2026-10-16T13:06:58Z",
+  "version": 237,
+  "last_updated": "2026-10-16T13:07:15Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4381,7 +4381,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalPosQueue.ts",
       "source_ref": "FE:src/composables/useDismissalPosQueue.ts::useDismissalPosQueue",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
@@ -4407,7 +4407,7 @@
           "useDismissalPosQueue drops local copy once queue catches up：代建 r9 成功（本地 active，addToQueue(s1) 回 false）→ queue.open 出現 r9（仍回 false）→ r9 移到 closed（cancelled）→ items 只有 closed r9，addToQueue(s1) 回 true"
         ],
         "run": "just web-test src/composables/useDismissalPosQueue.spec.ts -t \"useDismissalPosQueue\"",
-        "notes": "紅燈 commit da42e55、實作 commit a9e60fa。除 7 條 red_cases 外另有 4 條：其他 submit 錯誤顯示後端訊息並可再次發起、cancel active 打 API 並移除本地版本（失敗回 false、closed 直接 false 不打 API）、WS 先於 HTTP 回應時以 studentId 去重、finally 只刪自己那次的 staging entry。fake timers 只 fake Date / setTimeout / setInterval（保留 setImmediate 給 flushPromises）。突變自檢：拿掉 finally 身分比對、拿掉 staging 與 active 去重、拿掉 closed 隱藏規則各使對應測試轉紅。"
+        "notes": "紅燈 commit da42e55、實作 commit a9e60fa；打回補測試 793737e（實作本來就符合 description，屬純補測試，以突變證明會紅；red_cases 寫回 17d112f）。排序 red_case 改為 arrived 的 expected_arrival_at 晚於 / 未填、加第二筆 arrived，並對 open 的 24 種輸入順序斷言同一結果（只拿掉「arrived 在前」那行時比較函式不一致，結果隨輸入順序而變，單一順序可能剛好排對）。除 8 條 red_cases 外另有 4 條：其他 submit 錯誤顯示後端訊息並可再次發起、cancel active 打 API 並移除本地版本（失敗回 false、closed 直接 false）、WS 先於 HTTP 回應時以 studentId 去重、finally 只刪自己那次的 staging entry。fake timers 只 fake Date / setTimeout / setInterval（保留 setImmediate 給 flushPromises）。突變自檢：拿掉 arrived 在前、arrived 之間不依 arrived_at、只依 expected / created 排序、外部追上後不移除本地版本、finally 身分比對、staging 與 active 去重、closed 隱藏規則各使對應測試轉紅。"
       },
       "review": {
         "status": "concern",
@@ -4504,7 +4504,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePickupBoard.ts",
       "source_ref": "FE:src/views/DismissalQueueView.vue::handleWsEvent",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
@@ -4538,7 +4538,7 @@
           "usePickupBoard applies verified authorization and recomputes roster count：withAuthorizations → applyAuthorization(核驗回傳的完整授權) 就地 upsert、roster 計數重算、不重抓 B436；非今天忽略"
         ],
         "run": "just web-test src/composables/usePickupBoard.spec.ts -t \"usePickupBoard\"",
-        "notes": "紅燈 commit f5df1dc、實作 commit ab28700。除 9 條 red_cases 外另有 10 條：未指定 withRoster / withAuthorizations 時只抓佇列、open 狀態 upsert 與非今天忽略、遲到的 acknowledged 不倒退 arrived、mutation 成功套用回傳值（reply / acknowledge / create / complete）、其他錯誤 rethrow、attendance.updated / batch_updated / bulk_updated 與 homework.progress_updated 就地更新名單、topic 未被拒時不輪詢、authorization upsert 與計數重算、跨午夜重抓新的一天、載入失敗保留資料。fake timers 只 fake Date / setTimeout / setInterval（保留 setImmediate 給 flushPromises）；ws 用 FakeWebSocket。突變自檢：拿掉狀態機守衛、arrived 去重、今天過濾、404 分支、被拒輪詢各使對應測試轉紅。"
+        "notes": "紅燈 commit f5df1dc、實作 commit ab28700；打回修正：規格 17d112f（api_index §15 授權事件改 ParentAuthorization 形狀、description 與 red_cases）、紅燈測試 793737e、實作 38065c6。授權事件測試 fixture 改為後端實際形狀（AuthorizationEvent＝PickupAuthorizationOut，沒有 student 等 5 欄）。除 14 條 red_cases 外另有 9 條：未指定 withRoster / withAuthorizations 時只抓佇列、open 狀態 upsert 與非今天忽略、遲到的 acknowledged 不倒退 arrived、mutation 成功套用回傳值、其他錯誤 rethrow、出勤 / 作業事件就地更新名單與 bulk_updated 重抓、topic 未被拒時不輪詢、跨午夜重抓新的一天、載入失敗保留資料。fake timers 只 fake Date / setTimeout / setInterval；ws 用 FakeWebSocket。突變自檢：狀態機守衛、arrived 去重、今天過濾、404 分支、被拒輪詢、終態一律清空 open_request、終態 append 到 closed、授權事件就地合併（舊行為）、授權重抓無序號防護、重抓後不重算名單、未載入時事件不重抓名單、未載入時 applyAuthorization 仍寫入清單、授權事件不過濾今天、applyAuthorization 不重算 各使對應測試轉紅。"
       },
       "review": {
         "status": "concern",
