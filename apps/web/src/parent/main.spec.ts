@@ -8,7 +8,7 @@ import type { ChildSummary, ParentMe } from './api/children'
 import { _resetPublicConfigForTests } from './api/config'
 import { parentHttp, parentRefreshHttp } from './api/http'
 import { listChildLeaves } from './api/leaves'
-import { createParentApp } from './main'
+import { createParentApp, mountParentApp } from './main'
 import source from './main.ts?raw'
 import { useChildrenStore } from './stores/children'
 import { useParentAuthStore } from './stores/parentAuth'
@@ -104,9 +104,9 @@ describe('parentMain', () => {
 
     // 頁面上的 API 401 且 refresh 也 401 → PARENT-004 呼叫 unauthenticated handler
     await expect(listChildLeaves('s1')).rejects.toMatchObject({ status: 401 })
-    await flushPromises()
+    // handler 發起的導向要載入 LoginView（lazy import），不只一個 tick
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/leaves'))
 
-    expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/leaves')
     expect(auth.isAuthed).toBe(false)
     expect(children.items.length).toBe(0)
     expect(children.selectedId).toBeNull()
@@ -147,9 +147,9 @@ describe('parentMain', () => {
     router.afterEach(afterEach)
 
     await expect(parentHttp.get('/parent/children')).rejects.toMatchObject({ status: 401 })
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/exams'))
     await flushPromises()
 
-    expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/exams')
     // /login 守衛的探測也 401：不再發起第二次導向
     expect(afterEach).toHaveBeenCalledTimes(1)
     expect(meRequests()).toBe(2)
@@ -208,6 +208,55 @@ describe('parentMain', () => {
     expect(host.querySelector('.parent-layout')).not.toBeNull()
   })
 
+  it('parentMain mounts only after the first navigation', async () => {
+    let releaseMe!: () => void
+    mock.onGet('/parent/me').replyOnce(
+      () =>
+        new Promise<[number, unknown]>((resolve) => {
+          releaseMe = () => resolve([401, UNAUTHORIZED])
+        }),
+    )
+    mock.onGet('/parent/me').reply(401, UNAUTHORIZED)
+    refreshMock.onPost('/parent/auth/refresh').reply(401, UNAUTHORIZED)
+    host = document.createElement('div')
+    document.body.appendChild(host)
+
+    const pending = mountParentApp(host, { history: historyAt('/login') })
+    await flushPromises()
+    // 第一次導航（/login 守衛的探測）還沒完成：尚未掛載，不會先畫出頂部列與底部導覽再收起
+    expect(host.innerHTML).toBe('')
+
+    releaseMe()
+    const { app, router } = await pending
+    mountedApp = app
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(host.querySelector('.parent-layout')).not.toBeNull()
+    expect(host.querySelector('.parent-layout')!.classList.contains('is-tabbar-hidden')).toBe(true)
+    expect(host.querySelector('nav')).toBeNull()
+    expect(host.querySelector('.app-header')).toBeNull()
+  })
+
+  it('parentMain still mounts when the first navigation fails', async () => {
+    noSession()
+    host = document.createElement('div')
+    document.body.appendChild(host)
+    // 首頁 lazy view 載入失敗（例如部署後舊 chunk 不見了）：isReady reject 也要掛載，不留白頁
+    vi.doMock('./views/LoginView.vue', () => {
+      throw new Error('chunk load failed')
+    })
+    try {
+      const { app } = await mountParentApp(host, { history: historyAt('/login') })
+      mountedApp = app
+      await flushPromises()
+
+      expect(host.querySelector('.parent-layout')).not.toBeNull()
+    } finally {
+      vi.doUnmock('./views/LoginView.vue')
+    }
+  })
+
   it('parentMain keeps bind pending through first bind', async () => {
     noSession()
     const { router, pinia } = createParentApp({ history: historyAt('/login') })
@@ -230,7 +279,7 @@ describe('parentMain', () => {
     }
     expect(code).not.toMatch(/element-plus/)
     expect(code).not.toMatch(/from '@\/(?:views|components|layouts|stores|api|router|bootstrap)/)
-    // vitest 載入時不自動掛載
-    expect(code).toMatch(/if \(!import\.meta\.env\.VITEST\) createParentApp\(\)\.app\.mount\('#app'\)/)
+    // vitest 載入時不自動掛載；正式入口經 mountParentApp（第一次導航完成才掛載）
+    expect(code).toMatch(/if \(!import\.meta\.env\.VITEST\) void mountParentApp\('#app'\)/)
   })
 })
