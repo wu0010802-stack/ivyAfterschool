@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 459,
-  "last_updated": "2026-10-16T23:19:11Z",
+  "version": 460,
+  "last_updated": "2026-10-16T23:20:22Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15655,8 +15655,8 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/pickup/requests.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-414",
         "BACKEND-429"
@@ -15690,8 +15690,8 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/homework_service.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-390",
         "BACKEND-374"
@@ -15761,8 +15761,8 @@
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/api/admin/test_homework_endpoints.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-388",
         "BACKEND-389"
@@ -15795,8 +15795,8 @@
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/services/test_class_service.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-553",
         "BACKEND-556"
@@ -15830,8 +15830,8 @@
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/admin/students.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-165",
         "BACKEND-557"
@@ -15864,8 +15864,8 @@
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/api/admin/test_pickup_endpoints.py",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-437",
         "BACKEND-562"

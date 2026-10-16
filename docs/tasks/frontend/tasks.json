@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 328,
-  "last_updated": "2026-10-16T23:19:11Z",
+  "version": 329,
+  "last_updated": "2026-10-16T23:20:22Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6374,8 +6374,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-153"
       ],
@@ -6407,8 +6407,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/LeavesView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-129"
       ],
@@ -6442,8 +6442,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ExamDetailView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-234",
         "FRONTEND-046",
@@ -6513,8 +6513,8 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/http.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-020",
         "FRONTEND-021"
@@ -6547,8 +6547,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-126"
       ],
@@ -6581,8 +6581,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-152"
       ],
@@ -6649,8 +6649,8 @@
       "granularity_unit": "config",
       "target_path": "apps/web/src/router/authGuard.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-024",
         "FRONTEND-025"
