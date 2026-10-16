@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 222,
-  "last_updated": "2026-10-16T06:18:01Z",
+  "version": 223,
+  "last_updated": "2026-10-16T06:19:09Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -611,11 +611,11 @@
     {
       "id": "FRONTEND-027",
       "title": "實作 App.vue：依路由 layout 切換 AdminLayout 或空白版面，套用 Element Plus 繁中語系",
-      "description": "建立 `apps/web/src/App.vue`：`<el-config-provider :locale=\"zhTw\">` 包住內容；`route.meta.layout === 'blank'` → 直接 `<RouterView />`；否則 `<AdminLayout>`（FRONTEND-029）內含 `<RouterView />`。`zhTw` 取自 `element-plus/es/locale/lang/zh-tw`。路由尚未 ready（`router.isReady()` 前）顯示全頁 loading，避免閃現側欄。\n- 測試策略：本 task 的測試一律 `vi.mock('@/router/viewLoaders')` 回傳 stub 元件（不載入真實 view），因此不需等 view task 完成即可轉綠，view 完成後也不受其內部依賴影響。\n\n**驗收標準**\n- `/login` 不渲染側欄；`/students` 渲染 AdminLayout。\n- Element Plus 元件文字為繁中（el-pagination 的 total 文字取自 zh-tw locale）。",
+      "description": "建立 `apps/web/src/App.vue`：`<el-config-provider :locale=\"zhTw\">` 包住內容；`route.meta.layout === 'blank'` → 直接 `<RouterView />`；否則 `<AdminLayout>`（FRONTEND-029）內含 `<RouterView />`。`zhTw` 取自 `element-plus/es/locale/lang/zh-tw`。路由尚未 ready（`router.isReady()` 前）顯示全頁 loading（`data-test=\"app-loading\"`、`role=\"status\"`、`aria-label=\"載入中\"`，置中的旋轉 icon），此時不渲染 AdminLayout 也不渲染 RouterView，避免閃現側欄；第一次導航失敗（`isReady()` reject）也離開 loading。\n- **版面切換一律用 `v-if` / `v-else`**（不得用 `v-show`、不得用 `<KeepAlive>` 包住 AdminLayout）：登出後的清理依賴 AdminLayout 卸載（FRONTEND-029 `risk_notes`：AdminHeader 登出只導向 `/login`，由 AdminLayout 的 `onUnmounted` 停 adminWs 並清空通知 store）。\n- 測試策略：本 task 的測試一律 `vi.mock('@/router/viewLoaders')` 回傳 stub 元件（不載入真實 view），因此不需等 view task 完成即可轉綠，view 完成後也不受其內部依賴影響。\n\n**驗收標準**\n- `/login` 不渲染側欄；`/students` 渲染 AdminLayout。\n- Element Plus 元件文字為繁中（el-pagination 的 total 文字取自 zh-tw locale）。\n- 路由 ready 之前只有全頁 loading，沒有 AdminLayout；ready 後才渲染版面。\n- 從 `/students` 導到 `/login`（blank layout）時 AdminLayout 真的被卸載：側欄與頂欄不在 DOM、adminWs 停止（socket 關閉、status 為 `idle`）、通知 store 清空；導回後台時重新掛載（新的 ws 連線與通知載入）。真實路由表中 `layout: 'blank'` 的路由（`/login`、`/change-password`、not-found）都不渲染側欄，`/forbidden` 仍在後台外框內。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/App.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-026",
@@ -632,7 +632,10 @@
         "red_cases": [
           "App shell renders blank layout for login：mountWithApp(App, routes 含 /login（meta.layout blank，元件渲染 'LOGIN'）) initialRoute '/login' → wrapper.text() 含 'LOGIN' 且 wrapper.find('[data-test=admin-sidebar]').exists() === false",
           "App shell wraps admin routes with AdminLayout：AdminLayout 以 stub（渲染 data-test=admin-layout 與 default slot）→ initialRoute '/students' 時 wrapper.find('[data-test=admin-layout]').exists() === true 且含 '/students' 頁面內容",
-          "App shell applies zh-tw locale：在 /students 頁面放 <el-pagination layout=\"total\" :total=\"5\" /> → wrapper.text() 含 zhTw.el.pagination.total.replace('{total}','5')（由 locale 物件取得字串，不寫死），且不含簡中 '共 5 条'"
+          "App shell applies zh-tw locale：在 /students 頁面放 <el-pagination layout=\"total\" :total=\"5\" /> → wrapper.text() 含 zhTw.el.pagination.total.replace('{total}','5')（由 locale 物件取得字串，不寫死），且不含簡中 '共 5 条'",
+          "App shell shows a full page loading until the router is ready：第一次導航被 beforeEach 卡住 → [data-test=app-loading]（role status）存在、不含 admin-layout 與頁面內容；放行並 isReady 後 loading 消失、頁面在 AdminLayout 內；第一次導航失敗（guard throw、router.onError 吞掉）時 loading 也消失",
+          "App shell unmounts AdminLayout and stops ws when leaving for a blank layout route：真實 AdminLayout 與真實路由表（viewLoaders mock 成 stub），initialRoute /students、ws open、通知載入 1 筆 → router.push('/login') 後 [data-test=admin-sidebar] 與 header 不在 DOM、socket.readyState === CLOSED（instances 仍為 1）、adminWs.status === 'idle'、通知 store items 為 []、loaded false；再 push('/students') → 側欄回來、socket 增為 2 個、通知重新載入",
+          "App shell renders no sidebar for every blank layout route of the real route table：真實 routes 中 meta.layout === 'blank' 的 /login、/change-password 與未知路徑（not-found）→ 不含 admin-layout 且有 view stub；/forbidden → 含 admin-layout"
         ],
         "run": "just web-test src/App.spec.ts -t \"App shell\"",
         "notes": ""
