@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 235,
-  "last_updated": "2026-10-16T13:01:35Z",
+  "version": 236,
+  "last_updated": "2026-10-16T13:06:58Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4744,18 +4744,18 @@
     {
       "id": "FRONTEND-194",
       "title": "實作 components/pickup/pos/QueuePanel.vue：右欄佇列（進行中 / 今日已結束）",
-      "description": "建立 `apps/web/src/components/pickup/pos/QueuePanel.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosQueuePanel.vue` 的 TransitionGroup 進出場動畫與 `useNowClock` 提供 now 給子卡；新增進行中 / 已結束分區。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits / expose**：`items: PosQueueItem[]`、`canOperate: boolean`；emits `reply(req)`、`acknowledge(req)`、`complete(req)`、`cancel(item)`；expose `focus(requestId)`（scrollIntoView + 1.5 秒閃爍 class `is-flash`）。\n- 上區「進行中（{staging + active 數}）」：staging 與 active 項目，`QueueCard`（FRONTEND-195）；canOperate 且有 active 項目時，標題右側灰字「左滑卡片可取消」。\n- 下區「今日已結束（{closed 數}）」：整列按鈕（44px）預設收合，展開後顯示 closed 項目（唯讀卡）；closed 為 0 筆時不顯示這一區。\n- `useNowClock()`（FRONTEND-184）的 now 傳給子卡。\n- 進行中為空：「目前沒有接送請求」（canOperate 時副標「點中間的學生卡即可代建」）。\n\n**驗收標準**\n- 分區計數、收合、空狀態、focus 閃爍、事件轉發。",
+      "description": "建立 `apps/web/src/components/pickup/pos/QueuePanel.vue`。移植 ivy `FE:src/components/dismissal/pos/DismissalPosQueuePanel.vue` 的 TransitionGroup 進出場動畫與 `useNowClock` 提供 now 給子卡；新增進行中 / 已結束分區。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-pos.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：三欄 POS（左班級欄含待處理徽章、中學生卡七種狀態、右佇列）、佇列卡各狀態（待回覆 / 等待確認 / 已確認 / 家長已到含等候分鐘與急迫色 / 已結束）、員工代建 5 秒倒數卡、左滑取消、回覆預計可接送時間 dialog、完成交付 dialog（監護人 / 代理人 / 主管確認交付）、代建請求 dialog、靜音切換、即時連線中斷提示、只有 pickup:read 時的唯讀樣式、空佇列、載入中。\n\n**props / emits / expose**：`items: PosQueueItem[]`（staging → active → closed，順序由 FRONTEND-185 決定，本元件只分區不重排）、`canOperate: boolean`、`loading?: boolean`（預設 false；設計稿 decisions「載入中 → 佇列 3 張骨架卡、計數顯示「—」」：為 true 時標題為「進行中（—）」、3 張 `el-skeleton` 骨架卡，不顯示卡片、空狀態、左滑提示與已結束區）；emits `reply(req)`、`acknowledge(req)`、`complete(req)`、`cancel(item)`（原樣轉發子卡事件）；expose `focus(requestId): Promise<boolean>`（以 `item.request.id` 或 `item.id` 找卡片；在已結束區時先展開；`scrollIntoView({ block: 'nearest' })`，reduced motion 時不用 smooth；卡片加 class `is-flash` 1.5 秒（父層把 class 傳給 QueueCard 根元素 `#qc-{item.id}`），重複呼叫重新計時並重播動畫，換別張卡時前一張立即停止；找不到回 false）。\n- 上區「進行中（{staging + active 數}）」：staging 與 active 項目，`QueueCard`（FRONTEND-195）；canOperate 且有 active 項目時，標題右側灰字「左滑卡片可取消」。\n- 下區「今日已結束（{closed 數}）」：整列按鈕（44px）預設收合，展開後顯示 closed 項目（唯讀卡）；closed 為 0 筆時不顯示這一區。\n- `useNowClock()`（FRONTEND-184）的 now 傳給子卡（已結束卡同樣傳入，`canOperate` 固定 false）。\n- 進行中為空：「目前沒有接送請求」（canOperate 時副標「點中間的學生卡即可代建」）。\n\n**驗收標準**\n- 分區計數、收合、空狀態、focus 閃爍、事件轉發。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/QueuePanel.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosQueuePanel.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-195",
         "FRONTEND-184"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "送出中防連點（例如連點「確認」送出兩次 acknowledge）不在本元件處理：QueueCard（FRONTEND-195）沒有 busy prop，由 board 層（FRONTEND-188 / 189）負責。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/pos/QueuePanel.spec.ts",
@@ -4767,7 +4767,10 @@
           "QueuePanel empty active copy：items 只有 closed → 文字含 '目前沒有接送請求'",
           "QueuePanel focus flashes target card：呼叫 expose focus('r2') → id 為 r2 的卡片 class 含 is-flash，1.5 秒後移除",
           "QueuePanel forwards card events：子卡 emit complete → emitted('complete')[0][0].id === 'r1'",
-          "QueuePanel shows swipe hint for operators only：canOperate true 且 items 含 active → 文字含 '左滑卡片可取消'；canOperate false → 不含；closed 為 [] → 不含 '今日已結束'"
+          "QueuePanel shows swipe hint for operators only：canOperate true 且 items 含 active → 文字含 '左滑卡片可取消'；canOperate false → 不含；closed 為 [] → 不含 '今日已結束'",
+          "QueuePanel focus again restarts the flash：focus('r2') 後 1 秒再 focus('r2') → 再過 1 秒仍有 is-flash；改 focus('r1') → r1 有、r2 立即沒有；1.5 秒後全部沒有",
+          "QueuePanel focus expands closed section for a finished request and ignores unknown ids：focus('c2')（closed）→ 已結束區展開（aria-expanded true）且 c2 有 is-flash；focus('nope') 回 false 且沒有任何卡片閃爍",
+          "QueuePanel loading shows skeletons and a dash count：loading true → 文字含 '進行中（—）'、3 個 .el-skeleton、沒有 .qcard、不含空狀態 / 左滑提示 / 今日已結束；改 false 後 '進行中（3）'"
         ],
         "run": "just web-test src/components/pickup/pos/QueuePanel.spec.ts -t \"QueuePanel\"",
         "notes": ""
