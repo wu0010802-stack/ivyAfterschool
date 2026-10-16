@@ -168,7 +168,7 @@ function buttonLabel(b: Element): string {
 }
 
 function hasButton(w: Wrapper, label: string): boolean {
-  return Array.from(w.element.querySelectorAll('button')).some((b) => buttonLabel(b) === label)
+  return Array.from((w.element as Element).querySelectorAll('button')).some((b) => buttonLabel(b) === label)
 }
 
 function quickLink(w: Wrapper, label: string) {
@@ -304,7 +304,7 @@ describe('ChildHubView', () => {
     expect(card(wrapper).text()).toContain('尚未取得今日狀態')
     expect(wrapper.find('.hub-section__date').exists()).toBe(false)
     // 錯誤列在卡片之前
-    const order = Array.from(wrapper.element.querySelectorAll('.today-error, [role="region"]'))
+    const order = Array.from((wrapper.element as Element).querySelectorAll('.today-error, [role="region"]'))
     expect(order.map((el) => el.classList.contains('today-error'))).toEqual([true, false])
 
     await click(retry.element)
