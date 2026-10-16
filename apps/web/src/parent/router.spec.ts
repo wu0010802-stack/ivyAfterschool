@@ -1,3 +1,4 @@
+import { flushPromises } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -161,7 +162,8 @@ describe('parentRouter', () => {
       // SFC 的 default export 是元件物件：至少有 setup 或 render
       expect(typeof view?.setup === 'function' || typeof view?.render === 'function').toBe(true)
     }
-  })
+    // 會載入並轉譯全部真實 view，負載高時超過 vitest 預設 5 秒
+  }, 30_000)
 
   it('parentRouter bind pending skips session probe', async () => {
     mockUnauthenticated()
@@ -174,6 +176,67 @@ describe('parentRouter', () => {
     expect(router.currentRoute.value.path).toBe('/bind')
     expect(meRequests()).toBe(0)
     expect(auth.bindPending?.nameHint).toBe('王媽媽')
+  })
+
+  it('parentRouter logged out login skips session probe', async () => {
+    mockUnauthenticated()
+    const router = makeRouter()
+    const auth = useParentAuthStore()
+    // 比照 PARENT-013 的 unauthenticated handler：清狀態，目前路由非 public 就導回登入並帶 redirect
+    setUnauthenticatedHandler(() => {
+      auth.clear()
+      const current = router.currentRoute.value
+      if (!current.meta.public) void router.replace({ path: '/login', query: { redirect: current.fullPath } })
+    })
+    auth.setParent(ME)
+    await router.push('/more')
+    expect(router.currentRoute.value.path).toBe('/more')
+
+    // 登出：本地狀態已清（PARENT-033），接著導向 /login?logged_out=1
+    auth.clear()
+    await router.push({ path: '/login', query: { logged_out: '1' } })
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/login?logged_out=1')
+    expect(meRequests()).toBe(0)
+    expect(refreshMock.history.post).toHaveLength(0)
+  })
+
+  it('parentRouter logged out login stays even with cached session', async () => {
+    const router = makeRouter()
+    useParentAuthStore().setParent(ME)
+
+    await router.push('/login?logged_out=1&redirect=/exams')
+
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.logged_out).toBe('1')
+    expect(meRequests()).toBe(0)
+  })
+
+  it('parentRouter logged out login keeps redirect rule otherwise', async () => {
+    mock.onGet('/parent/me').reply(200, ME)
+    const router = makeRouter()
+
+    await router.push('/login?redirect=/exams')
+
+    expect(router.currentRoute.value.path).toBe('/exams')
+    expect(meRequests()).toBe(1)
+  })
+
+  it('parentRouter scroll behavior resets to top', () => {
+    const router = createParentRouter(createMemoryHistory())
+    const scrollBehavior = router.options.scrollBehavior
+    expect(typeof scrollBehavior).toBe('function')
+    const here = router.currentRoute.value
+
+    expect(scrollBehavior!(here, here, null)).toEqual({ top: 0 })
+  })
+
+  it('parentRouter scroll behavior restores saved position', () => {
+    const router = createParentRouter(createMemoryHistory())
+    const here = router.currentRoute.value
+
+    expect(router.options.scrollBehavior!(here, here, { left: 0, top: 480 })).toEqual({ left: 0, top: 480 })
   })
 
   it('parentRouter route table carries layout meta', () => {
