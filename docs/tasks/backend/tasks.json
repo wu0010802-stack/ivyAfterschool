@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 458,
-  "last_updated": "2026-10-16T15:37:20Z",
+  "version": 459,
+  "last_updated": "2026-10-16T23:19:11Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -3668,7 +3668,7 @@
     {
       "id": "BACKEND-106",
       "title": "實作 app/core/settings_registry.py：11 個 system_settings key 的 schema、預設值、secret、公開欄位、中文標籤與分組",
-      "description": "建立 `apps/api/app/core/settings_registry.py`（architecture_decisions §4、domain_spec M2、DB-038 預設值是本 task 的介面）。\n\n**介面**\n```python\n@dataclass(frozen=True)\nclass SettingDef(Generic[M]):\n    key: str\n    schema: type[M]                  # Pydantic model，extra='forbid'\n    default: M\n    is_secret: bool\n    secret_fields: tuple[str, ...]   # 加密存放、回傳遮罩的欄位\n    group: Literal[\"org\", \"pickup\", \"homework\", \"leave\", \"notification\", \"line\"]\n    label: str                        # 繁中顯示名稱\n# GROUP_LABELS: Mapping[str, str]：group → 繁中分組名稱（見下方「分組」）\n    public_fields: tuple[str, ...] = ()   # 可經 GET /api/parent/config 公開的欄位\n\nclass SettingKey(Generic[M]): ...     # 型別化 handle，例如 ORG_PROFILE: SettingKey[OrgProfile]\nREGISTRY: Mapping[str, SettingDef[Any]]\n```\n**schema（時間一律 `HH:MM` 字串，Asia/Taipei；以 `TimeHM = Annotated[str, StringConstraints(pattern=r'^([01]\\d|2[0-3]):[0-5]\\d$')]`）**\n| key | model | 欄位與規則 | 預設（與 DB-038 一致） |\n|---|---|---|---|\n| `org.profile` | OrgProfile | name ≤50、address ≤200、phone ≤20、logo_url（HttpUrl \\| None）；public: name、phone、logo_url | `{\"name\":\"\",\"address\":\"\",\"phone\":\"\",\"logo_url\":null}` |\n| `org.service_hours` | ServiceHours | mon~sat 各為 DayHours(open: bool, start: TimeHM, end: TimeHM；open 時 start < end) | 週一~五 open 12:00-19:00；sat open=false 08:00-12:00 |\n| `pickup.window` | PickupWindow | request_start < request_end、latest_expected_arrival ≥ request_end、auto_expire_minutes 10~600 | request_start 12:00 / request_end 19:00 / latest_expected_arrival 19:00 / auto_expire_minutes 120（接送時段同營業時段） |\n| `homework.defaults` | HomeworkDefaults | auto_reply_without_eta: bool、no_eta_reply_text 1~100 | true / 「已通知老師，稍後回覆預計時間」 |\n| `notification.toggles` | NotificationToggles | RootModel[dict[str, bool]]，key 集合必須恰為 BACKEND-201 的 13 個事件 | 全部 true |\n| `leave.window` | LeaveWindow | past_days 0~365、future_days 1~365、max_attachments 0~10、max_attachment_mb 1~10（不超過 BACKEND-016 附件上限與 DB-019 size_bytes CHECK 的 10 MB）；public: 全部 | `{\"past_days\":30,\"future_days\":60,\"max_attachments\":3,\"max_attachment_mb\":10}` |\n| `pickup.authorization` | PickupAuthorizationSettings | max_days_ahead 0~60、max_active_per_day 1~10；public: max_days_ahead | `{\"max_days_ahead\":14,\"max_active_per_day\":3}` |\n| `pickup.persons` | PickupPersonsSettings | max_per_student 1~50；public: max_per_student | `{\"max_per_student\":10}` |\n| `homework.window` | HomeworkWindow | past_days 0~365、future_days 0~60 | `{\"past_days\":30,\"future_days\":7}` |\n| `line.liff` | LineLiff | liff_id：空字串或 `^\\d+-[A-Za-z0-9]+$`；channel_id（LINE Login channel ID，後端驗證 id_token 的 aud）：空字串或 `^\\d{6,20}$`；add_friend_url（官方帳號加好友 URL）：空字串或 `^https://` 開頭、≤300；public: liff_id、add_friend_url（channel_id 不公開） | `{\"liff_id\":\"\",\"channel_id\":\"\",\"add_friend_url\":\"\"}` |\n| `line.messaging` | LineMessaging | channel_access_token、channel_secret（str \\| None，≤500）；is_secret、secret_fields 兩者 | 兩者 null |\n\n- **表單標籤**：每個 schema（含巢狀的 DayHours）的每個欄位都以 `Field(title=<繁中標題>, description=<繁中說明>)` 宣告，model 本身以 `model_config = ConfigDict(title=<繁中>)` 設定標題，讓 GET /api/admin/settings 回傳的 `json_schema`（BACKEND-109）可直接當表單標籤。標題：\n  - OrgProfile：name「安親班名稱」、address「地址」、phone「聯絡電話」、logo_url「Logo 圖片網址」。\n  - ServiceHours：mon~sat「週一」~「週六」；DayHours：open「是否營業」、start「開始時間」、end「結束時間」。\n  - PickupWindow：request_start「可發起接送開始時間」、request_end「可發起接送結束時間」、latest_expected_arrival「最晚預計抵達時間」、auto_expire_minutes「接送請求自動過期分鐘數」。\n  - HomeworkDefaults：auto_reply_without_eta「未設定預計時間時自動回覆」、no_eta_reply_text「自動回覆文案」。\n  - NotificationToggles（RootModel）：title「通知開關」，並以 `json_schema_extra={'x-labels': {event: EventDef.label}}` 附上各事件的中文名稱（取自 BACKEND-201，registry 可 import events，反向不可）。\n  - LeaveWindow：past_days「家長可申請的過去天數」、future_days「家長可申請的未來天數」、max_attachments「每筆請假附件數上限」、max_attachment_mb「單一附件大小上限（MB）」。\n  - PickupAuthorizationSettings：max_days_ahead「代理授權最多可提前天數」、max_active_per_day「同一學生同日代理授權上限」；PickupPersonsSettings：max_per_student「每位學生常用接送人上限」。\n  - HomeworkWindow：past_days「作業可編輯的過去天數」、future_days「作業可預先新增的天數」。\n  - LineLiff：liff_id「LIFF 應用程式 ID」、channel_id「LINE 登入 Channel ID」、add_friend_url「官方帳號加好友網址」；LineMessaging：channel_access_token「LINE 訊息 Channel Access Token」、channel_secret「LINE 訊息 Channel Secret」。\n  - description 為一句繁中說明（例如 auto_expire_minutes「家長發起後超過此分鐘數仍未完成即自動過期」）。\n- **分組**（group，後台系統設定頁依此分頁；中文標籤 org「安親班資訊」、pickup「接送」、homework「作業」、leave「請假」、notification「通知」、line「LINE」）：org.profile / org.service_hours → org；pickup.window / pickup.authorization / pickup.persons → pickup；homework.defaults / homework.window → homework；leave.window → leave；notification.toggles → notification；line.liff / line.messaging → line。\n- 固定業務規則不進 registry（domain_spec M2）：員工密碼規則、預計抵達時間可早於現在 5 分鐘、綁定碼效期 7 天、接送碼連錯 5 次鎖定。\n- 新增設定項：先在此註冊，再以 migration seed 預設值（architecture_decisions §4）；不得為業務參數新增 env。\n- `notification.toggles` 依賴 BACKEND-201 的事件清單；為避免 import 循環，events 模組不 import registry。\n\n**驗收標準**\n- REGISTRY 恰含 11 個 key，default 通過自身 schema 驗證，且與 DB-038 seed 一致。\n- 各 schema 的驗證規則逐條生效（時間格式、start<end、範圍、事件 key 集合）。\n- 只有 line.messaging is_secret；public_fields 如表（line.liff 公開 liff_id 與 add_friend_url，不公開 channel_id）。\n- LineLiff 的 channel_id 格式驗證；預設值含 channel_id 空字串（DB-038 seed 需一致）。\n- 每個 schema 的 json_schema 中，所有欄位（含 $defs 內的 DayHours）都有含中文的 title 與非空 description。",
+      "description": "建立 `apps/api/app/core/settings_registry.py`（architecture_decisions §4、domain_spec M2、DB-038 預設值是本 task 的介面）。\n\n**介面**\n```python\n@dataclass(frozen=True)\nclass SettingDef(Generic[M]):\n    key: str\n    schema: type[M]                  # Pydantic model，extra='forbid'\n    default: M\n    is_secret: bool\n    secret_fields: tuple[str, ...]   # 加密存放、回傳遮罩的欄位\n    group: Literal[\"org\", \"pickup\", \"homework\", \"leave\", \"notification\", \"line\"]\n    label: str                        # 繁中顯示名稱\n# GROUP_LABELS: Mapping[str, str]：group → 繁中分組名稱（見下方「分組」）\n    public_fields: tuple[str, ...] = ()   # 可經 GET /api/parent/config 公開的欄位\n\nclass SettingKey(Generic[M]): ...     # 型別化 handle，例如 ORG_PROFILE: SettingKey[OrgProfile]\nREGISTRY: Mapping[str, SettingDef[Any]]\n```\n**schema（時間一律 `HH:MM` 字串，Asia/Taipei；以 `TimeHM = Annotated[str, StringConstraints(pattern=r'^([01]\\d|2[0-3]):[0-5]\\d$')]`）**\n| key | model | 欄位與規則 | 預設（與 DB-038 一致） |\n|---|---|---|---|\n| `org.profile` | OrgProfile | name ≤50、address ≤200、phone ≤20、logo_url（HttpUrl \\| None）；public: name、phone、logo_url | `{\"name\":\"\",\"address\":\"\",\"phone\":\"\",\"logo_url\":null}` |\n| `org.service_hours` | ServiceHours | mon~sat 各為 DayHours(open: bool, start: TimeHM, end: TimeHM；open 時 start < end) | 週一~五 open 12:00-19:00；sat open=false 08:00-12:00 |\n| `pickup.window` | PickupWindow | request_start < request_end、latest_expected_arrival ≥ request_end、auto_expire_minutes 10~600 | request_start 12:00 / request_end 19:00 / latest_expected_arrival 19:00 / auto_expire_minutes 120（接送時段同營業時段） |\n| `homework.defaults` | HomeworkDefaults | auto_reply_without_eta: bool、no_eta_reply_text 1~100 | true / 「已通知老師，稍後回覆預計時間」 |\n| `notification.toggles` | NotificationToggles | RootModel[dict[str, bool]]，key 集合必須恰為 BACKEND-201 的 13 個事件 | 全部 true |\n| `leave.window` | LeaveWindow | past_days 0~365、future_days 1~365、max_attachments 0~10、max_attachment_mb 1~10（不超過 BACKEND-016 附件上限與 DB-019 size_bytes CHECK 的 10 MB）；public: 全部 | `{\"past_days\":30,\"future_days\":60,\"max_attachments\":3,\"max_attachment_mb\":10}` |\n| `pickup.authorization` | PickupAuthorizationSettings | max_days_ahead 0~60、max_active_per_day 1~10；public: max_days_ahead | `{\"max_days_ahead\":14,\"max_active_per_day\":3}` |\n| `pickup.persons` | PickupPersonsSettings | max_per_student 1~50；public: max_per_student | `{\"max_per_student\":10}` |\n| `homework.window` | HomeworkWindow | past_days 0~365、future_days 0~60 | `{\"past_days\":30,\"future_days\":7}` |\n| `line.liff` | LineLiff | liff_id：空字串或 `^\\d+-[A-Za-z0-9]+$`；channel_id（LINE Login channel ID，後端驗證 id_token 的 aud）：空字串或 `^\\d{6,20}$`；add_friend_url（官方帳號加好友 URL）：空字串或 `^https://` 開頭、≤300；public: liff_id、add_friend_url（channel_id 不公開） | `{\"liff_id\":\"\",\"channel_id\":\"\",\"add_friend_url\":\"\"}` |\n| `line.messaging` | LineMessaging | channel_access_token、channel_secret（str \\| None，≤500）；is_secret、secret_fields 兩者 | 兩者 null |\n\n- **表單標籤**：每個 schema（含巢狀的 DayHours）的每個欄位都以 `Field(title=<繁中標題>, description=<繁中說明>)` 宣告，model 本身以 `model_config = ConfigDict(title=<繁中>)` 設定標題，讓 GET /api/admin/settings 回傳的 `json_schema`（BACKEND-109）可直接當表單標籤。標題：\n  - OrgProfile：name「安親班名稱」、address「地址」、phone「聯絡電話」、logo_url「Logo 圖片網址」。\n  - ServiceHours：mon~sat「週一」~「週六」；DayHours：open「是否營業」、start「開始時間」、end「結束時間」。\n  - PickupWindow：request_start「可發起接送開始時間」、request_end「可發起接送結束時間」、latest_expected_arrival「最晚預計抵達時間」、auto_expire_minutes「接送請求自動過期分鐘數」。\n  - HomeworkDefaults：auto_reply_without_eta「未設定預計時間時自動回覆」、no_eta_reply_text「自動回覆文案」。\n  - NotificationToggles（RootModel）：title「通知開關」，並以 `json_schema_extra={'x-labels': {event: EventDef.label}}` 附上各事件的中文名稱（取自 BACKEND-201，registry 可 import events，反向不可）。\n  - LeaveWindow：past_days「家長可申請的過去天數」、future_days「家長可申請的未來天數」、max_attachments「每筆請假附件數上限」、max_attachment_mb「單一附件大小上限（MB）」。\n  - PickupAuthorizationSettings：max_days_ahead「代理授權最多可提前天數」、max_active_per_day「同一學生同日代理授權上限」；PickupPersonsSettings：max_per_student「每位學生常用接送人上限」。\n  - HomeworkWindow：past_days「作業可新增的過去天數」、future_days「作業可預先新增的天數」。\n  - LineLiff：liff_id「LIFF 應用程式 ID」、channel_id「LINE 登入 Channel ID」、add_friend_url「官方帳號加好友網址」；LineMessaging：channel_access_token「LINE 訊息 Channel Access Token」、channel_secret「LINE 訊息 Channel Secret」。\n  - description 為一句繁中說明（例如 auto_expire_minutes「家長發起後超過此分鐘數仍未完成即自動過期」）。\n- **分組**（group，後台系統設定頁依此分頁；中文標籤 org「安親班資訊」、pickup「接送」、homework「作業」、leave「請假」、notification「通知」、line「LINE」）：org.profile / org.service_hours → org；pickup.window / pickup.authorization / pickup.persons → pickup；homework.defaults / homework.window → homework；leave.window → leave；notification.toggles → notification；line.liff / line.messaging → line。\n- 固定業務規則不進 registry（domain_spec M2）：員工密碼規則、預計抵達時間可早於現在 5 分鐘、綁定碼效期 7 天、接送碼連錯 5 次鎖定。\n- 新增設定項：先在此註冊，再以 migration seed 預設值（architecture_decisions §4）；不得為業務參數新增 env。\n- `notification.toggles` 依賴 BACKEND-201 的事件清單；為避免 import 循環，events 模組不 import registry。\n\n**驗收標準**\n- REGISTRY 恰含 11 個 key，default 通過自身 schema 驗證，且與 DB-038 seed 一致。\n- 各 schema 的驗證規則逐條生效（時間格式、start<end、範圍、事件 key 集合）。\n- 只有 line.messaging is_secret；public_fields 如表（line.liff 公開 liff_id 與 add_friend_url，不公開 channel_id）。\n- LineLiff 的 channel_id 格式驗證；預設值含 channel_id 空字串（DB-038 seed 需一致）。\n- 每個 schema 的 json_schema 中，所有欄位（含 $defs 內的 DayHours）都有含中文的 title 與非空 description。",
       "granularity_unit": "method",
       "target_path": "apps/api/app/core/settings_registry.py",
       "source_ref": null,
@@ -15646,6 +15646,249 @@
         "status": "pass",
         "reviewer": "review-r10-b",
         "notes": "通過。4 條 red_case 皆有對應測試，tdd.run（-k test_verify_code_）選到並實跑 10 passed（含 426 既有 6 條）；BACKEND-437 endpoint 回歸 test_admin_pickup_verify_ 8 passed。規格修正 cfe4746 → 測試 b54d5e0 → 實作 b32cbda，順序正確。red_case 3 的修正合理：已鎖定在 load_verifiable_authorization 就 409（BACKEND-426 的 test_verify_code_locked_rejects_correct 已釘住），原寫的 outcome.locked True 不可能發生；改成載入 409 與 monkeypatch 放行模擬漏鎖、由 WHERE 守衛擋下的 409 兩情境，後者是唯一能驗到『推播放在 attempts is None 檢查之後』的方式。實作：推播在 attempts is None 檢查之後、session.expire(auth) 之後組 authorization_out，只送 admin:pickup（沒帶 student_id / parent_data），正確碼路徑仍只由 complete_via_authorization 推一次。endpoint 層以暫時探針（審查後已刪除）確認：錯碼 400 推 1 則、第 5 次鎖定 409 推 1 則、鎖定後再送碼 409 不推，訊息不含 code_hash 與明碼；把 endpoint 改成錯碼不先 commit 時探針轉紅，證明推播是因 commit 才送出、不會被 rollback 掉。突變驗證全部轉紅：拿掉推播、推播移到 attempts is None 之前、多帶 student_id + parent_data、正確碼路徑多推一次、只在鎖定時推播。lint / typecheck（動到的 2 個檔）乾淨。殘留（不擋）：(1) after_lock 與 success_broadcasts_once 兩條在舊實作就是綠的（commit message 已註明），以突變證明有效；(2) 推播資料不含 code_attempts / locked，前端靠重抓 BACKEND-436 清單取得（符合 description），因此 session.expire 在 expire 前後組輸出結果相同、觀測不到；(3) endpoint 層沒有已提交的推播測試，靠 437 的 mismatch_persists 釘住『先 commit』加上 tx_hooks 語意保證，之後可在 test_pickup_endpoints.py 補一條。"
+      }
+    },
+    {
+      "id": "BACKEND-563",
+      "title": "接送佇列回應附 latest_expected_arrival（pickup.window 的最晚預計抵達時間）",
+      "description": "修改 `apps/api/app/schemas/pickup.py` 的 `PickupQueueOut` 與 `apps/api/app/services/pickup/requests.py::get_queue`（部分改寫 BACKEND-414 / 429）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\ndomain_spec §4 `/pickup`：員工代建與回覆的預計時間選項上限為 `pickup.window` 的最晚預計抵達時間，後台要讀得到這個設定（FRONTEND-298 使用）。\n- `PickupQueueOut` 加 `latest_expected_arrival: TimeHM`；`get_queue` 以 `get_setting(session, PICKUP_WINDOW).latest_expected_arrival` 填入。值是目前的設定，不隨 `date` 參數變化。\n- 放在佇列回應的理由：POS 的 `usePickupBoard`（FRONTEND-188）一定會載入佇列、權限同為 `pickup:read`；只多回這一個欄位，不讓 staff 讀到其他設定（`/admin/settings` 需要 `settings:read`）。\n- 後端驗證不變：員工代建原本就套用 latest_expected_arrival（422 `expected_arrival_too_late`）；回覆（B431）不檢查上限。\n- `docs/tasks/api_index.md` B429 與 domain_spec §2 已寫入新欄位。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_pickup_queue_` / `test_admin_pickup_queue_` 全綠且斷言不變。",
+      "granularity_unit": "method",
+      "target_path": "apps/api/app/services/pickup/requests.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-414",
+        "BACKEND-429"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/services/pickup/test_pickup_requests.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_pickup_queue_latest_expected_arrival_default：pickup.window 為種子預設值 → get_queue(...).latest_expected_arrival == '19:00'",
+          "test_pickup_queue_latest_expected_arrival_follows_setting：同一交易內把 pickup.window 改為 latest_expected_arrival '20:30'（其餘欄位沿用預設、仍通過 PickupWindow 驗證）→ get_queue 的 latest_expected_arrival == '20:30'；query.date 為昨天時同為 '20:30'",
+          "test_admin_pickup_queue_latest_expected_arrival：pickup:read 員工 GET /api/admin/pickup/queue → 200，body['latest_expected_arrival'] == '19:00'，body 的鍵集合 == {'date','open','closed','counts','latest_expected_arrival'}"
+        ],
+        "run": "just test-int apps/api/tests/integration/services/pickup/test_pickup_requests.py -k \"test_pickup_queue_\" && just test-int apps/api/tests/integration/api/admin/test_pickup_endpoints.py -k \"test_admin_pickup_queue_\"",
+        "notes": "改設定的案例用 db_session（交易結束 rollback），不得 commit 改動 system_settings 種子值；若必須 committing，測試結束前還原並以 owner 唯讀確認 pickup.window 回到預設。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-564",
+      "title": "homework_service 公開進度組裝函式 progress_view，作業進度 endpoint 改用它",
+      "description": "修改 `apps/api/app/services/homework_service.py` 與 `apps/api/app/api/admin/homework.py`（部分改寫 BACKEND-390 與 homework_service 的看板組裝）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- `homework_service._progress_view(session, progress)` 改名公開為 `progress_view(session, progress) -> ProgressOut`（行為不變：ready_eta 為 `HH:MM`、eta_updated_by_name 以 `select(StaffUser.display_name)` 取得）；service 內原呼叫點改用新名稱。\n- `api/admin/homework.py` 的 `_progress_out` 刪除，`PUT /admin/homework/progress/{student_id}` 的回應改由 `homework_service.progress_view` 組裝（CLAUDE 慣例：單筆回應一律用 service 的組裝函式）。回應內容不變。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_admin_homework_progress_` 與 `test_broadcast_homework_snapshot_` 全綠且斷言不變。",
+      "granularity_unit": "method",
+      "target_path": "apps/api/app/services/homework_service.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-390",
+        "BACKEND-374"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/services/test_homework_service.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_progress_view_matches_board_progress：學生當日進度 ready_eta 17:30、由員工「林老師」設定 → homework_service.progress_view(session, progress).model_dump() 與 get_board 回應中該生 progress 的 model_dump() 完全相同，且 ready_eta == '17:30'、eta_updated_by_name == '林老師'",
+          "test_progress_view_without_eta_editor：進度列 eta_updated_by 為 None → progress_view(...).eta_updated_by_name is None 且 ready_eta is None",
+          "test_admin_homework_progress_response_uses_service_view：PUT /api/admin/homework/progress/{student_id} {ready_eta:'17:45'} → 回應 body 等於重讀該進度列後 homework_service.progress_view(...).model_dump(mode='json')；hasattr(app.api.admin.homework, '_progress_out') is False"
+        ],
+        "run": "just test-int apps/api/tests/integration/services/test_homework_service.py -k \"test_progress_view_\" && just test-int apps/api/tests/integration/api/admin/test_homework_endpoints.py -k \"test_admin_homework_progress_\"",
+        "notes": "前兩條在函式公開前就會因 AttributeError 轉紅；第三條的 hasattr 斷言鎖住重複組裝不再出現。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-565",
+      "title": "commit 前去重推播抽成 tx_hooks 共用 helper（作業快照與接送請求共用）",
+      "description": "在 `apps/api/app/core/tx_hooks.py` 新增共用 helper，改寫 `apps/api/app/services/homework_service.py::broadcast_homework_snapshot`（BACKEND-374）與 `apps/api/app/services/pickup/views.py::publish_request_change`（BACKEND-404）的登記與 flush 機制。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n兩處目前各自實作同一套：`session.info` 去重 dict、第一次登記時 `event.listen(session, 'before_commit', ...)` 與 `after_soft_rollback`、savepoint 的 before_commit 直接返回、最外層 rollback 清掉登記、登記前先 `session.begin()`。\n- 新增 `collect_before_commit(session, name: str, key: Hashable, value: object, flush: Callable[[Session, dict[Hashable, object]], None]) -> None`：同一個 session 同一個 name 的登記以 key 去重（後登記的 value 覆蓋）；最外層交易 commit 前（`before_commit` 且 `not session.in_nested_transaction()`）取出該 name 的整包 dict 呼叫一次 flush；最外層 rollback（`after_soft_rollback` 且 previous_transaction 非 nested）清除；savepoint rollback 不清除（與兩處現況相同）；尚未開交易時先 `session.begin()`。每個 session 每個 name 只 listen 一次。\n- `broadcast_homework_snapshot` 與 `publish_request_change` 改用它，模組內的 `_flush_*` / `_clear_*` / `*_HOOKED` 移除。flush 內容（重讀最終狀態、`broadcast_after_commit`）不變；BACKEND-545 的『savepoint rollback 丟棄該層 run_after_commit callback』行為不受影響。\n- 已知取捨不變：flush 的查詢在 before_commit 執行，查詢失敗會讓 commit 失敗。\n\n**驗收標準**：每一條對應下列 red_case；`test_broadcast_homework_snapshot_` 與 `test_pickup_views_` 全綠且斷言不變。",
+      "granularity_unit": "method",
+      "target_path": "apps/api/app/core/tx_hooks.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-374",
+        "BACKEND-404",
+        "BACKEND-564"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/core/test_tx_hooks.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_collect_before_commit_dedupes_and_flushes_once：同一 session 以 name 'x' 登記 key 'a'（value 1）、'a'（value 2）、'b'（value 3）→ commit 時 flush 恰被呼叫 1 次，收到的 dict == {'a': 2, 'b': 3}；commit 後再登記 'a' 並 commit → 第二次 flush 收到 {'a': ...} 且只含 'a'",
+          "test_collect_before_commit_skips_savepoint_and_clears_on_rollback：在 begin_nested() 內登記並釋放 savepoint → 此時 flush 0 次，最外層 commit 後 1 次；另一筆交易登記後 session.rollback() → flush 0 次，之後空交易 commit 也是 0 次",
+          "test_collect_before_commit_names_are_independent：name 'x' 與 'y' 各登記一筆 → commit 時兩個 flush 各被呼叫 1 次、各自只收到自己的 key"
+        ],
+        "run": "just test-int apps/api/tests/integration/core/test_tx_hooks.py -k \"test_collect_before_commit_\" && just test-int apps/api/tests/integration/services/test_homework_service.py -k \"test_broadcast_homework_snapshot_\" && just test-int apps/api/tests/integration/services/pickup/test_pickup_views.py -k \"test_pickup_views_\"",
+        "notes": "flush 以收集呼叫參數的假函式驗證具體 dict 內容，不只斷言被呼叫。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-566",
+      "title": "補作業項目修改 / 刪除不受 homework.window 限制的 endpoint 測試",
+      "description": "只改 `apps/api/tests/integration/api/admin/test_homework_endpoints.py`（補 BACKEND-388 / 389 的測試缺口）。domain_spec M2：`homework.window` 只限制新增；既有項目的修改與刪除不受限。目前沒有測試釘住這條，之後若有人在 endpoint 或 service 加回日期檢查不會轉紅。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "granularity_unit": "test",
+      "target_path": "apps/api/tests/integration/api/admin/test_homework_endpoints.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-388",
+        "BACKEND-389"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/api/admin/test_homework_endpoints.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_admin_homework_item_update_outside_window：以 past_days 30、今天 2026-10-14 為準，2026-07-01 的項目（直接以 factory 建立）PATCH {status:'done'} → 200、回應 status 'done'，重讀 DB 項目為 done 且該日進度依項目重算（突變：在 update_item 加回 window 檢查 → 轉紅）",
+          "test_admin_homework_item_delete_outside_window：同一個 window 外日期的兩個項目（一個 done、一個 todo），DELETE todo 那筆 → 200，重讀 DB 該筆不存在、該日進度重算為 done（突變：在 delete endpoint 加回 window 檢查 → 轉紅）"
+        ],
+        "run": "just test-int apps/api/tests/integration/api/admin/test_homework_endpoints.py -k \"test_admin_homework_item_update_ or test_admin_homework_item_delete_\"",
+        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-567",
+      "title": "後端測試清理：committing 測試改用 seed 角色建員工、升級並發測試補 grade_level 斷言",
+      "description": "只改測試檔：\n- `apps/api/tests/integration/services/pickup/test_pickup_transitions.py::test_transition_request_concurrent` 與 `apps/api/tests/integration/services/test_class_service.py::_committed_staff`：committing 測試以 `make_staff(session)` 預設建立自訂 `test_*` 角色並 commit，被中斷會在 roles 留殘列。改為 `make_staff(session, role_code='tutor')`，並移除對 roles 的清理登記（只清 staff_users）。順帶盤點 `apps/api/tests/integration/` 其他 committing 測試（用 `committing_db_session` 且有 commit 的案例）中同樣寫法，一併改掉；非 committing 案例不動。\n- `apps/api/tests/integration/services/test_grade_promotion_service.py` 的 BACKEND-553 案例 2：補斷言 B 的 `update_student` 回傳值 `grade_level == 4`（有鎖時讀到升級後的值、缺鎖時是 3），提供不依賴時間的判別。\n\n**驗收標準**：每一條對應下列 red_case；被改的三個測試檔整檔全綠，跑完以 owner 唯讀查 roles 沒有 `test_*` 開頭的列、staff_users 沒有殘列。",
+      "granularity_unit": "test",
+      "target_path": "apps/api/tests/integration/services/test_class_service.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-553",
+        "BACKEND-556"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/services/test_class_service.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_transition_request_concurrent（既有測試改寫）：兩位員工以 role_code='tutor' 建立 → 測試綠；跑完 owner 唯讀 `select count(*) from roles where code like 'test_%'` == 0",
+          "test_class_service 的 committing 案例（使用 _committed_staff 者）：改寫後全綠，跑完 roles 的 test_* 列數 == 0、staff_users 無本測試建立的列",
+          "test_promotion_execute_lock_ 案例 2：新增斷言 B 的 update_student 回傳 grade_level == 4（突變：拿掉 execute 的 FOR UPDATE → 該斷言轉紅，得到 3）"
+        ],
+        "run": "just test-int apps/api/tests/integration/services/pickup/test_pickup_transitions.py -k \"test_transition_request_concurrent\" && just test-int apps/api/tests/integration/services/test_class_service.py && just test-int apps/api/tests/integration/services/test_grade_promotion_service.py -k \"test_promotion_execute_lock_\"",
+        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 盤點時改到的其他檔案列在回報與 commit message。並發測試照 kickoff 規則帶 timeout 執行。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-568",
+      "title": "升年級 endpoint 以明確 422 取代 assert；get_owned_student_for_write docstring 補暫停",
+      "description": "修改 `apps/api/app/api/admin/students.py`（BACKEND-165 的 promote-grade handler）與 `apps/api/app/api/deps.py`（docstring）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- promote-grade handler 以 `assert` 依賴 schema 驗證器保證執行模式有 `expected_total`；驗證器若被移除會變 500。改成明確檢查：執行模式缺 `expected_total` 時拋 422 `validation_error`（形狀與 RequestModel 驗證錯誤一致，loc `['body','expected_total']`），schema 驗證器保留。\n- `get_owned_student_for_write` 的 docstring 寫「另對 withdrawn 學生 409」，補上暫停（suspended）同樣 409 `student_not_active`（BACKEND-557 已實作，行為不變）。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_admin_promote_` 全綠。",
+      "granularity_unit": "endpoint",
+      "target_path": "apps/api/app/api/admin/students.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-165",
+        "BACKEND-557"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/api/admin/test_students_endpoints.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_admin_promote_missing_expected_total_without_schema_validator：以 monkeypatch 拿掉 PromoteGradeIn 對 expected_total 的必填驗證（或直接呼叫 handler 傳入 expected_total=None 的模型）→ 回 422、error.code == 'validation_error'、details[0].loc == ['body','expected_total']，不是 500",
+          "test_admin_promote_422（既有）：schema 驗證器在時，執行模式缺 expected_total → 422，回應與上一條相同形狀"
+        ],
+        "run": "just test-int apps/api/tests/integration/api/admin/test_students_endpoints.py -k \"test_admin_promote_\"",
+        "notes": "docstring 修正沒有測試，reviewer 以閱讀確認。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "BACKEND-569",
+      "title": "代理接送核驗 endpoint 補『錯碼 400 / 鎖定 409 時確實推播』的測試",
+      "description": "只改 `apps/api/tests/integration/api/admin/test_pickup_endpoints.py`（補 BACKEND-437 / 562 在 endpoint 層的測試缺口）。B437 的 handler 先 `db.commit()` 再依結果回 400 `pickup_code_mismatch` 或 409 `pickup_code_locked`；BACKEND-562 的 `pickup.authorization_updated` 推播登記在 after_commit，必須靠這個先 commit 才會送出。目前只有 service 層測試，endpoint 若改成先拋錯再 commit（或不 commit）推播就會消失而無測試轉紅。\n\n**驗收標準**：每一條對應下列 red_case（以既有的 `published` fixture 收集推播）。",
+      "granularity_unit": "test",
+      "target_path": "apps/api/tests/integration/api/admin/test_pickup_endpoints.py",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-437",
+        "BACKEND-562"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/api/tests/integration/api/admin/test_pickup_endpoints.py",
+        "markers": [
+          "integration"
+        ],
+        "red_cases": [
+          "test_admin_pickup_verify_mismatch_broadcasts：錯碼 POST /api/admin/pickup/authorizations/{id}/verify → 400 pickup_code_mismatch，admin:pickup 頻道恰收到 1 則 type 'pickup.authorization_updated'，data.id == 授權 id、data.code_attempts == 1，訊息內不含接送碼（突變：handler 改成不 commit 直接拋錯 → 轉紅）",
+          "test_admin_pickup_verify_lock_broadcasts：第 5 次錯碼 → 409 pickup_code_locked，該次請求的推播 data.code_attempts == 5 且 data.locked is True；家長頻道（student:<id>）沒有任何 authorization_updated（突變：鎖定分支跳過 commit → 轉紅）"
+        ],
+        "run": "just test-int apps/api/tests/integration/api/admin/test_pickup_endpoints.py -k \"test_admin_pickup_verify_\"",
+        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]

@@ -6,9 +6,9 @@
 <link rel="icon" href="data:,">
 
 <meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="FRONTEND-189,FRONTEND-190,FRONTEND-191,FRONTEND-192,FRONTEND-193,FRONTEND-194,FRONTEND-195,FRONTEND-197,FRONTEND-198,FRONTEND-199">
+<meta name="preview-tasks" content="FRONTEND-189,FRONTEND-190,FRONTEND-191,FRONTEND-192,FRONTEND-193,FRONTEND-194,FRONTEND-195,FRONTEND-197,FRONTEND-198,FRONTEND-199,FRONTEND-298">
 <meta name="preview-route" content="/pickup">
-<meta name="preview-updated" content="2026-10-08">
+<meta name="preview-updated" content="2026-10-16">
 
 <title>設計稿：接送 POS</title>
 
@@ -521,7 +521,7 @@ body { font-family: var(--el-font-family); background: var(--el-fill-color); col
       <p v-if="replyDlg.req.requested_by_type !== 'parent'" class="dlg-note">員工代建的請求，回覆不會通知家長。</p>
       <el-form label-position="top" :disabled="replyDlg.ackOnly">
         <el-form-item label="預計可接送時間" :error="replyDlg.fieldError">
-          <el-time-select v-model="replyDlg.form.eta" class="dlg-full" :start="slotStart" end="21:00" step="00:05" placeholder="選擇時間" clearable></el-time-select>
+          <el-time-select v-model="replyDlg.form.eta" class="dlg-full" :start="slotStart" end="19:00" step="00:05" placeholder="選擇時間" clearable></el-time-select>
           <div class="dlg-quick">
             <el-button @click="quickEta(10)">+10 分</el-button>
             <el-button @click="quickEta(20)">+20 分</el-button>
@@ -607,7 +607,7 @@ body { font-family: var(--el-font-family); background: var(--el-fill-color); col
                         sim="normal" @change="createDlg.studentError = ''"></student-select>
       </el-form-item>
       <el-form-item label="家長預計抵達時間（選填）">
-        <el-time-select v-model="createDlg.form.eta" class="dlg-full" :start="arrivalStart" end="21:00" step="00:05" placeholder="不指定" clearable></el-time-select>
+        <el-time-select v-model="createDlg.form.eta" class="dlg-full" :start="arrivalStart" end="19:00" step="00:05" placeholder="不指定" clearable></el-time-select>
       </el-form-item>
     </el-form>
     <div class="dlg-note-box">
@@ -1629,11 +1629,11 @@ const app = createApp({
       '佇列卡按鈕（只有 pickup:operate，44px、等寬）：pending →「回覆時間」「確認」，needs_reply 時「回覆時間」是 primary，否則「確認」是 primary；acknowledged →「修改回覆」+「完成交付」（primary）；arrived →「完成交付」（primary、佔 2/3 寬、放左邊）+「修改回覆」。送出中按鈕 loading / 停用。',
       '左滑取消：只有 pickup:operate 的進行中卡。左滑超過 84px 的 45% 鬆手後停在開啟、露出右側 84px 紅色「取消」，未達門檻回彈；鬆手不會直接取消，要再點「取消」→ ElMessageBox.prompt 標題「取消接送請求」、說明「取消原因（選填，家長發起的請求會通知家長）」、按鈕「取消請求」/「返回」，成功後卡片移到今日已結束。拖曳時不會誤觸卡內按鈕；往右拖可收合。',
       '已結束卡（唯讀、不可左滑、淡灰底、姓名 16px）：已接走 →「{接走人} 接走・{方式}・{經手員工}・{HH:MM}」；已取消 →「已取消・{原因}」（沒有原因只寫「已取消」）；已逾時 →「逾時未完成」。',
-      '回覆 dialog（FRONTEND-197，FormDialog md 560）：標題「回覆預計可接送時間：{姓名}」。上方淡灰摘要：學生（班級）、家長抵達（預計時間與相對時間 / 已到與等候分鐘 / 未指定）、目前作業與作業預計完成、目前回覆與來源。「預計可接送時間」el-time-select（5 分一格、從現在進位到 5 分、到 21:00），預設 reply_ready_eta → current_ready_eta → 空；下方一列快捷「+10 分 / +20 分 / +30 分」（44px），再下一列固定提示「將同步更新作業看板的預計可接送時間」；摘要的「目前作業」在作業已完成時不顯示「尚未設定作業預計完成時間」。「給家長的訊息」≤200，placeholder 隨選的時間顯示「預計 HH:MM 可接送」（留空由後端組字），staff 回覆過時帶入原訊息。pending 時有「同時確認此請求」（預設勾），送出鈕隨之為「回覆並確認」/「送出回覆」。員工代建的請求在摘要下加灰字「員工代建的請求，回覆不會通知家長。」',
+      '回覆 dialog（FRONTEND-197，FormDialog md 560）：標題「回覆預計可接送時間：{姓名}」。上方淡灰摘要：學生（班級）、家長抵達（預計時間與相對時間 / 已到與等候分鐘 / 未指定）、目前作業與作業預計完成、目前回覆與來源。「預計可接送時間」el-time-select（5 分一格、從現在進位到 5 分、到 pickup.window 的最晚預計抵達時間——佇列回應的 latest_expected_arrival，稿以預設 19:00 示範），預設 reply_ready_eta → current_ready_eta → 空；下方一列快捷「+10 分 / +20 分 / +30 分」（44px），再下一列固定提示「將同步更新作業看板的預計可接送時間」；摘要的「目前作業」在作業已完成時不顯示「尚未設定作業預計完成時間」。「給家長的訊息」≤200，placeholder 隨選的時間顯示「預計 HH:MM 可接送」（留空由後端組字），staff 回覆過時帶入原訊息。pending 時有「同時確認此請求」（預設勾），送出鈕隨之為「回覆並確認」/「送出回覆」。員工代建的請求在摘要下加灰字「員工代建的請求，回覆不會通知家長。」',
       '回覆 dialog 錯誤：兩欄都空 → 時間欄下方「請填寫預計時間或訊息」；回覆成功但確認失敗 → 上方 warning「已回覆，但確認失敗：{message}」，表單鎖住、dialog 不關，送出鈕改「重試確認」（只重送確認）；其他錯誤 → 上方 error alert；409 / 404 由 board 提示並關閉 dialog。',
       '完成交付 dialog（FRONTEND-198，FormDialog md 560）：標題「完成交付：{姓名}」，開啟時載入監護人（3 列骨架）。選項是 ≥ 56px 的框線 radio 卡，分三組：「監護人」（「{姓名}（{關係}）」+ 電話；未授權者停用並標「未授權接送」；只有一位可接送時預選）、「代理接送（今日授權）」（「代理：陳阿姨（0912-000-456）」+「末四碼 4821」，鎖定加紅色「已鎖定」）、「其他」（主管確認交付，只有 pickup:override）。選監護人 → 不需備註（後端不保存監護人交付的備註，body 只有 method + guardian_id）；選代理 → 說明「按「前往核驗」到代理接送核驗頁…」，送出鈕變「前往核驗」，導到 /pickup/authorizations?verify={id}；選主管確認交付 → 備註必填 +「會記錄於稽核紀錄」。',
       '完成交付錯誤 / 無人可選：guardian_cannot_pickup → 上方 error「此監護人未被授權接送」並重新載入監護人；invalid_guardian →「監護人資料已變更，請重新選擇」；沒有可接送監護人、沒有代理授權、也沒有 pickup:override → 上方 warning「沒有可接送的監護人，請聯絡主任處理」，送出停用（主任身分則可選主管確認交付）。',
-      '代建 dialog（FRONTEND-199，FormDialog sm 420）：標題「代建接送請求」。學生：從學生卡 ⋮ 進入時唯讀顯示「王小明（S11301・中年級班）」；從工具列進入用已核可的 StudentSelect，選了班級時只查該班（placeholder「輸入學號或姓名（中年級班）」）。「家長預計抵達時間（選填）」el-time-select（5 分一格、最早為現在 −5 分、placeholder「不指定」）。下方淡灰說明「員工代建的請求不會通知家長；系統會依作業進度自動產生回覆供參考。」送出鈕「建立請求」。錯誤：未選學生 → 欄位下「請選擇學生」；pickup_request_exists →「此學生今天已有進行中的接送請求」；student_not_available / not_service_day / expected_arrival_in_past → 顯示後端 message。',
+      '代建 dialog（FRONTEND-199，FormDialog sm 420）：標題「代建接送請求」。學生：從學生卡 ⋮ 進入時唯讀顯示「王小明（S11301・中年級班）」；從工具列進入用已核可的 StudentSelect，選了班級時只查該班（placeholder「輸入學號或姓名（中年級班）」）。「家長預計抵達時間（選填）」el-time-select（5 分一格、最早為現在 −5 分、最晚為 pickup.window 的最晚預計抵達時間——佇列回應的 latest_expected_arrival，稿以預設 19:00 示範、placeholder「不指定」）。下方淡灰說明「員工代建的請求不會通知家長；系統會依作業進度自動產生回覆供參考。」送出鈕「建立請求」。錯誤：未選學生 → 欄位下「請選擇學生」；pickup_request_exists →「此學生今天已有進行中的接送請求」；student_not_available / not_service_day / expected_arrival_in_past → 顯示後端 message。',
       '唯讀（只有 pickup:read）：沒有「代建接送請求」、學生卡沒有 ⋮、點在班等待不會倒數、佇列卡沒有任何按鈕也不能左滑、沒有「左滑卡片可取消」；計數、連線、提示音、「代理接送核驗」連結、點接送中學生卡定位請求都保留。',
       '三態與錯誤：載入中 → 班級欄 5 條骨架、中欄 9 張骨架卡、佇列 3 張骨架卡，計數顯示「—」；載入失敗 → 三欄位置改為 EmptyState error「無法載入接送資料」+「重試」；中欄空 → 有搜尋「找不到符合的學生」、選了班級「此班級今天沒有學生」、全部班級「目前沒有在學學生」；佇列空 → 見上。',
       '寬度 < 900（平板直向）：右欄收成底部抽屜，中欄右下角浮動按鈕「佇列（n）」（有家長已到時右上角紅色數字徽章）；抽屜高約 70%，點遮罩或「收合」關閉；點接送中學生卡會先打開抽屜再定位閃爍。',

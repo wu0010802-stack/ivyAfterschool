@@ -168,7 +168,7 @@
 
 | task | method | path | 權限 | request → response |
 |---|---|---|---|---|
-| B429 | GET | `/pickup/queue?date` | pickup:read | → `{date, open: PickupRequest[], closed: PickupRequest[], counts: {pending, acknowledged, arrived, needs_reply}}` |
+| B429 | GET | `/pickup/queue?date` | pickup:read | → `{date, open: PickupRequest[], closed: PickupRequest[], counts: {pending, acknowledged, arrived, needs_reply}, latest_expected_arrival: "HH:MM"}`（latest_expected_arrival 為目前 `pickup.window` 的最晚預計抵達時間，不隨 date 參數變化；BACKEND-563） |
 | B430 | POST | `/pickup/requests` | pickup:operate | `{student_id, expected_arrival_at?: "HH:MM"}` → 201 `PickupRequest`（source=staff）；409 `pickup_request_exists` / `student_not_available` / `not_service_day` |
 | B431 | POST | `/pickup/requests/{id}/reply` | pickup:operate | `{reply_ready_eta?: "HH:MM", reply_message?}`（至少一個）→ `PickupRequest`；有 reply_ready_eta 時同步寫回該生作業進度的 ready_eta（作業看板經 ws `homework.progress_updated` 更新，不另發 homework.eta_updated） |
 | B432 | POST | `/pickup/requests/{id}/acknowledge` | pickup:operate | → `PickupRequest`（pending → acknowledged） |

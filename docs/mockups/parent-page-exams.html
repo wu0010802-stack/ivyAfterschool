@@ -13,9 +13,9 @@
      preview-updated: 最後更新日期 YYYY-MM-DD
      ============================================================ -->
 <meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="PARENT-153">
+<meta name="preview-tasks" content="PARENT-153,PARENT-208">
 <meta name="preview-route" content="/exams">
-<meta name="preview-updated" content="2026-10-08">
+<meta name="preview-updated" content="2026-10-16">
 
 <title>設計稿：家長端 成績列表（ExamsView）</title>
 <script src="https://unpkg.com/vue@3.5.43/dist/vue.global.prod.js"></script>
@@ -683,7 +683,7 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
                     <exam-list-item v-for="e in items" :key="e.exam_id" :exam="e" @navigate="onNavigate"></exam-list-item>
                   </ul>
                   <parent-empty-state v-else-if="view === 'empty'" icon="grading" title="目前沒有已公布的成績" description="安親班公布考試成績後會通知您"></parent-empty-state>
-                  <skeleton-block v-else variant="row" :count="4"></skeleton-block>
+                  <skeleton-block v-else variant="row" :count="4" height="76px"></skeleton-block>
                 </m3-card>
                 <m3-button v-if="view === 'data' && items.length < total" variant="outlined" :block="true" :loading="loadingMore" @click="loadMore">載入更多</m3-button>
               </template>
@@ -1632,7 +1632,7 @@ function pageSetup({ snack }) {
     '版面：頂部列「成績」（底部導覽分頁頁，沒有返回鍵；leading 照 PARENT-024 顯示安親班 logo，沒有 logo 時為名稱首字圓形）→ ChildContextHeader → outlined 卡內 ul 清單（PARENT-151 ExamListItem，照後端順序：考試日期新到舊）→「載入更多」。頁面自帶左右 16px、底部 24px 內距，區塊間距 12px；整頁內容包在 PullToRefresh 內。底部導覽停在「成績」。',
     '清單只列已公布的考試（後端只回 published）；列表不顯示分數、平均或名次（ExamListItem 稿：列表只做索引）。點整列導向 /exams/{exam_id}。頁面只有這一份清單，不另加區塊標題或筆數。',
     '空清單：卡內 ParentEmptyState（grading 圖示）「目前沒有已公布的成績」/「安親班公布考試成績後會通知您」，沒有按鈕。',
-    '首次載入：卡內 SkeletonBlock row × 4（與 ExamListItem 同為 72px 列高，載入完成不跳動）；失敗：卡片換成 ParentEmptyState error「成績載入失敗」+「重試」，重試期間回到骨架。',
+    '首次載入：卡內 SkeletonBlock row × 4（每列高 76px，與單行名稱的 ExamListItem 實際列高相同，載入完成不跳動）；失敗：卡片換成 ParentEmptyState error「成績載入失敗」+「重試」，重試期間回到骨架。',
     '載入更多：items.length < total 時清單下方 outlined 全寬「載入更多」，載入中按鈕轉圈；回來的資料以 exam_id 去重後附加；失敗 error snackbar「載入更多失敗，請稍後再試」，按鈕保留可重按。',
     '切換小孩（ChildContextHeader）：重置分頁、顯示骨架，以請求序號丟棄過期回應（晚到的上一位小孩資料不覆蓋畫面）。',
     'PullToRefresh：重抓第一頁（重置分頁），期間保留現有內容；失敗保留內容並顯示 error snackbar「更新失敗，請稍後再試」。載入中停用下拉。',

@@ -6,9 +6,9 @@
 <link rel="icon" href="data:,">
 
 <meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="FRONTEND-129,FRONTEND-130,FRONTEND-131,FRONTEND-132">
+<meta name="preview-tasks" content="FRONTEND-129,FRONTEND-130,FRONTEND-131,FRONTEND-132,FRONTEND-300">
 <meta name="preview-route" content="/leaves">
-<meta name="preview-updated" content="2026-10-08">
+<meta name="preview-updated" content="2026-10-16">
 
 <title>設計稿：請假</title>
 
@@ -395,7 +395,7 @@ body { font-family: var(--el-font-family); background: var(--el-fill-color); col
                 </div>
               </template>
             </el-table-column>
-            <el-table-column v-if="can('leaves:write') && hasActive" label="操作" width="84" fixed="right">
+            <el-table-column v-if="can('leaves:write') && hasActive" label="操作" width="88" fixed="right">
               <template #default="{ row }">
                 <template v-if="row.status === 'active'">
                   <el-button v-if="row.end_date >= TODAY" link type="danger" @click="openCancel(row)">取消</el-button>
@@ -1315,7 +1315,7 @@ const app = createApp({
       '版面：PageHeader「請假」+ 副標「家長在 LINE 送出即生效；員工可代登記與取消」，右側「重新整理」（重抓目前條件，轉圈中停用）與 primary「代登記請假」。下方白底面板：篩選列 → 表格 → 分頁（每頁 20 筆）。不訂閱 ws（leave.created / leave.cancelled 只走站內通知），靠「重新整理」。',
       '篩選列沿用 AdminListToolbar 的版面樣式，但不使用該元件：它固定有關鍵字搜尋框，而 GET /admin/leaves 沒有關鍵字參數（學生改用 StudentSelect 遠端搜尋）。順序：學生（StudentSelect，可清除，寬 220）→ 班級 → 狀態（生效中 / 已取消，沒有「全部」，預設生效中）→ 假別 → 建立者（家長 / 員工）→ 日期 →「重設」文字鈕（與預設相同時停用）→ 右側「共 N 筆」。下拉除狀態外第一項都是「全部」。',
       '日期區間預設今天起 30 天（2026-10-07 ~ 2026-11-06），以「與請假期間有交集」篩選；可清除 = 不限日期（看某位學生的全部紀錄）；快捷「今天起 30 天」「本月」「上個月」「過去 90 天」。任何篩選變更回到第 1 頁；篩選與頁碼同步到網址（usePagedList syncQuery）。',
-      '表格欄位與寬度（1280 寬視窗的表格可視寬約 904px，主要欄位不需橫向捲動）：學生 140（固定在左；姓名粗體，有 students:read 時是連結 → /students?student={id}；下一行灰字「學號・班級」，沒有班級為「未分班」，過長省略）、假別 72（tag，LEAVE_TYPE_META：病假橘、事假 / 其他灰）、期間 180（2026-10-06~2026-10-08，同一天只顯示一天；生效中且含今天時下一行藍色線框「進行中」）、原因（min 110，吃剩餘寬度，單行省略、hover 看全文；null「—」）、建立者 128（「家長：陳爸爸」/「員工：林行政」過長省略 + 下一行 2026/10/06 07:45）、取消紀錄 170（只在本頁有已取消的列時出現：「員工：林行政 於 2026/10/01 10:00 取消」）、附件 88、操作 84（固定在右）。不另設「狀態」欄：狀態篩選只有生效中 / 已取消兩個值、沒有「全部」，同頁的狀態都一樣。依開始日新到舊（後端排序），不提供欄位排序；平板等較窄寬度時中間欄橫向捲動，學生與操作欄固定。',
+      '表格欄位與寬度（1280 寬視窗的表格可視寬約 904px，主要欄位不需橫向捲動）：學生 140（固定在左；姓名粗體，有 students:read 時是連結 → /students?student={id}；下一行灰字「學號・班級」，沒有班級為「未分班」，過長省略）、假別 72（tag，LEAVE_TYPE_META：病假橘、事假 / 其他灰）、期間 180（2026-10-06~2026-10-08，同一天只顯示一天；生效中且含今天時下一行藍色線框「進行中」）、原因（min 110，吃剩餘寬度，單行省略、hover 看全文；null「—」）、建立者 128（「家長：陳爸爸」/「員工：林行政」過長省略 + 下一行 2026/10/06 07:45）、取消紀錄 170（只在本頁有已取消的列時出現：「員工：林行政 於 2026/10/01 10:00 取消」）、附件 88、操作 88（固定在右）。不另設「狀態」欄：狀態篩選只有生效中 / 已取消兩個值、沒有「全部」，同頁的狀態都一樣。依開始日新到舊（後端排序），不提供欄位排序；平板等較窄寬度時中間欄橫向捲動，學生與操作欄固定。',
       '附件欄：有附件時顯示迴紋針 +「2 個」+ 向下箭頭的文字按鈕，點擊展開 / 收合該列（箭頭轉向、aria-expanded），展開區放 LeaveAttachmentList；沒有附件顯示「—」。展開用 el-table 的 expand（預設箭頭欄隱藏，只由附件欄按鈕觸發）。展開區內容固定在表格可視寬度內：表格 body 的捲動容器設 container-type: inline-size，內容 position: sticky、left: 0、寬 100cqw，表格橫向捲動時不會被推出畫面。',
       '操作欄只在有 leaves:write、且本頁有生效中的列時出現（篩選「已取消」時整欄不出現）：生效中且 end_date ≥ 今天 →「取消」；生效中且已結束（end_date < 今天）→「整筆取消」（事後更正）；已取消的列 →「—」。兩者都開 LeaveCancelDialog。只有 leaves:read（課輔老師）：沒有「代登記請假」、整個操作欄移除，附件照常可看。',
       '沒有 students:read 的自訂角色：學生篩選不出現、學生姓名不做連結；StudentSelect 需要 GET /admin/students（students:read），所以「代登記請假」也不出現（避免開出一個搜不到學生的表單）。',

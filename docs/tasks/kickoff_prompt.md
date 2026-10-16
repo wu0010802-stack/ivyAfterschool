@@ -52,33 +52,14 @@
 依賴都已寫進 `depends_on`，一律用 `python3 scripts/validate_tasks.py . --ready [AREA]` 查。**先確認上一輪收尾**：`--in-review` 與 `in_progress` 的 task 以 tasks.json 為準（收工時：無）；`just db-start` 後先用 owner 唯讀確認種子筆數（system_settings 11、roles 4、subjects 5、exam_types 3）。
 
 0. **先處理遠端**：第 10 輪的 commit 在分支 `claude/vigilant-franklin-85andq`，push 被 403 擋下。GitHub 權限修好後先 push 並開 draft PR，再開始新一輪。
-1. **e2e（頁面都已到位，使用者先前指示「等頁面到位再做」的條件已成立）**：FRONTEND-290（admin 登入、API 種子資料與清理；要起 API + Web 與本機 DB）→ 291（今日出勤到班 / 離班）、292（接送請求 → 回覆 → 確認 → 完成）、293（建立考試 → 成績輸入 → 發布）。動手前先跟使用者確認要不要現在做。e2e 的 Chromium 用預裝的 `/opt/pw-browsers`，不要 `playwright install`；PARENT-190 的替身做法（`page.route` / `routeWebSocket` / `page.clock`）可參考，但 290~293 是接真實後端。
+1. **e2e（頁面都已到位，使用者先前指示「等頁面到位再做」的條件已成立）**：FRONTEND-290（admin 登入、API 種子資料與清理；要起 API + Web 與本機 DB）→ 291（今日出勤到班 / 離班）、292（接送請求 → 回覆 → 確認 → 完成）、293（建立考試 → 成績輸入 → 發布）。使用者第 11 輪裁定先做、接真實後端。e2e 的 Chromium 用預裝的 `/opt/pw-browsers`，不要 `playwright install`；PARENT-190 的替身做法（`page.route` / `routeWebSocket` / `page.clock`）可參考，但 290~293 是接真實後端。
 2. **INFRA-054**（cleanup_tables 不得 cascade 到 seed 表；使用者指示之後再做，完成前遵守「協調者要注意的事」的規則）。
-3. **review 殘留的 chore（尚未建 task；依區域分批開票）**：
-   - 規格 / 需使用者確認：
-     - 員工代建（FRONTEND-199）與回覆（197）的時間選項到 21:00（稿的設定），後端對員工代建同樣套用 `pickup.window` 的 latest_expected_arrival（預設 19:00），超過會 422 並顯示後端訊息；要讓選項跟著設定走，需要後台讀得到該設定（目前沒有 admin 可讀的端點）。
-     - 首頁卡片（PARENT-054）在「我到了」遇到 invalid_pickup_status / pickup_request_not_found 時不重抓（description 與稿 decision 6 規定卡片不變），snackbar 卻說「狀態已更新」；建議改成呼叫今日狀態 `refresh()`（要改稿 decision 與 description）。
-     - page-homework-board 稿 decision 2 文字寫日期「（週）」，稿實際渲染與實作都是 `YYYY/MM/DD`；擇一：改稿文字，或在 bootstrap 載入 dayjs zh-tw 並顯示星期（篩選列在 928px 只剩 27px 餘裕，要重量）。
-     - 桌機 1024 寬且使用傳統捲軸時，接送 POS 中欄一列只有 2 張（平板覆蓋式捲軸與 1280 桌機不受影響，協調者裁定維持稿）。
-   - FRONTEND：
-     - 153 卡片在「可寫、非今天、整體依項目推導為 done」時 ⋮ 是空選單 → 沒有選項時隱藏 ⋮。
-     - LeavesView（129）從網址還原學生篩選時，StudentSelect 只顯示 id 直到列表載入到該生紀錄 → StudentSelect 依 id 補標籤（需要依 id 查學生的方式）；操作欄寬 84 → 88（「整筆取消」溢出 2px，稿同）；「今天」只在建立時計算。
-     - ExamDetailView（234）：取消發布前「flush → 確認放棄 → 重建成績格」只有 Chromium 驗證，補 red_case；scoredCounts 的 summary 請求補序號防護；放棄確認文案「確定要關閉嗎？」（FRONTEND-046）用在離開頁面不貼切。
-     - FormDialog（040）footer 按鈕 32px，平板 dialog 觸控目標不足 44px。
-     - 後台登入頁以 adminHttp 打 `/parent/config`，401 時會多打一次 `/admin/auth/refresh`（FRONTEND-021 範圍）。
-     - 合併語意：126 / 152 / 188 的整包重抓晚到會覆蓋較新的狀態 → 以 updated_at 比較。
-     - `router/PlaceholderView.vue` 已無 loader 使用：決定刪除或保留給 NFC 頁（blocked）。
-     - 沿用前一輪：api 路徑 id 編碼 helper 拒絕 `.` / `..`（後台與家長端）；四張參考資料表（059~062）抽共用 composable；069 / 070 的 cannot_grant 組字抽共用；091 補『先切換學生再開表單』測試；FakeWebSocket 抽到 `src/test/`；FRONTEND-025 的 `/login/` 大小寫；`docs/mockups/page-settings-system.html` 範例文字；239 description 的「得分率 {n}%」用詞；page-students 稿 decision 17 的 480 → 560。
-   - PARENT：
-     - 登出（033）`replace('/login?logged_out=1')` 完成前若有在途請求 401（refresh 也 401），PARENT-013 的 handler 會改導 `/login?redirect=…` 而取消 logged_out，LINE 內會自動再登入（機率低）→ handler 在登出進行中略過。
-     - PARENT-172 本地未讀增減不參與取號，較早發出的 refreshUnread 晚到會短暫把未讀數蓋回舊值 → store 層修正。
-     - PARENT-073 老師說明開頭多一個空白（pre-wrap + 模板縮排，左側偏 4px）→ 比照 053 用 span 包文字並以 textContent 斷言；parent-page-homework 稿的 `.m3-card p` margin 覆寫讓縮排與上距看不出來。
-     - PARENT-197 外部瀏覽器測試用真實 100ms 計時器判斷 init 卡住，高負載可能誤紅 → 改成直接等 `initLiff()` 並以 vitest 逾時保護。
-     - 請假狀態膠囊規則在 136 LeaveListItem 與 137 LeaveDetailSheet 重複 → 抽 util。
-     - PARENT-104 有 6 個實作正確但沒有測試的行為（review.notes 有清單）。
-     - 沿用前一輪：ArrivalTimePicker（096）列距改 12px（先改元件稿）；133 的 depends_on 補 FRONTEND-006；131 月曆 360 寬時格寬 39.7px（需改稿）；151 實測列高 76px、稿寫 72px；152 分數四捨五入到一位（59.95 顯示 60）。
-   - BACKEND（沿用前一輪）：homework_service 公開 `progress_out`；374 / 404 before_commit 去重推播共用 helper；388 / 389 補『window 外項目可修改 / 刪除』的測試；553 案例 2 補 `grade_level == 4` 斷言；`test_pickup_transitions.py::test_transition_request_concurrent` 與 `test_class_service.py` 的 `_committed_staff` 改 `role_code='tutor'`；`get_owned_student_for_write` 的 docstring 補 suspended；BACKEND-106 description 的 homework.window 文字改「新增」；165 handler 的 `assert` 改明確 422；BACKEND-437 endpoint 層補「錯碼 400 / 鎖定 409 時確實推播」的測試。
-   - 文件：FRONTEND-040、PARENT-017 / 018 / 023 / 027 / 028 的 `risk_notes` 仍是第 3 輪打回原文，改寫成目前仍成立的風險。
+3. **第 11 輪使用者裁定與 review 殘留的 chore（已開成 task，依 `--ready` 認領）**：
+   - 使用者裁定：BACKEND-563 → FRONTEND-298（員工回覆 / 代建的時間上限依 `pickup.window`）；PARENT-199（首頁「我到了」遇 invalid_pickup_status / pickup_request_not_found 後重抓今日狀態）。作業看板不顯示星期已直接改稿（page-homework-board decision 2）。桌機 1024 寬且傳統捲軸時 POS 中欄一列 2 張為已接受的限制，不開票。
+   - BACKEND：564（homework_service 公開 progress_view）→ 565（before_commit 去重推播共用 helper，改 homework_service / pickup views）；566（作業項目 window 外可改 / 刪的測試）；567（committing 測試改 tutor 角色、553 補 grade_level 斷言）；568（promote-grade 以 422 取代 assert、deps docstring）；569（核驗 endpoint 錯碼 / 鎖定推播測試）。
+   - FRONTEND：299（作業卡無選項時隱藏 ⋮）、300（請假列表學生標籤 / 操作欄 88 / 今天換日）、301（考試詳情取消發布 flush 測試、summary 序號、頁面層級放棄確認文案）、302（FormDialog footer 44px，**需先改稿並由使用者核可**）、303（/parent/config 不 refresh）、304 / 305 / 306（出勤 / 作業 / 接送 reload 晚到不覆蓋較新列；306 依賴 298）、307（authGuard 以路由名稱判斷登入頁、刪 PlaceholderView）、308（encodePathSegment）、309（參考資料表共用 composable）、310（cannot_grant 組字共用）、311（GuardianManager 補測試）、312（共用 FakeWebSocket）。
+   - PARENT：200（登出中略過 401 導頁）、201（通知未讀數本地增減取號）、202（老師說明開頭空白）、203（liff 測試改等 initLiff）、204（請假狀態膠囊 util）、205（代理接送頁補 6 條測試）、206（ArrivalTimePicker 列距 12px）、207（月曆 360 寬格寬 ≥ 44px，**需先改稿並由使用者核可**）、208（考試列表骨架 76px）、209（分數顯示位數，blocked 待使用者決定）、210（家長端 api 改用 encodePathSegment，依賴 FRONTEND-308）、211（家長端 spec 改用共用 FakeWebSocket，依賴 FRONTEND-312）。
+   - 檔案界線（同時派多位時）：BACKEND 分「接送」（563、569：services/pickup/requests.py、test_pickup_endpoints.py）與「作業 / 其他」（564 → 565 → 566、567、568）；FRONTEND 的 298 / 306 同一人（都改 usePickupBoard），308 會改到所有 `src/api/*.ts`，與其他前端 task 不同時進行或排在同一人；PARENT 的 210 / 211 等各自依賴的前端 task done 後再開。
 4. **上線前**：`docs/deployment.md` 的上線前驗證清單（見「已知待驗證 / 待決」的部署項目）；LINE App 與外部瀏覽器實機確認 LIFF 轉址會原樣帶回 hash 內的 query（PARENT-030 / 033 / 197）。
 
 ## 派工方式（每一輪都照做）
@@ -188,7 +169,7 @@ INFRA-047 收尾時會改 `apps/api/app/models/base.py` 的 docstring（跨區�
 
 ## 已知待驗證 / 待決（不要當成新發現）
 
-- **待使用者決定的事**：見「下一輪建議順序」第 3 點「規格 / 需使用者確認」（員工代建時間上限與 pickup.window、首頁卡片在接送錯誤時重抓、作業看板日期是否顯示星期、桌機 1024 寬 POS 中欄 2 張）與第 1 點 e2e 是否現在做。
+- **待使用者決定的事**：PARENT-209（家長端分數顯示位數，open_design_questions）；FRONTEND-302 與 PARENT-207 的改稿要送使用者核可。
 - **設計稿**：全部 approved。第 10 輪的頁面都已在真實 Chromium 量測過版面（page-leaves 展開附件列、page-pickup-authorizations、parent-page-pickup-proxy 的 sheet 底部按鈕列皆已實測）。其他缺口：儀表板近期請假沒有假別代碼（BACKEND-490 的 RecentLeaveOut 加欄位才能上色）；SKILL 模板 `references/preview-template.html` 鎖 element-plus 2.14.5 / vue 3.5.42，package.json 與稿是 2.14.7 / 3.5.43。
 
 - **NFC 打卡**：27 個 task blocked（DB-032/033、BACKEND-500~518、FRONTEND-270~275），機型、通訊方式、刷卡判斷規則、離線佇列、一生一卡等待機器到貨後決定。`python3 scripts/validate_tasks.py . --blocked` 列出全部問題。解除時 Alembic revision id 用 `db032` / `db033`，`down_revision` 指向當下的 head，`nfc:manage` 權限由 BACKEND-510 加入。

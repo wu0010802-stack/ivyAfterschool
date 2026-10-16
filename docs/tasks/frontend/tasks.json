@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 327,
-  "last_updated": "2026-10-16T23:15:53Z",
+  "version": 328,
+  "last_updated": "2026-10-16T23:19:11Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -1114,7 +1114,7 @@
         "FRONTEND-046"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r3 打回】稿 decision「視窗寬 < 768 時 fullscreen，footer 仍固定在底部」未落實：fullscreen 時 footer 會跟著內容位置（短表單停在畫面中段、長表單被捲走）。需補樣式讓 fullscreen 時 footer 固定在視窗底部、body 區捲動；happy-dom 驗不到版面，至少以測試鎖住 fullscreen 時套用的 class，並在回報中說明樣式寫法。若決定不做，需改稿 decision 並送使用者重新核可。",
+      "risk_notes": "手機 fullscreen 時 footer 貼底、只有 body 捲動的樣式是非 scoped 規則（以 `.el-dialog.form-dialog.is-fullscreen` 限定），happy-dom 驗不到版面，單元測試只鎖 class；升級 Element Plus 時要用真實瀏覽器重新確認。footer 按鈕高度不足 44px 由 FRONTEND-302 處理。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/common/FormDialog.spec.ts",
@@ -5605,7 +5605,7 @@
     {
       "id": "FRONTEND-239",
       "title": "實作 components/exams/ExamSummaryTable.vue：各科平均、最高、最低與填寫狀況",
-      "description": "建立 `apps/web/src/components/exams/ExamSummaryTable.vue`（domain_spec M8：後台可看單次考試各科平均，不做排名）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-exam-detail.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：考試 header（狀態、發布 / 取消發布 / 編輯 / 刪除依權限）、成績輸入格（學生 × 科目，格子五種狀態：未填 / 編輯中 / 儲存中 / 已儲存 / 錯誤，缺考勾選、超出滿分錯誤、已不在名單的學生）、已發布後修改的重新通知選擇、各科平均表、科目設定（草稿可改 / 已發布唯讀）、只有 exams:read 時唯讀、無科目時的引導、載入中。\n\n**props**：`examId: string`、`refreshKey: number`（變更時重新載入）。\n- 載入 `fetchExamSummary(examId)`；上方「應考 {roster_count} 人」+ 灰字「平均只計有分數的學生，缺考與未填不計入；不做排名」。載入中 skeleton；失敗 EmptyState error「無法載入各科平均」+「重試」。\n- 欄位：科目、滿分、平均（一位小數；null 顯示「—」）、最高、最低、已填（scored_count）、缺考（absent_count）、未填（missing_count = 目前應考名單內沒有分數也沒標缺考的格子，BACKEND-559；> 0 時 warning 色）。各計數與平均都只計目前應考名單，所以每科 已填 + 缺考 + 未填 = 應考人數。\n- 平均欄附「平均得分率」小字 = average / full_score（整數百分比）。\n- 無科目：「尚未設定科目」。\n\n**驗收標準**\n- 數值格式與 null 顯示；得分率；未填警示。",
+      "description": "建立 `apps/web/src/components/exams/ExamSummaryTable.vue`（domain_spec M8：後台可看單次考試各科平均，不做排名）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-exam-detail.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：考試 header（狀態、發布 / 取消發布 / 編輯 / 刪除依權限）、成績輸入格（學生 × 科目，格子五種狀態：未填 / 編輯中 / 儲存中 / 已儲存 / 錯誤，缺考勾選、超出滿分錯誤、已不在名單的學生）、已發布後修改的重新通知選擇、各科平均表、科目設定（草稿可改 / 已發布唯讀）、只有 exams:read 時唯讀、無科目時的引導、載入中。\n\n**props**：`examId: string`、`refreshKey: number`（變更時重新載入）。\n- 載入 `fetchExamSummary(examId)`；上方「應考 {roster_count} 人」+ 灰字「平均只計有分數的學生，缺考與未填不計入；不做排名」。載入中 skeleton；失敗 EmptyState error「無法載入各科平均」+「重試」。\n- 欄位：科目、滿分、平均（一位小數；null 顯示「—」）、最高、最低、已填（scored_count）、缺考（absent_count）、未填（missing_count = 目前應考名單內沒有分數也沒標缺考的格子，BACKEND-559；> 0 時 warning 色）。各計數與平均都只計目前應考名單，所以每科 已填 + 缺考 + 未填 = 應考人數。\n- 平均欄下一行灰字「得分率 {n}%」 = average / full_score（整數百分比）。\n- 無科目：「尚未設定科目」。\n\n**驗收標準**\n- 數值格式與 null 顯示；得分率；未填警示。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSummaryTable.vue",
       "source_ref": null,
@@ -6326,6 +6326,527 @@
         "status": "pass",
         "reviewer": "review-r10-f2",
         "notes": "通過。red_cases 3 條皆有同名測試（替身是真實 div、記錄 capture 中的 pointerId / 歷史 / release，斷言狀態而非只斷言呼叫），tdd.run 12 綠；291d354 / 3d586a4（紅：當時 onPointerDown 一按下就 capture）→ 10ed594，spec 之後未再改。改寫範圍與 description 一致：按下不 capture、水平位移第一次超過 SCROLL_SLOP_PX 才 capture、只 release 本次 capture 過的元素，其餘 186 行為不變。突變 5 項（按下就 capture、每次 move 都 capture、結束不 release、沒 capture 也 release、完全不 capture）皆轉紅，還原後 git diff 乾淨。Chromium 實測（chromium-1243，1024×768；scratchpad 的 Vite harness，QueueCard / QueuePanel 以虛擬模組載入 HEAD 版本，避開他人進行中的未提交改動；用完已關）：(1) reviewer 原反例 qp4 重跑——滑鼠點 pending「確認」「回覆時間」、arrived「完成交付」、acknowledged「完成交付」「修改回覆」各 emit 一次（修正前 0 次）；(2) 滑鼠拖曳左移 70px → translateX(-84px)、「取消」可按，點「取消」emit cancel 並收合；CDP Input.dispatchTouchEvent 觸控左滑同樣露出，tap「取消」emit cancel；從「確認」上按下再左拖只開卡、不 emit acknowledge；(3) 已開啟時滑鼠與觸控往右拖 80px 都收合為 translateX(0px)、「取消」停用。觸控 tap「確認」emit 一次；194 打回時的觸控連點反例（120ms 內兩次）仍 emit 兩次、滑鼠連點現在也是兩次——行為未因本修正改變，防連點由 194 的 busyIds 處理。web-lint 乾淨；web-typecheck 的錯誤都在他人進行中的檔案（parent AuthorizationForm.vue / ChildHubView.spec.ts / NotificationsView.vue、PickupAuthorizationsView.vue）。"
+      }
+    },
+    {
+      "id": "FRONTEND-298",
+      "title": "員工回覆 / 代建的預計時間選項上限改用佇列回應的 latest_expected_arrival",
+      "description": "修改 `apps/web/src/components/pickup/PickupReplyDialog.vue`（FRONTEND-197）、`apps/web/src/components/pickup/PickupCreateDialog.vue`（FRONTEND-199）、`apps/web/src/api/pickupRequests.ts`（FRONTEND-180 的型別）與 `apps/web/src/composables/usePickupBoard.ts`（FRONTEND-188，只動 queue 的空值建立處）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\ndomain_spec §4 `/pickup`：員工代建與回覆的預計時間選項上限為 `pickup.window` 的最晚預計抵達時間；後台由佇列回應的 `latest_expected_arrival` 取得（BACKEND-563）。目前兩個 dialog 寫死到 21:00，超過設定值的時間送出會被後端 422 `expected_arrival_too_late`（代建）。\n- `PickupQueue` 型別加 `latest_expected_arrival: HHMM | null`（後端一定回值；null 只出現在佇列尚未載入、由 ws 事件建立的空 queue）。`usePickupBoard` 在 queue 為 null 時以 ws 事件建立的空 queue 填 `latest_expected_arrival: null`。\n- 兩個 dialog 的 `board` prop 型別改為 `Pick<PickupBoard, 'reply' | 'acknowledge' | 'queue'>` / `Pick<PickupBoard, 'create' | 'queue'>`；el-time-select 的 `end` = `board.queue.value?.latest_expected_arrival ?? '19:00'`（`'19:00'` 為 `pickup.window` 種子預設值，定義成常數並註明來源）。DismissalPosBoard / PickupPosView 傳入的 board 已含 queue，不需改。\n- 選項起點與既有規則不變：回覆為開啟當下現在時間進位到 5 分；代建為開啟當下「現在 − 5 分」進位到 5 分。起點晚於上限時沒有可選時間（代建仍可不選時間直接送出；回覆可只填訊息）。\n- 回覆的快捷「+10 / +20 / +30 分」維持原規則（以點擊當下為基準、上限 23:55），不受本 task 影響。\n- 設計稿關卡：`docs/mockups/page-pickup-pos.html`（approved，`preview-tasks` 已列入本 task）。稿的回覆 / 代建 dialog decisions 已改為『到 pickup.window 的最晚預計抵達時間』，稿以預設 19:00 示範；版面不變。\n- 完成時把 FRONTEND-197 / 199 description 與 tdd 中的「到 21:00」改為本規則，PickupCreateDialog 既有 red_case「最後一個 '21:00'」改為依 queue 的值。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-197 / 199 / 188 的 tdd.run 全綠。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/components/pickup/PickupReplyDialog.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "BACKEND-563",
+        "FRONTEND-197",
+        "FRONTEND-199",
+        "FRONTEND-188",
+        "FRONTEND-180"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/components/pickup/PickupReplyDialog.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "PickupReplyDialog limits eta options to latest expected arrival：台北 17:12、board.queue.value.latest_expected_arrival '18:30' → 時間選項第一個 '17:15'、最後一個 '18:30'",
+          "PickupReplyDialog falls back to default latest when queue missing：board.queue.value 為 null → 時間選項最後一個 '19:00'",
+          "PickupCreateDialog limits arrival options to latest expected arrival（apps/web/src/components/pickup/PickupCreateDialog.spec.ts）：現在台北 16:02、latest_expected_arrival '20:00' → 選項第一個 '16:00'、最後一個 '20:00'；latest_expected_arrival 改為 '17:00' 後重新開啟 → 最後一個 '17:00'",
+          "PickupCreateDialog has no arrival options after latest（apps/web/src/components/pickup/PickupCreateDialog.spec.ts）：現在台北 19:40、latest '19:00' → 沒有時間選項，未選時間點「建立請求」→ POST body 深等於 {student_id:'s1'}"
+        ],
+        "run": "just web-test src/components/pickup/PickupReplyDialog.spec.ts -t \"PickupReplyDialog\" && just web-test src/components/pickup/PickupCreateDialog.spec.ts -t \"PickupCreateDialog\" && just web-test src/composables/usePickupBoard.spec.ts -t \"usePickupBoard\"",
+        "notes": "兩個 dialog 的 spec 以假 board（queue 為 ref）注入 latest_expected_arrival；usePickupBoard.spec 既有 queue fixture 補 latest_expected_arrival。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-299",
+      "title": "作業逐生卡沒有可用選項時不顯示 ⋮",
+      "description": "修改 `apps/web/src/components/homework/HomeworkStudentCard.vue`（FRONTEND-153）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：可寫、非今天、且整體狀態依項目推導為 done 時，卡片右上 ⋮ 的三個選項（設定預計可接送時間：只有今天；標記整體完成：非 done；改回依項目判斷：手動標記時）都不適用，點開是空選單。改為：選項清單為空時不渲染 ⋮ 按鈕（保留同寬佔位與否照稿的標題列對齊，不得讓姓名列位移）。唯讀時本來就沒有 ⋮，不變。\n- 設計稿關卡：`docs/mockups/page-homework-board.html`（approved，`preview-tasks` 已列入本 task）。稿 decision（逐生卡）已補『三個選項都不適用時不顯示 ⋮』。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-153 tdd.run 全綠。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-153"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/components/homework/HomeworkStudentCard.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "HomeworkStudentCard hides menu when no actions apply：canWrite true、isToday false、項目全 done 且非手動標記 → 卡片內沒有 aria-label 為「王小明 的選項」的按鈕",
+          "HomeworkStudentCard keeps menu when an action applies：canWrite true、isToday false、整體 in_progress → ⋮ 存在，點開只有「標記整體完成」一項"
+        ],
+        "run": "just web-test src/components/homework/HomeworkStudentCard.spec.ts -t \"HomeworkStudentCard\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-300",
+      "title": "請假列表：網址還原學生篩選時補姓名、操作欄 88、「今天」隨重新載入更新",
+      "description": "修改 `apps/web/src/views/LeavesView.vue`（FRONTEND-129）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- **學生篩選標籤**：從網址還原 `student_id` 時，StudentSelect 只顯示 id，直到列表載入到該生的紀錄（該生在範圍內沒有請假時一直是 id）。改為：還原時若列表資料找不到該生、且使用者有 `students:read`，呼叫 `getStudent(id)`（`apps/web/src/api/students.ts`）取得姓名 / 學號 / 班級，作為 StudentSelect 的 initialOption 並重建一次；查詢失敗（404 等）時維持顯示 id、不跳錯誤訊息。沒有 `students:read` 時不查（本來就沒有學生篩選）。\n- **操作欄寬**：84 → 88（「整筆取消」連結鈕寬 62px、可用 60px，溢出 2px）。\n- **今天**：`today` 目前在頁面建立時算一次，頁面跨台北午夜仍開著時，「進行中」與「取消 / 整筆取消」的判斷要重新整理頁面才換日。改為每次列表重新載入時以 `todayTaipei()` 更新（預設日期區間仍只在第一次建立時套用，不因換日改動使用者的篩選）。\n- 設計稿關卡：`docs/mockups/page-leaves.html`（approved，`preview-tasks` 已列入本 task）。稿的操作欄已改為 88。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-129 tdd.run 全綠。",
+      "granularity_unit": "view",
+      "target_path": "apps/web/src/views/LeavesView.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-129"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/views/LeavesView.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "LeavesView restores student label from url without matching rows：網址 ?student_id=s9、GET /admin/leaves 回空清單、GET /admin/students/s9 回 {name:'王小明', student_no:'S11301', ...} → StudentSelect 顯示文字含 '王小明'",
+          "LeavesView keeps id when student lookup fails：網址 ?student_id=s9、GET /admin/students/s9 回 404 → 頁面沒有錯誤訊息、StudentSelect 顯示 's9'，GET /admin/leaves 照常帶 student_id=s9",
+          "LeavesView action column width：操作欄 el-table-column 的 width === '88'",
+          "LeavesView recomputes today on reload：vi.setSystemTime 台北 2026-10-14 23:59 載入，請假 2026-10-15～2026-10-15（active）列顯示「取消」且不是「進行中」；時間推進到 2026-10-15 00:01 後按「重新整理」→ 該列為「進行中」"
+        ],
+        "run": "just web-test src/views/LeavesView.spec.ts -t \"LeavesView\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-301",
+      "title": "考試詳情：取消發布前 flush 的單元測試、summary 筆數序號防護、頁面層級放棄確認文案",
+      "description": "修改 `apps/web/src/views/ExamDetailView.vue`（FRONTEND-234）與 `apps/web/src/composables/useFormDirty.ts`（FRONTEND-046 的 `confirmDiscardChanges`），並讓 `apps/web/src/views/settings/SystemSettingsView.vue`（058）、`apps/web/src/views/settings/RolesView.vue`（071）改用頁面層級文案。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- **取消發布前 flush**：「成績格 flush → 仍未儲存就確認放棄 → 選放棄後以 key 重建成績格」目前只有 Chromium 驗證，補單元測試（行為不變）。\n- **scoredCounts 序號**：各科已填筆數的 summary 請求沒有序號防護，快速換考試時可能短暫顯示前一場的筆數。改為每次請求取號，只套用最新一次的回應（比照頁面其他載入）。\n- **文案**：`confirmDiscardChanges(scope: 'dialog' | 'page' = 'dialog')`；dialog 維持「尚未儲存的變更將會遺失，確定要關閉嗎？」，page 為「尚未儲存的變更將會遺失，確定要放棄變更嗎？」；標題與按鈕（「未儲存的變更」/「放棄變更」/「繼續編輯」）不變。ExamDetailView 的離開 / 換考試 / 重新載入前確認、SystemSettingsView 與 RolesView 的切換 / 離開確認改傳 'page'；FormDialog 不變。\n- 設計稿關卡：`docs/mockups/page-exam-detail.html`（approved，`preview-tasks` 已列入本 task）。稿的離開保護 decision 已寫入頁面層級文案；page-settings-system / page-settings-roles 稿只寫標題與按鈕，不需改。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-234 / 046 / 058 / 071 的 tdd.run 全綠。",
+      "granularity_unit": "view",
+      "target_path": "apps/web/src/views/ExamDetailView.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-234",
+        "FRONTEND-046",
+        "FRONTEND-058",
+        "FRONTEND-071"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/views/ExamDetailView.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ExamDetailView unpublish flushes and confirms before rebuilding grid：已發布、成績格有一格送出失敗（PUT 回 500）→ 點「取消發布」先重送該格；仍失敗 → 出現「確定要放棄變更嗎？」；選「繼續編輯」→ 沒有 POST .../unpublish；再點並選「放棄變更」→ POST .../unpublish 1 次，成績格元件重建（該格回到伺服器值）",
+          "ExamDetailView ignores stale scored counts：從考試 e1 切到 e2，e1 的 summary 回應晚於 e2 到達 → 顯示的已填筆數為 e2 的值",
+          "useFormDirty confirmDiscardChanges page scope（apps/web/src/composables/useFormDirty.spec.ts）：confirmDiscardChanges('page') → 確認框內文 '尚未儲存的變更將會遺失，確定要放棄變更嗎？'；不帶參數 → '尚未儲存的變更將會遺失，確定要關閉嗎？'",
+          "SystemSettingsView uses page discard wording（apps/web/src/views/settings/SystemSettingsView.spec.ts）：有未儲存卡片時切換分頁 → 確認框內文含 '確定要放棄變更嗎？'"
+        ],
+        "run": "just web-test src/views/ExamDetailView.spec.ts -t \"ExamDetailView\" && just web-test src/composables/useFormDirty.spec.ts -t \"useFormDirty\" && just web-test src/views/settings/SystemSettingsView.spec.ts -t \"SystemSettingsView\" && just web-test src/views/settings/RolesView.spec.ts -t \"RolesView\"",
+        "notes": "第一條是補測試：先以突變（取消發布前不 flush、放棄後不以 key 重建）自證會紅。RolesView 若既有 spec 有斷言確認框內文，同步改為 page 文案。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-302",
+      "title": "FormDialog 平板觸控：footer 按鈕高度 ≥ 44px（需改稿並重新核可）",
+      "description": "修改 `apps/web/src/components/common/FormDialog.vue`（FRONTEND-040）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：footer 的「取消 / 送出」為 Element Plus 預設 32px 高，平板（1024×768 POS、作業看板、今日出勤）的 dialog 觸控目標不足 44px。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/component-common-extra.html` 的 FormDialog 段：footer 按鈕最小高 44px（建議 `min-height: 44px` 與左右 padding，桌機與手機 fullscreen 同一規則），在 decisions 寫明，並把本 task id 加進 `preview-tasks`；改稿後 `preview-status` 改為 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。各頁面稿引用的 FormDialog 不逐張改，以元件稿為準。\n- 實作：只改 FormDialog footer 的樣式（scoped 或既有 `.form-dialog__footer` 規則），不改按鈕順序、文字與行為；fullscreen 貼底規則不變。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-040 tdd.run 全綠，另以真實 Chromium 量測 1024×768 下 footer 兩顆按鈕高度 ≥ 44px（回報附數值）。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/components/common/FormDialog.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-040"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/components/common/FormDialog.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "FormDialog footer buttons meet touch target：以 ?raw 讀 FormDialog.vue 的樣式 → footer 按鈕規則含 min-height: 44px",
+          "FormDialog footer order unchanged：footer 內按鈕依序為「取消」「{submitText}」，送出鈕仍為 primary"
+        ],
+        "run": "just web-test src/components/common/FormDialog.spec.ts -t \"FormDialog\"",
+        "notes": "happy-dom 量不到版面：單元測試只鎖樣式宣告，實際高度以 Chromium 量測驗收。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-303",
+      "title": "後台 http：/parent/config 的 401 不觸發 refresh",
+      "description": "修改 `apps/web/src/api/http.ts`（FRONTEND-020 的 `noRefreshPaths`）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n後台登入頁以 `adminHttp` 打公開設定 `GET /parent/config`（FRONTEND-021 `getPublicConfig`）。它是公開端點，401 只會是異常狀況（例如邊緣攔截），目前會多打一次 `/admin/auth/refresh`，refresh 失敗還會觸發 authFailure 導回登入。把 `'/parent/config'` 加進 `noRefreshPaths`，401 直接以 ApiError 往上拋。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-020 / 021 的 tdd.run 全綠。",
+      "granularity_unit": "api_client",
+      "target_path": "apps/web/src/api/http.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-020",
+        "FRONTEND-021"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/api/http.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "adminHttp does not refresh for public config：注入 refresh / authFailure 假函式，GET /parent/config 回 401 → refresh 呼叫 0 次、authFailure 0 次，reject 的 ApiError.status === 401",
+          "adminHttp still refreshes for admin endpoints：GET /admin/students 回 401 → refresh 呼叫 1 次後重送（既有行為不受影響）"
+        ],
+        "run": "just web-test src/api/http.spec.ts -t \"adminHttp\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-304",
+      "title": "今日出勤 reload 晚到時不覆蓋請求發出後才更新的列",
+      "description": "修改 `apps/web/src/composables/useAttendanceBoard.ts`（FRONTEND-126）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：`reload()` 的回應整包取代 `data`；回應晚於 ws 事件或本機操作結果到達時，會把較新的列蓋回舊值（序號只防『較早的 reload 蓋掉較晚的 reload』）。\n- 以本機異動序號判斷，不依賴伺服器時間：composable 維護遞增計數 `touchClock`；每次 ws / 操作回應套用到某列時記下 `touched[student_id] = ++touchClock`；`reload()` 發出時記 `startedAt = touchClock`。回應到達時，`touched[id] > startedAt` 的列保留目前的值，其餘列取回應值；回應沒有、但在 startedAt 之後被套用過的列保留。summary 依合併後的列重算（沿用 `summarize`）。篩選鍵改變時清空 touched。\n- 同樣規則套用於 resync（ws 重連補抓）呼叫的 reload。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-126 tdd.run 全綠。",
+      "granularity_unit": "composable",
+      "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-126"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/useAttendanceBoard.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "useAttendanceBoard keeps row updated by ws during reload：reload 發出後、回應前 ws 派發 s1 到班（status present）→ 回應（s1 仍 expected、s2 present）到達後 s1.status === 'present'、s2.status === 'present'，summary.present === 2",
+          "useAttendanceBoard applies reload rows untouched since request：reload 前 ws 已改過 s1、reload 發出後沒有新事件 → 回應的 s1 值（status left）覆蓋目前值",
+          "useAttendanceBoard keeps operation result during reload：checkIn(s1) 的回應在 reload 回應之前到達 → reload 回應後 s1 仍為 present"
+        ],
+        "run": "just web-test src/composables/useAttendanceBoard.spec.ts -t \"useAttendanceBoard\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-305",
+      "title": "作業看板 reload 晚到時不覆蓋請求發出後才更新的學生",
+      "description": "修改 `apps/web/src/composables/useHomeworkBoard.ts`（FRONTEND-152）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：`reload()` 的回應整包取代 `serverBoard`；晚於 ws `homework.progress_updated` 或本機操作結果到達時會蓋回舊值（樂觀 override 層不受影響，但 serverBoard 底層會倒退）。\n- 規則同 FRONTEND-304：本機異動序號 `touched[student_id]`（ws 事件、`patchStudent` / 操作回應套用時遞增記錄），reload 發出時記 startedAt；回應到達時 startedAt 之後被套用過的學生保留目前的 serverBoard 列，其餘取回應值；篩選鍵改變時清空。summary 依合併結果重算。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-152 tdd.run 全綠。",
+      "granularity_unit": "composable",
+      "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-152"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/useHomeworkBoard.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "useHomeworkBoard keeps student updated by ws during reload：reload 發出後 ws 派發 s1 progress_updated（overall done）→ 回應（s1 in_progress）到達後 s1.progress.overall_status === 'done'",
+          "useHomeworkBoard applies reload students untouched since request：reload 發出後沒有事件 → 回應的 s2（新增一個項目）整列取代目前值，s2.items.length 等於回應值"
+        ],
+        "run": "just web-test src/composables/useHomeworkBoard.spec.ts -t \"useHomeworkBoard\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-306",
+      "title": "接送 POS reload 晚到時不覆蓋請求發出後才更新的請求與名單",
+      "description": "修改 `apps/web/src/composables/usePickupBoard.ts`（FRONTEND-188）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：reload（重連補抓、404 / 409 後、跨日）回應整包取代 queue / roster；晚於 ws 或本機操作結果到達時可能蓋掉較新的狀態（applyRequest 的狀態機守衛只擋單筆事件倒退）。\n- 規則同 FRONTEND-304：本機異動序號 `touched[request_id]`（applyRequest、本機操作結果）與 `touchedStudent[student_id]`（roster 的 attendance / homework 事件），reload 發出時記 startedAt。佇列：回應到達時 startedAt 之後套用過的請求保留目前版本（含回應中沒有的），其餘取回應；open / closed 分組依合併後的狀態重排（沿用既有排序）。名單：startedAt 之後更新過的學生保留目前的列。授權清單維持整包取代。`latest_expected_arrival`（FRONTEND-298）取回應值。\n- counts 由合併後的 open 重算（既有 computed）。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-188 tdd.run 全綠。",
+      "granularity_unit": "composable",
+      "target_path": "apps/web/src/composables/usePickupBoard.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-188",
+        "FRONTEND-298"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/usePickupBoard.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "usePickupBoard keeps request updated by ws during reload：reload 發出後 ws 派發 r1 arrived → 回應（r1 pending）到達後 queue.open 中 r1.status === 'arrived'，counts.arrived === 1",
+          "usePickupBoard keeps request created during reload：reload 發出後 ws 派發新請求 r9（pending）、回應不含 r9 → 合併後 queue.open 含 r9",
+          "usePickupBoard keeps roster student updated during reload：withRoster、reload 發出後 ws attendance.updated 把 s1 改為 left → 名單回應（s1 present）到達後 s1.attendance_status === 'left'"
+        ],
+        "run": "just web-test src/composables/usePickupBoard.spec.ts -t \"usePickupBoard\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-307",
+      "title": "router 收尾：authGuard 以路由名稱判斷登入頁、刪除未使用的 PlaceholderView",
+      "description": "修改 `apps/web/src/router/authGuard.ts`（FRONTEND-025）、刪除 `apps/web/src/router/PlaceholderView.vue`、改寫 `apps/web/src/router/routes.spec.ts`（FRONTEND-024 的測試）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- **登入頁判斷**：vue-router 預設不分大小寫、不嚴格尾斜線，已登入者進 `/login/`、`/LOGIN` 時 `to.path !== '/login'`，守衛走「其他 public 放行」而顯示登入頁，沒有導到落點（須改密碼時也沒導 `/change-password`）。改以 `to.name === 'login'`（routes.ts 的登入路由名稱）判斷；其他 public 路由規則不變。\n- **PlaceholderView**：所有後台 view 都已實作，VIEW_LOADERS 不再使用 PlaceholderView；NFC 頁（FRONTEND-271 / 273，blocked）各自有 view 檔，不需要佔位元件。刪除該檔，routes.spec 的「每個 VIEW_LOADERS 都載入真正的 view」改為只斷言 `__file` 以 `/views/(settings/)?{ViewName}.vue` 結尾（不再 import PlaceholderView），並同步 FRONTEND-024 description 那句。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-024 / 025 的 tdd.run 全綠。",
+      "granularity_unit": "config",
+      "target_path": "apps/web/src/router/authGuard.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-024",
+        "FRONTEND-025"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/router/authGuard.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "authGuard redirects authenticated user from login variants：已登入、不需改密碼 → 前往 '/login/' 與 '/LOGIN' 都導向落點（firstAllowedPath）；must_change_password 為 true 時兩者都導向 '/change-password'",
+          "admin routes every view loader loads a real view（apps/web/src/router/routes.spec.ts）：逐一 await VIEW_LOADERS → 每個元件的 __file 以 /views/(settings/)?{ViewName}.vue 結尾；import.meta.glob('@/router/PlaceholderView.vue') 的鍵數為 0"
+        ],
+        "run": "just web-test src/router/authGuard.spec.ts -t \"authGuard\" && just web-test src/router/routes.spec.ts -t \"admin routes\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-308",
+      "title": "路徑段編碼 helper：拒絕 '.' / '..' 與空字串，後台 api client 全面改用",
+      "description": "新增 `apps/web/src/shared/utils/pathSegment.ts`，改寫 `apps/web/src/api/*.ts` 中所有把變數放進路徑的位置（FRONTEND-020 以後各 api client）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：路徑 id 一律 `encodeURIComponent`，但它不編碼 `.`，id 恰為 `.` 或 `..` 時仍是 dot-segment，URL 正規化後會打到其他 endpoint（只影響 GET 的行為正確性，不越權）。\n- `encodePathSegment(value: string): string`：`''`、`'.'`、`'..'` 直接 throw `ApiError(0, 'invalid_path_segment')`（不送出請求；與網路錯誤同一個 ApiError 類別，呼叫端既有錯誤處理可接住）；其餘回傳 `encodeURIComponent(value)`。\n- 後台各 client 的 `xxxPath(id)` 小函式與 template literal 插值改呼叫 `encodePathSegment`；新增 `apps/web/src/api/pathEncoding.spec.ts` 比照 PARENT-192，以 `import.meta.glob` 掃描 `src/api/*.ts` 原始碼：template literal 的每個插值都必須是 `encodePathSegment(...)` 或 `*Path(...)`。對一般 UUID 的請求 URL 完全不變。家長端 client 由 PARENT-210 改用同一個 helper。\n\n**驗收標準**：每一條對應下列 red_case；各後台 api client 既有 spec 全綠且斷言不變。",
+      "granularity_unit": "method",
+      "target_path": "apps/web/src/shared/utils/pathSegment.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-020"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/shared/utils/pathSegment.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "encodePathSegment rejects dot segments（apps/web/src/shared/utils/pathSegment.spec.ts）：'.'、'..'、'' 都 throw，error.code === 'invalid_path_segment'；'a/b' → 'a%2Fb'；'..a' → '..a'",
+          "admin api path encoding rejects dot ids（apps/web/src/api/pathEncoding.spec.ts）：getStudent('..') reject ApiError code 'invalid_path_segment'，axios mock 沒有收到任何請求",
+          "admin api path encoding static scan（apps/web/src/api/pathEncoding.spec.ts）：掃描 src/api/*.ts（不含 spec）每個 template literal 插值 → 違規清單為 []"
+        ],
+        "run": "just web-test src/shared/utils/pathSegment.spec.ts -t \"encodePathSegment\" && just web-test src/api/pathEncoding.spec.ts -t \"admin api path encoding\"",
+        "notes": "靜態掃描的已知限制（字串串接、組合運算式）比照 PARENT-192，寫在 spec 註解。改到的 client 很多：只改路徑組字，不改其他行為，回報列出檔案清單。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-309",
+      "title": "參考資料四張管理表抽共用 composable（科目 / 考試類型 / 合作國小 / 休息日）",
+      "description": "新增 `apps/web/src/composables/useReferenceTable.ts`，改寫 `apps/web/src/components/settings/reference/{SubjectTable,ExamTypeTable,SchoolTable,ClosedDayTable}.vue`（FRONTEND-059~062）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：四張表各自內建載入 / 錯誤重試 / 新增與編輯 dialog / 422 欄位錯誤 / 409 / 刪除確認 / 通知 ReferenceDataView invalidate，科目與考試類型幾乎逐行相同（約 4×120 行重複），改規則要四處同步。\n- `useReferenceTable<Row, Form>(opts)`：opts 給 list / create / update / remove 的 api 函式、表單初值與 row → form 轉換、409 錯誤碼與對應欄位 / 訊息、刪除確認文案；回傳 rows / loading / error / reload、dialog 狀態（open、editing、form、fieldErrors、saving）、openCreate / openEdit / submit / remove。行為以四張表目前的實作為準，不新增功能、不改文案。\n- 四個元件只保留各自的欄位、表格欄與 opts；外部 props / emits 不變（ReferenceDataView 不需改）。\n- 設計稿關卡：`docs/mockups/page-settings-reference.html`（approved，`preview-tasks` 已列入本 task）。畫面不變。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-059~063 的 tdd.run 全綠且斷言不變。",
+      "granularity_unit": "composable",
+      "target_path": "apps/web/src/composables/useReferenceTable.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-059",
+        "FRONTEND-060",
+        "FRONTEND-061",
+        "FRONTEND-062",
+        "FRONTEND-063"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/useReferenceTable.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "useReferenceTable maps validation errors to fields（apps/web/src/composables/useReferenceTable.spec.ts）：submit 時 create 回 422 details [{loc:['body','name'], msg:'...'}] → fieldErrors.name 為該訊息、dialog 保持開啟、saving 回 false",
+          "useReferenceTable maps conflict code to field：update 回 409 {code:'subject_name_taken'}，opts 對應到欄位 name 與訊息「名稱已存在」→ fieldErrors.name === '名稱已存在'",
+          "useReferenceTable reloads and emits changed after remove：remove(row) 確認後 DELETE 成功 → list 再被呼叫 1 次、onChanged 被呼叫 1 次"
+        ],
+        "run": "just web-test src/composables/useReferenceTable.spec.ts -t \"useReferenceTable\" && just web-test src/components/settings/reference/SubjectTable.spec.ts -t \"SubjectTable\" && just web-test src/components/settings/reference/ExamTypeTable.spec.ts -t \"ExamTypeTable\" && just web-test src/components/settings/reference/SchoolTable.spec.ts -t \"SchoolTable\" && just web-test src/components/settings/reference/ClosedDayTable.spec.ts -t \"ClosedDayTable\"",
+        "notes": "red_case 的錯誤碼、文案以四張表現有實作為準；名稱不同時照實作寫進測試並在回報說明。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-310",
+      "title": "cannot_grant_permissions 錯誤組字抽共用函式",
+      "description": "新增 `apps/web/src/utils/cannotGrantMessage.ts`，改寫 `apps/web/src/components/settings/RoleDetailPanel.vue`（069）、`RoleCreateDialog.vue`（070）、`StaffUserFormDialog.vue`（065）各自的 `cannotGrantMessage`。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- `cannotGrantMessage(err: unknown, labels: ReadonlyMap<string, string>): string`：403 `cannot_grant_permissions` 的 `details.permissions`（只取字串）→「你沒有以下權限，無法授出：{中文名稱以「、」串接，查不到名稱時用代碼}」；沒有清單時回 `errorMessage(err, '你沒有部分權限，無法授出')`。三個元件改呼叫它，呈現方式（表單頂端 alert）不變。\n- 設計稿關卡：`docs/mockups/page-settings-roles.html 與 docs/mockups/page-settings-accounts.html`（approved，`preview-tasks` 已列入本 task）。畫面不變。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-065 / 069 / 070 的 tdd.run 全綠。",
+      "granularity_unit": "method",
+      "target_path": "apps/web/src/utils/cannotGrantMessage.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-065",
+        "FRONTEND-069",
+        "FRONTEND-070"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/utils/cannotGrantMessage.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "cannotGrantMessage joins permission labels（apps/web/src/utils/cannotGrantMessage.spec.ts）：ApiError 403 details {permissions:['students:write','x:unknown', 3]}、labels {students:write → 學生資料編輯} → '你沒有以下權限，無法授出：學生資料編輯、x:unknown'",
+          "cannotGrantMessage falls back without list：details 為 null、message '權限不足' → '權限不足'；非 ApiError → '你沒有部分權限，無法授出'"
+        ],
+        "run": "just web-test src/utils/cannotGrantMessage.spec.ts -t \"cannotGrantMessage\" && just web-test src/components/settings/RoleDetailPanel.spec.ts -t \"RoleDetailPanel\" && just web-test src/components/settings/RoleCreateDialog.spec.ts -t \"RoleCreateDialog\" && just web-test src/components/settings/StaffUserFormDialog.spec.ts -t \"StaffUserFormDialog\"",
+        "notes": "三個元件目前的組字若有細微差異（例如前綴文字），以 RoleDetailPanel 為準並在回報列出差異；有差異時先回報協調者再統一。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-311",
+      "title": "GuardianManager 補『先切換學生再開表單』的測試",
+      "description": "只改 `apps/web/src/components/student/GuardianManager.spec.ts`（補 FRONTEND-091 的測試缺口）。現況：先切換 `studentId` prop、再開新增 / 編輯監護人表單這條路徑沒有測試保護（拿掉開表單時更新學生的那一行，測試仍全綠）。\n- 設計稿關卡：`docs/mockups/page-students.html`（approved，`preview-tasks` 已列入本 task）。只補測試，畫面不變。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "granularity_unit": "test",
+      "target_path": "apps/web/src/components/student/GuardianManager.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-091"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/components/student/GuardianManager.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "GuardianManager create after switching student：掛載 studentId 's1'、改為 's2' 並等清單載入 → 開「新增監護人」送出 → POST 的 url 為 '/admin/students/s2/guardians'（突變：開表單時不更新目前學生 → 轉紅，打到 s1）",
+          "GuardianManager edit after switching student：切到 's2' 後編輯 s2 的監護人 g5 → PATCH url 含 'g5'、成功後重抓的是 s2 的清單"
+        ],
+        "run": "just web-test src/components/student/GuardianManager.spec.ts -t \"GuardianManager\"",
+        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 endpoint 路徑以 FRONTEND-081 guardians api client 實際組出的 url 為準。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-312",
+      "title": "FakeWebSocket 抽到 src/test/，後台 spec 改用共用版",
+      "description": "新增 `apps/web/src/test/fakeWebSocket.ts`，改寫後台 spec 內各自定義的 `class FakeWebSocket`（`src/shared/ws/createWsClient.spec.ts`、`src/stores/adminWs.spec.ts`、`src/stores/notifications.spec.ts`、`src/layouts/AdminLayout.spec.ts`、`src/views/PickupAuthorizationsView.spec.ts`、`src/views/PickupPosView.spec.ts`、`src/App.spec.ts`、`src/composables/usePickupBoard.spec.ts`、`src/composables/useAdminWsTopic.spec.ts`、`src/composables/useAttendanceBoard.spec.ts`、`src/composables/useHomeworkBoard.spec.ts`）。家長端 spec 由 PARENT-211 改用。\n- 共用版提供：`installFakeWebSocket()`（以 `vi.stubGlobal('WebSocket', ...)` 安裝並回傳 instances 陣列與還原函式）、`FakeWebSocket` 實例的 `url`、`readyState`、`sent`（send 過的字串）、`open()`、`message(data)`（物件自動 JSON.stringify）、`close(code, reason)`、`error()`；以各 spec 現有用法的聯集為準，個別 spec 特有的輔助留在該 spec。\n- 只改測試基礎設施，各 spec 的案例與斷言不變。\n\n**驗收標準**：每一條對應下列 red_case；上列每個 spec 改用後全綠且測試數不變。",
+      "granularity_unit": "test",
+      "target_path": "apps/web/src/test/fakeWebSocket.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-004"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/test/fakeWebSocket.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "fakeWebSocket records sent frames（apps/web/src/test/fakeWebSocket.spec.ts）：installFakeWebSocket() 後 new WebSocket('ws://x/ws') → instances.length === 1、url === 'ws://x/ws'；open() 後 readyState === 1，send('a') → sent 深等於 ['a']",
+          "fakeWebSocket dispatches message and close：onmessage 收到 message({type:'t'}) 的 event.data === '{\"type\":\"t\"}'；close(4401, 'x') → onclose 的 event.code === 4401、readyState === 3；還原函式呼叫後 globalThis.WebSocket 回到安裝前的值"
+        ],
+        "run": "just web-test src/test/fakeWebSocket.spec.ts -t \"fakeWebSocket\"",
+        "notes": "逐檔替換後各跑該 spec 的 tdd.run（測試數與替換前相同，回報列出每檔前後數字）。容器 CPU 有限，逐檔跑、不要同時跑全部。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]

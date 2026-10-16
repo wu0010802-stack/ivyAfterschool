@@ -768,7 +768,7 @@ const SETTINGS_FIXTURE = () => [
   { key: 'homework.window', group: 'homework', label: '作業日期範圍', is_secret: false, updated_at: null, updated_by_name: null,
     value: { past_days: 30, future_days: 7 },
     json_schema: { title: '作業日期範圍', type: 'object', additionalProperties: false, required: ['past_days', 'future_days'], properties: {
-      past_days: int(0, 365, '作業可編輯的過去天數', '可新增或編輯今天以前幾天的作業'),
+      past_days: int(0, 365, '作業可新增的過去天數', '可新增作業、設定整體狀態與預計可接送時間的過去天數（既有項目的修改與刪除不受限）'),
       future_days: int(0, 60, '作業可預先新增的天數', '可預先新增今天以後幾天的作業'),
     } } },
   { key: 'leave.window', group: 'leave', label: '請假申請範圍', is_secret: false, updated_at: null, updated_by_name: null,

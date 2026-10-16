@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 208,
-  "last_updated": "2026-10-16T19:16:15Z",
+  "version": 209,
+  "last_updated": "2026-10-16T23:19:11Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -637,7 +637,7 @@
         "INFRA-012"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r3 打回】(1) clickable 卡片內控制項（button / input / Switch）的 click 會冒泡觸發卡片 click（Chromium 實測：卡片內 button 按 Enter / Space 或滑鼠點擊時卡片 click 也 +1）；處理方式待使用者裁定（見 open_design_questions），裁定後補 red_case 與實作。(2) 按住 Space 時 keydown repeat 會讓卡片 click 重複 emit（實測 9 次）；比照 M3Switch 忽略 repeat，並補 red_case。",
+      "risk_notes": "卡片被 `<a href>` 包住時點擊會同時 emit click 與觸發外層連結；使用端不要把 clickable 卡片放在互動元素內。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/m3/M3Card.spec.ts",
@@ -679,7 +679,7 @@
         "INFRA-012"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r3 打回】vue-tsc 未通過：M3TextField.vue 第 88 行 textarea 的 'aria-invalid' 綁定型別為 string（需為 Booleanish 或 'grammar' / 'spelling'）；第 100 行 inputmode prop 型別為 string（需為 HTMLAttributes['inputMode'] 的字面型別）。修正型別後以只含動到檔案的暫時 tsconfig 跑 vue-tsc 確認乾淨。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/m3/M3TextField.spec.ts",
@@ -865,7 +865,7 @@
         "INFRA-012"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r3 打回】淡出中的舊一則被點 action 時會執行新一則的 action（onAction 讀當下的 props.item）。需讓 action 只作用於按鈕所屬的那一則（例如以渲染時的 item 綁定 handler，或比對 id 不一致時忽略），並讓 leave 中的元素不可點（pointer-events: none）；補 red_case：A 換成 B 的 leave 期間點 A 的按鈕 → A.onClick 0 次、B.onClick 0 次、不 emit B 的 dismiss。",
+      "risk_notes": "live region 隨 v-if 插入，iOS VoiceOver 是否朗讀需實機驗證。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/m3/M3Snackbar.spec.ts",
@@ -1035,7 +1035,7 @@
         "INFRA-012"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r3 打回】(1) 重新整理中收到 touchcancel 會把指示器收回 0（reset 不看 refreshing），需維持 56px 直到 onRefresh 結束。(2) 頂端時近水平滑動（例如 (200,100)→(80,104)）也會 preventDefault，需加方向判定（|dy| > |dx| 且超過起始門檻才進入下拉）。(3) 多指觸控時抬起其中一指不得觸發重新整理。三項各補 red_case，並補上目前缺的 red_case：下拉途中頁面被捲走就取消、恰好等於門檻時觸發、超過門檻時箭頭 is-armed。",
+      "risk_notes": "方向判定前 8px 內的 touchmove 不 preventDefault，瀏覽器原生下拉重新整理 / iOS 回彈可能先一步開始；ParentLayout 已設 `overscroll-behavior-y: contain`，仍需在 LINE 內建瀏覽器實機確認。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/PullToRefresh.spec.ts",
@@ -1081,7 +1081,7 @@
         "INFRA-012"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r3 打回】variant='row' 指定 height 時被 .skeleton-row 的 min-height: 72px 壓過（height='56px' 實際 72px），不符「width / height 套在每個區塊的外框上」；修正並補 red_case。另補 red_case：variant='line'、count=3、只給 height → 第三行 width 為 60%（鎖住與稿 demo 不同、但符合 decision 原文的行為）。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/SkeletonBlock.spec.ts",
@@ -2685,7 +2685,8 @@
         "BACKEND-357",
         "BACKEND-358",
         "FRONTEND-002",
-        "PARENT-004"
+        "PARENT-004",
+        "FRONTEND-006"
       ],
       "suggested_model": "sonnet-5",
       "risk_notes": "",
@@ -3822,6 +3823,449 @@
         "status": "pass",
         "reviewer": "review-r10-p1",
         "notes": "通過（review-r10-p1）。2 條 red_case 都有同名測試；tdd.run 21/21 綠，名稱清單選得到兩條。commit 順序 cf63ab0（測試；當時 ConfirmDialog 沒有這兩條規則，所以是紅的）→ 60633d1（只改 ConfirmDialog.vue 樣式）→ 476a138（狀態）。測試的 cssRule 只取「整個選擇器恰為該字串」的規則，.dialog__extra:empty 與 .dialog__actions .m3-button 都不會誤中。突變 6 個全殺：拿掉 actions margin-top、改成 4px、寫到別的選擇器、拿掉 extra margin、改成只有 margin-top、拿掉 :empty。Chromium 390×844 實測（scratchpad 內獨立 vite 設定，只掛 vue 外掛，不寫 components.d.ts）：按鈕列與上方內容的間距，無 slot 時 24（gap 16 + 8），有勾選列時 20（16 + 8 − 4），與元件稿一致。頁面內實測：PickupView「取消這次接送？」342×152（原本 144，稿 152）；「確認已抵達安親班？」342×244（不變，稿 244）；MoreView「確定要登出？」342×188，與 parent-page-more.html 稿內的登出對話框 342×188 相同。其他使用 ConfirmDialog 的頁面以實際文案逐一掛載量測，都沒有水平或垂直溢出、按鈕都在對話框內、對話框都在視窗內：LeavesView 取消整筆 / 剩餘 342×188；PickupProxyView 刪除接送人 342×220、重新產生接送碼 342×208、取消代理 342×188、離開確認 342×208；ChildHub 的「我到了」同 PickupView 342×244。壓力案例（長標題、長說明、長按鈕、含勾選列）按鈕換成兩列，仍在對話框內，高 404，不溢出。web-lint 乾淨；web-typecheck 只剩他人未追蹤的 DismissalPosBoard.spec.ts（紅燈階段、元件尚未建立）的錯誤，本 task 檔案沒有錯誤。殘留：無。"
+      }
+    },
+    {
+      "id": "PARENT-199",
+      "title": "首頁「我到了」遇接送狀態已變更 / 請求不存在時提示後重抓今日狀態",
+      "description": "修改 `apps/web/src/parent/composables/useArriveNow.ts`（PARENT-105）與 `apps/web/src/parent/views/ChildHubView.vue`（PARENT-054）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\ndomain_spec §5 `/`：「我到了」遇到接送狀態已變更或請求不存在時，提示後立即重抓今日狀態。現況：首頁卡片不變，snackbar 卻說「狀態已更新」。\n- `useArriveNow(options?: { onStale?: () => void | Promise<void> })`：送出錯誤為 `invalid_pickup_status` 或 `pickup_request_not_found` 時，照原規則顯示 snackbar 後呼叫 `onStale`（其餘錯誤不呼叫；onStale 拋錯時吞掉並以 console.error 記錄，不影響 confirm 的回傳 null）。不帶 options 的呼叫端（PickupView：接送請求由 PARENT-093 store 與 ws 同步）行為不變。\n- ChildHubView 以 `useArriveNow({ onStale: refresh })`（PARENT-052 的 refresh：保留目前卡片、不顯示骨架）。`student_not_active` 等其他錯誤維持卡片不變、不自動重試。\n- 設計稿關卡：`docs/mockups/parent-page-child-hub.html`（approved，`preview-tasks` 已列入本 task）。稿 decision 6（卡片事件）已寫入此規則，版面不變。\n- 完成時同步 PARENT-054 description「卡片事件」一段與 PARENT-105 的函式簽名。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-054 / 105 的 tdd.run 全綠。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/parent/views/ChildHubView.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-054",
+        "PARENT-105",
+        "PARENT-052"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/views/ChildHubView.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ChildHubView refreshes today after stale arrive：today.pickup_request 為 pending 的 r1 → 點「我到了」並確認 → POST '/parent/pickup/requests/r1/arrived' 回 409 {error:{code:'invalid_pickup_status'}} → snackbar 第一則「狀態已更新，請確認後再操作」，之後 GET '/parent/children/s2/today' 再送出 1 次；回應 r1 為 arrived → 卡片不再顯示「我到了」，過程中沒有骨架（aria-busy 元素數為 0）",
+          "ChildHubView refreshes today after missing request：POST arrived 回 404 {error:{code:'pickup_request_not_found'}} → snackbar「找不到這筆接送請求，已重新整理」，today 再送出 1 次",
+          "useArriveNow calls onStale only for stale errors（apps/web/src/parent/composables/useArriveNow.spec.ts）：onStale 假函式；409 invalid_pickup_status → 呼叫 1 次；403 pickup_not_allowed → 0 次；成功 → 0 次；不帶 options 時 409 invalid_pickup_status → confirm() resolve null 且沒有例外"
+        ],
+        "run": "just web-test src/parent/views/ChildHubView.spec.ts -t \"ChildHubView\" && just web-test src/parent/composables/useArriveNow.spec.ts -t \"useArriveNow\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-200",
+      "title": "登出進行中略過 401 導回登入，避免洗掉 logged_out",
+      "description": "修改 `apps/web/src/parent/composables/useParentLogout.ts`（PARENT-033）與 `apps/web/src/parent/main.ts`（PARENT-013 的 401 handler）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：登出流程 `router.replace('/login?logged_out=1')` 完成前，若有在途請求 401（refresh 也 401），handler 看到的目前路由仍是登出前的非 public 頁，會改導 `/login?redirect=…` 而取消 logged_out 導頁，LINE 內會自動再登入（機率低）。\n- useParentLogout 的 `loggingOut` 改為模組層級狀態，另匯出 `isParentLoggingOut(): boolean`（原本的 readonly ref 介面保留）。\n- main.ts 的認證失敗 handler 在 `isParentLoggingOut()` 為 true 時直接返回，不導頁（登出流程自己會導到 logged_out）。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-013 / 033 的 tdd.run 全綠。",
+      "granularity_unit": "method",
+      "target_path": "apps/web/src/parent/main.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-013",
+        "PARENT-033"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/main.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "parentMain skips auth redirect while logging out（apps/web/src/parent/main.spec.ts）：在 #/more 呼叫 logout()，登出 API 尚未回應時另一個請求 401 且 refresh 401 → 最後 currentRoute.fullPath === '/login?logged_out=1'，過程中沒有導向含 redirect= 的網址",
+          "useParentLogout exposes logging out state（apps/web/src/parent/composables/useParentLogout.spec.ts）：logout() 進行中 isParentLoggingOut() === true；完成後（含 API 失敗）為 false；兩個 useParentLogout() 實例共用同一狀態"
+        ],
+        "run": "just web-test src/parent/main.spec.ts -t \"parentMain\" && just web-test src/parent/composables/useParentLogout.spec.ts -t \"useParentLogout\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-201",
+      "title": "家長通知 store：本地未讀增減參與取號，較早發出的 refreshUnread 不蓋回",
+      "description": "修改 `apps/web/src/parent/stores/notifications.ts`（PARENT-172）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：`load` / `refreshUnread` 發出時取號、`applyUnread` 只套用較新的號碼；但本地的 markRead 減 1、markAllRead 歸零、ws `notification.created` 加 1 不取號，在它們之前發出、之後才回來的 refreshUnread / load 會用伺服器當時的數字蓋回，要等下一次輪詢才更正。\n- 本地增減時把『已套用號碼』推進到目前最新的發號值（等同作廢所有在途的未讀數回應）；之後新發出的 refreshUnread 照常套用。markRead 的 id 不在 items 時不增減（維持現況，等下一次 refreshUnread）。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-172 tdd.run 全綠。",
+      "granularity_unit": "store",
+      "target_path": "apps/web/src/parent/stores/notifications.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-172"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/stores/notifications.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "notificationsStore local markRead invalidates in-flight refreshUnread：未讀 3；refreshUnread 發出（之後回 3）→ markRead 一筆未讀成功（未讀 2）→ refreshUnread 的回應到達 → unreadCount === 2",
+          "notificationsStore ws created invalidates in-flight refreshUnread：未讀 1；refreshUnread 發出（之後回 1）→ ws notification.created（未讀 2）→ 回應到達 → unreadCount === 2；再呼叫一次 refreshUnread 回 5 → unreadCount === 5"
+        ],
+        "run": "just web-test src/parent/stores/notifications.spec.ts -t \"notificationsStore\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-202",
+      "title": "今日作業明細：老師說明開頭不留空白",
+      "description": "修改 `apps/web/src/parent/views/HomeworkView.vue`（PARENT-073）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：老師說明 `<p>` 內文字與模板縮排同在一個文字節點，壓縮空白後留下開頭一個空白，`white-space: pre-wrap` 讓它可見（Chromium 實測「老」字右移 4px，與上方預計時間文字不對齊）。比照 PARENT-053 以 `<span>` 包住文字，讓縮排空白不進入 pre-wrap 的文字節點；測試以 textContent 斷言。\n- 設計稿關卡：`docs/mockups/parent-page-homework.html`（approved，`preview-tasks` 已列入本 task）。稿的老師說明樣式選擇器已修正（不再被 `.m3-card p { margin: 0 }` 蓋掉），稿現在照 decision 渲染縮排 36px、上距 8px，與實作一致。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-073 tdd.run 全綠。",
+      "granularity_unit": "view",
+      "target_path": "apps/web/src/parent/views/HomeworkView.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-073"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/views/HomeworkView.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "HomeworkView teacher note has no leading whitespace：progress.note '數學訂正第 3 題' → .hws-note 的 textContent === '老師說明：數學訂正第 3 題'",
+          "HomeworkView keeps note line breaks：note '第一行\\n第二行' → .hws-note 的 textContent === '老師說明：第一行\\n第二行'"
+        ],
+        "run": "just web-test src/parent/views/HomeworkView.spec.ts -t \"HomeworkView\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-203",
+      "title": "LIFF 外部瀏覽器測試改為直接等待 initLiff，移除真實 100ms 計時器",
+      "description": "只改 `apps/web/src/parent/services/liff.spec.ts`（PARENT-197 的測試）。現況：外部瀏覽器那條用真實 100ms 計時器搭 `Promise.race` 判斷 init 卡住，機器高負載時 microtask / mock 匯入超過 100ms 會誤紅。改為直接 `await initLiff()`，以 vitest 的單一測試逾時（例如 `it(..., 2000)`）保護『不得卡住』。斷言內容不變。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "granularity_unit": "test",
+      "target_path": "apps/web/src/parent/services/liff.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-197"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/services/liff.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "liff init resolves on external browser without LINE login（改寫）：isInClient false、isLoggedIn false → await initLiff() resolve，login 呼叫 0 次；spec 內不再有 setTimeout(…, 100) 或 Promise.race（以 ?raw 讀 spec 斷言）",
+          "liff init does not auto login on external browser（既有）：withLoginOnExternalBrowser 傳入 false，斷言不變且全綠（突變：init 改為永不 resolve → 本案例以逾時失敗）"
+        ],
+        "run": "just web-test src/parent/services/liff.spec.ts -t \"liff\"",
+        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-204",
+      "title": "請假狀態膠囊規則抽共用 util（列表列與詳情 sheet 共用）",
+      "description": "新增 `apps/web/src/parent/utils/leaveStatus.ts`，改寫 `apps/web/src/parent/components/leaves/LeaveListItem.vue`（PARENT-136）與 `LeaveDetailSheet.vue`（PARENT-137）各自的狀態膠囊判斷。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- `leaveStatusPill(leave: {status, start_date, end_date}, today: ISODate): { label: '已取消' | '已結束' | '已排定' | '請假中'; tone: 'neutral' | 'info' | 'warning' }`：判斷順序照現況——cancelled →「已取消」neutral；end_date < today →「已結束」neutral；start_date > today →「已排定」info；其餘 →「請假中」warning。兩個元件改呼叫它，畫面不變。\n- 設計稿關卡：`docs/mockups/parent-component-leave-list-item.html 與 docs/mockups/parent-page-leaves.html`（approved，`preview-tasks` 已列入本 task）。畫面不變。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-136 / 137 的 tdd.run 全綠。",
+      "granularity_unit": "method",
+      "target_path": "apps/web/src/parent/utils/leaveStatus.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-136",
+        "PARENT-137"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/utils/leaveStatus.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "leaveStatusPill follows date order（apps/web/src/parent/utils/leaveStatus.spec.ts）：today '2026-10-14'；active 10/10~10/13 → {label:'已結束', tone:'neutral'}；10/15~10/16 → {label:'已排定', tone:'info'}；10/14~10/14 → {label:'請假中', tone:'warning'}",
+          "leaveStatusPill cancelled wins：status cancelled、10/14~10/14 → {label:'已取消', tone:'neutral'}"
+        ],
+        "run": "just web-test src/parent/utils/leaveStatus.spec.ts -t \"leaveStatusPill\" && just web-test src/parent/components/leaves/LeaveListItem.spec.ts -t \"LeaveListItem\" && just web-test src/parent/components/leaves/LeaveDetailSheet.spec.ts -t \"LeaveDetailSheet\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-205",
+      "title": "代理接送頁補 6 條已實作行為的測試",
+      "description": "只改 `apps/web/src/parent/views/PickupProxyView.spec.ts`（補 PARENT-104 的測試缺口；review 以突變確認這 6 項行為正確但沒有測試）。\n- 設計稿關卡：`docs/mockups/parent-page-pickup-proxy.html`（approved，`preview-tasks` 已列入本 task）。只補測試，畫面不變。\n\n**驗收標準**：每一條對應下列 red_case（括號內為自證用的突變）。",
+      "granularity_unit": "test",
+      "target_path": "apps/web/src/parent/views/PickupProxyView.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-104"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/views/PickupProxyView.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "PickupProxyView sorts authorizations by service date：授權 service_date 依序回 10/16、10/14、10/15 → 畫面依 10/14、10/15、10/16 排列（突變：排序改反向）",
+          "PickupProxyView disables add person until persons load：接送人清單未回應或回 500 時「新增接送人」disabled，成功後可按（突變：不看載入狀態）",
+          "PickupProxyView upserts created person：新增接送人 POST 成功回 p9 → 清單立即含 p9，且不需等重抓回應（突變：建立後只靠重抓）",
+          "PickupProxyView keeps delete dialog on generic error：刪除接送人回 500 → 確認對話框仍開啟並顯示錯誤（突變：失敗時關閉）",
+          "PickupProxyView disables add authorization without child：沒有選定小孩 → 「新增代理接送」disabled（突變：拿掉判斷）",
+          "PickupProxyView resolves pending leave confirm as false：離頁確認未回答時再次觸發離頁 → 前一次確認 resolve(false)（突變：不 resolve 前一次）"
+        ],
+        "run": "just web-test src/parent/views/PickupProxyView.spec.ts -t \"PickupProxyView\"",
+        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 各案例的文案與 API 路徑以現有實作與 PARENT-104 review.notes 為準。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-206",
+      "title": "ArrivalTimePicker 時間選項換行列距改 12px",
+      "description": "修改 `apps/web/src/parent/components/pickup/ArrivalTimePicker.vue`（PARENT-096）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n已核可的接送頁稿（parent-page-pickup.html）以 `.arrival__chips { row-gap: 12px }` 呈現選項換行的列距，元件與元件稿是 8px。元件 `.arrival__chips` 改為 `gap: 12px 8px`（列距 12px、欄距 8px 不變）。\n- 設計稿關卡：`docs/mockups/parent-component-arrival-time-picker.html`（approved，`preview-tasks` 已列入本 task）。元件稿已改為 `gap: 12px 8px`，與接送頁稿一致。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-096 tdd.run 全綠。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/parent/components/pickup/ArrivalTimePicker.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-096"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/components/pickup/ArrivalTimePicker.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ArrivalTimePicker chip rows are 12px apart：以 ?raw 讀元件樣式 → .arrival__chips 規則含 gap: 12px 8px",
+          "ArrivalTimePicker chips keep 8px column gap：?raw 樣式中 .arrival__chips 的 gap 宣告恰為 '12px 8px'，且該規則沒有另外的 row-gap / column-gap 宣告"
+        ],
+        "run": "just web-test src/parent/components/pickup/ArrivalTimePicker.spec.ts -t \"ArrivalTimePicker\"",
+        "notes": "happy-dom 量不到版面，以樣式宣告鎖住；reviewer 以 Chromium 390 寬量測兩列選項間距 12px。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-207",
+      "title": "家長端出勤月曆在 360 寬時格寬 ≥ 44px（需改稿並重新核可）",
+      "description": "修改 `apps/web/src/parent/components/attendance/AttendanceCalendar.vue`（PARENT-131）與（必要時）`apps/web/src/parent/views/AttendanceView.vue`（PARENT-132）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：月曆 7 欄格寬由宿主決定，390 寬為 44×52；360 寬時格寬 39.7px，低於 44px 觸控目標。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/parent-component-attendance-calendar.html`（與 `parent-page-attendance.html` 若涉及頁面內距）：在 360 寬下讓每格寬 ≥ 44px（例如縮小月曆卡在窄螢幕的左右 padding 或格間距；由設計稿決定，不得產生水平捲動），稿中加 360 寬預覽並寫進 decisions，把本 task id 加進 `preview-tasks`；改稿後 `preview-status` 改為 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。\n- 實作照核可稿；390 寬的版面維持 44×52。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-131 / 132 的 tdd.run 全綠，另以 Chromium 360×780 與 390×844 量測月曆格寬（回報附數值）。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-131",
+        "PARENT-132"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "AttendanceCalendar narrow layout rule：以 ?raw 讀元件（或 AttendanceView）樣式 → 含核可稿指定的窄螢幕規則（例如 @media (max-width: 389px) 內的 padding / gap 值與稿相同）",
+          "AttendanceCalendar keeps seven columns：渲染 2026-10 月 → 格線容器的 grid-template-columns 為 7 欄、每格為 button 且 aria-label 不變"
+        ],
+        "run": "just web-test src/parent/components/attendance/AttendanceCalendar.spec.ts -t \"AttendanceCalendar\" && just web-test src/parent/views/AttendanceView.spec.ts -t \"AttendanceView\"",
+        "notes": "red_case 的具體樣式值依核可稿填寫；實作者進 in_progress 時先把稿定案的數值寫進本條 red_case。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-208",
+      "title": "家長端考試列表骨架列高改 76px（與實際列高一致）",
+      "description": "修改 `apps/web/src/parent/views/ExamsView.vue`（PARENT-153）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：首次載入的 SkeletonBlock row × 4 為預設 72px，ExamListItem 單行名稱實測 76px，載入完成卡片約 +19px（跳動）。骨架改為 `height=\"76px\"`（SkeletonBlock 給 height 時同時寫入 min-height，PARENT-028）。\n- 設計稿關卡：`docs/mockups/parent-page-exams.html`（approved，`preview-tasks` 已列入本 task）。稿 decision 4 與示範骨架已改為每列 76px。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-153 tdd.run 全綠。",
+      "granularity_unit": "view",
+      "target_path": "apps/web/src/parent/views/ExamsView.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-153",
+        "PARENT-028"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/views/ExamsView.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ExamsView skeleton rows match list item height：考試列表請求未回應前 → 卡內 4 個骨架列，每列 style.height === '76px' 且 style.minHeight === '76px'",
+          "ExamsView skeleton disappears after load：回應後骨架列數為 0、列表項目數等於回應筆數"
+        ],
+        "run": "just web-test src/parent/views/ExamsView.spec.ts -t \"ExamsView\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-209",
+      "title": "家長端成績分數的顯示位數（待使用者決定）",
+      "description": "修改 `apps/web/src/parent/components/exams/ExamScoreTable.vue`（PARENT-152）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：後端 score 為 Numeric(6,2)，可到兩位小數；ExamScoreTable 依 description 與核可稿四捨五入到一位，59.95 會顯示 60（看起來像及格）。顯示規則需使用者決定（見 open_design_questions），決定後依結論改稿 `docs/mockups/parent-component-exam-score-table.html` 的 decision（把本 task id 加進 `preview-tasks`）並補 red_case，再解除 blocked。\n\n**驗收標準**：每一條對應下列 red_case（依決定結果改寫數值）。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/parent/components/exams/ExamScoreTable.vue",
+      "source_ref": null,
+      "status": "blocked",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-152"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [
+        "家長端分數顯示位數：(A) 照後端原值顯示到兩位小數、去掉尾端 0（59.95 → 59.95、85.50 → 85.5）；(B) 維持一位但改無條件捨去（59.95 → 59.9）；(C) 維持四捨五入到一位（59.95 → 60，現況）。後台成績格與各科平均的位數是否一併比照，也請一起決定。"
+      ],
+      "tdd": {
+        "test_path": "apps/web/src/parent/components/exams/ExamScoreTable.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ExamScoreTable shows score per decided precision：score 59.95 → 顯示文字依決定（例如兩位小數 '59.95'，或捨去到一位 '59.9'）",
+          "ExamScoreTable integer score unchanged：score 85 → 顯示 '85'；score null 且缺考 → 「缺考」"
+        ],
+        "run": "just web-test src/parent/components/exams/ExamScoreTable.spec.ts -t \"ExamScoreTable\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-210",
+      "title": "家長端 api client 改用 encodePathSegment（拒絕 '.' / '..'）",
+      "description": "改寫 `apps/web/src/parent/api/*.ts` 所有把變數放進路徑的位置與 `apps/web/src/parent/api/pathEncoding.spec.ts`（PARENT-192）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n- 以 FRONTEND-308 的 `encodePathSegment`（`@/shared/utils/pathSegment`）取代 `encodeURIComponent`；id 為 `''` / `'.'` / `'..'` 時 reject `ApiError(0, 'invalid_path_segment')`、不送出請求。對一般 UUID 的請求 URL 完全不變。\n- pathEncoding.spec 的靜態掃描改為：template literal 的每個插值都必須是 `encodePathSegment(...)` 或 `*Path(...)`；行為測試加 dot id 案例。\n\n**驗收標準**：每一條對應下列 red_case；各家長端 client 既有 spec 全綠且斷言不變。",
+      "granularity_unit": "api_client",
+      "target_path": "apps/web/src/parent/api/exams.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "PARENT-192",
+        "FRONTEND-308"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/api/pathEncoding.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "parent api path encoding rejects dot ids：getChildExam('s1', '..') 與 getChildToday('.') 都 reject ApiError code 'invalid_path_segment'，axios mock 沒有收到請求",
+          "parent api path encoding static scan：掃描 src/parent/api/*.ts（不含 spec）→ 違規清單為 []，且沒有任何插值是 encodeURIComponent(...)"
+        ],
+        "run": "just web-test src/parent/api/pathEncoding.spec.ts -t \"parent api path encoding\"",
+        "notes": "red_case 的函式名稱以 parent/api 實際匯出為準（getChildToday 若名稱不同照實際寫）。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "PARENT-211",
+      "title": "家長端 spec 改用 src/test/ 的共用 FakeWebSocket",
+      "description": "改寫家長端 spec 內各自定義的 `class FakeWebSocket`（`src/parent/main.spec.ts`、`src/parent/stores/{pickupRequests,homeworkToday,notifications,parentWs}.spec.ts`、`src/parent/components/ConnectionBanner.spec.ts`、`src/parent/layouts/ParentLayout.spec.ts`、`src/parent/views/{PickupView,ChildHubView,NotificationsView,HomeworkView}.spec.ts`、`src/parent/composables/useTodayStatus.spec.ts`），改用 FRONTEND-312 的 `apps/web/src/test/fakeWebSocket.ts`。只改測試基礎設施，案例與斷言不變；共用版缺少家長端需要的能力時，在 FRONTEND-312 的檔案追加（回報列出）。\n\n**驗收標準**：每一條對應下列 red_case；上列每個 spec 改用後全綠且測試數不變。",
+      "granularity_unit": "test",
+      "target_path": "apps/web/src/parent/stores/parentWs.spec.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-312"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/stores/parentWs.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "parentWs spec uses shared fake socket：src/parent/stores/parentWs.spec.ts 以 ?raw 讀取 → 不含 'class FakeWebSocket'，且 import 自 '@/test/fakeWebSocket'；既有 parentWs 案例全綠",
+          "parent specs have no local fake socket：import.meta.glob 讀 src/parent/**/*.spec.ts 原始碼 → 含 'class FakeWebSocket' 的檔案清單為 []"
+        ],
+        "run": "just web-test src/parent/stores/parentWs.spec.ts -t \"parentWs\"",
+        "notes": "第二條的掃描 spec 放在 parentWs.spec.ts 內（describe 名稱以 parentWs 開頭讓 tdd.run 選得到）。逐檔替換後各跑該檔既有的 tdd.run，回報列出每檔前後測試數。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]
