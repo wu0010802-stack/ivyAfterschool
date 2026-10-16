@@ -327,6 +327,16 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     expect(wrapper.text()).not.toContain('只顯示')
   })
 
+  it('PickupAuthorizationsView filters by student from query: clear keeps other query', async () => {
+    mockAuthorizations({ [TODAY]: [CHEN, LIN, HUANG] })
+    const { wrapper, router } = await mountView({ route: '/pickup/authorizations?student_id=s1&from=pos' })
+
+    await button(wrapper, '清除').trigger('click')
+    await settle()
+
+    expect(router.currentRoute.value.query).toEqual({ from: 'pos' })
+  })
+
   it('PickupAuthorizationsView auto opens verify from query', async () => {
     mockAuthorizations({ [TODAY]: [CHEN, LIN, HUANG] })
     const { router } = await mountView({ route: '/pickup/authorizations?verify=pa1' })
@@ -335,6 +345,15 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     expect(dialog?.find('.el-dialog__title').text()).toContain('陳阿姨')
     // 參數只用一次：關掉後重新整理不會再自動開
     expect(router.currentRoute.value.query).not.toHaveProperty('verify')
+  })
+
+  it('PickupAuthorizationsView auto opens verify from query: keeps other query', async () => {
+    mockAuthorizations({ [TODAY]: [CHEN, LIN, HUANG] })
+    const { wrapper, router } = await mountView({ route: '/pickup/authorizations?verify=pa1&student_id=s1' })
+
+    expect(openDialog()?.find('.el-dialog__title').text()).toContain('陳阿姨')
+    expect(router.currentRoute.value.query).toEqual({ student_id: 's1' })
+    expect(wrapper.text()).toContain('只顯示：王小明')
   })
 
   it('PickupAuthorizationsView auto opens verify from query: skips inactive or readers', async () => {
@@ -378,6 +397,68 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     expect(cardNames(wrapper)).toEqual(['黃阿姨', '陳阿姨', '林叔叔'])
     expect(verifyButtons(wrapper)).toHaveLength(2)
     expect(authGets()).toHaveLength(gets)
+  })
+
+  it('PickupAuthorizationsView past date is readonly: late response of an earlier date is ignored', async () => {
+    const older = makeAuthorization({ id: 'pb1', service_date: '2026-10-01', proxy_name: '周阿姨', effective_status: 'expired' })
+    const newer = makeAuthorization({ id: 'pb2', service_date: '2026-10-02', proxy_name: '吳叔叔', effective_status: 'expired' })
+    let releaseOlder: (() => void) | null = null
+    mock.onGet(AUTH_URL).reply((config: AxiosRequestConfig) => {
+      const date = (config.params as { date?: string } | undefined)?.date
+      if (date === '2026-10-01') {
+        return new Promise((resolve) => {
+          releaseOlder = () => resolve([200, [older]])
+        })
+      }
+      if (date === '2026-10-02') return [200, [newer]]
+      return [200, [CHEN]]
+    })
+    const { wrapper } = await mountView()
+
+    await chooseDate(wrapper, '2026-10-01')
+    await chooseDate(wrapper, '2026-10-02')
+    expect(cardNames(wrapper)).toEqual(['吳叔叔'])
+
+    // 先選的日期較晚才回來：不可蓋掉目前選的日期
+    expect(releaseOlder).not.toBeNull()
+    releaseOlder!()
+    await settle()
+    expect(cardNames(wrapper)).toEqual(['吳叔叔'])
+    expect(wrapper.text()).toContain('檢視 10/02（五）的紀錄')
+  })
+
+  it('PickupAuthorizationsView past date is readonly: future and older than 30 days are not selectable', async () => {
+    mockAuthorizations({ [TODAY]: [CHEN] })
+    const { wrapper } = await mountView()
+
+    await chooseDate(wrapper, '2026-10-07')
+    await chooseDate(wrapper, '2026-09-05')
+    expect(authGets().map((r) => (r.params as { date: string }).date)).toEqual([TODAY])
+    expect(wrapper.text()).not.toContain('僅供查詢')
+
+    // 今天 − 30 天仍可選
+    await chooseDate(wrapper, '2026-09-06')
+    expect(authGets().at(-1)?.params).toEqual({ date: '2026-09-06' })
+  })
+
+  it('PickupAuthorizationsView shows loading skeleton with placeholder counts', async () => {
+    let release: (() => void) | null = null
+    mock.onGet(AUTH_URL).reply(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve([200, [CHEN]])
+        }),
+    )
+    const { wrapper } = await mountView()
+
+    expect(chipTexts(wrapper)).toEqual(['全部 —', '有效 —', '已接送 —', '已取消 —', '已過期 —'])
+    expect(wrapper.findAll('.pa-skel')).toHaveLength(4)
+    expect(wrapper.text()).not.toContain('今天沒有代理接送授權')
+
+    release!()
+    await settle()
+    expect(wrapper.findAll('.pa-skel')).toHaveLength(0)
+    expect(chipTexts(wrapper)).toEqual(['全部 1', '有效 1', '已接送 0', '已取消 0', '已過期 0'])
   })
 
   it('PickupAuthorizationsView empty state', async () => {
@@ -465,7 +546,8 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     await settle()
     expect(openDialog()?.text()).toContain('尚無錯誤')
 
-    // 另一台平板輸錯碼：推播只帶家長端形狀 → 重抓清單，開著的 dialog 要看到最新的錯誤次數
+    // 另一台平板輸錯碼：BACKEND-562 錯碼累計 / 鎖定後推播 pickup.authorization_updated（只帶家長端形狀）
+    // → 重抓清單，開著的 dialog 要看到最新的錯誤次數
     attempts = 3
     const event: Record<string, unknown> = { ...CHEN }
     for (const key of ['student', 'photo_url', 'code_attempts', 'locked', 'verified_by_name']) delete event[key]
@@ -474,6 +556,95 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
 
     expect(authGets().length).toBeGreaterThanOrEqual(2)
     expect(openDialog()?.text()).toContain('已錯誤 3 次，還可嘗試 2 次')
+  })
+
+  it('PickupAuthorizationsView refetches after the verify dialog closes', async () => {
+    // 錯碼與鎖定後端不推播（另一台平板的同步見 BACKEND-562），本頁在 dialog 關閉時重抓清單
+    let serverChen = CHEN
+    mock.onGet(AUTH_URL).reply(() => [200, [serverChen, LIN]])
+    mock
+      .onPost(`${AUTH_URL}/pa1/verify`)
+      .replyOnce(() => {
+        serverChen = { ...CHEN, code_attempts: 1 }
+        return [400, { error: { code: 'pickup_code_mismatch', message: '接送碼錯誤', details: { remaining_attempts: 4 } } }]
+      })
+      .onPost(`${AUTH_URL}/pa1/verify`)
+      .replyOnce(() => {
+        serverChen = { ...CHEN, code_attempts: 5, locked: true }
+        return [409, { error: { code: 'pickup_code_locked', message: '接送碼已鎖定', details: null } }]
+      })
+    // 沒有 pickup:override：鎖定後只剩「關閉」
+    const { wrapper } = await mountView({ permissions: ['pickup:read', 'pickup:operate'] })
+    const chenCard = (): DOMWrapper<Element> =>
+      wrapper.findAll('.acard2').find((c) => c.find('.acard2__name').text() === '陳阿姨')!
+
+    await chenCard().find('button').trigger('click')
+    await settle()
+    await openDialog()!.find<HTMLInputElement>('.code-box').setValue('111111')
+    await settle()
+    expect(openDialog()?.text()).toContain('接送碼錯誤，還可嘗試 4 次')
+    const getsBeforeClose = authGets().length
+
+    await openDialog()!.find('.el-dialog__headerbtn').trigger('click')
+    await settle()
+    expect(authGets()).toHaveLength(getsBeforeClose + 1)
+    expect(chenCard().text()).toContain('已錯誤 1 次')
+
+    // 重開 dialog 拿到的是重抓後的錯誤次數
+    await chenCard().find('button').trigger('click')
+    await settle()
+    expect(openDialog()?.text()).toContain('已錯誤 1 次，還可嘗試 4 次')
+
+    await openDialog()!.find<HTMLInputElement>('.code-box').setValue('222222')
+    await settle()
+    expect(openDialog()?.text()).toContain('已錯誤 5 次，已鎖定')
+    const close = Array.from(openDialog()!.element.querySelectorAll<HTMLButtonElement>('button')).find(
+      (b) => b.textContent?.trim() === '關閉',
+    )
+    expect(close).toBeDefined()
+    close!.click()
+    await settle()
+
+    expect(authGets()).toHaveLength(getsBeforeClose + 2)
+    expect(chenCard().text()).toContain('已鎖定')
+    await chenCard().find('button').trigger('click')
+    await settle()
+    expect(openDialog()?.text()).toContain('已錯誤 5 次，已鎖定')
+    expect(openDialog()?.text()).not.toContain('尚無錯誤')
+  })
+
+  it('PickupAuthorizationsView follows today across midnight', async () => {
+    vi.useRealTimers()
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    // 台北 2026-10-06（二）23:59:30
+    vi.setSystemTime(new Date('2026-10-06T15:59:30Z'))
+    const next = makeAuthorization({ id: 'pn1', service_date: '2026-10-07', proxy_name: '何阿姨', code_last4: '9999' })
+    mockAuthorizations({ [TODAY]: [CHEN], '2026-10-07': [next] })
+    const { wrapper } = await mountView()
+    expect(cardNames(wrapper)).toEqual(['陳阿姨'])
+
+    vi.advanceTimersByTime(60_000)
+    await settle()
+
+    // 日期欄、唯讀提示與清單都換到新的一天
+    expect((wrapper.find('.pa-date input').element as HTMLInputElement).value).toBe('2026/10/07')
+    expect(authGets().at(-1)?.params).toEqual({ date: '2026-10-07' })
+    expect(cardNames(wrapper)).toEqual(['何阿姨'])
+    expect(wrapper.text()).not.toContain('僅供查詢')
+    expect(verifyButtons(wrapper)).toHaveLength(1)
+
+    // 昨天變成過去日期：直接查、唯讀
+    await chooseDate(wrapper, '2026-10-06')
+    expect(authGets().at(-1)?.params).toEqual({ date: '2026-10-06' })
+    expect(wrapper.text()).toContain('檢視 10/06（二）的紀錄：僅供查詢，不能核驗')
+    expect(verifyButtons(wrapper)).toHaveLength(0)
+
+    // 新的今天可選（不被當成未來日期），選回不需重抓
+    const gets = authGets().length
+    await chooseDate(wrapper, '2026-10-07')
+    expect(cardNames(wrapper)).toEqual(['何阿姨'])
+    expect(verifyButtons(wrapper)).toHaveLength(1)
+    expect(authGets()).toHaveLength(gets)
   })
 
   it('PickupAuthorizationsView shows load error and retries', async () => {
