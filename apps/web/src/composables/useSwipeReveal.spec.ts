@@ -15,6 +15,32 @@ function drag(s: Swipe, fromX: number, toX: number, opts: { y?: number; toY?: nu
   s.onPointerUp(pointer('pointerup', toX, opts.toY ?? y, id))
 }
 
+/**
+ * 會記錄 pointer capture 狀態的替身元素：事件經由它派發，handler 收到的 currentTarget 就是它。
+ * capturing = 目前 capture 中的 pointerId；history = 曾經 capture 過的 pointerId（依序）。
+ */
+function captureStub(s: Swipe) {
+  const el = document.createElement('div')
+  const capturing = new Set<number>()
+  const history: number[] = []
+  el.setPointerCapture = (id: number) => {
+    capturing.add(id)
+    history.push(id)
+  }
+  el.releasePointerCapture = (id: number) => {
+    capturing.delete(id)
+  }
+  el.hasPointerCapture = (id: number) => capturing.has(id)
+  el.addEventListener('pointerdown', (e) => s.onPointerDown(e as PointerEvent))
+  el.addEventListener('pointermove', (e) => s.onPointerMove(e as PointerEvent))
+  el.addEventListener('pointerup', (e) => s.onPointerUp(e as PointerEvent))
+  el.addEventListener('pointercancel', (e) => s.onPointerCancel(e as PointerEvent))
+  const fire = (type: string, clientX: number, pointerId = 7): void => {
+    el.dispatchEvent(new PointerEvent(type, { clientX, clientY: 100, pointerId }))
+  }
+  return { el, capturing, history, fire }
+}
+
 function stubReducedMotion(matches: boolean): void {
   vi.stubGlobal(
     'matchMedia',
@@ -133,6 +159,74 @@ describe('useSwipeReveal', () => {
     s.onPointerCancel(pointer('pointercancel', 280))
     expect(s.isOpen.value).toBe(true)
     expect(s.dragX.value).toBe(-84)
+  })
+
+  it('useSwipeReveal captures pointer only after horizontal lock', () => {
+    const s = useSwipeReveal({ revealWidth: 84 })
+    const stub = captureStub(s)
+
+    stub.fire('pointerdown', 300)
+    expect([...stub.capturing]).toEqual([])
+
+    stub.fire('pointermove', 295)
+    expect([...stub.capturing]).toEqual([])
+
+    stub.fire('pointermove', 280)
+    expect([...stub.capturing]).toEqual([7])
+
+    stub.fire('pointermove', 260)
+    expect([...stub.capturing]).toEqual([7])
+    expect(stub.history).toEqual([7])
+  })
+
+  it('useSwipeReveal tap without horizontal drag never captures', () => {
+    const s = useSwipeReveal({ revealWidth: 84 })
+    const stub = captureStub(s)
+
+    stub.fire('pointerdown', 300)
+    stub.fire('pointerup', 302)
+    expect(stub.history).toEqual([])
+    expect([...stub.capturing]).toEqual([])
+    expect(s.isOpen.value).toBe(false)
+    expect(s.dragX.value).toBe(0)
+
+    // 開啟狀態下點一下：不 capture、維持開啟
+    drag(s, 300, 250)
+    expect(s.isOpen.value).toBe(true)
+    const openStub = captureStub(s)
+    openStub.fire('pointerdown', 200)
+    openStub.fire('pointerup', 203)
+    expect(openStub.history).toEqual([])
+    expect(s.isOpen.value).toBe(true)
+    expect(s.dragX.value).toBe(-84)
+  })
+
+  it('useSwipeReveal releases capture when the drag ends', () => {
+    const s = useSwipeReveal({ revealWidth: 84 })
+    const stub = captureStub(s)
+    stub.fire('pointerdown', 300)
+    stub.fire('pointermove', 250)
+    expect([...stub.capturing]).toEqual([7])
+    stub.fire('pointerup', 250)
+    expect([...stub.capturing]).toEqual([])
+    expect(s.isOpen.value).toBe(true)
+
+    const c = useSwipeReveal({ revealWidth: 84 })
+    const cancelStub = captureStub(c)
+    cancelStub.fire('pointerdown', 300)
+    cancelStub.fire('pointermove', 280)
+    expect([...cancelStub.capturing]).toEqual([7])
+    cancelStub.fire('pointercancel', 280)
+    expect([...cancelStub.capturing]).toEqual([])
+    expect(c.isOpen.value).toBe(false)
+
+    // 判定為垂直捲動而放棄：從未 capture，也就不需要 release
+    const v = useSwipeReveal({ revealWidth: 84 })
+    const scrollStub = captureStub(v)
+    scrollStub.fire('pointerdown', 300)
+    scrollStub.el.dispatchEvent(new PointerEvent('pointermove', { clientX: 298, clientY: 140, pointerId: 7 }))
+    expect(scrollStub.history).toEqual([])
+    expect(v.dragging.value).toBe(false)
   })
 
   it('useSwipeReveal close resets open state', () => {
