@@ -415,16 +415,25 @@ describe('pickupRequestsStore', () => {
     const a = store.create('s2', null).catch((e: unknown) => e)
     const b = store.cancel('r2')
     const c = store.cancel('r2')
-    expect(c).toBe(b)
     await first.reached
+    await flushPromises()
+    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(0)
     first.release(409, apiError('pickup_window_closed', '目前不在可發起接送的時段'))
     const [ea, rb, rc] = await Promise.all([a, b, c])
 
     expect(ea).toMatchObject({ code: 'pickup_window_closed' })
     expect(rb).toEqual(cancelled)
+    // 排隊中同動作同參數：共用同一次送出、同一筆結果
     expect(rc).toBe(rb)
     expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(1)
     expect(store.openFor('s1')).toBeNull()
+    expect(store.pendingAction).toBeNull()
+
+    // 已結束的寫入不再共用：再呼叫一次會重新送出，且沒有寫入在途時立刻開始（pendingAction 同步標示）
+    const again = store.cancel('r2')
+    expect(store.pendingAction).toBe('cancel')
+    await again
+    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(2)
     expect(store.pendingAction).toBeNull()
   })
 
@@ -471,23 +480,31 @@ describe('pickupRequestsStore', () => {
     await first.reached
 
     store.clear()
+    // clear 之後同 key 的新寫入：不與被丟棄的那筆共用，照常排在後面送出並寫回
+    const cancelled = request('r2', { status: 'cancelled', cancelled_at: '2026-10-02T08:20:00Z', can_cancel: false, can_mark_arrived: false, created_at: '2026-10-02T08:00:00Z' })
+    mock.onPost('/parent/pickup/requests/r2/cancel').reply(200, cancelled)
+    const fresh = store.cancel('r2')
+    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(0)
+
     first.release(200, request('r2', { status: 'arrived', created_at: '2026-10-02T08:00:00Z' }))
     await a
     const dropped = await queued
+    const rf = await fresh
     await flushPromises()
 
     expect(dropped).toMatchObject({ name: 'ApiError', status: 0, code: 'write_cancelled' })
-    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(0)
-    expect(store.items).toEqual([])
-
-    // clear 之後的新寫入照常送出並寫回（不被已丟棄的寫入影響）
-    mock.onGet(TODAY_URL).replyOnce(200, [])
-    await store.load()
-    const created = request('r5')
-    mock.onPost(CREATE_URL).reply(201, created)
-    await expect(store.create('s1', null)).resolves.toEqual(created)
-    expect(store.openFor('s1')?.id).toBe('r5')
+    expect(rf).toEqual(cancelled)
+    expect(postsTo('/parent/pickup/requests/r2/cancel')).toHaveLength(1)
+    // 被丟棄的在途 arrived 沒有寫回；clear 之後的新寫入有寫回
+    expect(store.items).toEqual([cancelled])
+    expect(store.latestFor('s1')?.status).toBe('cancelled')
     expect(store.pendingAction).toBeNull()
+
+    // 之後的寫入也不受影響
+    const created = request('r5', { student_id: 's2', student_name: '王小華' })
+    mock.onPost(CREATE_URL).reply(201, created)
+    await expect(store.create('s2', null)).resolves.toEqual(created)
+    expect(store.openFor('s2')?.id).toBe('r5')
   })
 
   it('pickupRequestsStore cancel upserts and sends reason', async () => {
