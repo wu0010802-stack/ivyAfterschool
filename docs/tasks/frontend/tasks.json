@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 216,
-  "last_updated": "2026-10-16T06:05:32Z",
+  "version": 217,
+  "last_updated": "2026-10-16T06:10:08Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -1326,7 +1326,7 @@
     {
       "id": "FRONTEND-046",
       "title": "實作 composables/useFormDirty.ts 與 confirmDiscardChanges：表單是否有未儲存變更",
-      "description": "建立 `apps/web/src/composables/useFormDirty.ts`。移植 ivy `FE:src/composables/useFormDirty.ts::useFormDirty` 與 `FE:src/composables/useUnsavedChangesGuard.ts::confirmDiscardChanges`。\n\n**介面**\n```ts\nexport function useFormDirty<T extends object>(form: T | Ref<T>): { isDirty: ComputedRef<boolean>; markClean: () => void }\nexport async function confirmDiscardChanges(): Promise<boolean>   // ElMessageBox.confirm('尚未儲存的變更將會遺失，確定要關閉嗎？', '未儲存的變更', { confirmButtonText: '放棄變更', cancelButtonText: '繼續編輯' })；確認 true、取消 false\n```\n- 以建立時（或 `markClean` 時）的深拷貝快照與目前值做深比較（Date 以 ISO 比較、陣列順序有意義）。\n\n**驗收標準**\n- 修改後 dirty、改回原值後 clean、markClean 重設基準。\n- confirmDiscardChanges 依使用者選擇回傳。",
+      "description": "建立 `apps/web/src/composables/useFormDirty.ts`。移植 ivy `FE:src/composables/useFormDirty.ts::useFormDirty` 與 `FE:src/composables/useUnsavedChangesGuard.ts::confirmDiscardChanges`。\n\n**介面**\n```ts\nexport function useFormDirty<T extends object>(form: T | Ref<T>): { isDirty: ComputedRef<boolean>; markClean: () => void }\nexport async function confirmDiscardChanges(): Promise<boolean>   // ElMessageBox.confirm('尚未儲存的變更將會遺失，確定要關閉嗎？', '未儲存的變更', { confirmButtonText: '放棄變更', cancelButtonText: '繼續編輯', closeOnHashChange: false })；確認 true、取消 false\n```\n- 以建立時（或 `markClean` 時）的深拷貝快照與目前值做深比較（Date 以 ISO 比較、陣列順序有意義）。\n- 確認框帶 `closeOnHashChange: false`：hash router 的上一頁 / 下一頁會在路由守衛開框後緊接著派發 hashchange，Element Plus 以 hashchange 關框時不送結果、Promise 永不結束、導航卡住（由 FRONTEND-058 改寫加入）。\n\n**驗收標準**\n- 修改後 dirty、改回原值後 clean、markClean 重設基準。\n- confirmDiscardChanges 依使用者選擇回傳；hashchange 不會關閉確認框。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useFormDirty.ts",
       "source_ref": "FE:src/composables/useFormDirty.ts::useFormDirty",
@@ -1346,7 +1346,8 @@
         "red_cases": [
           "useFormDirty tracks changes against snapshot：form reactive({name:'王小明',tags:['a']}) → isDirty false；form.name='王大明' → true；改回 '王小明' → false；form.tags.push('b') → true",
           "useFormDirty markClean resets baseline：form.name='王大明' 後 markClean() → isDirty false；再改 form.name='王小明' → true",
-          "useFormDirty confirmDiscardChanges resolves by user choice：呼叫後點 body 中 '放棄變更' → 結果 true；另一次點 '繼續編輯' → 結果 false"
+          "useFormDirty confirmDiscardChanges resolves by user choice：呼叫後點 body 中 '放棄變更' → 結果 true；另一次點 '繼續編輯' → 結果 false",
+          "useFormDirty confirmDiscardChanges stays open on hashchange：呼叫後派發 window hashchange → 確認框仍顯示（overlay 未隱藏、含提示文字），點 '繼續編輯' 在 500ms 內回 false"
         ],
         "run": "just web-test src/composables/useFormDirty.spec.ts -t \"useFormDirty\"",
         "notes": ""
@@ -1794,11 +1795,11 @@
     {
       "id": "FRONTEND-058",
       "title": "實作 views/settings/SystemSettingsView.vue：系統設定頁（依分組分頁顯示設定卡）",
-      "description": "建立 `apps/web/src/views/settings/SystemSettingsView.vue`（路由 `/settings/system`，`settings:read`）。參考 ivy `FE:src/components/settings/SettingsLineTab.vue` 的「讀取 → 表單 → 儲存」流程。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-system.html`（此稿尚未建立；FRONTEND-055、057、058 共用這一張頁面稿，`preview-tasks` 必須同時列入 FRONTEND-055、FRONTEND-057、FRONTEND-058），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：各分組表單、secret 欄位（已設定 / 未設定 / 修改中）、欄位驗證錯誤、只有 settings:read 時的唯讀樣式、儲存中與儲存成功。\n\n**內容**\n- `PageHeader` 標題「系統設定」。載入 `listSettings()`；依 `group` 分頁（el-tabs），分頁由 API 回傳的 group 動態產生（registry 驅動，BACKEND-106：`leave.window` → leave、`pickup.window` / `pickup.authorization` / `pickup.persons` → pickup、`homework.defaults` / `homework.window` → homework，新 key 自動出現在對應分組，不需改前端）：已知分組依序顯示中文標題 org「安親班資料」、pickup「接送」、homework「作業進度」、leave「請假」、notification「通知」、line「LINE 串接」，未知分組排在最後並以 group 原字串為標題；每頁內依 API 回傳順序放 `SettingCard`（FRONTEND-057）。分頁以 `route.query.tab` 記住。\n- 欄位中文標籤與說明直接取後端 `json_schema` 的 `title` / `description`（`notification.toggles` 用 `x-labels`，BACKEND-106），由 JsonSchemaForm（FRONTEND-055）渲染；本頁不維護標籤對照表。\n- 載入中 skeleton；載入失敗 `EmptyState` error + 「重試」。\n- 切換分頁、只改 `?tab=`（瀏覽器上一頁 / 下一頁）或離開路由時，有任一卡片 `isDirty` → `confirmDiscardChanges()`（FRONTEND-046）；選「放棄變更」→ 對有變更的卡片呼叫 `reset()` 後才切換，選「繼續編輯」→ 留在原分頁 / 原路由（el-tabs `before-leave` 回傳 reject 的 Promise 擋下切換；路由以 `onBeforeRouteUpdate` / `onBeforeRouteLeave` 回傳 false 擋下）。\n- 載入中顯示分頁列骨架 + 兩張卡片骨架；`?tab=` 不是現有分組時顯示第一個分組。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/SystemSettingsView.vue')`。\n\n**驗收標準**\n- 依分組顯示卡片；tab 與 query 同步。\n- 未儲存變更切換分頁 / 改 ?tab= / 離開路由時提示；載入失敗可重試；viewLoaders 接上本頁。",
+      "description": "建立 `apps/web/src/views/settings/SystemSettingsView.vue`（路由 `/settings/system`，`settings:read`）。參考 ivy `FE:src/components/settings/SettingsLineTab.vue` 的「讀取 → 表單 → 儲存」流程。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-system.html`（此稿尚未建立；FRONTEND-055、057、058 共用這一張頁面稿，`preview-tasks` 必須同時列入 FRONTEND-055、FRONTEND-057、FRONTEND-058），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：各分組表單、secret 欄位（已設定 / 未設定 / 修改中）、欄位驗證錯誤、只有 settings:read 時的唯讀樣式、儲存中與儲存成功。\n\n**內容**\n- `PageHeader` 標題「系統設定」。載入 `listSettings()`；依 `group` 分頁（el-tabs），分頁由 API 回傳的 group 動態產生（registry 驅動，BACKEND-106：`leave.window` → leave、`pickup.window` / `pickup.authorization` / `pickup.persons` → pickup、`homework.defaults` / `homework.window` → homework，新 key 自動出現在對應分組，不需改前端）：已知分組依序顯示中文標題 org「安親班資料」、pickup「接送」、homework「作業進度」、leave「請假」、notification「通知」、line「LINE 串接」，未知分組排在最後並以 group 原字串為標題；每頁內依 API 回傳順序放 `SettingCard`（FRONTEND-057）。分頁以 `route.query.tab` 記住。\n- 欄位中文標籤與說明直接取後端 `json_schema` 的 `title` / `description`（`notification.toggles` 用 `x-labels`，BACKEND-106），由 JsonSchemaForm（FRONTEND-055）渲染；本頁不維護標籤對照表。\n- 載入中 skeleton；載入失敗 `EmptyState` error + 「重試」。\n- 切換分頁、只改 `?tab=`（瀏覽器上一頁 / 下一頁）或離開路由時，有任一卡片 `isDirty` → `confirmDiscardChanges()`（FRONTEND-046）；選「放棄變更」→ 對有變更的卡片呼叫 `reset()` 後才切換，選「繼續編輯」→ 留在原分頁 / 原路由（el-tabs `before-leave` 回傳 reject 的 Promise 擋下切換；路由以 `onBeforeRouteUpdate` / `onBeforeRouteLeave` 回傳 false 擋下）。\n- 瀏覽器上一頁 / 下一頁（hash router 在 popstate 後緊接著派發 hashchange）時確認框不得被關閉：本 task 改寫 FRONTEND-046 `confirmDiscardChanges` 的範圍為 ElMessageBox 加 `closeOnHashChange: false`（FormDialog（040）等其他呼叫者行為一併修正，046 description 與 red_case 同步補上）。\n- 載入中顯示分頁列骨架 + 兩張卡片骨架；`?tab=` 不是現有分組時顯示第一個分組。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/SystemSettingsView.vue')`。\n\n**驗收標準**\n- 依分組顯示卡片；tab 與 query 同步。\n- 未儲存變更切換分頁 / 改 ?tab= / 離開路由時提示；載入失敗可重試；viewLoaders 接上本頁。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/SystemSettingsView.vue",
       "source_ref": "FE:src/components/settings/SettingsLineTab.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-057",
@@ -1826,7 +1827,9 @@
           "SystemSettingsView guards tab query change with unsaved changes：有未儲存變更時 router.push('/settings/system?tab=line') → 出現確認，'繼續編輯' → query.tab 仍為 'pickup'、欄位值仍為 90",
           "SystemSettingsView leaves without prompt when clean：沒有變更時 router.push('/students') → 直接離開、沒有 .el-message-box",
           "SystemSettingsView shows skeleton while loading：GET 尚未回應 → 至少 2 個 .el-skeleton、沒有 .el-tabs；回應後顯示 9 張設定卡",
-          "SystemSettingsView is wired in view loaders：(await VIEW_LOADERS.SystemSettingsView()).default === SystemSettingsView"
+          "SystemSettingsView is wired in view loaders：(await VIEW_LOADERS.SystemSettingsView()).default === SystemSettingsView",
+          "SystemSettingsView keeps asking when browser back fires hashchange：有變更時 router.push('/students') 後派發 window hashchange → 仍有可點的確認框；'繼續編輯' → push 的 Promise 完成、path '/settings/system'、query.tab 'pickup'、值仍為 90；再 push 並派發 hashchange、選 '放棄變更' → path '/students'",
+          "SystemSettingsView keeps asking on tab history with hashchange：有變更時 router.push('/settings/system?tab=line') 後派發 hashchange → '繼續編輯' → push 完成、query.tab 仍為 'pickup'、作用中分頁 '接送'、值仍為 90"
         ],
         "run": "just web-test src/views/settings/SystemSettingsView.spec.ts -t \"SystemSettingsView\"",
         "notes": ""
@@ -2089,7 +2092,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/StaffUserFormDialog.vue",
       "source_ref": "FE:src/components/settings/SettingsAccountsTab.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-052",
@@ -2108,7 +2111,7 @@
         "red_cases": [
           "StaffUserFormDialog creates user with role：填帳號 'tutor02'、姓名 '陳老師'、選角色卡 '課輔老師' → 點 '建立' → POST /admin/staff-users body 深等於 {username:'tutor02',display_name:'陳老師',phone:null,email:null,role_id:'r-tutor',extra_permissions:[],revoked_permissions:[]}；回 {user,temp_password:'Tmp-x'} → emitted('created')[0][0].temp_password === 'Tmp-x'",
           "StaffUserFormDialog derives extra and revoked from picker：角色 clerk（含 leaves:write）→ 展開個別調整，取消勾選 'leaves:write'、勾選角色外的 'pickup:override' → 送出 body.revoked_permissions 深等於 ['leaves:write']、extra_permissions 深等於 ['pickup:override']，摘要文字 '額外授予 1 項、移除 1 項'",
-          "StaffUserFormDialog edits only changed fields：user 原 display_name '陳師' → 改為 '陳老師' 送出 → PATCH /admin/staff-users/u2 body 深等於 {display_name:'陳老師'}",
+          "StaffUserFormDialog edits only changed fields：user 原 display_name '陳師' → 改為 '陳老師' 送出 → PATCH /admin/staff-users/u2 body 深等於 {display_name:'陳老師'}；.el-message 文字含 '已更新'",
           "StaffUserFormDialog blocks self permission edit：user.id === auth.user.id → 角色卡與 PermissionPicker 皆 disabled，文字含 '不可修改自己的權限'",
           "StaffUserFormDialog maps backend errors：POST 回 409 username_taken → 帳號欄位文字 '帳號已被使用'；回 403 cannot_grant_permissions details {permissions:['staff:write']} → 文字含 '你沒有以下權限，無法授出' 與 staff:write 的中文標籤",
           "StaffUserFormDialog warns about ungrantable permissions：auth.permissions ['staff:read','staff:write','students:read']，選角色卡 '主任'（effective_permissions 含 'roles:write'）→ 文字含 '包含你沒有的' 與 roles:write 的中文標籤；改選 '課輔老師'（effective_permissions ['students:read']）→ 該提示文字消失",
@@ -2116,7 +2119,10 @@
           "StaffUserFormDialog keeps meaningful adjustments when switching role：行政下移除 leaves:write、額外 pickup:override → 改選主任仍為移除 leaves:write、額外 pickup:override（摘要 '額外授予 1 項、移除 1 項'）；再改課輔老師（沒有 leaves:write）→ 摘要 '額外授予 1 項、移除 0 項'",
           "StaffUserFormDialog edits permissions and clears contact fields：user 角色行政、extra ['pickup:override'] → 個別權限調整預設展開；清空電話與 Email、取消勾選 leaves:write → PATCH body 深等於 {phone:null,email:null,revoked_permissions:['leaves:write']}",
           "StaffUserFormDialog maps validation errors to fields：POST 回 422 validation_error details loc ['body','phone'] → 電話欄位顯示該訊息",
-          "StaffUserFormDialog confirms discard when closing with changes：沒有變更點 '取消' → 直接 emit update:modelValue false；改姓名後點 '取消' → 出現 '尚未儲存的變更將會遺失'、尚未 emit，點 '放棄變更' → emit [[false]]"
+          "StaffUserFormDialog confirms discard when closing with changes：沒有變更點 '取消' → 直接 emit update:modelValue false；改姓名後點 '取消' → 出現 '尚未儲存的變更將會遺失'、尚未 emit，點 '放棄變更' → emit [[false]]",
+          "StaffUserFormDialog does not resend redundant adjustments：自己編輯自己（id u1）、角色行政、extra ['leaves:write'] 與 revoked ['pickup:override'] 已冗餘（effective 等於角色預設）→ 只把姓名改為 '林行政二' 送出 → PATCH body 深等於 {display_name:'林行政二'}",
+          "StaffUserFormDialog rejects username starting with symbol：帳號 '.tutor'、姓名與角色已填 → 點 '建立' 帳號欄位顯示 '3~30 碼，只能使用小寫英文、數字與 . _ -' 且沒有 POST",
+          "StaffUserFormDialog ungrantable warning ignores codes the user already has：目標原本有 pickup:override（操作者沒有）→ 開啟時沒有提示；改選行政 → 提示 '包含你沒有的 1 項權限（查請假）' 且不含 '代理接送強制完成'"
         ],
         "run": "just web-test src/components/settings/StaffUserFormDialog.spec.ts -t \"StaffUserFormDialog\"",
         "notes": ""
@@ -2313,11 +2319,11 @@
     {
       "id": "FRONTEND-071",
       "title": "實作 views/settings/RolesView.vue：角色權限頁（角色卡 + 詳情面板）",
-      "description": "建立 `apps/web/src/views/settings/RolesView.vue`（路由 `/settings/roles`，`roles:read`）。移植 ivy `FE:src/views/settings/SettingsRolesView.vue` 的左右兩欄、`route.query.role` 記住選中角色（值為角色 `code`，與已核可稿的 `?role={code}` 及 ivy 一致；code 建立後不可修改）、`useUnsavedChangesGuard`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n- 同時載入 `listRoles()` 與 `fetchPermissionCatalog()`；左 `RoleCardsGrid`（showStaffCount，280px、捲動時固定在上方，上方灰字「角色（N）」）、右 `RoleDetailPanel`。預設選 `query.role` 對應的角色，沒帶或不存在時選排序第一（與 RoleCardsGrid 同序：admin → director → clerk → tutor，其餘依名稱）。\n- 有 `roles:write` 顯示「新增角色」→ `RoleCreateDialog`，建立後選中新角色。\n- 切換角色（點卡片、瀏覽器上一頁 / 下一頁改 `?role=`）或離開路由時若詳情 `isDirty` → `confirmDiscardChanges`（以 `onBeforeRouteUpdate` / `onBeforeRouteLeave` 統一處理；「繼續編輯」→ 停在原角色）。\n- saved / created / deleted 後重新載入角色清單（不顯示骨架；created 後選新角色、deleted 後選第一個）。\n- 載入中：左欄 5 張卡骨架 + 右側段落骨架，「新增角色」停用；載入失敗 EmptyState error「無法載入角色」+ 重試。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/RolesView.vue')`。\n\n**驗收標準**\n- 預設選取與 query 同步；未儲存切換 / 離開提示；新增、儲存與刪除後清單更新；viewLoaders 接上本頁。",
+      "description": "建立 `apps/web/src/views/settings/RolesView.vue`（路由 `/settings/roles`，`roles:read`）。移植 ivy `FE:src/views/settings/SettingsRolesView.vue` 的左右兩欄、`route.query.role` 記住選中角色（值為角色 `code`，與已核可稿的 `?role={code}` 及 ivy 一致；code 建立後不可修改）、`useUnsavedChangesGuard`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n- 同時載入 `listRoles()` 與 `fetchPermissionCatalog()`；左 `RoleCardsGrid`（showStaffCount，280px、捲動時固定在上方，上方灰字「角色（N）」）、右 `RoleDetailPanel`。預設選 `query.role` 對應的角色，沒帶或不存在時選排序第一（與 RoleCardsGrid 同序：admin → director → clerk → tutor，其餘依名稱）。\n- 有 `roles:write` 顯示「新增角色」→ `RoleCreateDialog`，建立後選中新角色。\n- 切換角色（點卡片、瀏覽器上一頁 / 下一頁改 `?role=`）或離開路由時若詳情 `isDirty` → `confirmDiscardChanges`（以 `onBeforeRouteUpdate` / `onBeforeRouteLeave` 統一處理；「繼續編輯」→ 停在原角色）。瀏覽器上一頁 / 下一頁緊接著的 hashchange 不得關閉確認框（由 FRONTEND-046 `confirmDiscardChanges` 的 `closeOnHashChange: false` 保證，見 FRONTEND-058）。\n- saved / created / deleted 後重新載入角色清單（不顯示骨架；created 後選新角色、deleted 後選第一個）。\n- 載入中：左欄 5 張卡骨架 + 右側段落骨架，「新增角色」停用；載入失敗 EmptyState error「無法載入角色」+ 重試。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/RolesView.vue')`。\n\n**驗收標準**\n- 預設選取與 query 同步；未儲存切換 / 離開提示；新增、儲存與刪除後清單更新；viewLoaders 接上本頁。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/RolesView.vue",
       "source_ref": "FE:src/views/settings/SettingsRolesView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-067",
@@ -2346,7 +2352,9 @@
           "RolesView hides create button without roles write：權限只有 roles:read → 沒有 '新增角色'，詳情顯示 '你只有檢視權限'；標題與副標符合稿",
           "RolesView shows skeleton while loading：GET 尚未回應 → '角色（—）'、2 個 .el-skeleton、沒有角色卡、'新增角色' disabled；回應後 '角色（5）'",
           "RolesView shows retry on load failure：GET /admin/roles 回 500 → 文字含 '無法載入角色'；點 '重試' 且第二次回 200 → 顯示 5 張角色卡",
-          "RolesView is wired in view loaders：(await VIEW_LOADERS.RolesView()).default === RolesView"
+          "RolesView is wired in view loaders：(await VIEW_LOADERS.RolesView()).default === RolesView",
+          "RolesView keeps asking when browser back fires hashchange：詳情有變更時 router.push('/students') 後派發 window hashchange → '繼續編輯' → push 完成、path '/settings/roles'、query.role 'clerk'、名稱保留；再 push 並派發 hashchange、選 '放棄變更' → path '/students'",
+          "RolesView keeps asking on role history with hashchange：詳情有變更時 router.push('/settings/roles?role=tutor') 後派發 hashchange → '繼續編輯' → push 完成、query.role 仍為 'clerk'、選中 '行政'、名稱保留"
         ],
         "run": "just web-test src/views/settings/RolesView.spec.ts -t \"RolesView\"",
         "notes": ""
