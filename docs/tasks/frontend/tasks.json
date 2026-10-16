@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 274,
-  "last_updated": "2026-10-16T15:03:29Z",
+  "version": 275,
+  "last_updated": "2026-10-16T15:04:16Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4992,7 +4992,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupCreateDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-188",
@@ -5000,7 +5000,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "時間選項到 21:00 是已核可稿的設定，但 BACKEND-406 對員工代建同樣套用 pickup.window 的 latest_expected_arrival（種子預設 19:00）：選 19:00 之後的時間會收到 422 expected_arrival_too_late，dialog 以表單上方 alert 顯示後端訊息「預計抵達時間最晚為 19:00」，後台目前沒有不需設定權限即可讀取此值的來源。最早時間只在開啟當下計算（稿是隨時間更新）：dialog 開著超過 5 分鐘再選最早的幾格會收到 422 expected_arrival_in_past（同樣顯示後端訊息）；台北 21:00 之後開啟時沒有任何時間選項。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/PickupCreateDialog.spec.ts",
@@ -5021,9 +5021,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f6",
+        "notes": "通過。tdd.run 8 passed，8 條 red_case 名稱逐一對到；a00226d 紅燈測試（8 條皆在，元件尚不存在）先於 691f270 實作。1cc4caf 不是放寬：Element Plus 2.14.7 的 el-select（el-time-select 底層）把 placeholder 畫在 .el-select__placeholder，input 本身沒有 placeholder 屬性，原斷言永遠取不到；新斷言檢查畫面上的文字，把 placeholder 改成「選擇時間」會轉紅。108e872 寫回 description 的偏離（時間起訖、未選學生「請選擇學生」、成功後關閉、board.create 回 null 直接關閉不提示、錯誤顯示在表單上方與後備訊息、再次送出先清錯誤）都與核可稿 page-pickup-pos.html 的代建 dialog 與 FRONTEND-188 的 create 語意一致，沒有放寬驗收。對照後端：最早「現在 −5 分」進位到 5 分與 BACKEND-406 的 ARRIVAL_PAST_TOLERANCE 5 分一致。突變 20 個，16 個轉紅：一律送 expected_arrival_at、未選學生仍送出、exists 不用固定文案、回 null 也提示成功、成功不關閉、最早不減 5 分、捨去而非進位、結束時間、placeholder、classId 不傳、錯誤 rethrow、唯讀列文字、step、送出鈕文字、說明文字、開啟時不重設。Chromium 1024×768 實測（固定台北 16:02）：dialog 寬 420（sm）；預選學生唯讀列 388×44（≥ 44）；學生與時間欄維持預設高度 32（稿 decision：dialog 內輸入框沿用 FormDialog 預設高度）；時間選項 61 個、16:00 到 21:00；可清除，清除後顯示「不指定」且送出 body 為 {student_id}；錯誤 alert 在表單上方（alert y=171、form y=227）；未選學生送出欄位下顯示「請選擇學生」；無 page error。just web-lint 2 檔乾淨；just web-typecheck 有 3 個錯誤，都在其他 agent 未提交的檔案（PickupCompleteDialog.vue、NotificationsView.vue、ExamsView.vue），199 的檔案沒有錯誤。殘留（不擋）：4 個突變沒轉紅——拿掉 clearable、選學生後不清「請選擇學生」、後備文案「建立失敗，請稍後再試」、再次送出前不清上一次錯誤。前兩者是核可稿與 description 的行為，只有 Chromium 實測、沒有測試；後備文案經 HTTP 實際到不了（後端錯誤都帶 message，網路錯誤已正規化為「網路連線異常，請稍後再試」）；清錯誤只在第二次請求進行中看得出來（回應後會被新錯誤覆蓋或 dialog 關閉）。時間選項與後端 latest_expected_arrival、開啟當下計算的影響見 risk_notes。"
       }
     },
     {
