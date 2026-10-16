@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 261,
-  "last_updated": "2026-10-16T14:36:56Z",
+  "version": 262,
+  "last_updated": "2026-10-16T14:37:38Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2705,7 +2705,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentListPanel.vue",
       "source_ref": "FE:src/components/student/workbench/StudentListPanel.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
@@ -2719,7 +2719,7 @@
         "FRONTEND-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "usePagedList（FRONTEND-045）的 writeQuery 以篩選與頁碼重組整個 route.query，會丟掉同一路由上的其他 query（例如學生工作台 FRONTEND-085 若以 `?student=` 記住選中學生，改篩選或換頁時會被清掉）；085 實作時需處理（例如選中學生不放 query，或擴充 usePagedList 保留未知 key）。",
+      "risk_notes": "usePagedList（FRONTEND-045）的 writeQuery 以篩選與頁碼重組整個 route.query，會丟掉同一路由上的其他 query（例如學生工作台 FRONTEND-085 若以 `?student=` 記住選中學生，改篩選或換頁時會被清掉）；085 實作時需處理（例如選中學生不放 query，或擴充 usePagedList 保留未知 key）。\n本 spec 有兩條案例在高負載下單條 6~7.5 秒，超過 vitest 預設 5 秒會逾時（功能無誤）；多 agent 同時跑測試時可能假紅，建議加明確 timeout。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentListPanel.spec.ts",
@@ -2745,9 +2745,9 @@
         "notes": "StudentFormDialog / StudentImportDialog / GradePromotionDialog 以 vi.mock 替身驗證開關與完成事件（各自已有完整測試；也避免多個 el-select 讓 happy-dom 超線性變慢）。el-dropdown 以 setTimeout 開關，spec 用 fake timers（setTimeout + Date，Date 固定讓目前學年度為 115）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f1",
+        "notes": "通過（review-r10-f1）。tdd.run 13 passed（13 條 red_case 逐條對應同名測試，斷言具體）；5b6ddf1 / 4cf4db4（測試，當時 StudentListPanel.vue 不存在）先於 a5a0284（實作），96a8790 只把替身開關改讀 data-open（等價斷言）、8f917a3 只補型別。446bf6c 的 description 補述（狀態「全部」與網址 status=all、含封存放 extra-filters、每頁 20、網址值轉型、載入失敗 EmptyState + 重試、溢出 tooltip 與「—」、選中列主色淡底、「批次作業 ▾」下拉、缺 students:write 時三者不出現且 dialog 不掛載、清除篩選回預設、空狀態說明文字）逐條出自已核可稿 page-students.html decisions #2~#4 與稿的列表程式；status=all 是讓「全部」在重新整理後不退回預設的必要設計。皆為補述，不是放寬；原 5 條 red_case 保留。介面：AdminListToolbar（search / filters / filterValues / total、extra-filters / actions slot、內建「全部」選項）、lookups.ensure / classOptions(學年度) / schoolOptions、三個 dialog 的 saved / imported / promoted、usePagedList 用法正確。Chromium 實測（自起 vite，用完關閉）：列表寬 644（1440 雙欄時的列表欄）六欄最小寬度放得下、表格無水平捲動；封存列 opacity 0.55 + 「已封存」tag；點列 emit select、選中列底色 #ecf5ff（primary-light-9）；就讀國小 / 班級溢出顯示 tooltip；批次作業下拉為「匯入 Excel」「學年升級」；整列 cursor pointer。突變 17 種中 14 種轉紅（全部送 status、全部不寫入網址、年級 / 含封存字串未轉型、非預設狀態不算篩選、清除只清搜尋、新增後不選取、匯入後不重載、不高亮、寫入恆可見、沒有「—」、班級不限學年度、點列不 emit、拿掉錯誤狀態）；未轉紅的三種：預設狀態改 undefined（normalized 會補回「在學」，等價）、載入中 / 失敗時仍顯示筆數、搜尋同值不去重（只多一次請求）。還原後乾淨。web-lint exit 0；web-typecheck 本 task 檔案零錯誤（現存錯誤在他人的 LeaveFormDialog.spec、parent AuthorizationForm、ChildHubView.spec）。usePagedList 覆寫整個 query 的判斷：不在 086 修、也不擋 086——086 自身驗收不依賴其他 query key；問題在 FRONTEND-045 的 writeQuery 只寫自己管理的 key，只有 085 以 ?student= 記選取時才觸發（選學生後改篩選 / 換頁 / 清除篩選 → query.student 被清掉、詳情或抽屜關閉）。建議在 085 開工時第一個紅燈就修：writeQuery 保留 route.query 中不屬於 initialFilters / page 的 key（數行；ExamsView、AuditLogView 沒有其他 key，不受影響），045 補 red_case「syncQuery 保留未管理的 query key」、085 補 red_case「選中學生後改篩選 / 換頁，query.student 仍在、詳情不關」。目前只記在 086 的 risk_notes，依 README 移交規則需由協調者寫進 085 的 description 與 red_cases。殘留（不擋）：容器負載高（load 15~21）時「loads active students by default」「filters by grade school and status」單條約 6~7.5 秒，超過 vitest 預設 5 秒而逾時（本次兩次失敗、負載降到 12 時全綠）；建議比照 FRONTEND-233 對較重的案例加明確 timeout。"
       }
     },
     {
