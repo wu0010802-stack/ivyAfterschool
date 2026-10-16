@@ -5,6 +5,8 @@
 // - 成功以 response 建本地 active 項目，直到外部 queue（ws / 輪詢）出現同 id 才移除，避免卡片短暫消失。
 // - WS 比 HTTP 回應先到時以 studentId 去重，同一學生不會同時出現 staging + active 兩張卡。
 // - onScopeDispose 清 timer。
+// - options.create：POS（FRONTEND-190）注入 board.create，讓 board 知道是本機建立（不播新請求提示音，FRONTEND-188）；
+//   回 null 表示 board 已提示並重新整理，不留本地卡片。未注入時直接呼叫 createPickupRequest。
 // 狀態機為本專案：open = pending / acknowledged / arrived；closed = completed / cancelled / expired。
 // 代理核驗不在這裡（FRONTEND-201）。
 import { ElMessage } from 'element-plus'
@@ -14,6 +16,7 @@ import {
   createPickupRequest,
   type PickupQueue,
   type PickupRequest,
+  type PickupRequestCreate,
 } from '@/api/pickupRequests'
 import { isApiError } from '@/shared/types/api'
 import { errorMessage } from '@/shared/utils/errorMessage'
@@ -49,6 +52,11 @@ interface StagingEntry {
   student: PosDispatchStudent
   startedAt: number
   timer: ReturnType<typeof setTimeout>
+}
+
+export interface DismissalPosQueueOptions {
+  /** 倒數結束時建立請求；回 null 表示呼叫端已處理（例如 board 的 404 / 409），不留本地卡片 */
+  create?: (body: PickupRequestCreate) => Promise<PickupRequest | null>
 }
 
 export interface DismissalPosQueue {
@@ -113,7 +121,11 @@ function toStagingItem(studentId: string, entry: StagingEntry): PosQueueItem {
   }
 }
 
-export function useDismissalPosQueue(queue: Ref<PickupQueue | null>): DismissalPosQueue {
+export function useDismissalPosQueue(
+  queue: Ref<PickupQueue | null>,
+  options: DismissalPosQueueOptions = {},
+): DismissalPosQueue {
+  const create = options.create ?? createPickupRequest
   // 以 shallowRef + 換新 Map 的方式觸發更新：entry 保持原物件，finally 的身分比對不受 reactive proxy 影響
   const staging = shallowRef<ReadonlyMap<string, StagingEntry>>(new Map())
   /** submit 成功後的本地樂觀 active 項目（key = request id），外部 queue 出現同 id 前頂替顯示 */
@@ -177,8 +189,8 @@ export function useDismissalPosQueue(queue: Ref<PickupQueue | null>): DismissalP
     if (!entry) return
     const name = entry.student.name
     try {
-      const created = await createPickupRequest({ student_id: studentId })
-      setLocalActive((next) => next.set(created.id, created))
+      const created = await create({ student_id: studentId })
+      if (created) setLocalActive((next) => next.set(created.id, created))
     } catch (err) {
       if (isApiError(err) && err.code === 'pickup_request_exists') {
         ElMessage.info(`${name} 已有進行中的接送請求`)
