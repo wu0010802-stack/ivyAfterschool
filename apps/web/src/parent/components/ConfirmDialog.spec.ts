@@ -46,6 +46,13 @@ afterEach(() => {
   document.body.style.overflow = ''
 })
 
+/** 取出 SFC 樣式中「整個選擇器恰為 selector」那條規則的宣告區塊；沒有就回空字串 */
+function cssRule(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(source)
+  return match?.[1] ?? ''
+}
+
 describe('ConfirmDialog', () => {
   it('ConfirmDialog confirm and cancel emits', async () => {
     const wrapper = mountDialog()
@@ -251,5 +258,18 @@ describe('ConfirmDialog', () => {
     const z = Number(/\.dialog-layer\s*\{[^}]*z-index:\s*(\d+)/.exec(source)?.[1])
     expect(z).toBeGreaterThan(10)
     expect(z).toBeLessThan(20)
+  })
+
+  // 已核可稿 parent-component-confirm-dialog.html：按鈕列與上方內容間距 = gap 16 + 8
+  it('ConfirmDialog actions spacing follows mockup', () => {
+    const rule = cssRule('.dialog__actions')
+    expect(rule).toMatch(/display:\s*flex/)
+    expect(rule).toMatch(/(^|;|\s)margin-top:\s*8px\s*;/)
+  })
+
+  // 稿：default slot（例如「下次不再提醒」勾選列）上下各收 4px；沒有 slot 內容時整塊不佔 gap
+  it('ConfirmDialog extra slot spacing follows mockup', () => {
+    expect(cssRule('.dialog__extra')).toMatch(/(^|;|\s)margin:\s*-4px 0\s*;/)
+    expect(cssRule('.dialog__extra:empty')).toMatch(/display:\s*none\s*;/)
   })
 })
