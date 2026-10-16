@@ -6,9 +6,9 @@
 <link rel="icon" href="data:,">
 
 <meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="FRONTEND-233,FRONTEND-234,FRONTEND-235,FRONTEND-239">
+<meta name="preview-tasks" content="FRONTEND-233,FRONTEND-234,FRONTEND-235,FRONTEND-239,FRONTEND-296">
 <meta name="preview-route" content="/exams/:id">
-<meta name="preview-updated" content="2026-10-08">
+<meta name="preview-updated" content="2026-10-16">
 
 <title>設計稿：考試詳情（成績輸入 / 各科平均 / 科目設定）</title>
 
@@ -141,7 +141,7 @@ body { font-family: var(--el-font-family); background: var(--el-fill-color); col
 .form-dialog__footer { display: flex; justify-content: flex-end; gap: 8px; }
 .form-dialog__footer .el-button + .el-button { margin-left: 0; }
 
-/* ==== 以下逐字複製自 component-exams.html（已核可：ScoreCell、RenotifyChoiceDialog 與成績格工具列） ==== */
+/* ==== 以下逐字複製自 component-exams.html（ScoreCell、RenotifyChoiceDialog 與成績格工具列；FRONTEND-296 每格備註以元件稿為準） ==== */
 /* ---------- 情境：ScoreGrid 工具列與表格（屬 FRONTEND-235） ---------- */
 .grid-toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px; }
 .grid-toolbar__status { display: inline-flex; align-items: center; gap: 4px; color: var(--el-text-color-secondary); }
@@ -173,6 +173,54 @@ body { font-family: var(--el-font-family); background: var(--el-fill-color); col
 .score-cell__text { display: inline-block; min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
 .score-cell__text.is-absent { color: var(--el-color-warning-dark-2); }
 .score-cell__text.is-empty { color: var(--el-text-color-placeholder); }
+
+/* ---------- ScoreCell 每格備註（FRONTEND-296） ---------- */
+/* 備註圖示鈕接在「缺」右邊（實際間距 4px）；整格約 120px，放得進 140px 科目欄（內距 12px），不加列高 */
+.score-cell__note-anchor { display: inline-flex; margin-left: -2px; }
+.score-cell__note {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 32px; padding: 0; border: 0; border-radius: 4px; background: transparent;
+  color: var(--el-text-color-placeholder); font-size: 15px; cursor: pointer;
+  opacity: 0; transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+/* 可點範圍：透明延伸到約 28×40（往右延伸進儲存格內距；左邊只延伸 2px，不蓋到「缺」） */
+.score-cell__note::before { content: ''; position: absolute; top: -4px; bottom: -4px; left: -2px; right: -8px; }
+.score-cell__note:hover, .score-cell__note.is-open { background: var(--el-fill-color-light); color: var(--el-color-primary); }
+.score-cell__note.has-note { color: var(--el-color-primary); opacity: 1; }
+/* 沒有備註：滑鼠移到格子上或格子聚焦時才出現；平板（沒有滑過）常駐 */
+.score-cell:hover .score-cell__note, .score-cell:focus-within .score-cell__note, .score-cell__note.is-open { opacity: 1; }
+.score-cell__note:focus-visible { opacity: 1; outline: 2px solid var(--el-color-primary); outline-offset: 1px; }
+@media (hover: none) { .score-cell__note { opacity: 1; } }
+.force-touch .score-cell__note { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .score-cell__note { transition: none; } }
+/* readonly：數字照舊置中，備註圖示掛在文字右側、不推動數字 */
+.score-cell__view { position: relative; display: inline-flex; align-items: center; }
+.score-cell__view .score-cell__note { position: absolute; left: 100%; top: 50%; height: 24px; margin-left: 2px; transform: translateY(-50%); }
+.score-note-tip { max-width: 260px; }
+.score-note-tip__text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* 備註編輯框（popover 內容，teleport 到 body） */
+.score-note-pop.el-popover.el-popper { padding: 12px; }
+.note-editor { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.note-editor__head { display: flex; align-items: baseline; gap: 8px; }
+.note-editor__title { font-size: 14px; font-weight: 600; color: var(--el-text-color-primary); }
+.note-editor__sub { font-size: 12px; color: var(--el-text-color-secondary); }
+.note-editor.is-over .el-textarea__inner { box-shadow: 0 0 0 1px var(--el-color-danger) inset; }
+.note-editor__meta { display: flex; align-items: center; gap: 8px; min-height: 18px; font-size: 12px; line-height: 18px; color: var(--el-text-color-secondary); }
+.note-editor__error { color: var(--el-color-danger); }
+.note-editor__count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.note-editor__count.is-over { color: var(--el-color-danger); font-weight: 600; }
+.note-editor__foot { display: flex; align-items: center; gap: 8px; }
+.note-editor__foot .el-button + .el-button { margin-left: 0; }
+.note-editor__spacer { flex: 1; }
+/* 平板：沒有實體鍵盤時不顯示鍵盤提示；按鈕撐到 44px */
+@media (hover: none) { .note-editor__keys { visibility: hidden; } }
+@media (pointer: coarse) { .note-editor__foot .el-button { min-height: 44px; } }
+.force-touch .note-editor__keys { visibility: hidden; }
+.force-touch .note-editor__foot .el-button { min-height: 44px; }
+/* 稿用：狀態一覽裡直接攤開的編輯框（實作只出現在 popover 裡） */
+.note-editor-static { width: 300px; max-width: 100%; padding: 12px; border: 1px solid var(--el-border-color-light); border-radius: 4px; background: var(--el-bg-color-overlay); box-shadow: var(--el-box-shadow-light); }
 /* ---------- RenotifyChoiceDialog（FRONTEND-238） ---------- */
 .renotify__lead { margin: 0; line-height: 1.7; color: var(--el-text-color-regular); }
 .renotify__count { margin: 12px 0 0; font-weight: 600; color: var(--el-color-warning-dark-2); }
@@ -856,15 +904,72 @@ const FormDialog = {
     </el-dialog>`,
 }
 
-/* ==== 以下逐字複製自 component-exams.html（已核可：FRONTEND-236 ScoreCell、FRONTEND-238 RenotifyChoiceDialog） ==== */
+/* ==== 以下逐字複製自 component-exams.html（FRONTEND-236 / FRONTEND-296 ScoreCell、FRONTEND-238 RenotifyChoiceDialog）；outsideMode 停在推薦的 A ==== */
 const fmt = (n) => (n === null || n === undefined ? '' : String(n))
+
+/* ---------- 每格備註（FRONTEND-296） ----------
+   字數以 trim 後的字元（code point）計，與後端 ScoreCellIn.note max_length=200 一致。 */
+const NOTE_MAX = 200
+const noteLength = (s) => Array.from((s ?? '').trim()).length
+/** 稿用：待裁定 1「點編輯框外面」的兩個選項（confirm = A 視同確定、cancel = B 視同取消）；實作只會有核可的那一種 */
+const outsideMode = ref('confirm')
+let noteUid = 0
+
+/* 編輯框內容：ScoreCell 的 popover 裡用；狀態一覽也直接攤開 */
+const NoteEditorPanel = {
+  props: { modelValue: { type: String, default: '' } },
+  emits: ['update:modelValue', 'confirm', 'cancel'],
+  setup(props, { emit, expose }) {
+    const box = ref(null)
+    const count = computed(() => noteLength(props.modelValue))
+    const over = computed(() => count.value > NOTE_MAX)
+    const focus = () => {
+      const ta = box.value ? box.value.querySelector('textarea') : null
+      if (!ta) return
+      ta.focus()
+      ta.setSelectionRange(ta.value.length, ta.value.length)   // 游標放在結尾
+    }
+    const onKeydown = (e) => {
+      // 編輯框 teleport 到 body，事件本來就不會冒泡到 ScoreGrid；仍 stopPropagation 以防萬一
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); emit('cancel'); return }
+      if (e.key === 'Enter' && !e.shiftKey && e.target.tagName === 'TEXTAREA') {
+        if (e.isComposing || e.keyCode === 229) return          // 中文輸入法組字中的 Enter 不算確定
+        e.preventDefault(); e.stopPropagation()
+        if (!over.value) emit('confirm')
+      }
+    }
+    const clear = () => { emit('update:modelValue', ''); nextTick(focus) }
+    expose({ focus })
+    return { box, count, over, onKeydown, clear, NOTE_MAX }
+  },
+  template: `
+    <div ref="box" class="note-editor" :class="{ 'is-over': over }" role="group" aria-label="編輯備註" @keydown="onKeydown">
+      <div class="note-editor__head"><span class="note-editor__title">備註</span><span class="note-editor__sub">家長端成績明細會顯示</span></div>
+      <el-input type="textarea" :model-value="modelValue" @update:model-value="(v) => $emit('update:modelValue', v)"
+                :autosize="{ minRows: 3, maxRows: 6 }" placeholder="例如：補考、病假、提早離開" aria-label="備註內容"
+                :aria-invalid="over ? 'true' : 'false'"></el-input>
+      <div class="note-editor__meta">
+        <span v-if="over" class="note-editor__error" role="alert">備註最多 200 字</span>
+        <span v-else class="note-editor__keys">Enter 確定　Shift+Enter 換行</span>
+        <span class="note-editor__count" :class="{ 'is-over': over }">{{ count }} / {{ NOTE_MAX }}</span>
+      </div>
+      <div class="note-editor__foot">
+        <el-button v-if="modelValue.length" text @click="clear">清空</el-button>
+        <span class="note-editor__spacer"></span>
+        <el-button @click="$emit('cancel')">取消</el-button>
+        <el-button type="primary" :disabled="over" @click="$emit('confirm')">確定</el-button>
+      </div>
+    </div>`,
+}
 
 /* ---------- ScoreCell ----------
    initialText 只用於狀態一覽直接停在「輸入了不合法值」的樣子；實作沒有這個 prop。 */
 const ScoreCell = {
+  components: { NoteEditorPanel },
   props: {
     score: { type: Number, default: null },
     isAbsent: { type: Boolean, default: false },
+    note: { type: String, default: null },
     fullScore: { type: Number, required: true },
     state: { type: String, default: 'idle' },
     errorMessage: { type: String, default: '' },
@@ -885,26 +990,115 @@ const ScoreCell = {
     }
     const localError = computed(() => { const r = parse(text.value); return r.ok ? '' : r.message })
     const tip = computed(() => localError.value || (props.state === 'error' ? props.errorMessage : ''))
+    // 分數 / 缺考變更時 note 帶目前的原值
     const commit = () => {
       const r = parse(text.value)
       if (!r.ok) return
-      if (r.value.is_absent) { text.value = ''; if (!props.isAbsent) emit('change', r.value); return }
+      if (r.value.is_absent) { text.value = ''; if (!props.isAbsent) emit('change', { ...r.value, note: props.note }); return }
       if (r.value.score === props.score && props.isAbsent === false) return
-      emit('change', r.value)
+      emit('change', { ...r.value, note: props.note })
     }
-    const toggleAbsent = (v) => { text.value = ''; emit('change', { score: null, is_absent: v }) }
+    const toggleAbsent = (v) => { text.value = ''; emit('change', { score: null, is_absent: v, note: props.note }) }
     const display = computed(() => (props.isAbsent ? '缺考' : props.score === null ? '—' : fmt(props.score)))
-    return { text, localError, tip, commit, toggleAbsent, display }
+
+    // ---- 備註 ----
+    const noteId = `score-note-${++noteUid}`
+    const hasNote = computed(() => props.note !== null && props.note !== '')
+    const root = ref(null)
+    const panel = ref(null)
+    const editing = ref(false)
+    const draft = ref('')
+    let swallowClick = false
+    // 關閉後焦點回到同一格：分數輸入框（全選）；缺考格回到「缺」勾選
+    const focusScore = () => {
+      const el = root.value
+      if (!el) return
+      const target = props.isAbsent ? el.querySelector('input[type="checkbox"]') : el.querySelector('.score-cell__input input')
+      if (!target) return
+      target.focus()
+      if (target.type !== 'checkbox') target.select()
+    }
+    const closeEditor = (returnFocus) => {
+      editing.value = false
+      document.removeEventListener('pointerdown', onOutside, true)
+      if (returnFocus) nextTick(focusScore)
+    }
+    const confirmNote = (returnFocus = true) => {
+      const t = draft.value.trim()
+      if (noteLength(t) > NOTE_MAX) return
+      const next = t === '' ? null : t
+      closeEditor(returnFocus)
+      if (next === (props.note ?? null)) return          // 與原值相同：只關閉、不 emit
+      emit('change', { score: props.score, is_absent: props.isAbsent, note: next })
+    }
+    const cancelNote = () => closeEditor(true)
+    // 點編輯框外面（待裁定 1）：A 視同確定（超過 200 字時不關閉）/ B 視同取消；焦點留在使用者點的地方
+    function onOutside(e) {
+      if (!editing.value) return
+      const pop = panel.value && panel.value.$el ? panel.value.$el.closest('.el-popper') : null
+      if (pop && pop.contains(e.target)) return
+      const btn = root.value ? root.value.querySelector('.score-cell__note') : null
+      if (btn && btn.contains(e.target)) swallowClick = true    // 再點一次圖示 = 點外面，不要馬上又打開
+      if (outsideMode.value === 'cancel') { closeEditor(false); return }
+      if (noteLength(draft.value) > NOTE_MAX) { setTimeout(() => panel.value && panel.value.focus(), 0); return }
+      confirmNote(false)
+    }
+    const openEditor = () => {
+      if (editing.value) return
+      draft.value = props.note ?? ''
+      editing.value = true
+      document.addEventListener('pointerdown', onOutside, true)
+      nextTick(() => requestAnimationFrame(() => panel.value && panel.value.focus()))
+    }
+    const onNoteClick = () => {
+      if (swallowClick) { swallowClick = false; return }
+      openEditor()
+    }
+    // Shift+F2（同 Excel 編輯附註）：在分數輸入框或缺考格的「缺」勾選上開啟；ScoreGrid 不使用這個鍵
+    const onRootKeydown = (e) => {
+      if (e.key === 'F2' && e.shiftKey && !editing.value) { e.preventDefault(); openEditor() }
+    }
+    onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, true))
+
+    return {
+      text, localError, tip, commit, toggleAbsent, display,
+      noteId, hasNote, root, panel, editing, draft, confirmNote, cancelNote, onNoteClick, onRootKeydown,
+    }
   },
   template: `
-    <span v-if="readonly" class="score-cell__text"
-          :class="{ 'is-absent': isAbsent, 'is-empty': !isAbsent && score === null }">{{ display }}</span>
-    <div v-else class="score-cell" :class="{ 'is-error': state === 'error', 'is-invalid': !!localError }" :title="tip">
+    <span v-if="readonly" class="score-cell__view">
+      <span class="score-cell__text" :class="{ 'is-absent': isAbsent, 'is-empty': !isAbsent && score === null }">{{ display }}</span>
+      <el-tooltip v-if="hasNote" :trigger="['hover', 'focus']" placement="top" effect="dark" popper-class="score-note-tip">
+        <template #content><div class="score-note-tip__text">{{ note }}</div></template>
+        <button type="button" class="score-cell__note has-note" :aria-label="'備註：' + note">
+          <el-icon><icon-chat-line-square></icon-chat-line-square></el-icon>
+        </button>
+      </el-tooltip>
+    </span>
+    <div v-else ref="root" class="score-cell" :class="{ 'is-error': state === 'error', 'is-invalid': !!localError }" :title="tip"
+         @keydown="onRootKeydown">
       <el-tooltip :content="tip" :disabled="!tip" placement="top" effect="dark">
         <el-input v-model="text" class="score-cell__input" inputmode="decimal" :disabled="isAbsent"
-                  :placeholder="isAbsent ? '缺考' : ''" @blur="commit" @keyup.enter="commit"></el-input>
+                  :placeholder="isAbsent ? '缺考' : ''" :aria-describedby="hasNote ? noteId : undefined"
+                  @blur="commit" @keyup.enter="commit"></el-input>
       </el-tooltip>
       <el-checkbox class="score-cell__absent" :model-value="isAbsent" size="small" @update:model-value="toggleAbsent">缺</el-checkbox>
+      <el-popover :visible="editing" placement="bottom" :width="300" popper-class="score-note-pop">
+        <template #reference>
+          <span class="score-cell__note-anchor">
+            <el-tooltip :disabled="editing" placement="top" effect="dark" :show-after="250" popper-class="score-note-tip">
+              <template #content><div class="score-note-tip__text">{{ hasNote ? note : '新增備註（Shift+F2）' }}</div></template>
+              <button type="button" tabindex="-1" class="score-cell__note" :class="{ 'has-note': hasNote, 'is-open': editing }"
+                      :aria-label="hasNote ? '備註：' + note : '新增備註'" aria-haspopup="dialog" :aria-expanded="editing ? 'true' : 'false'"
+                      @click="onNoteClick">
+                <el-icon><icon-chat-line-square v-if="hasNote"></icon-chat-line-square><icon-chat-square v-else></icon-chat-square></el-icon>
+              </button>
+            </el-tooltip>
+          </span>
+        </template>
+        <note-editor-panel v-if="editing" ref="panel" v-model="draft" @confirm="confirmNote(true)" @cancel="cancelNote"></note-editor-panel>
+      </el-popover>
+      <span v-if="hasNote" :id="noteId" class="sr-only">備註：{{ note }}</span>
       <span v-if="state === 'dirty'" class="score-cell__dirty" aria-label="尚未儲存"></span>
       <span v-else-if="state === 'saving'" class="score-cell__mark"><el-icon class="score-cell__spin" aria-label="儲存中"><icon-loading></icon-loading></el-icon></span>
       <transition name="fade">
@@ -1231,15 +1425,16 @@ const STUDENT_FIXTURE = [
   ST('s30', 'S11330', '簡宇恩', '中年級B班'), ST('s31', 'S11331', '朱芷瑜', '中年級B班'), ST('s32', 'S11332', '鍾昊宇', '中年級B班'),
   ST('s33', 'S11333', '彭婉婷', '中年級B班'),
 ]
-/** 輸入進度：國語幾乎輸入完（陳小美缺考、何彥廷未填）、數學缺 3 位、英語（滿分 50）前 20 位、自然前 6 位、社會還沒開始 */
+/** 輸入進度：國語幾乎輸入完（陳小美缺考、何彥廷未填）、數學缺 3 位、英語（滿分 50）前 20 位、自然前 6 位、社會還沒開始；
+    備註（FRONTEND-296）：王小明數學「粗心扣 8 分，已訂正」、陳小美國語缺考「病假（附就診證明）」 */
 const seedCells = () => {
   const cells = {}
-  const put = (sid, subid, score, absent = false) => { cells[`${sid}:${subid}`] = { score, is_absent: absent } }
+  const put = (sid, subid, score, absent = false, note = null) => { cells[`${sid}:${subid}`] = { score, is_absent: absent, note } }
   STUDENT_FIXTURE.forEach((s, i) => {
     const n = i + 1
-    if (s.id === 's02') put(s.id, 'sub1', null, true)
+    if (s.id === 's02') put(s.id, 'sub1', null, true, '病假（附就診證明）')
     else if (s.id !== 's25') put(s.id, 'sub1', 62 + ((n * 37) % 39))
-    if (!['s19', 's28', 's33'].includes(s.id)) put(s.id, 'sub2', 55 + ((n * 53) % 46))
+    if (!['s19', 's28', 's33'].includes(s.id)) put(s.id, 'sub2', 55 + ((n * 53) % 46), false, s.id === 's01' ? '粗心扣 8 分，已訂正' : null)
     if (n <= 20) put(s.id, 'sub3', n === 4 ? 42.5 : 28 + ((n * 29) % 23))
     if (n <= 6) put(s.id, 'sub4', 70 + ((n * 41) % 31))
   })
@@ -1330,8 +1525,8 @@ const ScoreGrid = {
         Object.keys(cells).forEach((k) => { delete cells[k] })
         for (const st of students.value) {
           for (const sub of subjects.value) {
-            const v = SERVER.cells[keyOf(st.id, sub.subject_id)] ?? { score: null, is_absent: false }
-            cells[keyOf(st.id, sub.subject_id)] = { score: v.score, is_absent: v.is_absent, state: 'idle', error: '', version: 0 }
+            const v = SERVER.cells[keyOf(st.id, sub.subject_id)] ?? { score: null, is_absent: false, note: null }
+            cells[keyOf(st.id, sub.subject_id)] = { score: v.score, is_absent: v.is_absent, note: v.note ?? null, state: 'idle', error: '', version: 0 }
           }
         }
         notifyChoice.value = exam.value.status === 'published' ? null : false
@@ -1347,7 +1542,7 @@ const ScoreGrid = {
     const hasUnsaved = computed(() => list().some((c) => c.state === 'dirty' || c.state === 'saving' || c.state === 'error'))
     watch(hasUnsaved, (v) => emit('dirty-change', v))
     const examStatus = computed(() => (exam.value ? exam.value.status : 'draft'))
-    const cell = (sid, subid) => cells[keyOf(sid, subid)] ?? { score: null, is_absent: false, state: 'idle', error: '' }
+    const cell = (sid, subid) => cells[keyOf(sid, subid)] ?? { score: null, is_absent: false, note: null, state: 'idle', error: '' }
     const cellKey = (sid, subid) => `${keyOf(sid, subid)}:${cellKeys[keyOf(sid, subid)] ?? 0}`
     const rowClass = ({ row }) => (row.in_roster === false ? 'row-out' : '')
 
@@ -1364,7 +1559,7 @@ const ScoreGrid = {
       const k = keyOf(sid, subid)
       if (ignoring.has(k) || !cells[k]) return
       unfreeze()
-      Object.assign(cells[k], { score: v.score, is_absent: v.is_absent, state: 'dirty', error: '' })
+      Object.assign(cells[k], { score: v.score, is_absent: v.is_absent, note: v.note, state: 'dirty', error: '' })
       cells[k].version += 1
       schedule()
     }
@@ -1387,7 +1582,7 @@ const ScoreGrid = {
       const body = {
         cells: batch.map(({ k }) => {
           const [student_id, subject_id] = k.split(':')
-          return { student_id, subject_id, score: cells[k].score, is_absent: cells[k].is_absent }
+          return { student_id, subject_id, score: cells[k].score, is_absent: cells[k].is_absent, note: cells[k].note }
         }),
         notify_parents: examStatus.value === 'published' ? notifyChoice.value : false,
       }
@@ -1413,7 +1608,7 @@ const ScoreGrid = {
           batch.forEach((b) => {
             if (!cells[b.k]) return
             if (!fresh(b)) { cells[b.k].state = 'dirty'; return }
-            SERVER.cells[b.k] = { score: cells[b.k].score, is_absent: cells[b.k].is_absent }
+            SERVER.cells[b.k] = { score: cells[b.k].score, is_absent: cells[b.k].is_absent, note: cells[b.k].note }
             cells[b.k].state = 'saved'
             setTimeout(() => { if (cells[b.k] && cells[b.k].state === 'saved' && !frozen) cells[b.k].state = 'idle' }, 1000)
           })
@@ -1482,10 +1677,10 @@ const ScoreGrid = {
       if (to[0] < 0 || to[0] > lastRow || to[1] < 0 || to[1] > lastCol) return   // 邊界：停在原格
       focusCell(to[0], to[1])
     }
-    // 點格子內任何位置（不是輸入框或「缺」本身）都聚焦該格輸入框
+    // 點格子內任何位置（不是輸入框、「缺」或備註圖示本身）都聚焦該格輸入框
     const onCellClick = (row, column, cellEl, event) => {
       if (!props.canWrite || !cellEl) return
-      if (event && event.target && event.target.closest && event.target.closest('input, label, .el-checkbox')) return
+      if (event && event.target && event.target.closest && event.target.closest('input, label, .el-checkbox, .score-cell__note')) return
       const input = cellEl.querySelector('input:not([type="checkbox"]):not([disabled])')
       if (input) { input.focus(); input.select() }
     }
@@ -1538,7 +1733,7 @@ const ScoreGrid = {
           <span v-else-if="savingAny" class="grid-toolbar__status"><el-icon class="score-cell__spin"><icon-loading></icon-loading></el-icon>儲存中…</span>
           <span v-else-if="dirtyCount" class="grid-toolbar__status">{{ dirtyCount }} 格尚未儲存</span>
           <span v-else class="grid-toolbar__status is-ok"><el-icon><icon-circle-check></icon-circle-check></el-icon>所有變更已儲存</span>
-          <span class="sg-keys"><kbd>Enter</kbd> 下一位　<kbd>Tab</kbd> 下一科　<kbd>Esc</kbd> 還原　輸入「缺」標記缺考</span>
+          <span class="sg-keys"><kbd>Enter</kbd> 下一位　<kbd>Tab</kbd> 下一科　<kbd>Esc</kbd> 還原　輸入「缺」標記缺考　<kbd>Shift</kbd>+<kbd>F2</kbd> 備註</span>
           <span class="grid-toolbar__spacer"></span>
           <span v-if="examStatus === 'published'" class="grid-toolbar__notify">
             修改後通知家長：
@@ -1568,7 +1763,7 @@ const ScoreGrid = {
               <template #default="{ row, $index }">
                 <div class="sg-cell" :class="{ 'is-readonly': !canWrite }" :data-row="$index" :data-col="ci">
                   <score-cell :key="cellKey(row.id, sub.subject_id)" :score="cell(row.id, sub.subject_id).score"
-                              :is-absent="cell(row.id, sub.subject_id).is_absent" :full-score="sub.full_score"
+                              :is-absent="cell(row.id, sub.subject_id).is_absent" :note="cell(row.id, sub.subject_id).note" :full-score="sub.full_score"
                               :state="cell(row.id, sub.subject_id).state" :error-message="cell(row.id, sub.subject_id).error"
                               :readonly="!canWrite" @change="(v) => edit(row.id, sub.subject_id, v)"></score-cell>
                 </div>
@@ -1985,9 +2180,10 @@ const app = createApp({
       'header 動作（缺權限隱藏，不是 disabled；按鈕 44px 高）：草稿 =「刪除」（紅框，exams:write）、「編輯資訊」（exams:write）、「發布」（主色，exams:publish）；已發布 =「編輯資訊」、「取消發布」（exams:publish）。只有 exams:read：右側灰字鎖頭「你只有檢視權限」。課輔老師（有 exams:write、沒有 exams:publish）看不到發布 / 取消發布。',
       '發布：先 GET summary 加總各科 missing_count → 確認框「發布成績」：「發布後家長即可查看成績並收到通知。尚有 {n} 格未填，家長會看到「未登記」。確定發布嗎？」（n = 0 時省略中間那句；「未登記」與家長端 ExamScoreTable 的顯示一致）→ POST publish → success「已發布，家長會收到成績通知」並重新載入考試與成績格。422 exam_has_no_subjects → warning「請先設定科目」並切到科目設定；409 exam_already_published → warning「考試狀態已變更，已重新載入」並重新載入。按「發布」時先送出成績格未儲存的格子；送出後仍有儲存失敗的格子就不發布，warning「有 n 格成績尚未儲存成功，請先重試後再發布」（不打 summary、不發布）。',
       '取消發布：確認框「取消發布後家長將看不到此次成績，已送出的通知不會收回。」（按鈕「取消發布」/「返回」）→ POST unpublish →「已取消發布」並重新載入；409 exam_not_published 同樣 warning「考試狀態已變更，已重新載入」並重新載入。刪除（只有草稿）：useConfirmDelete「刪除後已輸入的成績會一併刪除，確定要刪除「{name}」嗎？」→「已刪除」並導回 /exams。「編輯資訊」開 ExamFormDialog（外觀見 page-exams.html），儲存後重新載入考試與成績格（年級 / 班級變更會影響名單）。',
-      '成績輸入格（ScoreGrid）：表頭固定，表格高度 = 內容區剩餘高度（頁面本身不捲，只捲表格本體）；學號、姓名、班級三欄固定在左，科目欄橫向捲動；科目欄寬至少 140，表頭「國語」下一行灰字「（滿分 100）」；列依班級、學號（後端排序）；列高 ≥ 48px，點格子內任何位置都聚焦該格輸入框。每格是已核可的 ScoreCell（component-exams.html）：未填 / 編輯中（橘角標）/ 儲存中（轉圈）/ 已儲存（綠勾 1 秒淡出）/ 錯誤（紅框 + 提示）、「缺」勾選、超出滿分即時紅框，外觀一律照元件稿（控制列「示範五種格子狀態」可一次看到）。',
+      '成績輸入格（ScoreGrid）：表頭固定，表格高度 = 內容區剩餘高度（頁面本身不捲，只捲表格本體）；學號、姓名、班級三欄固定在左，科目欄橫向捲動；科目欄寬至少 140，表頭「國語」下一行灰字「（滿分 100）」；列依班級、學號（後端排序）；列高 ≥ 48px，點格子內任何位置（備註圖示除外）都聚焦該格輸入框。每格是 ScoreCell（component-exams.html）：未填 / 編輯中（橘角標）/ 儲存中（轉圈）/ 已儲存（綠勾 1 秒淡出）/ 錯誤（紅框 + 提示）、「缺」勾選、超出滿分即時紅框，外觀一律照元件稿（控制列「示範五種格子狀態」可一次看到）。',
       '已不在名單的學生（考後退班但已有成績）：整列內容淡化 + 姓名下「已不在名單」灰 tag，仍可編輯；只淡化儲存格內容，固定欄底色保持不透明，橫向捲動時不會透出後面的格子。',
-      '鍵盤：Enter / ↓ 下一位同科、Shift+Enter / ↑ 上一位、Tab 下一科（最後一科跳到下一位的第一科）、Shift+Tab 反向、→ / ← 只在游標位於結尾 / 開頭時換格、Esc 還原這格尚未送出的輸入；移入的格子全選內容，直接打字就取代；缺考格的輸入框停用，移到該格時改聚焦「缺」勾選（空白鍵取消缺考）；到表格邊界停在原格。被左側固定欄遮住的格子自動捲到可見（scroll-padding = 固定欄寬）。工具列灰字提示「Enter 下一位　Tab 下一科　Esc 還原　輸入「缺」標記缺考」。',
+      '鍵盤：Enter / ↓ 下一位同科、Shift+Enter / ↑ 上一位、Tab 下一科（最後一科跳到下一位的第一科）、Shift+Tab 反向、→ / ← 只在游標位於結尾 / 開頭時換格、Esc 還原這格尚未送出的輸入；移入的格子全選內容，直接打字就取代；缺考格的輸入框停用，移到該格時改聚焦「缺」勾選（空白鍵取消缺考）；到表格邊界停在原格。被左側固定欄遮住的格子自動捲到可見（scroll-padding = 固定欄寬）。工具列灰字提示「Enter 下一位　Tab 下一科　Esc 還原　輸入「缺」標記缺考　Shift+F2 備註」。',
+      '每格備註（FRONTEND-296，外觀與互動以 component-exams.html 為準）：格子在「缺」右邊多一個備註圖示（有備註主色常駐、沒有備註滑過 / 聚焦才出現），點圖示或在分數輸入框 / 「缺」上按 Shift+F2 開編輯框，確定 / 取消後焦點回到同一格；圖示不在 Tab 順序裡、編輯框 teleport 到 body，上面的鍵盤導覽不變。只改備註也照常自動儲存，PUT 每一格都帶 note（示範：王小明數學、陳小美國語缺考各有一則備註）。整格約 120px，科目欄最小寬 140 與列高不變。',
       '工具列（有 exams:write 才有）：左側儲存摘要「所有變更已儲存」（綠）/「n 格尚未儲存」/「儲存中…」/「n 格儲存失敗 重試」（紅）；已發布時右側「修改後通知家長：開 / 關」，尚未選擇時兩個都不亮 + 橘色「尚未選擇」tag。已發布考試第一次自動儲存時跳 RenotifyChoiceDialog（元件稿）；Esc / X 關閉 → 格子維持未儲存、工具列「尚未選擇」，下一次有格子變更時再跳出；也可以直接在工具列選，選完立即送出。',
       '自動儲存（useScoreAutosave）：停 800ms 後一次 PUT 所有變更的格子（控制列「最後送出」可看 body；草稿 notify_parents 固定 false）；同時只有一個請求，送出中又改的格子回應後維持未儲存再送；422 invalid_score_cells 指出的格子標錯（分數超出 0~滿分 / 學生不在應考名單 / 此科目不在考試中），同批其他格重送一次；網路錯誤或 5xx 整批標「儲存失敗，請重試」，按工具列「重試」重送。',
       '只有 exams:read：沒有工具列，格子為唯讀文字（缺考橘字「缺考」、未填「—」）；科目設定為唯讀表；各科平均照常。沒有 ws 頻道：多人同時輸入同一場考試時看不到彼此剛輸入的分數（重新整理才看到），同一格由後寫入者生效。',
