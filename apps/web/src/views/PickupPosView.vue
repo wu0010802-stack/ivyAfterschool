@@ -35,8 +35,6 @@ const COUNT_CHIPS: { key: keyof PickupQueueCounts; label: string; type: ChipType
 const COUNT_PLACEHOLDER = '–'
 /** 日期標籤跨午夜更新的週期 */
 const DATE_TICK_MS = 60_000
-/** 班級欄 key：全部班級 / 未分班不帶 classFilter（與 useDismissalRoster 一致） */
-const NO_FILTER_KEYS = new Set(['all', 'unassigned'])
 
 const route = useRoute()
 const router = useRouter()
@@ -83,9 +81,10 @@ function goAuthorizations(): void {
 
 // ---- 代建（工具列：未預選學生；中欄選了班級時只查該班）----
 const createOpen = ref(false)
+/** route.query.class 是名單裡的班級時帶入；全部班級（沒有 query）與未分班（class_id 為 null，查不到）不帶 */
 const classFilter = computed(() => {
   const key = route.query.class
-  if (typeof key !== 'string' || NO_FILTER_KEYS.has(key)) return undefined
+  if (typeof key !== 'string') return undefined
   const cls = board.roster.value?.classes.find((c) => c.class_id === key)
   return cls?.class_id ? { id: cls.class_id, name: cls.class_name ?? '' } : undefined
 })
