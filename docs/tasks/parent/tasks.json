@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 183,
-  "last_updated": "2026-10-16T14:58:26Z",
+  "version": 184,
+  "last_updated": "2026-10-16T15:00:36Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1293,7 +1293,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/parent/composables/useParentLogout.ts",
       "source_ref": "FE:src/parent/composables/useParentLogout.ts::performParentLogout",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-008",
@@ -1309,7 +1309,9 @@
       ],
       "suggested_model": "opus-5",
       "risk_notes": "",
-      "open_design_questions": [],
+      "open_design_questions": [
+        "登出流程的 `initLiff()` 在外部瀏覽器可能讓登出失效，要怎麼處理？PARENT-008 以 `withLoginOnExternalBrowser: true` 初始化，@liff/init 2.31.1 的行為是「外部瀏覽器且 `isLoggedIn()` 為 false → init 直接呼叫 `liff.login()`（轉址，redirectUri 為目前網址）且 promise 永不 resolve」。本頁生命週期還沒初始化過 LIFF（例如重新整理後由 cookie 還原登入）且 LIFF 本地登入狀態已失效時，useParentLogout 在撤銷 session、清完狀態後會被轉去 LINE 登入，回到 `#/more` 後守衛探測 401 導向 `/login?redirect=/more`（沒有 logged_out），LoginView 自動再登入，登出等於無效；LINE 內（LIFF browser）不受影響。選項：(a) 登出只對「本頁已初始化」的 LIFF client 呼叫 logout，未初始化就跳過（services/liff 加同步取得已初始化 client 的函式）；代價是外部瀏覽器重新整理後登出不清 LIFF 本地 token，共用裝置下一位按「使用 LINE 登入」可能沿用上一位的 LINE 身分（LINE 網頁本身的登入 cookie 本來就不受 liff.logout 影響）。(b) PARENT-008 改 `withLoginOnExternalBrowser: false`，外部瀏覽器未登入時改由 LoginView 呼叫 `liff.login`（LoginView 已有 isLoggedIn 判斷），登出時 init 不會轉址；代價是外部瀏覽器首次登入要多按一次「使用 LINE 登入」，且可順帶避免 init 自動登入時 redirectUri 帶著 logged_out 回來。(c) 維持現狀，接受風險。推薦 (b)。"
+      ],
       "tdd": {
         "test_path": "apps/web/src/parent/composables/useParentLogout.spec.ts",
         "markers": [
@@ -1334,11 +1336,11 @@
     {
       "id": "PARENT-034",
       "title": "建立 MoreView：家長資料、小孩清單、功能入口與登出",
-      "description": "建立 `apps/web/src/parent/views/MoreView.vue`（路由 `/more`，底部導覽「更多」）。外觀與互動以已核可稿 `docs/mockups/parent-page-more.html` 為準。\n\n頁面自帶左右 16px、上 8px、底部 24px 內距；由上而下：家長資料 → 小標「我的小孩」+ 小孩卡 → AddFriendCard → 小標「功能」+ 功能卡 → 登出卡 → 安親班名稱。小標 label-large、on-surface-variant；卡片一律 PARENT-017 M3Card outlined、padding none。\n\n- **家長資料**：56px 圓形頭像（`parentAuth.parent.picture_url` → `<img>` object-fit: cover、`alt=\"\"`；沒有或 img 觸發 error → `display_name` 首字，display_name 空白時為「家」）+ `display_name`（`<h2>`、title-large、單行省略）。\n- **我的小孩**：進頁呼叫 `children.load()`（PARENT-010，已載入時不重打；登入 / 綁定時已 seed）。\n  - 有資料：`children.items` 每位一列（`<button>`，最小高 72px）：40px 頭像（photo_url 或姓名首字，img 失敗退回首字）、姓名（status 為 suspended 時姓名旁 PARENT-051 StatusPill warning「暫停」）、「{grade_level} 年級 · {class_name}」（class_name 為 null 時只有「{grade_level} 年級」）。目前選中者右側 StatusPill info「目前查看」並帶 `aria-current=\"true\"`，其他列右側 chevron_right；只有一位小孩時也標示「目前查看」。點任一列 → `children.select(id)` 後 `router.push('/')`。\n  - 載入中（`children.loading` 且 items 為空）→ 卡內 PARENT-028 SkeletonBlock `variant=\"row\"`、count 2。\n  - 失敗（`children.error` 有值且 items 為空）→ 卡內 PARENT-029 ParentEmptyState error「小孩清單載入失敗」/「請檢查網路連線後再試一次」/「重試」→ `children.load(true)`。\n  - 空清單（已載入、items 為空）→ ParentEmptyState（link 圖示）「尚未綁定小孩」/「請輸入安親班提供的綁定碼」/ action「輸入綁定碼」→ `router.push('/bind')`。\n- **AddFriendCard**（PARENT-035）：放在小孩卡與功能卡之間，url 取 `getPublicConfig().add_friend_url`，無效時不渲染、不留空白。\n- **功能入口**（PARENT-020 M3ListItem，`to` 導頁，leading icon、trailing chevron_right）：出勤紀錄 `/attendance`（calendar_month）、請假 `/leaves`（event_busy）、代理接送 `/pickup/proxy`（badge）、通知 `/notifications`（notifications）、通知設定 `/notifications/preferences`（tune）、加綁其他小孩 `/bind`（link）。「通知」列 trailing 在 chevron 前加 PARENT-172 `unreadCount` 膠囊（error 底、24px 高；>99 顯示 99+；膠囊 aria-hidden，另放視覺隱藏文字「，{n} 則未讀」），0 時只有 chevron。\n- **登出**：獨立一張卡內的 clickable M3ListItem「登出」（logout 圖示）→ PARENT-026 ConfirmDialog（標題「確定要登出？」、說明「登出後需重新以 LINE 登入」、confirmLabel「登出」、cancelLabel「取消」、destructive）→ 確認呼叫 PARENT-033 `logout()`：對話框保持開啟、確認鈕 `loading`（= `loggingOut`），完成後由 useParentLogout 導向 `/login?logged_out=1`；登出 API 失敗也照樣登出，不顯示錯誤。\n- **頁尾**：安親班名稱（PARENT-005 `getPublicConfig().org_name`，body-small、置中）；取不到或空白時不顯示。\n\n參考 ivy `FE:src/parent/views/MeView.vue` 的「我的」頁資訊架構；**去掉** 費用摘要、個資匯出、外觀設定、FAQ、個資權利專區與推播狀態提示。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-more.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：有頭像 / 無頭像、單一小孩 / 多位小孩（標示目前查看）、通知未讀數、加好友卡（有 / 無 URL）、登出確認對話框（含 loading）。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `MoreView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；每個測試前 `_resetPublicConfigForTests()`）。",
+      "description": "建立 `apps/web/src/parent/views/MoreView.vue`（路由 `/more`，底部導覽「更多」）。外觀與互動以已核可稿 `docs/mockups/parent-page-more.html` 為準。\n\n頁面自帶左右 16px、上 8px、底部 24px 內距；由上而下：家長資料 → 小標「我的小孩」+ 小孩卡 → AddFriendCard → 小標「功能」+ 功能卡 → 登出卡 → 安親班名稱。小標 label-large、on-surface-variant；卡片一律 PARENT-017 M3Card outlined、padding none。\n\n- **家長資料**：56px 圓形頭像（`parentAuth.parent.picture_url` → `<img>` object-fit: cover、`alt=\"\"`；沒有或 img 觸發 error → `display_name` 首字，display_name 空白時為「家」）+ `display_name`（`<h2>`、title-large、單行省略）。\n- **我的小孩**：進頁呼叫 `children.load()`（PARENT-010，已載入時不重打；登入 / 綁定時已 seed）。\n  - 有資料：`children.items` 每位一列（`<button>`，最小高 72px）：40px 頭像（photo_url 或姓名首字，img 失敗退回首字）、姓名（status 為 suspended 時姓名旁 PARENT-051 StatusPill warning「暫停」）、「{grade_level} 年級 · {class_name}」（class_name 為 null 時只有「{grade_level} 年級」）。目前選中者右側 StatusPill info「目前查看」並帶 `aria-current=\"true\"`，其他列右側 chevron_right；只有一位小孩時也標示「目前查看」。點任一列 → `children.select(id)` 後 `router.push('/')`。\n  - 載入中（items 為空，且 `children.loading` 或尚未載入過 `children.loaded === false`，例如登出清空 store 後）→ 卡內 PARENT-028 SkeletonBlock `variant=\"row\"`、count 2。\n  - 失敗（`children.error` 有值且 items 為空）→ 卡內 PARENT-029 ParentEmptyState error「小孩清單載入失敗」/「請檢查網路連線後再試一次」/「重試」→ `children.load(true)`。\n  - 空清單（已載入、items 為空）→ ParentEmptyState（link 圖示）「尚未綁定小孩」/「請輸入安親班提供的綁定碼」/ action「輸入綁定碼」→ `router.push('/bind')`。\n- **AddFriendCard**（PARENT-035）：放在小孩卡與功能卡之間，url 取 `getPublicConfig().add_friend_url`，無效時不渲染、不留空白。\n- **功能入口**（PARENT-020 M3ListItem，`to` 導頁，leading icon、trailing chevron_right）：出勤紀錄 `/attendance`（calendar_month）、請假 `/leaves`（event_busy）、代理接送 `/pickup/proxy`（badge）、通知 `/notifications`（notifications）、通知設定 `/notifications/preferences`（tune）、加綁其他小孩 `/bind`（link）。「通知」列 trailing 在 chevron 前加 PARENT-172 `unreadCount` 膠囊（error 底、24px 高；>99 顯示 99+；膠囊 aria-hidden，另放視覺隱藏文字「，{n} 則未讀」），0 時只有 chevron。\n- **登出**：獨立一張卡內的 clickable M3ListItem「登出」（logout 圖示）→ PARENT-026 ConfirmDialog（標題「確定要登出？」、說明「登出後需重新以 LINE 登入」、confirmLabel「登出」、cancelLabel「取消」、destructive）→ 確認呼叫 PARENT-033 `logout()`：對話框保持開啟、確認鈕 `loading`（= `loggingOut`），完成後由 useParentLogout 導向 `/login?logged_out=1`；登出 API 失敗也照樣登出，不顯示錯誤。\n- **頁尾**：安親班名稱（PARENT-005 `getPublicConfig().org_name`，body-small、置中）；取不到或空白時不顯示。\n\n參考 ivy `FE:src/parent/views/MeView.vue` 的「我的」頁資訊架構；**去掉** 費用摘要、個資匯出、外觀設定、FAQ、個資權利專區與推播狀態提示。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-more.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：有頭像 / 無頭像、單一小孩 / 多位小孩（標示目前查看）、通知未讀數、加好友卡（有 / 無 URL）、登出確認對話框（含 loading）。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `MoreView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；每個測試前 `_resetPublicConfigForTests()`）。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/MoreView.vue",
       "source_ref": "FE:src/parent/views/MeView.vue::doLogout",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10d",
       "depends_on": [
         "PARENT-005",
@@ -1355,7 +1357,7 @@
         "PARENT-051"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "登出進行中（useParentLogout 已清空各 store、尚未導頁）對話框 scrim 下方的頁面會短暫變成骨架、頭像「家」、無未讀膠囊；導頁後即卸載。「通知」列未讀數與底部導覽同源（PARENT-172 unreadCount），本頁不自行 refreshUnread，受 PARENT-172 risk_notes 所述「本地增減不參與取號」影響時可能短暫顯示舊數字，下一次 refreshUnread 更正。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/MoreView.spec.ts",
