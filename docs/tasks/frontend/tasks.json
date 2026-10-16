@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 284,
-  "last_updated": "2026-10-16T15:22:27Z",
+  "version": 285,
+  "last_updated": "2026-10-16T15:25:02Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5222,7 +5222,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ExamsView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5235,7 +5235,7 @@
         "FRONTEND-041"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r10-f4 打回】日期區間清除（不限日期）的狀態無法經網址還原：usePagedList 的 cleanFilters 會把空字串從 query 拿掉，清除後網址只剩 /exams?page=1，與預設狀態無法區分；從網址重建時（進考試頁再按上一頁、重新整理、分享連結）date_from / date_to 又回到預設的近 90 天到未來 30 天。違反稿 decision 1「篩選與頁碼同步到網址」與 decision 2「可清除，清除 = 不限日期」。真實 Chromium 重現：清除日期（請求不帶日期、網址 /exams?page=1）→ 點一列進 /exams/e1 → 上一頁 → 請求帶回 date_from=2026-07-18、date_to=2026-11-15，日期框也回到預設，90 天前的考試消失。驗收：清除後的網址要能還原成不限日期（例如以一個不會送到 API 的標記值表示「不限」）；補一條測試：清除日期區間後取 router 的 fullPath，用該網址重新掛載，第一次 GET /admin/exams 不帶 date_from / date_to、日期框為空，且預設篩選的空清單判斷不受影響。",
+      "risk_notes": "「不限日期」在網址以 date_from=all&date_to=all 表示（不送 API）；網址的日期只有兩端都是合法 YYYY-MM-DD 才生效，標記值、空值或手改的無效值一律視為不限日期，只給一端合法日期時另一端沿用預設區間；date_from 晚於 date_to 不在前端檢查。「點 ⋮ 不觸發整列導頁」有測試保護，操作欄不套 ellipsis 只有 Chromium 實測。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/ExamsView.spec.ts",
@@ -5255,9 +5255,9 @@
         "notes": "「不限日期」在網址以 date_from=all&date_to=all 表示（不送 API；usePagedList 會把空值從 query 拿掉，空字串無法與預設區間區分）；兩端都是合法日期才算有日期區間，否則日期框與請求一律視為不限日期。每個案例都掛整頁（部分再開 dialog / 下拉 / 確認框，或重新掛載三次），共用 CPU 在 load average 20 以上時單一案例可達 20 秒，整個 describe 的 timeout 上限 60 秒（只影響逾時、不影響斷言）。年級篩選在 filters 以字串存（usePagedList 依初始值型別還原網址 query），傳給工具列下拉與 API 時轉成數字。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f4",
-        "notes": "打回（1 項，見 risk_notes）。其餘通過：tdd.run 實跑 8/8 綠（6 條 red_case + 載入失敗重試 + viewLoaders 接線），名稱一一對應；測試 d21c16a 早於實作 ed9e508，ed9e508 與 b52caa7 對 spec 只調整 timeout，沒有改斷言。路由 /exams 以 exams:read 守衛（routes.spec 既有），viewLoaders 已接線。api 用法對照 api/exams.ts listExams / deleteExam 與 BACKEND-467 / 471 一致。突變 15 處，11 處轉紅：預設 89 天、對象順序、不加年份、列不可點、建立後不帶 tab、已發布也有 ⋮、唯讀也有 ⋮ 欄、空清單不分預設、科目 0 不顯示未設定、刪除後不重載、刪除文案；不轉紅 4 處：⋮ 外層不 stopPropagation、名稱連結不 stopPropagation、操作欄改回 ellipsis、年級不轉數字（前三者 Chromium 實測行為正確，第四者送出結果相同）。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（chromium-1243，今天 10/16）實測：預設區間 2026-07-18～2026-11-15 並以 YYYY/MM/DD 顯示；列高 ≥ 48、操作欄 72px、⋮ 44×44 在格內、該欄 text-overflow clip、沒有多出「···」、「建立考試」44px；欄位文字（10/15（四）、低年級A班・二年級、未設定、非今年加「2025」、已發布下一行 2026/10/16 10:00）；點 ⋮ 只開選單不導頁；點列導到 /exams/e1；名稱連結 href /exams/e1、聚焦後 Enter 進入；快捷「預設區間」「本學年度」「上學年度」，上學年度送 2025-08-01～2026-07-31、本學年度送 2026-08-01～2027-07-31；刪除確認文案正確、409 顯示後端訊息；預設篩選空清單文案與建立鈕；只有 exams:read 時沒有建立鈕與 ⋮ 欄、仍可點進考試頁。page-exams.html decisions 第 1~7 條：1 版面 / 分頁 / 改篩選回第 1 頁一致，但「篩選同步到網址」在清除日期時不成立（打回項）；2 篩選項與預設區間、快捷一致，「清除 = 不限日期」只在當次有效（打回項）；3~7 一致。web-lint 乾淨；web-typecheck 全專案 0 錯誤。殘留（不擋）：「點 ⋮ 不觸發整列導頁」與操作欄不套 ellipsis 沒有單元測試保護；網址只帶 date_from 或 date_to 其中一個時，日期框顯示為空但請求仍帶該值（只有手改網址才會發生）。"
+        "notes": "複審通過（只核對 review-r10-f4 的打回項：清除日期區間無法經網址還原）。紅燈 9e13896 早於修正 6d32130；新增 red_case「restores cleared date range from url」，刪除案例補「點 ⋮ 與刪除後不導頁」。6d32130 對 spec 只改 describe timeout（60 秒），未改斷言。tdd.run 實跑 9/9 綠（load average 22 下）。修法：清除寫入網址標記 date_from=all&date_to=all，兩端都是合法日期才算有區間，否則日期框與請求一律不限日期。突變 5 處：清除改回寫空字串、不驗日期格式、API 單端照送、⋮ 外層不 stopPropagation（上一輪不轉紅的殘留，這次轉紅）—— 皆轉紅；日期框 getter 改回舊寫法不轉紅（el-date-picker 對 all 標記本來就顯示空白，行為等價）。還原後 cmp 與 git diff 皆乾淨。真實 Chromium 重驗：清除後網址帶 all 標記、請求不帶日期；進 /exams/e1 再上一頁、重新整理都仍是不限日期；選「預設區間」回到 07/18～11/15 並寫回網址；網址只給 date_from 時另一端用預設、框與請求一致；網址日期無效時不限日期、框與請求一致。web-lint 乾淨；web-typecheck 的錯誤全在他人進行中的檔案。"
       }
     },
     {
