@@ -30,6 +30,8 @@ test.describe('e2e support', () => {
 
     const after = await api.get<{ total: number }>(`/api/admin/students?class_id=${seed.classId}`)
     expect(after.total).toBe(0)
+    const guardians = await api.get<unknown[]>(`/api/admin/students/${seed.studentIds[0]}/guardians`)
+    expect(guardians).toEqual([])
   })
 
   test('e2e support fails fast without credentials', async ({ page }) => {
