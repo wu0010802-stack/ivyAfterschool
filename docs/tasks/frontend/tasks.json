@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 318,
-  "last_updated": "2026-10-16T19:34:57Z",
+  "version": 319,
+  "last_updated": "2026-10-16T19:36:46Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2669,7 +2669,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/StudentWorkbenchView.vue",
       "source_ref": "FE:src/views/StudentWorkbenchView.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-086",
@@ -2677,7 +2677,7 @@
         "FRONTEND-024"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r10-f1 打回】實作正確（Chromium 已驗），但兩個關鍵行為沒有被測試把關，突變後 tdd.run 仍全綠：1) keeps detail mounted when crossing 1440：resize 回 1600 後要以 ElDrawer emit closed 模擬抽屜關閉動畫結束（真實瀏覽器跨回寬版時會觸發），再斷言詳情仍在雙欄、GuardianManager 掛載次數 1、GET /admin/students/s1 仍 1 次；另補「關閉動畫期間在窄版點另一位學生、之後才收到上一次的 closed → 抽屜仍顯示新學生」。反例突變：onDrawerClosed 改成一律 shownId = null。2) 新 red_case：窄版 drawer 開著時按 Esc（document keydown Escape）與點遮罩（.el-overlay 的 mousedown + click）→ query 不含 student 與 tab、保留列表參數。反例突變：拿掉 :before-close。",
+      "risk_notes": "詳情跨 1440 不卸載依賴 Teleport 單一實例與 onDrawerClosed「只在沒有選取時才清掉詳情」；抽屜關閉要經 before-close 清掉 student / tab（Esc、遮罩、關閉鈕同一條路），由 keeps detail mounted when crossing 1440、keeps new selection when an earlier close finishes late、closes drawer with Escape and overlay click 把關。FRONTEND-024 的 placeholder 測試範例改用 PickupPosView，POS 頁實作時要再換成其他仍未實作的頁面。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/StudentWorkbenchView.spec.ts",
@@ -2699,9 +2699,9 @@
         "notes": "另跑 `just web-test src/composables/usePagedList.spec.ts -t \"usePagedList\"`（改寫 045 的測試）與 `just web-test src/router/routes.spec.ts`（024 的 placeholder 範例改用 PickupPosView）。列表與詳情用真實元件；底下的 dialog、照片、監護人、成績紀錄以 vi.mock 替身（各自已有完整測試，也避免多個 el-select 拖慢 happy-dom），替身記錄掛載次數以驗證跨斷點不重掛。happy-dom 的 Transition 由 test-utils 替身處理，不會觸發 el-drawer 的 closed，測試以 ElDrawer emit closed 模擬動畫結束；真實瀏覽器已用 Playwright 驗證 closed 後卸載。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f1",
-        "notes": "打回（review-r10-f1）。tdd.run 7 passed（7 條 red_case 逐條對應），另跑 usePagedList.spec 13 passed、routes.spec 6 passed，以及 usePagedList 的使用者 ExamsView 9、AuditLogView 16、StudentListPanel 13、StaffAccountsView 16 全綠。commit 順序：6be73fd（usePagedList 紅）→ fca1f1b（實作）→ 5accec0（工作台紅）→ 65aceb5（實作），c397cf1 是事後加嚴的斷言。(1) 改寫已 done 的 045 / 024 合理且範圍已寫明：085 description 明列「部分改寫 FRONTEND-045」（保留非列表參數、只保留字串值、改寫 converts query values 的 unknown 預期）與「024 placeholder 範例改用 PickupPosView」；045 的 description 與 red_case 已同步，unknown=1 寫回時保留是新規則的直接結果（不讀進 filters 的部分不變）；024 範例只換成仍未實作的 view，驗證強度不變。usePagedList 的 __proto__ / constructor 防護有測試。(2) Chromium 實測（以 apps/web 真實 App + AdminLayout 起 vite，dts:false，API 以 Playwright 攔截，用完關閉）：1600 / 1440 雙欄（1440 時列表 644、表格 610 無橫向捲動、詳情 520）；1439 / 1200 / 1024 改 drawer（寬 640）且頁面無橫向捲動；1439 在 drawer 內「產生綁定碼」後 resize 到 1600，綁定碼 dialog（K7M2-Q9XP）仍在、詳情移到雙欄、drawer 隱藏，再 resize 回 1200 dialog 仍在；Esc 與點遮罩關閉都只清 student / tab、保留 status / page。實作行為正確。突變 13 種中 11 種轉紅；未轉紅的兩種即打回項（實作正確但測試沒有把關）。web-lint exit 0；web-typecheck exit 0。打回項：1) drawer 關閉後的 closed 事件在跨 1440 時也會觸發，onDrawerClosed 只在沒有選取時才清掉詳情——這正是「跨 1440 不卸載」的關鍵，但測試沒有在 resize 回寬版後模擬 closed，把判斷改成「closed 一律清掉」仍全綠；真實瀏覽器下那個突變會在回到寬版、抽屜關閉動畫結束時卸載詳情，綁定碼 dialog 消失。2) description 寫明 Esc 與點遮罩也要清 student / tab，但只測了關閉鈕；拿掉 before-close 仍全綠，實際後果是抽屜收起、網址仍留 student，再點同一列（select 遇到相同 id 直接返回）打不開。殘留（不擋）：024 的 placeholder 範例改用 PickupPosView，等 POS 頁實作時這條測試要再換範例。"
+        "notes": "複審通過（review-r10-f1）。兩項打回已由 6bf12f7 補測試修正，實作未改：crossing 1440 測試在拉回 1600 後由 ElDrawer 送 closed，斷言詳情仍在雙欄、GuardianManager 掛載 1 次、GET s1 仍 1 次；新增「keeps new selection when an earlier close finishes late」與「closes drawer with Escape and overlay click」（遮罩段送 mousedown + mouseup + click，對應 Element Plus 的 useSameTarget）。reviewer 重跑突變：onDrawerClosed 改成一律清掉詳情 → crossing 1440 與 earlier close 兩條轉紅；拿掉 :before-close → Escape / overlay 那條轉紅；另外單獨加 close-on-press-escape=false、close-on-click-modal=false 也各自轉紅。還原後 cmp 與 git diff 乾淨。tdd.run 9 passed（ef2f63a 改 1 條、增 2 條 red_case，逐條對應同名測試）。web-lint spec exit 0；web-typecheck exit 0。首審已確認的部分維持：改寫 045 / 024 合理且已寫明範圍、usePagedList 使用者的 spec 全綠、Chromium 以真實 App 實測 1440 雙欄無橫向捲動、drawer 內產生綁定碼後跨 1440 對話框仍在、Esc / 遮罩關閉只清 student / tab。殘留（不擋）：024 的 placeholder 範例改用 PickupPosView，等 POS 頁實作時這條測試要再換範例。"
       }
     },
     {
