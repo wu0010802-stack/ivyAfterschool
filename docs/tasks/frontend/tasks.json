@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 213,
-  "last_updated": "2026-10-16T05:55:20Z",
+  "version": 214,
+  "last_updated": "2026-10-16T05:55:38Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3580,8 +3580,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/AttendanceMonthlyView.vue",
       "source_ref": "FE:src/views/StudentAttendanceView.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
         "FRONTEND-128",
@@ -5115,8 +5115,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ExamsView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
         "FRONTEND-045",

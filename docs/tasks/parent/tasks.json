@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 146,
-  "last_updated": "2026-10-16T05:55:15Z",
+  "version": 147,
+  "last_updated": "2026-10-16T05:55:38Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2826,8 +2826,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/LeavesView.vue",
       "source_ref": "FE:src/parent/views/LeavesView.vue::cancelTitle",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-010",
