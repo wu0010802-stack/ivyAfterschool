@@ -17,17 +17,20 @@ function drag(s: Swipe, fromX: number, toX: number, opts: { y?: number; toY?: nu
 
 /**
  * 會記錄 pointer capture 狀態的替身元素：事件經由它派發，handler 收到的 currentTarget 就是它。
- * capturing = 目前 capture 中的 pointerId；history = 曾經 capture 過的 pointerId（依序）。
+ * capturing = 目前 capture 中的 pointerId；history = 曾經 capture 過的 pointerId（依序）；
+ * releases = 呼叫 release 的 pointerId（沒 capture 過就不該 release）。
  */
 function captureStub(s: Swipe) {
   const el = document.createElement('div')
   const capturing = new Set<number>()
   const history: number[] = []
+  const releases: number[] = []
   el.setPointerCapture = (id: number) => {
     capturing.add(id)
     history.push(id)
   }
   el.releasePointerCapture = (id: number) => {
+    releases.push(id)
     capturing.delete(id)
   }
   el.hasPointerCapture = (id: number) => capturing.has(id)
@@ -38,7 +41,7 @@ function captureStub(s: Swipe) {
   const fire = (type: string, clientX: number, pointerId = 7): void => {
     el.dispatchEvent(new PointerEvent(type, { clientX, clientY: 100, pointerId }))
   }
-  return { el, capturing, history, fire }
+  return { el, capturing, history, releases, fire }
 }
 
 function stubReducedMotion(matches: boolean): void {
@@ -186,6 +189,7 @@ describe('useSwipeReveal', () => {
     stub.fire('pointerdown', 300)
     stub.fire('pointerup', 302)
     expect(stub.history).toEqual([])
+    expect(stub.releases).toEqual([])
     expect([...stub.capturing]).toEqual([])
     expect(s.isOpen.value).toBe(false)
     expect(s.dragX.value).toBe(0)
@@ -197,6 +201,7 @@ describe('useSwipeReveal', () => {
     openStub.fire('pointerdown', 200)
     openStub.fire('pointerup', 203)
     expect(openStub.history).toEqual([])
+    expect(openStub.releases).toEqual([])
     expect(s.isOpen.value).toBe(true)
     expect(s.dragX.value).toBe(-84)
   })
@@ -209,6 +214,7 @@ describe('useSwipeReveal', () => {
     expect([...stub.capturing]).toEqual([7])
     stub.fire('pointerup', 250)
     expect([...stub.capturing]).toEqual([])
+    expect(stub.releases).toEqual([7])
     expect(s.isOpen.value).toBe(true)
 
     const c = useSwipeReveal({ revealWidth: 84 })
@@ -226,6 +232,7 @@ describe('useSwipeReveal', () => {
     scrollStub.fire('pointerdown', 300)
     scrollStub.el.dispatchEvent(new PointerEvent('pointermove', { clientX: 298, clientY: 140, pointerId: 7 }))
     expect(scrollStub.history).toEqual([])
+    expect(scrollStub.releases).toEqual([])
     expect(v.dragging.value).toBe(false)
   })
 
