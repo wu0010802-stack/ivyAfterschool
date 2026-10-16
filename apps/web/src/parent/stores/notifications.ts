@@ -2,7 +2,8 @@
 // - load 重置為第 1 頁並以序號丟棄過期回應；loadMore 以 id 去重附加。
 // - unreadCount 是「更多」分頁徽章（PARENT-024）的來源：markRead 只在該筆原本未讀時減 1，
 //   ws notification.created 只在 id 不存在時插到最前並 +1；斷線期間由 parentWs poller 以 refreshUnread 補齊。
-// - 伺服器回來的未讀數（load / loadMore / refreshUnread）依發出順序取號，較早發出、較晚回來的不蓋掉較新的結果。
+// - 伺服器回來的未讀數（load / loadMore / refreshUnread）依發出順序取號，較早發出、較晚回來的不蓋掉較新的結果；
+//   本地增減（markRead 減 1、markAllRead 歸零、ws 加 1）把已套用號碼推到最新，在途的未讀數回應一律作廢。
 // - clear()（登出 / 換人）讓在途請求全部失效：load / loadMore / refreshUnread / markRead / markAllRead 晚到的回應都不寫回，
 //   呼叫端的 promise 照常 resolve / reject。
 import { defineStore } from 'pinia'
@@ -37,6 +38,12 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
   // 伺服器未讀數的發出號碼與已套用的最大號碼；clear 時把已套用推到最新，在途的一律作廢
   let unreadIssued = 0
   let unreadApplied = 0
+
+  /** 本地增減未讀數：等同作廢所有在途的伺服器未讀數回應（它們反映的是增減前的狀態） */
+  function adjustUnread(next: number): void {
+    unreadApplied = unreadIssued
+    unreadCount.value = next
+  }
 
   function applyUnread(ticket: number, count: number): void {
     if (ticket <= unreadApplied) return
@@ -106,7 +113,7 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
     const index = items.value.findIndex((n) => n.id === id)
     if (index < 0) return
     const current = items.value[index]!
-    if (current.read_at === null) unreadCount.value = Math.max(0, unreadCount.value - 1)
+    if (current.read_at === null) adjustUnread(Math.max(0, unreadCount.value - 1))
     if (unreadOnly.value) {
       items.value = items.value.filter((n) => n.id !== id)
       total.value = Math.max(0, total.value - 1)
@@ -121,7 +128,7 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
     if (epoch !== startEpoch) return
     const now = new Date().toISOString()
     items.value = items.value.map((n) => (n.read_at === null ? { ...n, read_at: now } : n))
-    unreadCount.value = 0
+    adjustUnread(0)
   }
 
   /** 登出 / 換人：清空並讓所有在途請求失效（晚到的回應不寫回） */
@@ -144,7 +151,7 @@ export const useNotificationsStore = defineStore('parentNotifications', () => {
     if (items.value.some((n) => n.id === data.id)) return
     items.value = [data, ...items.value]
     total.value += 1
-    unreadCount.value += 1
+    adjustUnread(unreadCount.value + 1)
   })
   parentWs.registerPoller(refreshUnread)
 
