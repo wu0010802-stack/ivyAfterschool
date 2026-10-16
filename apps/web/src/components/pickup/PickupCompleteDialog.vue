@@ -4,6 +4,7 @@
 // - 選項分三組：監護人（can_pickup 才可選）、代理接送（該生今日 active 授權，改走核驗頁）、其他（主管確認交付，需 pickup:override）。
 // - 監護人交付沒有備註欄：後端只保存主管確認交付的備註（寫入稽核紀錄）。
 // - board.complete：404 / 409 由 board 提示並重新整理後 resolve null → 直接關閉；其他錯誤顯示在選項上方。
+// - 選取的代理授權失效（board 重抓後不在代理組）時清掉選擇並提示；只有 g: 開頭的選擇會以監護人送出。
 import { Document, InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, ref, watch } from 'vue'
@@ -107,6 +108,16 @@ watch([choice, note], () => {
   noteError.value = ''
 })
 
+// board 重抓授權清單後，選取的授權若已不是該生 active 授權（家長取消、已接走、過期）：清掉選擇並提示
+watch(studentAuthorizations, (list) => {
+  const c = choice.value
+  if (!c?.startsWith(AUTH_PREFIX)) return
+  const id = c.slice(AUTH_PREFIX.length)
+  if (list.some((a) => a.id === id)) return
+  choice.value = undefined
+  error.value = '代理授權已失效，請重新選擇'
+})
+
 function close(): void {
   emit('update:modelValue', false)
 }
@@ -127,7 +138,9 @@ function bodyOf(c: string): PickupCompleteBody | null {
     }
     return { method: 'override', note: text }
   }
-  return { method: 'guardian', guardian_id: c.slice(GUARDIAN_PREFIX.length) }
+  if (c.startsWith(GUARDIAN_PREFIX)) return { method: 'guardian', guardian_id: c.slice(GUARDIAN_PREFIX.length) }
+  // 失效的代理授權或其他未知選擇：不送出
+  return null
 }
 
 async function onSubmit(): Promise<void> {
