@@ -285,7 +285,7 @@
 | attendance | `attendance.bulk_updated` | `{student_id, dates: [YYYY-MM-DD]}`（請假套用 / 取消，前端重抓當日清單） |
 | homework | `homework.progress_updated` | `{student_id, service_date, items: HomeworkItem[], progress: Progress}` |
 | pickup | `pickup.request_updated` | `PickupRequest`（新建、回覆、確認、抵達、完成、取消、過期都用此 type） |
-| pickup | `pickup.authorization_updated` | `StaffAuthorization` |
+| pickup | `pickup.authorization_updated` | `ParentAuthorization`（§14 的家長端授權形狀＝後端 `PickupAuthorizationOut`，**沒有** student / photo_url / code_attempts / locked / verified_by_name；建立、家長取消、重新產生接送碼、核銷、停讀退班收尾都推此 type。後台收到當天的事件後重抓 B436 清單，不就地合併） |
 | 個人 | `notification.created` | `Notification`（收件匣即時新增） |
 | 個人 | `notification.transient` | `{event, title, body, payload}`（不進收件匣，例如 `pickup.arrived` 提示音） |
 
