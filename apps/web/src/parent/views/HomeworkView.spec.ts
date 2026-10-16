@@ -188,7 +188,9 @@ describe('HomeworkView', () => {
 
     expect(text(wrapper)).toContain('老師尚未提供預計時間')
     expect(wrapper.get('.hws-eta').classes()).toContain('is-muted')
-    expect(text(wrapper)).not.toContain('預計')
+    // 退回文案本身含「預計」二字：斷言的是沒有「預計 HH:MM 可接送」這一行
+    expect(text(wrapper)).not.toMatch(/預計\s*\d{2}:\d{2}\s*可接送/)
+    expect(wrapper.find('.hws-eta__time').exists()).toBe(false)
     expect(text(wrapper)).not.toContain('老師說明')
     expect(text(wrapper)).not.toContain('最後更新')
     expect(text(wrapper)).toContain('已完成 0/2 項')
