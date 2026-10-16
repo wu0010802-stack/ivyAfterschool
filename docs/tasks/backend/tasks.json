@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 452,
-  "last_updated": "2026-10-16T04:46:46Z",
+  "version": 453,
+  "last_updated": "2026-10-16T04:56:28Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -11995,7 +11995,7 @@
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/parent/pickup.py",
       "source_ref": "BE:api/parent_portal/pickup.py::cancel_authorization",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-422",
@@ -12025,9 +12025,9 @@
         "notes": "家長端無權限碼，403 以 IDOR 404 取代（業務上的 403 pickup_not_allowed 另測）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-b",
+        "notes": "通過。7 條 red_case 皆有對應測試且被 tdd.run 選到（--collect-only 帶 / 不帶 -k 一致），實跑 7 passed；測試 commit 2875f40 早於實作 3153601。handler 只掛 get_current_parent、呼叫 BACKEND-422 cancel_authorization 後 db.commit()，回 PickupAuthorizationOut，不套用 for_write（符合 description）。401 同時測無 cookie 與員工 cookie；IDOR 他人授權與 uuid4() 的 404 body 完全相同且 DB 狀態不變；成功案例以 populate_existing 重讀 DB，回應欄位集合固定且不含 code_hash。突變驗證全部轉紅：拿掉 db.commit()（success / twice / suspended 紅）、service 拿掉所有權檢查（idor 紅）、handler 加 for_write 守衛（suspended 紅）、條件式 UPDATE 拿掉 status='active'（409 / twice 紅）。lint / typecheck（動到的檔）乾淨。殘留（不擋）：description 提到退班學生仍為 active 的授權也可取消，測試只涵蓋暫停學生；兩者走同一路徑（get_parent_student_ids 不過濾 status），之後可補一條退班案例。"
       }
     },
     {
@@ -15508,7 +15508,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/exam_service.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-463"
@@ -15532,9 +15532,9 @@
         "notes": "tdd.run 同時選到 BACKEND-463 的 test_exam_summary_stats / rounding / empty_subject（同一函式的回歸）。另跑 just test-int apps/api/tests/integration/api/admin/test_exams_endpoints.py -k \"test_admin_exam_summary_\" 確認端點回應不變。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-b",
+        "notes": "通過。5 條 red_case 皆有對應測試，tdd.run 同時選到 463 的 stats / rounding / empty_subject，實跑 8 passed；另跑 test_exams_endpoints.py -k test_admin_exam_summary_ 5 passed。測試 commit 057b8e6 早於實作 b3bd528。各科 GROUP BY join students 並套 _student_in_roster（與 resolve_exam_roster / _roster_counts 同條件），missing_count = roster_count - scored - absent；DB 的 ck_exam_scores_absent_no_score 保證同一格不會同時有分數與缺考，加上 (exam, student, subject) 唯一，三者相加恆等於 roster_count、不會為負。查詢數固定（考試、名單人數、單一 GROUP BY）。突變驗證全部轉紅：拿掉名單條件（out_of_roster / inactive 紅）、missing 不扣缺考（absent_not_missing / stats 紅）、名單條件漏封存（inactive 紅）、逐科多一條查詢（query_count 紅）。lint / typecheck 乾淨。殘留（不擋）：absent_not_missing 與 query_count 兩條在舊實作就是綠的（commit message 已註明為回歸保護），以突變證明有效。"
       }
     },
     {
@@ -15544,7 +15544,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/student_import_service.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-155",
@@ -15571,9 +15571,9 @@
         "notes": "改完 preview 簽章後另跑 BACKEND-166 的 tdd.run（just test-int apps/api/tests/integration/api/admin/test_students_endpoints.py -k \"test_admin_import_\"）確認 endpoint 測試仍全綠。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-b",
+        "notes": "通過。6 條 red_case 皆有對應測試（5 條 service + endpoint 的 test_admin_import_preview_withdrawn_future_enrollment_invalid），tdd.run 實跑 5 passed，BACKEND-166 的 tdd.run（-k test_admin_import_）10 passed，test_student_import_service.py 全檔 46 passed。測試 commit ea76be7 早於實作 57356bc。preview 加 keyword-only clock，以 clock.today()（台北）判斷，與 insert_student 以 clock.today() 補退班日、_check_dates 拒絕退班日早於入學日的規則一致；入學日解析失敗時只有格式錯誤；execute 傳自己的 clock，endpoint 預覽分支傳注入的 clock。突變驗證全部轉紅：> 改 >=（boundaries / taipei 紅）、today 改 UTC 日期（taipei 紅）、檢查不限退班（boundaries 紅）、execute 改用系統時鐘（execute 紅）、endpoint 預覽分支改用系統時鐘（endpoint 案例紅）。lint / typecheck 乾淨。殘留（不擋）：實作 commit 順帶修改測試檔的共用 _preview helper 補固定時鐘（簽章改變的機械性調整，未改任何red_case 的斷言）。"
       }
     },
     {
@@ -15583,7 +15583,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/attendance_service.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r10",
       "depends_on": [
         "BACKEND-314",
@@ -15607,9 +15607,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-b",
+        "notes": "通過。4 條 red_case 皆有對應測試且被 tdd.run 選到，實跑 4 passed；child_monthly / parent_attendance 回歸17 passed。測試 commit 99934d4 早於實作 98187a1。in_stats 在每日迴圈只算一次，stats 改由 [day.in_stats for day in days] 計算（_monthly_stats 的 counted 即 in_stats），兩者是同一個判斷、不會分歧；ParentAttendanceDayOut 加 in_stats: bool，endpoint 回應每個 day 含此欄，api_index B323 已同步。突變驗證全部轉紅：漏不晚於今天（4 條紅）、漏入學日（flags / follows_stats_rule 紅）、漏營業日（follows_stats_rule 紅）、入學日 null 變全不計（without_enrolled_on / endpoint 紅）、入學日 >= 改 >（flags / follows_stats_rule 紅）。lint / typecheck 乾淨。殘留（不擋）：家長端前端型別尚未帶 in_stats，由 PARENT-194 / PARENT-132 處理。"
       }
     }
   ]
