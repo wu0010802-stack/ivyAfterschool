@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 263,
-  "last_updated": "2026-10-16T14:38:37Z",
+  "version": 264,
+  "last_updated": "2026-10-16T14:41:46Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6214,7 +6214,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useSwipeReveal.ts",
       "source_ref": "FE:src/composables/useSwipeReveal.ts::useSwipeReveal",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-186",
@@ -6234,7 +6234,7 @@
           "useSwipeReveal releases capture when the drag ends：down x=300、move x=250、up → 替身已沒有 capture 中的 pointer、isOpen true；down x=300、move dx=-20 後 pointercancel → 替身已沒有 capture、isOpen false"
         ],
         "run": "just web-test src/composables/useSwipeReveal.spec.ts -t \"useSwipeReveal\"",
-        "notes": "Chromium 實測三項寫進回報（見 description）；reviewer 需重跑。"
+        "notes": "紅燈測試 291d354（補強 3d586a4：替身另記 release 呼叫，點一下與判定為垂直捲動時不 release、拖曳結束 release 該 pointer）、實作 10ed594。替身為真實 div，事件經由它派發（currentTarget 為替身），記錄目前 capture 中的 pointerId、曾 capture 的歷史與 release 呼叫。QueueCard.vue 未改動，其 spec 10/10 仍綠。突變自檢：按下就 capture（舊行為）、每次 move 都 capture、結束不 release、沒 capture 也 release（舊行為）各使對應測試轉紅。Chromium 實測（/opt/pw-browsers/chromium-1243，1024×768，harness 只在 scratchpad：Vite 虛擬模組掛 4 張 canOperate 進行中 QueueCard，對照組以 alias 換回修正前的 useSwipeReveal）：(1) 滑鼠點「回覆時間」「確認」（pending）、「完成交付」（arrived）各 emit 一次，另以原始 mouse down/up 點acknowledged 卡「完成交付」emit 一次；修正前同一流程 emit 0 次（重現打回問題）。(2) 滑鼠拖曳左移 70px → translateX(-84px)、「取消」可按，點「取消」emit cancel 並收合；CDP Input.dispatchTouchEvent 觸控左滑同樣露出，tap「取消」emit cancel；從「確認」按鈕上按下再左拖只開啟卡片、不 emit acknowledge；觸控 tap「確認」emit 一次。(3) 已開啟時滑鼠往右拖 80px 與觸控往右滑都收合為 translateX(0px)、「取消」停用。事件記錄顯示觸控時隱含 capture 先在按下的元素，水平拖曳確立後轉到卡片本體。"
       },
       "review": {
         "status": "pending",
