@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 257,
-  "last_updated": "2026-10-16T14:28:53Z",
+  "version": 258,
+  "last_updated": "2026-10-16T14:32:37Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3416,11 +3416,11 @@
     {
       "id": "FRONTEND-122",
       "title": "實作 views/AttendanceTodayView.vue：今日出勤頁（平板友善點名、批次到班、改判、即時更新）",
-      "description": "建立 `apps/web/src/views/AttendanceTodayView.vue`（路由 `/attendance`，`attendance:read`，meta.tablet）。移植 ivy `FE:src/views/StudentAttendanceView.vue` 的班級篩選 + 日期切換 + 統計摘要；點名方式改為本專案逐生到班 / 離班 / 缺席，**去掉** 圖表、學期、教師端批次表單（ivy `AttendanceBatchPanel` 的整班一次儲存改為逐生即時送出 + 批次到班）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-today.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級篩選與狀態摘要 chip、逐生卡片的五種狀態（預計到班 / 已到班 / 已離班 / 缺席 / 請假）與各狀態可按的按鈕、批次到班選取模式與結果（部分略過）、改判 dialog（需 attendance:amend）、非今天日期的唯讀檢視、非營業日、即時連線中斷提示、只有 attendance:read 時的唯讀樣式、空清單、載入中。\n\n**內容**\n- 頂部：日期（預設 `todayTaipei()`，可選過去日期查看；非今天時顯示「檢視 {date}，僅可改判」）、班級（lookups classOptions 當前學年度，存 `route.query.class_id`；預設「全部」）、搜尋（姓名 / 學號，前端過濾）、「重新整理」。\n- `AttendanceSummaryBar`（FRONTEND-123）：點 chip 依狀態前端過濾（不重新請求），再點一次取消。\n- 學生卡片 grid（`AttendanceStudentCard` FRONTEND-124，最小寬 220px）；依班級分組標題（全部班級時）。\n- 批次到班（有 `attendance:operate` 且是今天）：「批次到班」進入選取模式 → 卡片可勾選（只能勾 expected / absent）、「全選未到」、底部固定列「已選 N 位・確認到班 / 取消」→ `batchCheckIn` → 結果 toast「已到班 {succeeded} 位」；有 skipped 時 el-dialog 列出「{student_name}：{message}」。\n- 非營業日（`is_service_day=false`）：EmptyState「{date} 不是營業日」（若仍有列，照常顯示並可改判）。\n- 即時更新：`useAttendanceBoard`（FRONTEND-126）處理資料與 ws；`denied` 時顯示「沒有即時更新權限，請手動重新整理」。\n- 改判：卡片 emit amend → `AttendanceAmendDialog`（FRONTEND-125）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/AttendanceTodayView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/views/AttendanceTodayView.vue`（路由 `/attendance`，`attendance:read`，meta.tablet）。移植 ivy `FE:src/views/StudentAttendanceView.vue` 的班級篩選 + 日期切換 + 統計摘要；點名方式改為本專案逐生到班 / 離班 / 缺席，**去掉** 圖表、學期、教師端批次表單（ivy `AttendanceBatchPanel` 的整班一次儲存改為逐生即時送出 + 批次到班）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-today.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級篩選與狀態摘要 chip、逐生卡片的五種狀態（預計到班 / 已到班 / 已離班 / 缺席 / 請假）與各狀態可按的按鈕、批次到班選取模式與結果（部分略過）、改判 dialog（需 attendance:amend）、非今天日期的唯讀檢視、非營業日、即時連線中斷提示、只有 attendance:read 時的唯讀樣式、空清單、載入中。\n\n**內容**\n- 頂部：日期（預設 `todayTaipei()`，可選過去日期查看；非今天時顯示「檢視 {date}，僅可改判」）、班級（lookups classOptions 當前學年度，存 `route.query.class_id`；預設「全部」）、搜尋（姓名 / 學號，前端過濾）、「重新整理」。已有資料時「重新整理」失敗以 ElMessage.error 顯示錯誤並保留畫面；尚無資料時載入失敗顯示 EmptyState error「無法載入出勤資料」+「重試」。\n- `AttendanceSummaryBar`（FRONTEND-123）：點 chip 依狀態前端過濾（不重新請求），再點一次取消。\n- 學生卡片 grid（`AttendanceStudentCard` FRONTEND-124，最小寬 220px）；依班級分組標題（全部班級時）。\n- 批次到班（有 `attendance:operate` 且是今天）：「批次到班」進入選取模式 → 卡片可勾選（只能勾 expected / absent）、「全選未到」、底部固定列「已選 N 位・確認到班 / 取消」→ `batchCheckIn` → 結果 toast「已到班 {succeeded} 位」；有 skipped 時 el-dialog 列出「{student_name}：{message}」。\n- 非營業日（`is_service_day=false`）：EmptyState「{date} 不是營業日」（若仍有列，照常顯示並可改判）。\n- 即時更新：`useAttendanceBoard`（FRONTEND-126）處理資料與 ws；`denied` 時顯示「沒有即時更新權限，請手動重新整理」。\n- 改判：卡片 emit amend → `AttendanceAmendDialog`（FRONTEND-125）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/AttendanceTodayView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/AttendanceTodayView.vue",
       "source_ref": "FE:src/views/StudentAttendanceView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-126",
@@ -3448,7 +3448,7 @@
           "AttendanceTodayView readonly without operate permission：permissions ['attendance:read'] → 沒有 '批次到班'，卡片沒有 '到班' / '離班' / '缺席' 按鈕"
         ],
         "run": "just web-test src/views/AttendanceTodayView.spec.ts -t \"AttendanceTodayView\"",
-        "notes": ""
+        "notes": "頁面含日期元件、兩個下拉與多張帶 el-dropdown 的卡片，happy-dom 下單一案例約 3~6 秒，describe 逾時放寬為 20 秒。"
       },
       "review": {
         "status": "pending",
