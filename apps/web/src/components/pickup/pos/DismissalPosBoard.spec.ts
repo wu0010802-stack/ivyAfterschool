@@ -12,6 +12,7 @@ import {
   replyPickupRequest,
   type PickupQueue,
   type PickupRequest,
+  type PickupRequestCreate,
   type PickupRoster,
   type RosterStudent,
 } from '@/api/pickupRequests'
@@ -108,7 +109,7 @@ function makeQueue(open: PickupRequest[], closed: PickupRequest[] = []): PickupQ
   }
 }
 
-type FakeBoard = PosBoardSource & { reload: ReturnType<typeof vi.fn> }
+type FakeBoard = PosBoardSource & { reload: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> }
 
 /** 資料以 ref 提供；操作直接打 api（axios-mock-adapter 攔截），與 usePickupBoard 的約定相同 */
 function makeBoard(
@@ -123,7 +124,7 @@ function makeBoard(
     reply: (id, body) => replyPickupRequest(id, body),
     acknowledge: (id) => acknowledgePickupRequest(id),
     complete: (id, body) => completePickupRequest(id, body),
-    create: (body) => createPickupRequest(body),
+    create: vi.fn((body: PickupRequestCreate) => createPickupRequest(body)),
   }
 }
 
@@ -287,7 +288,7 @@ describe('DismissalPosBoard', () => {
     vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     vi.setSystemTime(NOW)
     mock.onPost(REQUESTS_URL).reply(201, makeRequest('r9', WANG, CLASS_A, { source: 'staff', requested_by_type: 'staff' }))
-    const { wrapper } = await mountBoard()
+    const { wrapper, board } = await mountBoard()
 
     vi.advanceTimersByTime(1)
     await studentCard(wrapper, '王小明').trigger('click')
@@ -305,6 +306,9 @@ describe('DismissalPosBoard', () => {
     const posts = mock.history.post.filter((r) => r.url === REQUESTS_URL)
     expect(posts).toHaveLength(1)
     expect(JSON.parse(posts[0]?.data as string).student_id).toBe('s1')
+    // 經 board.create 建立：board 才知道是本機建立，不播新請求提示音（FRONTEND-188）
+    expect(board.create).toHaveBeenCalledTimes(1)
+    expect(board.create).toHaveBeenCalledWith({ student_id: 's1' })
   })
 
   it('DismissalPosBoard search filters students', async () => {
