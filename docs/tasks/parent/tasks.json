@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 143,
-  "last_updated": "2026-10-16T05:39:49Z",
+  "version": 144,
+  "last_updated": "2026-10-16T05:40:35Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2786,7 +2786,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveDetailSheet.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveDetailSheet.vue::emit",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -2814,9 +2814,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。3 條 red_case 皆有同名測試且斷言具體（dialog 內文字、取消按鈕文字與說明、emit cancel 的 leave.id、file input 有無、emit upload 次數、「已達 2 個附件上限」）；tdd.run 18 綠，-t 選到每條。dba5987（測試）先於 dff7852（實作）；實作 commit 唯一的 spec 修改是圖示 selector 由 .lds-summary .leave-item__icon 改為 .lds-summary__icon（LeaveListItem 的 .leave-item__icon 是 scoped 樣式無法共用），仍逐一斷言 sick / event_busy / event_note 的圖示文字，未放寬。重點核對：附件 editable 只看 status === active（已結束但 active、can_cancel false 仍可補附件；cancelled 唯讀）；取消文字 start_date < today 為「取消剩餘日子」並附 info 說明（今天 MM/DD 取自 today prop），start = today 為「取消請假」；footer 只在 can_cancel 為 true 時存在；申請 / 取消時間以 formatDateTime 顯示台北時間（17:30Z → 隔天 01:30 有測試）。狀態膠囊與 PARENT-136 目前一致：兩邊程式同一組判斷順序與 tone；另以 Chromium 掛載兩元件跑 180 組（start / end 5 個日期組合 × active / cancelled × can_cancel × 3 假別）比對膠囊文字、tone class、取消按鈕文字、假別圖示與期間文字，0 筆不一致。對照 parent-page-leaves.html componentDecisions 7 條逐條符合：1 ParentBottomSheet「請假詳情」高度自適應、只有內容區捲動；2 40px 假別圖示 + title-medium 假別 + StatusPill、期間「· 共 N 天」含首尾、下方分隔線；3 dl 標籤欄 72px、事由 null「未填寫」on-surface-variant 且保留換行、申請者兩種文案、申請 / 取消時間；4 附件 LeaveAttachmentList、max / maxMb 取自 limits、uploading 與 upload 原樣傳遞、已滿「已達 n 個附件上限」、已取消唯讀「沒有附件」、url null「暫時無法開啟」；5 can_cancel 才有 footer、outlined 全寬、說明在按鈕上方；6 已取消摘要圖示 surface-container-high、假別與期間 on-surface-variant；7 無審核 timeline / review_note / 刪除附件。390×844 Chromium 實測稿內 6 個詳情預設（已排定、請假中、已結束、附件已滿、已取消、安親班代登記）與實作逐元素位置尺寸完全相同（sheet 高度、摘要 73px、明細列 45px、附件磚 109px、footer 81 / 109px）；14 行長事由時 sheet 高 788（844 − 56）、只有 .sheet__body 捲動（scrollHeight 1014 > clientHeight 595），捲到底 footer 仍貼在可視區底部、頁面本身不捲動。突變（editable 改看 can_cancel、footer 不看 can_cancel、剩餘判斷改 <=、說明日期寫死、膠囊判斷順序對調、請假中 tone 改 info、max 寫死 3、時間改 UTC 字串、天數少 +1、申請者對調、upload 不往上 emit）共 11 處各有測試轉紅，還原後 git diff 乾淨。圖示 info / sick / event_busy / event_note 皆在子集，icons.spec 綠；web-lint 乾淨；web-typecheck exit 2 的錯誤全在他人進行中的檔案（AuthorizationCard.spec、StudentSelect.spec、AdminLayout.vue、AuthorizationListItem.vue、stores/notifications.spec），本檔 0 錯。殘留：狀態膠囊規則與 LeaveListItem 各自實作（已在 risk_notes，目前一致）；事由只有空白字元時顯示空白而非「未填寫」（稿同寫法，後端通常已正規化）。"
       }
     },
     {
