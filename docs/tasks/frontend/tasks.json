@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 175,
-  "last_updated": "2026-10-16T04:33:53Z",
+  "version": 176,
+  "last_updated": "2026-10-16T04:42:09Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -795,11 +795,11 @@
     {
       "id": "FRONTEND-032",
       "title": "實作 components/layout/AdminHeader.vue：頁面標題、側欄切換、通知鈴、使用者選單（改密碼 / 登出）",
-      "description": "建立 `apps/web/src/components/layout/AdminHeader.vue`。移植 ivy `FE:src/components/layout/AdminHeader.vue` 的使用者下拉與登出流程；**去掉** impersonate、portal preview、GlobalSearch、A11yMenu、breadcrumb parents、employee store。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。\n\n**props / emits**：emits `toggle-sidebar`。\n**內容**\n- 左：收合按鈕（`aria-label=\"切換側欄\"`，emit `toggle-sidebar`）+ `route.meta.title`。\n- 右：`NotificationBell`（FRONTEND-035）+ 使用者下拉（顯示 `display_name` 與 `role.name`）：「修改密碼」→ `/change-password`；「登出」→ `await auth.logout()` 後 `router.replace('/login')`，登出中按鈕 loading。\n- ws 狀態小圓點：`open` 綠、`reconnecting` 黃（tooltip「即時連線重試中」）、其他灰。\n\n**驗收標準**\n- 顯示使用者名稱與角色；登出呼叫 API 後導向 /login。\n- 收合按鈕 emit；ws 狀態圓點反映 adminWs.status。",
+      "description": "建立 `apps/web/src/components/layout/AdminHeader.vue`。移植 ivy `FE:src/components/layout/AdminHeader.vue` 的使用者下拉與登出流程；**去掉** impersonate、portal preview、GlobalSearch、A11yMenu、breadcrumb parents、employee store。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。\n\n**props / emits**：props `collapsed?: boolean`、`mobile?: boolean`（皆預設 false，由 AdminLayout（FRONTEND-029）傳入目前的側欄收合狀態與是否為手機版面，只影響切換鈕 icon 與使用者選單樣式）；emits `toggle-sidebar`。\n**內容**\n- 左：收合按鈕（44×44，`aria-label=\"切換側欄\"`，emit `toggle-sidebar`；`collapsed` 或 `mobile` 時 icon 為 Expand，否則 Fold）+ `route.meta.title`（16px 粗體）。\n- 右（依序 ws 狀態圓點、`NotificationBell`（FRONTEND-035）、使用者下拉）：使用者下拉的觸發區顯示人像 icon + `display_name` + `role.name`（info tag）+ 下拉箭頭；`mobile` 時觸發區只剩 icon（`aria-label=\"帳號選單\"`），姓名與角色移到下拉第一列（停用的資訊列「{display_name}（{role.name}）」）。選項「修改密碼」→ `router.push('/change-password')`；「登出」（分隔線隔開）→ `await auth.logout()` 後 `router.replace('/login')`，登出中該項顯示「登出中…」並停用。\n- ws 狀態小圓點（8px，`data-test=ws-dot`）：`open` 綠（tooltip「即時連線正常」）、`reconnecting` 黃（「即時連線重試中」）、其他灰（「即時連線未建立」）；tooltip 文字同時是圓點的 `aria-label`。\n\n**驗收標準**\n- 顯示使用者名稱與角色；登出呼叫 API 後導向 /login。\n- 收合按鈕 emit，icon 依 collapsed / mobile 切換；ws 狀態圓點反映 adminWs.status。\n- 登出中該項停用；「修改密碼」導向 /change-password；手機版姓名與角色移到下拉第一列。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/layout/AdminHeader.vue",
       "source_ref": "FE:src/components/layout/AdminHeader.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-035",
@@ -818,10 +818,14 @@
           "AdminHeader shows user and page title：auth.user {display_name:'林行政',role:{name:'行政'}}、initialRoute '/students'（meta.title 學生工作台）→ wrapper.text() 含 '林行政'、'行政'、'學生工作台'",
           "AdminHeader logout calls api then routes to login：mock POST /admin/auth/logout 200 → 點下拉的 '登出' → mock.history.post[0].url === '/admin/auth/logout'、router.currentRoute.value.path === '/login'、auth.status === 'anonymous'",
           "AdminHeader emits toggle sidebar：點 [aria-label=切換側欄] → emitted('toggle-sidebar').length === 1",
-          "AdminHeader reflects ws status dot：adminWs.status = 'reconnecting' → [data-test=ws-dot] 有 class is-reconnecting；'open' → is-open"
+          "AdminHeader reflects ws status dot：adminWs.status = 'reconnecting' → [data-test=ws-dot] 有 class is-reconnecting、aria-label '即時連線重試中'；'open' → is-open、'即時連線正常'；idle / connecting / closed → 兩個 class 都沒有、'即時連線未建立'",
+          "AdminHeader logout item shows loading while pending：POST /admin/auth/logout 尚未回應 → 再開下拉，'登出中…' 項有 class is-disabled 且 aria-disabled='true'、路由仍為 /students；回應後 path === '/login'",
+          "AdminHeader change password routes to change-password：點下拉的 '修改密碼' → router.currentRoute.value.path === '/change-password'，沒有發出 POST",
+          "AdminHeader toggle icon follows collapsed and mobile：預設顯示 [data-test=icon-fold]；setProps({collapsed:true}) → 顯示 [data-test=icon-expand]；setProps({collapsed:false,mobile:true}) → 仍為 icon-expand",
+          "AdminHeader moves name into menu on mobile：props mobile true → [data-test=user-menu] 不含 '林行政' 也沒有 el-tag、aria-label === '帳號選單'；開下拉後 '林行政（行政）' 項有 class is-disabled"
         ],
         "run": "just web-test src/components/layout/AdminHeader.spec.ts -t \"AdminHeader\"",
-        "notes": ""
+        "notes": "happy-dom 不計算版面：頂欄 56px、切換鈕 44×44、標題 16px 粗體、圓點 8px 以 `?raw` 讀原始碼斷言（AdminHeader keeps header sizes from mockup）；el-dropdown / el-tooltip 以 setTimeout 開關，spec 用 fake timers 推進。"
       },
       "review": {
         "status": "pending",
