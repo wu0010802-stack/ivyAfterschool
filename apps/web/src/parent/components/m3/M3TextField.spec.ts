@@ -134,6 +134,20 @@ describe('M3TextField', () => {
     expect(input.attributes('placeholder')).toBeUndefined()
   })
 
+  it('M3TextField forwards min and max to the native date input', () => {
+    const wrapper = mount(M3TextField, {
+      props: { label: '開始日期', type: 'date', min: '2026-09-02', max: '2026-12-01' },
+    })
+    const input = wrapper.get('input')
+    expect(input.attributes('min')).toBe('2026-09-02')
+    expect(input.attributes('max')).toBe('2026-12-01')
+
+    // 未給 min / max 時不輸出屬性
+    const bare = mount(M3TextField, { props: { label: '開始日期', type: 'date' } }).get('input')
+    expect(bare.attributes('min')).toBeUndefined()
+    expect(bare.attributes('max')).toBeUndefined()
+  })
+
   it('M3TextField passes input attributes and disabled', () => {
     const wrapper = mount(M3TextField, {
       props: { label: '聯絡電話', type: 'tel', inputmode: 'tel', autocomplete: 'tel', disabled: true },
