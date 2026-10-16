@@ -30,7 +30,7 @@ export const VIEW_LOADERS: Record<ViewName, () => Promise<Component>> = {
   ChangePasswordView: () => import('@/views/ChangePasswordView.vue'),
   ErrorView: () => import('@/views/ErrorView.vue'),
   DashboardView: () => import('@/views/DashboardView.vue'),
-  StudentWorkbenchView: placeholder,
+  StudentWorkbenchView: () => import('@/views/StudentWorkbenchView.vue'),
   ClassesView: () => import('@/views/ClassesView.vue'),
   AttendanceTodayView: () => import('@/views/AttendanceTodayView.vue'),
   AttendanceMonthlyView: () => import('@/views/AttendanceMonthlyView.vue'),
