@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 264,
-  "last_updated": "2026-10-16T14:41:46Z",
+  "version": 265,
+  "last_updated": "2026-10-16T14:45:28Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4052,14 +4052,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkItemRow.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-005",
         "FRONTEND-150"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r10-f5 打回】長按開出的選單在放開時立即收起：Chromium 1024×768 實測（滑鼠按住 800ms、CDP 觸控按住 800ms 結果相同），按住期間「編輯」「刪除」2 項可見，放開後 0.5 秒選單已不可見（放開那次 click 仍被吞掉、沒有 emit set-status）。推測是放開產生的 click 先被 Element Plus 下拉在 window 層的點外面判定收起，早於本列的 click.capture。使用者無法在長按後點選「編輯」「刪除」，description「長按整列（≥ 600ms）→「編輯」「刪除」」與稿 decision 9 未達成；happy-dom 測試只在放開前斷言選單開啟，所以綠燈。修正方向：長按達 600ms 時只記旗標（可給視覺回饋），在放開後被吞掉的那次 click 處理完、或 pointerup 後的下一個 tick 才開選單，或改用不受點外面判定影響的開法；red_case 6 補「pointerup 與冒泡到 window 的 click 之後選單仍開著，點『編輯』emit edit」，並附 Chromium 實測（滑鼠與觸控）結果。",
+      "risk_notes": "長按後的 window 攔截要等到下一次 pointerdown（或吞掉一次 click）才解除：觸控長按放開沒有產生 click 時，若下一次 click 不是由指標產生（例如鍵盤在按鈕上按 Enter），那一次 click 會被吞掉。\n四段切換是 role=radiogroup / radio 的按鈕，沒有方向鍵切換（鍵盤需逐一 Tab）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/homework/HomeworkItemRow.spec.ts",
@@ -4083,9 +4083,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f5",
-        "notes": "打回（concern）。tdd.run 8/8 綠，8 條 red_case 一一對應；測試 c31c5df 先於實作 a0826c1。f753133 補述（48×44 比原文 44 更嚴、radio 語意、唯讀樣式、長按取消與放開不切換）與稿 decision 9、10 一致，沒有放寬。突變 11 處 9 處轉紅；存活：唯讀時可長按（唯讀沒有下拉，等價）、pointerleave 不取消（無 red_case）。Chromium 1024×768 實測：四段 51/52/52/48×44、⋮ 44×44、唯讀 0 個 ⋮ 且 12 段全 disabled、短按與觸控點擊 emit 正確、長按後放開不 emit。打回項（已追加至 risk_notes）：長按開出的選單在放開時立即收起，使用者無法在長按後選「編輯」「刪除」。殘留：(1) radiogroup 沒有方向鍵切換；(2) pointerleave 取消長按沒有測試；(3) 400px 卡片內標題只剩約 55px 寬（稿相同版面，稿 decision 5 的兩欄在 1024 寬約 460px，屬頁面層）。共通：just web-lint 8 個檔（4 實作 + 4 spec）exit 0；just web-typecheck exit 0。"
+        "notes": "複審通過（只核對 review-r10-f5 的打回項：長按開出的選單放開即收起）。紅燈測試 bb7f84d 先於修正 75032ac：長按滿 600ms 時先在 window 捕獲階段註冊一次性攔截，再開選單；放開產生的 click 被 stopImmediatePropagation 擋下，既不觸發 Element Plus 下拉的點外面收起、也不切換狀態；下一次 pointerdown 或卸載時解除；移除原本列上的 click.capture。c2d2ad7 的 description 改寫長按段落、新增 3 條 red_case（放開後選單仍開著、觸控長按無 click 後下一次點擊照常、pointerleave 取消長按），既有 red_case 6 只補「掛到 document、以 aria-expanded 判斷開關」，下一次點擊改為 pointerdown + pointerup + click 是真實事件序列，沒有放寬。tdd.run 11/11 綠，11 條 red_case 依名稱一一對應。突變 6 處 5 處轉紅（不註冊攔截、pointerdown 不解除、只 stopPropagation、移出不取消、吞掉後不解除）；存活：把註冊移到 handleOpen 之後（Element Plus 開選單本身有延遲，點外面監聽仍晚於攔截註冊，等價）。Chromium 1024×768 實測：滑鼠按住 800ms 放開 0.55 秒後選單 2 項仍可見、沒有 emit，點「編輯」emit edit，之後點「完成」照常 emit；在 ⋮ 上長按放開選單也保持開啟；CDP 觸控按住 800ms 放開後選單仍開著，觸控點「刪除」emit remove、選單關閉，之後觸控點「完成」照常 emit；與一般點 ⋮ 再點「刪除」的關閉行為相同。just web-lint 2 檔 exit 0；just web-typecheck exit 2，錯誤只在他人進行中的檔案（ScoreGrid、LeaveFormDialog、PickupCreateDialog、家長端 AuthorizationForm / ChildHubView / NotificationsView），本 task 檔案無錯誤。初審其餘結論維持；殘留見 risk_notes。"
       }
     },
     {
