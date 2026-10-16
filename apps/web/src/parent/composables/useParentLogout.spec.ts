@@ -17,7 +17,7 @@ import { useParentAuthStore } from '../stores/parentAuth'
 import { useParentWsStore } from '../stores/parentWs'
 import { usePickupRequestsStore } from '../stores/pickupRequests'
 import { useSnackbarStore } from '../stores/snackbar'
-import { useParentLogout } from './useParentLogout'
+import { isParentLoggingOut, useParentLogout } from './useParentLogout'
 
 const LOGOUT_URL = '/parent/auth/logout'
 const CONFIG_URL = '/parent/config'
@@ -283,4 +283,41 @@ describe('useParentLogout', () => {
     // 會載入真實的 MoreView / LoginView，負載高時超過 vitest 預設 5 秒
     30_000,
   )
+
+  it('useParentLogout exposes logging out state', async () => {
+    const pending = deferredReply()
+    mock.onPost(LOGOUT_URL).reply(pending.reply)
+    const holder: { a: ParentLogout | null; b: ParentLogout | null } = { a: null, b: null }
+    const Host = defineComponent({
+      setup() {
+        holder.a = useParentLogout()
+        holder.b = useParentLogout()
+        return () => null
+      },
+    })
+    mounted = await mountWithApp(Host, { initialRoute: '/more' })
+    const a = holder.a!
+    const b = holder.b!
+    expect(isParentLoggingOut()).toBe(false)
+
+    const first = a.logout()
+    expect(isParentLoggingOut()).toBe(true)
+    // 兩個實例共用同一狀態：另一個實例看得到，也不會再送一次登出
+    expect(b.loggingOut.value).toBe(true)
+    await b.logout()
+    await flushPromises()
+    expect(logoutPosts()).toHaveLength(1)
+
+    pending.resolve([200, null])
+    await first
+    expect(isParentLoggingOut()).toBe(false)
+    expect(b.loggingOut.value).toBe(false)
+
+    // API 失敗也會在完成後回到 false
+    mock.onPost(LOGOUT_URL).reply(500, SERVER_ERROR)
+    const failed = b.logout()
+    expect(isParentLoggingOut()).toBe(true)
+    await failed
+    expect(isParentLoggingOut()).toBe(false)
+  })
 })

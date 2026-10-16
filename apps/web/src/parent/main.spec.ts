@@ -1,13 +1,14 @@
-import { flushPromises } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { App } from 'vue'
+import { defineComponent, type App } from 'vue'
 import { createMemoryHistory, type Router } from 'vue-router'
 import { createApiMock } from '@/test/helpers'
 import type { ChildSummary, ParentMe } from './api/children'
 import { _resetPublicConfigForTests } from './api/config'
 import { parentHttp, parentRefreshHttp } from './api/http'
 import { listChildLeaves } from './api/leaves'
+import { useParentLogout } from './composables/useParentLogout'
 import { createParentApp, mountParentApp } from './main'
 import source from './main.ts?raw'
 import { useChildrenStore } from './stores/children'
@@ -300,5 +301,51 @@ describe('parentMain', { timeout: 20_000 }, () => {
     expect(code).not.toMatch(/from '@\/(?:views|components|layouts|stores|api|router|bootstrap)/)
     // vitest 載入時不自動掛載；正式入口經 mountParentApp（第一次導航完成才掛載）
     expect(code).toMatch(/if \(!import\.meta\.env\.VITEST\) void mountParentApp\('#app'\)/)
+  })
+
+  it('parentMain skips auth redirect while logging out', async () => {
+    mock.onGet('/parent/me').replyOnce(200, ME).onGet('/parent/me').reply(401, UNAUTHORIZED)
+    refreshMock.onPost('/parent/auth/refresh').reply(401, UNAUTHORIZED)
+    mock.onGet('/parent/children').reply(401, UNAUTHORIZED)
+    let resolveLogout!: (value: [number, unknown]) => void
+    mock.onPost('/parent/auth/logout').reply(
+      () =>
+        new Promise<[number, unknown]>((r) => {
+          resolveLogout = r
+        }),
+    )
+    const { router, pinia } = createParentApp({ history: historyAt('/more') })
+    await settle(router)
+    expect(router.currentRoute.value.fullPath).toBe('/more')
+    const visited: string[] = []
+    router.afterEach((to) => {
+      visited.push(to.fullPath)
+    })
+    let logout: (() => Promise<void>) | null = null
+    const Host = defineComponent({
+      setup() {
+        logout = useParentLogout().logout
+        return () => null
+      },
+    })
+    const wrapper = mount(Host, { global: { plugins: [router, pinia] } })
+
+    const loggingOut = logout!()
+    await flushPromises()
+    expect(mock.history.post.filter((r) => r.url === '/parent/auth/logout')).toHaveLength(1)
+
+    // 登出 API 尚未回應時，另一個在途請求 401 且 refresh 也 401
+    await expect(parentHttp.get('/parent/children')).rejects.toMatchObject({ status: 401 })
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/more')
+
+    resolveLogout([200, null])
+    await loggingOut
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?logged_out=1'), { timeout: 10_000 })
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/login?logged_out=1')
+    expect(visited.filter((path) => path.includes('redirect='))).toEqual([])
+    wrapper.unmount()
   })
 })
