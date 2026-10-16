@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 192,
-  "last_updated": "2026-10-16T05:14:01Z",
+  "version": 193,
+  "last_updated": "2026-10-16T05:23:01Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6067,7 +6067,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreCell.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-236"
@@ -6090,7 +6090,7 @@
           "ScoreCell note editor returns focus to the cell：attachTo document.body，score 90、note '遲到' → 分數 input 聚焦後按 Shift+F2 → document.activeElement 為備註 textarea；按 Esc → 編輯框關閉、沒有 emit、document.activeElement 為該格分數 input；isAbsent true、note '病假' → 「缺」勾選 input 聚焦後按 Shift+F2，內容不改直接按 Enter → 沒有 emit、document.activeElement 為「缺」勾選 input"
         ],
         "run": "just web-test src/components/exams/ScoreCell.spec.ts -t \"ScoreCell\"",
-        "notes": ""
+        "notes": "el-tooltip 會以 cloneVNode 把自己的 aria-* 蓋到直接子節點，且對可聚焦的子節點移除 aria-expanded / aria-haspopup，所以分數輸入框與圖示鈕外各包一層 span（.score-cell__wrap）。關閉後的聚焦在 nextTick 之後執行，避開 popover focus trap 釋放時的還焦；超過 200 字時 focus trap 會因滑鼠 focusout 釋放，以 document focusin 守衛把焦點拉回文字框。happy-dom 不會在 pointerdown 後移動焦點，焦點相關行為另以 Playwright 在真實 Chromium 驗證過（確定 / Esc 回到分數輸入框並全選、點外面焦點留在點的位置、超過 200 字焦點拉回、再點圖示不重開、缺考格回「缺」）。"
       },
       "review": {
         "status": "pending",
