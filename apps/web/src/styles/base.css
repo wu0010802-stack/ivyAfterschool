@@ -1,0 +1,16 @@
+/* FRONTEND-028：後台全域基底樣式（在 element-plus/dist/index.css 之後載入）。
+   已核可的設計稿（page-login / page-error / page-change-password / page-admin-shell 等）都假設有這段：
+   沒有的話整頁置中的頁面會多出 body 預設的 8px 邊與捲軸，固定尺寸的元件也會因 padding / border 撐大。 */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--el-font-family);
+  color: var(--el-text-color-primary);
+  background: var(--el-bg-color-page);
+}

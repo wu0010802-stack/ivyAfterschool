@@ -1,4 +1,6 @@
-// 後台入口最小佔位，由 FRONTEND 的 app 啟動 task 取代
-import { createApp } from 'vue'
+// FRONTEND-028：後台入口。Element Plus 樣式先載入，全域基底樣式在後（覆寫 body 預設值）。
+import 'element-plus/dist/index.css'
+import '@/styles/base.css'
+import { createAdminApp } from '@/bootstrap'
 
-createApp({ render: () => null }).mount('#app')
+createAdminApp().app.mount('#app')
