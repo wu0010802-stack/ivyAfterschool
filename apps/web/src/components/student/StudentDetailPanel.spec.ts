@@ -1,7 +1,7 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick, type PropType } from 'vue'
+import { defineComponent, h, nextTick, onMounted, type PropType } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import type { Guardian } from '@/api/guardians'
 import { adminHttp } from '@/api/http'
@@ -11,12 +11,18 @@ import StudentDetailPanel from './StudentDetailPanel.vue'
 
 // 子元件各自有完整測試：照片、監護人、成績紀錄、編輯 dialog 以替身驗證本元件傳入的 props 與完成事件
 // （也避免它們各自發請求、多個 el-select 拖慢 happy-dom）。敏感欄位與永久刪除 dialog 用真實元件。
+// 替身記錄掛載次數：靜默重抓不可卸載重掛子元件（GuardianManager 內的綁定碼 dialog 只顯示一次）。
+const stubMounts: Record<string, number> = {}
+
 function stub(name: string, propNames: string[], emits: string[]) {
   return defineComponent({
     name,
     props: Object.fromEntries(propNames.map((p) => [p, { type: null as unknown as PropType<unknown>, default: undefined }])),
     emits,
     setup(props) {
+      onMounted(() => {
+        stubMounts[name] = (stubMounts[name] ?? 0) + 1
+      })
       return () => h('div', { 'data-test': name }, JSON.stringify(props))
     },
   })
@@ -185,6 +191,7 @@ describe('StudentDetailPanel', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     mock = createApiMock(adminHttp)
+    for (const key of Object.keys(stubMounts)) delete stubMounts[key]
   })
 
   afterEach(() => {
@@ -312,11 +319,21 @@ describe('StudentDetailPanel', () => {
   })
 
   it('StudentDetailPanel passes guardians and refreshes count after change', async () => {
+    let releaseReload: (() => void) | undefined
     mock
       .onGet('/admin/students/s1')
       .replyOnce(200, detail())
       .onGet('/admin/students/s1')
-      .replyOnce(200, detail({ guardians: [GUARDIAN, { ...GUARDIAN, id: 'g2', name: '王媽媽', is_primary: false }] }))
+      .replyOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseReload = () =>
+              resolve([
+                200,
+                detail({ guardians: [GUARDIAN, { ...GUARDIAN, id: 'g2', name: '王媽媽', is_primary: false }] }),
+              ])
+          }),
+      )
     const { wrapper } = await mountPanel()
 
     await clickTab(wrapper, '監護人')
@@ -326,14 +343,23 @@ describe('StudentDetailPanel', () => {
       initial: [{ id: 'g1', name: '王大明' }],
       readonly: false,
     })
+    expect(stubMounts.GuardianManager).toBe(1)
 
     wrapper.findComponent({ name: 'GuardianManager' }).vm.$emit('change')
     await settle()
 
+    // 重抓回應前：不顯示骨架、監護人元件沒有被卸載重掛（綁定碼 dialog 在 GuardianManager 裡，只顯示一次）
+    expect(detailGets()).toBe(2)
+    expect(wrapper.find('.el-skeleton').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'GuardianManager' }).exists()).toBe(true)
+    expect(stubMounts.GuardianManager).toBe(1)
+
+    releaseReload?.()
+    await settle()
+
     expect(detailGets()).toBe(2)
     expect(tabTitles(wrapper)).toContain('監護人（2）')
-    // 重新抓詳情不顯示骨架、不換掉監護人元件
-    expect(wrapper.find('.el-skeleton').exists()).toBe(false)
+    expect(stubMounts.GuardianManager).toBe(1)
   })
 
   it('StudentDetailPanel guardians readonly when archived', async () => {
@@ -463,11 +489,17 @@ describe('StudentDetailPanel', () => {
   })
 
   it('StudentDetailPanel reloads and emits changed after purge', async () => {
+    let releaseReload: (() => void) | undefined
     mock
       .onGet('/admin/students/s1')
       .replyOnce(200, ARCHIVED_WITHDRAWN)
       .onGet('/admin/students/s1')
-      .replyOnce(200, { ...ARCHIVED_WITHDRAWN, name: '已刪除學生', guardians: [] })
+      .replyOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseReload = () => resolve([200, { ...ARCHIVED_WITHDRAWN, name: '已刪除學生', guardians: [] }])
+          }),
+      )
     mock
       .onPost('/admin/students/s1/purge')
       .reply(200, { student_id: 's1', purged_at: '2026-10-16T03:00:00Z', anonymized_student_no: 'X0001' })
@@ -491,6 +523,14 @@ describe('StudentDetailPanel', () => {
     await settle()
 
     expect(mock.history.post[0]?.url).toBe('/admin/students/s1/purge')
+    // 重抓回應前：不顯示骨架、header 仍在
+    expect(detailGets()).toBe(2)
+    expect(wrapper.find('.el-skeleton').exists()).toBe(false)
+    expect(wrapper.find('.detail-head h2').text()).toContain('王小明')
+
+    releaseReload?.()
+    await settle()
+
     expect(detailGets()).toBe(2)
     expect(wrapper.find('.detail-head h2').text()).toContain('已刪除學生')
     expect(wrapper.emitted('changed')).toHaveLength(1)
