@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 256,
-  "last_updated": "2026-10-16T14:28:27Z",
+  "version": 257,
+  "last_updated": "2026-10-16T14:28:53Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2050,11 +2050,11 @@
     {
       "id": "FRONTEND-064",
       "title": "實作 views/settings/StaffAccountsView.vue：員工帳號列表與操作",
-      "description": "建立 `apps/web/src/views/settings/StaffAccountsView.vue`（路由 `/settings/accounts`，`staff:read`）。移植 ivy `FE:src/components/settings/SettingsAccountsTab.vue` 的列表欄位、操作下拉與重設密碼流程；**去掉** 家長帳號清單（ParentAccountsList）、portal-only 角色、employee 連動、自訂新密碼輸入（改為後端產生臨時密碼）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-accounts.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：列表（啟用 / 停用 / 需改密碼 tag）、篩選、建立 / 編輯 dialog（含個別權限調整）、臨時密碼只顯示一次的 dialog、停用與重新啟用確認、只有 staff:read 時的唯讀樣式、空清單。\n\n**內容**\n- `PageHeader`「員工帳號」；`AdminListToolbar`：搜尋（帳號 / 姓名）、角色（`listRoles()`）、狀態（啟用 / 停用）；`usePagedList`（FRONTEND-045，syncQuery）+ `listStaffUsers`。\n- 表格欄：帳號、姓名、角色、個別調整（extra / revoked 數量徽章，hover 顯示碼的中文標籤）、狀態（啟用 / 停用；`must_change_password` 加「待改密碼」tag）、最後登入（formatDateTime，null →「從未登入」）。\n- 有 `staff:write`：「新增員工」、每列操作「編輯」「重設密碼」「停用」/「重新啟用」。自己那一列不顯示「重設密碼」「停用」（後端 cannot_reset_self / cannot_deactivate_self）。\n- 重設密碼：確認「重設後 {display_name} 目前的登入會失效，確定要重設嗎？」→ `resetStaffPassword` → `TempPasswordDialog`（FRONTEND-066）。\n- 停用：確認「停用後 {display_name} 將無法登入，確定要停用嗎？」→ `deactivateStaffUser` → 更新該列。\n- 重新啟用：確認 → `activateStaffUser` → `TempPasswordDialog`。\n- 建立成功 → `TempPasswordDialog` 顯示 `temp_password`。\n- 權限比自己大的帳號（該列 `effective_permissions` 不是目前登入者 `auth.permissions` 的子集合，例如人事主管看系統管理員、主任）：該列「編輯」「重設密碼」「停用」/「重新啟用」全部 disabled，hover 提示「無法管理權限比你大的帳號」（對應後端 cannot_manage_staff）。\n- 錯誤以 `errorMessage` 顯示（cannot_manage_staff「無法管理權限比你大的帳號」等後端 message；前端 disabled 只是預先提示，後端錯誤仍照常處理）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/StaffAccountsView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/views/settings/StaffAccountsView.vue`（路由 `/settings/accounts`，`staff:read`）。移植 ivy `FE:src/components/settings/SettingsAccountsTab.vue` 的列表欄位、操作下拉與重設密碼流程；**去掉** 家長帳號清單（ParentAccountsList）、portal-only 角色、employee 連動、自訂新密碼輸入（改為後端產生臨時密碼）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-accounts.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：列表（啟用 / 停用 / 需改密碼 tag）、篩選、建立 / 編輯 dialog（含個別權限調整）、臨時密碼只顯示一次的 dialog、停用與重新啟用確認、只有 staff:read 時的唯讀樣式、空清單。\n\n**內容**\n- `PageHeader`「員工帳號」+ 副標「建立員工登入帳號、指定角色；個別員工的權限可以在角色之外額外加減」；白底面板內 `AdminListToolbar`：搜尋（帳號 / 姓名）、角色（`listRoles()`，依系統角色 admin → director → clerk → tutor、其餘依名稱）、狀態（啟用 / 停用）；`usePagedList`（FRONTEND-045，syncQuery，每頁 20；網址還原的狀態是字串，送 API 前轉布林）+ `listStaffUsers`。角色與權限目錄（`fetchPermissionCatalog()`，個別調整的中文標籤與員工表單用）載入完成前「新增員工」停用。\n- 表格欄：帳號（等寬字；自己那列加「你」線框 tag）、姓名、角色、個別調整（綠「+N」/ 紅「−N」徽章，hover / focus 顯示「額外授予：…」「移除：…」中文標籤，沒有調整「—」）、狀態（啟用 / 停用；`must_change_password` 加「待改密碼」tag）、最後登入（formatDateTime，null →「從未登入」）。停用帳號整列文字變灰。空清單 inline「沒有符合條件的員工帳號」+「試著清除搜尋文字或調整角色、狀態篩選」；載入失敗 EmptyState error「無法載入員工帳號」+「重試」。\n- 有 `staff:write`：「新增員工」、操作欄（固定右側）「編輯」+「更多 ▾」下拉（啟用帳號：「重設密碼」、分隔線、紅字「停用」；停用帳號：「重新啟用」）。自己那一列只有「編輯」、沒有「更多」（後端 cannot_reset_self / cannot_deactivate_self）。沒有 `staff:write` 時整個操作欄移除。\n- 重設密碼：確認「重設後 {display_name} 目前的登入會失效，確定要重設嗎？」（按鈕「重設密碼」）→ `resetStaffPassword` → `TempPasswordDialog`（FRONTEND-066），並重新載入列表（待改密碼由後端更新）。TempPasswordDialog 關閉時清空密碼字串。\n- 停用：確認「停用後 {display_name} 將無法登入，確定要停用嗎？」（紅色「停用」）→ `deactivateStaffUser` → 更新該列 + ElMessage.success「已停用 {display_name}」。\n- 重新啟用：確認「重新啟用後會產生新的臨時密碼，{display_name} 登入後必須先修改密碼。確定要重新啟用嗎？」→ `activateStaffUser` → 更新該列 + `TempPasswordDialog`。\n- 建立成功 → `TempPasswordDialog` 顯示 `temp_password` 並重新載入列表；編輯成功 → 更新該列。\n- 權限比自己大的帳號（該列 `effective_permissions` 不是目前登入者 `auth.permissions` 的子集合，例如人事主管看系統管理員、主任）：該列「編輯」與「更多」（內含重設密碼、停用 / 重新啟用）全部 disabled，hover 提示「無法管理權限比你大的帳號」（對應後端 cannot_manage_staff）。\n- 錯誤以 `errorMessage` 顯示（cannot_manage_staff「無法管理權限比你大的帳號」等後端 message；前端 disabled 只是預先提示，後端錯誤仍照常處理）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/StaffAccountsView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/StaffAccountsView.vue",
       "source_ref": "FE:src/components/settings/SettingsAccountsTab.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-052",
@@ -2077,14 +2077,23 @@
         "red_cases": [
           "StaffAccountsView lists accounts with status tags：GET /admin/staff-users 回 2 筆（一筆 must_change_password true、last_login_at null；一筆 is_active false）→ 文字含 '待改密碼'、'從未登入'、'停用'",
           "StaffAccountsView filters by role and status：選角色 '課輔老師'（r-tutor）、狀態 '啟用' → 最後一次 GET params 含 {role_id:'r-tutor',is_active:true,page:1}",
-          "StaffAccountsView resets password and shows temp password once：點 '陳老師' 列 '重設密碼' 並確認 → POST /admin/staff-users/u2/reset-password；回 {temp_password:'Tmp-8f3K2q9x'} → dialog 顯示 'Tmp-8f3K2q9x'",
-          "StaffAccountsView hides self dangerous actions：auth.user.id === 'u1' → u1 列沒有 '重設密碼' 與 '停用'；u2 列有",
-          "StaffAccountsView deactivates and reactivates：停用確認後 POST .../u2/deactivate 回 is_active false → 該列顯示 '停用' 且出現 '重新啟用'；點 '重新啟用' 確認 → POST .../u2/activate，回 temp_password 'Tmp-b' → dialog 顯示 'Tmp-b'",
-          "StaffAccountsView readonly without staff:write：permissions ['staff:read'] → 沒有 '新增員工' 與任何操作按鈕",
-          "StaffAccountsView disables rows the actor cannot manage：permissions ['staff:read','staff:write','students:read']；u3 effective_permissions ['staff:read','staff:write','students:read','roles:write'] → u3 列 '編輯'、'重設密碼'、'停用' 皆 disabled 且 hover 文字含 '無法管理權限比你大的帳號'；u2 effective_permissions ['students:read'] → u2 列 '編輯' 未 disabled"
+          "StaffAccountsView resets password and shows temp password once：點 '陳老師' 列「更多」→「重設密碼」並確認 → POST /admin/staff-users/u2/reset-password；回 {temp_password:'Tmp-8f3K2q9x'} → dialog 顯示 'Tmp-8f3K2q9x'、列表重新載入；關閉後 DOM 不含密碼",
+          "StaffAccountsView hides self dangerous actions：auth.user.id === 'u1' → u1 列操作只有 '編輯'（沒有「更多」，因此沒有 '重設密碼' 與 '停用'）；u2 列有 '編輯'、'更多'，「更多」下拉為 ['重設密碼','停用']",
+          "StaffAccountsView deactivates and reactivates：「更多」→「停用」確認後 POST .../u2/deactivate 回 is_active false → 該列顯示 '停用'、整列變灰、ElMessage 含 '已停用 陳老師'，「更多」下拉只剩 '重新啟用'；點 '重新啟用' 確認 → POST .../u2/activate，回 temp_password 'Tmp-b' → dialog 顯示 'Tmp-b'、該列為啟用 + 待改密碼",
+          "StaffAccountsView readonly without staff:write：permissions ['staff:read'] → 沒有 '新增員工'、沒有「操作」欄與任何操作按鈕（編輯 / 更多 / 重設密碼 / 停用 / 重新啟用）",
+          "StaffAccountsView disables rows the actor cannot manage：permissions ['staff:read','staff:write','students:read']；u3 effective_permissions ['staff:read','staff:write','students:read','roles:write'] → u3 列 '編輯' 與「更多」皆 disabled（'重設密碼'、'停用' 在「更多」下拉內，點了打不開）且 hover 文字含 '無法管理權限比你大的帳號'；u2 effective_permissions ['students:read'] → u2 列 '編輯' 與「更多」未 disabled",
+          "StaffAccountsView shows adjustment labels on hover：extra ['pickup:override']、revoked ['students:read'] → 徽章 aria-label '額外授予 1 項、移除 1 項'；hover → 文字含 '額外授予：代理接送強制完成'、'移除：查看學生'",
+          "StaffAccountsView role filter lists roles in system order：角色下拉為 ['全部','管理員','主任','行政','課輔老師']（API 回傳順序不同）",
+          "StaffAccountsView restores filters from query：initialRoute '/settings/accounts?is_active=false&q=陳&page=2' → 第一次 params 深等於 {q:'陳',is_active:false,page:2,page_size:20}",
+          "StaffAccountsView shows backend errors for row actions：停用回 409 last_role_manager → body 含後端 message、該列仍為啟用",
+          "StaffAccountsView creates user and shows temp password：新增員工 dialog 填帳號、姓名、選角色後建立 → POST /admin/staff-users，dialog 顯示 temp_password 'Tmp-new'，列表重新載入含新員工",
+          "StaffAccountsView edits user and updates row：「編輯」→ 標題 '編輯員工：陳老師'，改姓名儲存 → PATCH body 深等於 {display_name:'陳大明'}，該列更新為 '陳大明'",
+          "StaffAccountsView empty state and pagination：total 45 → 下一頁 params page 2、query.page '2'；搜尋 '不存在' 回空 → '沒有符合條件的員工帳號' 與說明、不顯示分頁",
+          "StaffAccountsView shows retry on load failure：GET 500 → '無法載入員工帳號'、沒有表格、'新增員工' disabled；'重試' 回 200 → 1 列、'新增員工' 可按",
+          "StaffAccountsView is wired in view loaders：(await VIEW_LOADERS.StaffAccountsView()).default === StaffAccountsView"
         ],
         "run": "just web-test src/views/settings/StaffAccountsView.spec.ts -t \"StaffAccountsView\"",
-        "notes": ""
+        "notes": "每列都有 el-dropdown / el-tooltip，新增 / 編輯用真實 StaffUserFormDialog：happy-dom 下單一測試約 2~8 秒，spec 的 describe 逾時設 20 秒。el-dropdown 的選單每列預先渲染在 body（v-show），spec 只取顯示中的那一份；dropdown / tooltip 以 setTimeout 開關，用 fake timers 推進。"
       },
       "review": {
         "status": "pending",
