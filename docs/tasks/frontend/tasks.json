@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 232,
-  "last_updated": "2026-10-16T13:00:20Z",
+  "version": 233,
+  "last_updated": "2026-10-16T13:00:53Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3101,7 +3101,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentSelect.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081"
@@ -3118,7 +3118,9 @@
           "StudentSelect searches after debounce with filters：classId 'c1'、輸入 '王' → 299ms 時無請求；300ms 後 GET /admin/students params 深等於 {q:'王',class_id:'c1',status:'active',page_size:20}",
           "StudentSelect formats options and emits student：回 [{id:'s1',name:'王小明',student_no:'S1001',class:{name:'低年級A班'}},{id:'s2',name:'王小華',student_no:'S1002',class:null}] → 選項文字 ['王小明（S1001・低年級A班）','王小華（S1002・未分班）']；選第一個 → emitted('update:modelValue')[0] 深等於 ['s1']、emitted('change')[0][0].name === '王小明'",
           "StudentSelect discards stale results：輸入 '王'（請求送出後回應延遲 1000ms 回 [王小明]）後輸入 '林'（10ms 回 [林小華]）→ '林' 的結果先到時選項只有 '林小華（…）'，'王' 的回應晚到後選項仍只有 '林小華（…）'（debounce 300ms 下，'王' 的延遲要超過 300ms 才會與 '林' 的請求交錯）",
-          "StudentSelect empty result copy：回 [] → 下拉顯示 '找不到符合的學生'"
+          "StudentSelect empty result copy：回 [] → 下拉顯示 '找不到符合的學生'",
+          "StudentSelect discards stale results: clearing text cancels in-flight request：輸入 '王' 300ms 後送出（回應延遲 500ms 回 [王小明]），回應未到前清掉文字 → 回應到達後選項為 []（清掉文字即作廢進行中的請求）",
+          "StudentSelect discards stale results: new input cancels in-flight request during debounce：輸入 '王' 300ms 後送出（回應延遲 200ms 回 [王小明]）後輸入 '林'（回 [林小華]）→ '林' 的 debounce 期間 '王' 的回應到達時選項為 [] 且下拉顯示 '搜尋中…'；'林' 送出並回應後選項為 ['林小華（S1003・中年級班）']（每次輸入即作廢進行中的請求）"
         ],
         "run": "just web-test src/components/student/StudentSelect.spec.ts -t \"StudentSelect\"",
         "notes": ""
@@ -3261,7 +3263,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPurgeDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
@@ -3281,7 +3283,10 @@
           "StudentPurgeDialog purges and emits：輸入 ' S1001 ' 後點 '永久刪除' → POST /admin/students/s1/purge body 深等於 {confirm_student_no:'S1001'}；回 {student_id:'s1',purged_at:'2026-10-02T08:00:00Z',anonymized_student_no:'PURGED-7F3A'} → body 含 '已永久刪除並匿名化（新編號 PURGED-7F3A）'，emitted('purged')[0][0].anonymized_student_no === 'PURGED-7F3A'",
           "StudentPurgeDialog shows backend error：POST 回 409 {error:{code:'student_not_purgeable',message:'只能刪除已封存且退班的學生'}} → dialog 內文字含 '只能刪除已封存且退班的學生'，dialog 仍開啟",
           "StudentPurgeDialog explains irreversible effects：開啟時文字含 '此操作無法復原' 與 '出勤、成績等統計紀錄保留但不再能辨識此學生'",
-          "StudentPurgeDialog handles confirmation mismatch：POST 回 422 {error:{code:'purge_confirmation_mismatch',message:'確認學號不符'}} → 輸入欄下文字含 '確認學號不符，請重新整理後再試'，輸入值清空，'永久刪除' 按鈕 disabled，dialog 仍開啟"
+          "StudentPurgeDialog handles confirmation mismatch：POST 回 422 {error:{code:'purge_confirmation_mismatch',message:'確認學號不符'}} → 輸入欄下文字含 '確認學號不符，請重新整理後再試'，輸入值清空，'永久刪除' 按鈕 disabled，dialog 仍開啟",
+          "StudentPurgeDialog requires exact student number: enter does not submit mismatched value：輸入 'S100' 後在輸入框按 Enter → mock.history.post.length === 0，未 emit purged",
+          "StudentPurgeDialog requires exact student number: overlay click does not close：點遮罩（.el-overlay-dialog 的 mousedown / mouseup / click）→ 未 emit update:modelValue（close-on-click-modal false）",
+          "StudentPurgeDialog requires exact student number: reopening clears input：輸入 'S1001' 後 modelValue 改 false 再改 true → 輸入框為空且 '永久刪除' disabled"
         ],
         "run": "just web-test src/components/student/StudentPurgeDialog.spec.ts -t \"StudentPurgeDialog\"",
         "notes": ""
