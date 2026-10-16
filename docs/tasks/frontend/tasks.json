@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 275,
-  "last_updated": "2026-10-16T15:04:16Z",
+  "version": 276,
+  "last_updated": "2026-10-16T15:04:56Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5029,11 +5029,11 @@
     {
       "id": "FRONTEND-200",
       "title": "實作 views/PickupAuthorizationsView.vue：代理接送核驗頁",
-      "description": "建立 `apps/web/src/views/PickupAuthorizationsView.vue`（路由 `/pickup/authorizations`，`pickup:read`，meta.tablet）。移植 ivy `FE:src/views/PickupAuthorizationsView.vue` 的今日清單、狀態計數篩選、搜尋、待處理排前、核驗 dialog 開啟流程；**去掉** 歷史 scope 切換為日期選擇、手機卡片欄位設定、GUARDIANS_WRITE 權限判斷（改為 pickup:operate）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-authorizations.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸。稿需呈現：今日代理授權卡片列表（有效 / 已接送 / 已取消 / 已過期、錯誤次數、已鎖定）、篩選與搜尋、核驗 dialog 三種方式（接送碼、目視核對有照片 / 無照片、主管強制完成）、碼錯誤剩餘次數、鎖定後只剩強制完成、核驗成功畫面、只有 pickup:read 時唯讀、無 pickup:override 時不顯示強制完成、空清單。\n\n**內容**\n- 不放 PageHeader（頁名「代理接送核驗」只在外框頂欄，同 POS / 今日出勤 / 作業看板）。第一列 44px 工具列：日期（預設 todayTaipei，可選過去 30 天、不可選未來、不可清空；非今天唯讀，工具列下方 info「檢視 {MM/DD（週）}的紀錄：僅供查詢，不能核驗」）；搜尋（寬 280px、placeholder「代理人、電話、學生、末四碼」、aria-label「搜尋代理人、電話、學生、末四碼」；比對代理人姓名、電話、學生姓名、末四碼，去空白與「-」、不分大小寫）；`route.query.student_id` 有值時只顯示該生，工具列右側「只顯示：{學生}」+「清除」；沒有 `pickup:operate` 時「僅檢視」tag。\n- 第二列狀態分段篩選（44px）：全部 / 有效 / 已接送 / 已取消 / 已過期，標籤後接計數（例如「有效 2」），依 effective_status 計算；計數為該日（有「只顯示」時為該生）全部授權，不受搜尋影響。\n- 資料：`usePickupBoard({ withAuthorizations: true })`（FRONTEND-188，日期非今天時改直接呼叫 `listPickupAuthorizations({date})` 且不訂閱 ws）。\n- 卡片清單：`AuthorizationCard`（FRONTEND-202）兩欄 grid（每張最小 400px），active 排前，其餘依 verified_at / created_at 新到舊。\n- 核驗：卡片 emit verify → `AuthorizationVerifyDialog`（FRONTEND-201）。`route.query.verify={id}` 時載入後自動開啟該授權的核驗（從 POS 完成交付導過來）。\n- 核驗成功：dialog 顯示成功畫面；清單以回傳 authorization 更新。\n- 空清單：今天「今天沒有代理接送授權」+「家長在家長端建立代理接送授權後，會即時出現在這裡」；過去日期「{MM/DD（週）}沒有代理接送授權」；篩選後「沒有符合條件的授權」+「清除篩選」。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/PickupAuthorizationsView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/views/PickupAuthorizationsView.vue`（路由 `/pickup/authorizations`，`pickup:read`，meta.tablet）。移植 ivy `FE:src/views/PickupAuthorizationsView.vue` 的今日清單、狀態計數篩選、搜尋、待處理排前、核驗 dialog 開啟流程；**去掉** 歷史 scope 切換為日期選擇、手機卡片欄位設定、GUARDIANS_WRITE 權限判斷（改為 pickup:operate）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-pickup-authorizations.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸。稿需呈現：今日代理授權卡片列表（有效 / 已接送 / 已取消 / 已過期、錯誤次數、已鎖定）、篩選與搜尋、核驗 dialog 三種方式（接送碼、目視核對有照片 / 無照片、主管強制完成）、碼錯誤剩餘次數、鎖定後只剩強制完成、核驗成功畫面、只有 pickup:read 時唯讀、無 pickup:override 時不顯示強制完成、空清單。\n\n**內容**\n- 不放 PageHeader（頁名「代理接送核驗」只在外框頂欄，同 POS / 今日出勤 / 作業看板）。第一列 44px 工具列：日期（預設 todayTaipei，可選過去 30 天、不可選未來、不可清空；非今天唯讀，工具列下方 info「檢視 {MM/DD（週）}的紀錄：僅供查詢，不能核驗」）；搜尋（寬 280px、placeholder「代理人、電話、學生、末四碼」、aria-label「搜尋代理人、電話、學生、末四碼」；比對代理人姓名、電話、學生姓名、末四碼，去空白與「-」、不分大小寫）；`route.query.student_id` 有值時只顯示該生，工具列右側「只顯示：{學生}」+「清除」；沒有 `pickup:operate` 時「僅檢視」tag。\n- 第二列狀態分段篩選（44px）：全部 / 有效 / 已接送 / 已取消 / 已過期，標籤後接計數（例如「有效 2」），依 effective_status 計算；計數為該日（有「只顯示」時為該生）全部授權，不受搜尋影響。\n- 資料：`usePickupBoard({ withAuthorizations: true })`（FRONTEND-188，日期非今天時改直接呼叫 `listPickupAuthorizations({date})` 且不訂閱 ws，序號防護只採最新日期的回應；回到今天沿用 board 的清單、不重抓）。載入中 4 張骨架卡、狀態計數顯示「—」；第一次載入失敗顯示「無法載入代理接送授權」+ 錯誤訊息 +「重試」（今天 board.reload、過去日期重抓該日），載入成功過之後的重新整理失敗保留畫面。\n- 卡片清單：`AuthorizationCard`（FRONTEND-202）兩欄 grid（每張最小 400px），active 排前，其餘依 verified_at / created_at 新到舊。\n- 核驗：卡片 emit verify → `AuthorizationVerifyDialog`（FRONTEND-201）。`route.query.verify={id}` 時今天的清單第一次載入後自動開啟該授權的核驗（從 POS 完成交付導過來）：該授權 active 且可核驗才開，參數只用一次，處理後從網址移除（保留其他 query）。dialog 的 authorization 以 id 從今天的清單取現值（推播重抓後的錯誤次數 / 鎖定即時反映），清單暫時找不到時沿用最後一份。\n- 核驗成功：dialog 顯示成功畫面；清單以回傳 authorization 更新（`board.applyAuthorization`）。\n- 空清單：今天「今天沒有代理接送授權」+「家長在家長端建立代理接送授權後，會即時出現在這裡」；過去日期「{MM/DD（週）}沒有代理接送授權」；篩選後「沒有符合條件的授權」+「清除篩選」。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/PickupAuthorizationsView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupAuthorizationsView.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-188",
@@ -5054,11 +5054,17 @@
           "PickupAuthorizationsView lists today with status counts：GET /admin/pickup/authorizations 回 3 筆（active、completed、active 已鎖定）→ chip 文字含 '有效 2'、'已接送 1'；卡片順序 active 在前",
           "PickupAuthorizationsView searches by proxy and last4：搜尋 '4821' → 只剩末四碼 4821 的卡；搜尋 '陳阿姨' → 只剩該代理人",
           "PickupAuthorizationsView filters by student from query：initialRoute '/pickup/authorizations?student_id=s1' → 只顯示 s1 的授權，文字含 '只顯示：王小明'，點 '清除' 後 query 無 student_id",
-          "PickupAuthorizationsView auto opens verify from query：initialRoute '?verify=pa1' → 載入後核驗 dialog 開啟且標題含 '陳阿姨'",
-          "PickupAuthorizationsView past date is readonly：選日期 2026-10-01 → GET params.date '2026-10-01'，卡片沒有 '核驗' 按鈕",
+          "PickupAuthorizationsView auto opens verify from query：initialRoute '?verify=pa1' → 載入後核驗 dialog 開啟且標題含 '陳阿姨'；之後網址 query 沒有 verify",
+          "PickupAuthorizationsView past date is readonly：選日期 2026-10-01 → GET params.date '2026-10-01'，卡片沒有 '核驗' 按鈕；過去日期 chip 依該日資料計數、文字含 '檢視 10/01（四）的紀錄：僅供查詢，不能核驗'；選回今天恢復 '核驗' 且不重新請求",
           "PickupAuthorizationsView empty state：回 [] → 文字含 '今天沒有代理接送授權'",
           "PickupAuthorizationsView past date empty copy：選日期 2026-10-05、GET /admin/pickup/authorizations 回 [] → 文字含 '10/05（一）沒有代理接送授權'",
-          "PickupAuthorizationsView marks readers：permissions ['pickup:read'] → 文字含 '僅檢視'，所有卡片都沒有 '核驗' 按鈕"
+          "PickupAuthorizationsView marks readers：permissions ['pickup:read'] → 文字含 '僅檢視'，所有卡片都沒有 '核驗' 按鈕",
+          "PickupAuthorizationsView lists today with status counts: chip filters locally：點 '已接送' → 只剩已接送；點 '已取消' → 沒有卡片、文字含 '沒有符合條件的授權'，點 '清除篩選' 回到全部；過程不重新請求",
+          "PickupAuthorizationsView searches by proxy and last4: phone without dashes, student name, no match：搜尋 '0912 000-456' → 只剩該電話；'王小明' → 該生兩張；'張' → '沒有符合條件的授權'，'清除篩選' 後搜尋框清空、回到全部",
+          "PickupAuthorizationsView auto opens verify from query: skips inactive or readers：?verify=pa2（已接送）→ 不開 dialog；只有 pickup:read 時 ?verify=pa1 → 不開 dialog",
+          "PickupAuthorizationsView verifies and updates the list with the result：卡片 '核驗' → dialog 標題 '核驗代理接送：陳阿姨'，輸入 6 碼 → POST verify body {code:'123456'}，顯示成功畫面，chip '有效 1'、'已接送 2'，'核驗' 按鈕剩 1 個",
+          "PickupAuthorizationsView passes the current authorization to the open dialog：dialog 開著時收到 pickup.authorization_updated → 重抓清單 （code_attempts 3）→ dialog 文字含 '已錯誤 3 次，還可嘗試 2 次'",
+          "PickupAuthorizationsView shows load error and retries：GET /admin/pickup/authorizations 500 → 文字含 '無法載入代理接送授權'；點 '重試' 後顯示卡片"
         ],
         "run": "just web-test src/views/PickupAuthorizationsView.spec.ts -t \"PickupAuthorizationsView\"",
         "notes": ""
