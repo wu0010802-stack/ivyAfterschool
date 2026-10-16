@@ -7,6 +7,7 @@
 // - 送出中防連點：佇列卡 acknowledge / cancel 呼叫 API 前把請求 id 加入 busyIds、結束後移除；busy 中的請求不再處理新的動作。
 //   reply / complete 由各自 dialog 的送出中狀態處理。
 // - 取消：倒數卡直接移除；請求卡先 prompt 取消原因。useDismissalPosQueue.cancel 只回 boolean，成功後 board.reload() 讓卡片立即移到已結束。
+// - 快速代建經 board.create 建立（注入 useDismissalPosQueue）：board 才知道是本機建立，不播新請求提示音（FRONTEND-188）。
 // - 寬度 < 900：右欄改底部抽屜 + 中欄右下浮動按鈕「佇列（N）」（N = 倒數 + 進行中，有家長已到時紅色數字徽章）。
 // - 首次載入（名單 / 佇列仍為 null）顯示骨架；之後的重新整理不閃骨架。
 // - defineExpose focusRequest：頁面（FRONTEND-189）在家長到達時定位閃爍。
@@ -98,7 +99,7 @@ const classNameOf = computed(() => {
 })
 
 // ---- 右欄 ----
-const posQueue = useDismissalPosQueue(props.board.queue)
+const posQueue = useDismissalPosQueue(props.board.queue, { create: (body) => props.board.create(body) })
 const queueItems = posQueue.items
 const queueLoading = computed(() => props.board.queue.value === null)
 const openCount = computed(() => queueItems.value.filter((i) => i.phase !== 'closed').length)
