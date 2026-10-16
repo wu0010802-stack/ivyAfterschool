@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 240,
-  "last_updated": "2026-10-16T13:12:38Z",
+  "version": 241,
+  "last_updated": "2026-10-16T13:13:21Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4718,7 +4718,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentCard.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
@@ -4742,7 +4742,7 @@
           "StudentCard ignores keyboard on menu button：在班等待、canOperate、authorizationCount 1 → 對 ⋮ 按鈕觸發 keydown Enter 與空白鍵 → 沒有 quick-dispatch；卡片本身 Enter / 空白鍵 → quick-dispatch 長度 2；接送中（r1）卡片的 ⋮ 收到 Enter / 空白鍵 → 沒有 focus-request，卡片本身 Enter → focus-request ['r1']"
         ],
         "run": "just web-test src/components/pickup/pos/StudentCard.spec.ts -t \"StudentCard\"",
-        "notes": "紅燈 commit c550a5a（補強 903d4a3）、實作 commit 3b89791。除 6 條 red_cases 外另有 2 條：⋮ 選單 emit create-request 與已離班停用說明 / 請假無選單 / 倒數中選單停用、⋮ 44×44 與 role=button aria-label（?raw 原始碼斷言）。選單項目「代建接送請求…」依核可稿在 staging 時不列出、el-dropdown 以 :disabled=staging 停用；「查看代理授權」由元件直接 router.push（稿內為 emit view-authorizations，依 description 改為導頁）。突變自檢：唯讀者可 quick-dispatch、唯讀者顯示選單、家長已到也顯示請求小字各使對應測試轉紅。"
+        "notes": "紅燈 commit c550a5a（補強 903d4a3）、實作 commit 3b89791；打回修正：規格 2ce6ce4、紅燈測試 b19fc42、實作 d97fcd2（卡片的 keydown.enter / space 加 .self，⋮ 冒泡上來的按鍵只開選單）。除 7 條 red_cases 外另有 2 條：⋮ 選單 emit create-request 與已離班停用說明 / 請假無選單 / 倒數中選單停用、⋮ 44×44 與 role=button aria-label（?raw 原始碼斷言）。選單項目「代建接送請求…」依核可稿在 staging 時不列出、el-dropdown 以 :disabled=staging 停用；「查看代理授權」由元件直接 router.push。突變自檢：唯讀者可 quick-dispatch、唯讀者顯示選單、家長已到也顯示請求小字、拿掉 Enter 的 .self、拿掉空白鍵的 .self 各使對應測試轉紅。"
       },
       "review": {
         "status": "concern",
@@ -5038,7 +5038,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationVerifyDialog.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::submitVerify",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
@@ -5064,7 +5064,7 @@
           "AuthorizationVerifyDialog reflects unlock from props while open：canOverride false、收到 409 pickup_code_locked（只剩「關閉」）→ setProps authorization {locked: false, code_attempts: 0} → 不含「而鎖定」、含「尚無錯誤（連續錯誤 5 次會鎖定）」、6 格輸入與「核驗接送碼」回來、沒有停用的分頁"
         ],
         "run": "just web-test src/components/pickup/AuthorizationVerifyDialog.spec.ts -t \"AuthorizationVerifyDialog\"",
-        "notes": "紅燈 commit 17b9d39（補強 a833d14）、實作 commit 9905486。除 7 條 red_cases 外另有 6 條：逐格輸入自動跳格 / 非數字忽略 / Backspace 回上一格 / 貼上含空白與「-」、已鎖定授權開啟即在強制完成分頁（無 override 只剩關閉）、送出中只送一次（格子與 footer 停用，直接派發 paste / Enter 也不重送）、其他錯誤顯示後端 message 且表單保留、關閉再開同一張授權與開著時換授權都重設、接送碼格 52×60 / 分頁 48px / 關閉鈕 44px（?raw 原始碼斷言）。聚焦：FormDialog 的 @opened 在 happy-dom 不會觸發、且 el-dialog 的 focus trap（focus-start-el=container）會在開啟後幾個 tick 無條件把焦點放到容器，故元件自己在 setTimeout 0 聚焦（開啟 / 切分頁 / 碼錯清空後），FormDialog 傳 autofocus=false；spec 的 settle 多等 20ms 真實 timer。成功畫面的方式標籤取自本次操作（code / visual_match / override），不依賴回應欄位。突變自檢：鎖定回應不進鎖定、碼錯不清空、強制完成不檢查備註、鎖定無 override 仍顯示 footer、busy 不擋重送、貼上不去分隔符、成功不 emit verified、圖片失敗不退回、重開不重設各使對應測試轉紅（busy 守衛集中在 run()，submitCode 不再重複檢查，否則為等價突變）。"
+        "notes": "紅燈 commit 17b9d39（補強 a833d14）、實作 commit 9905486；打回修正：規格 2ce6ce4、紅燈測試 b19fc42、實作 d97fcd2（同一張授權的 locked / code_attempts 由父層更新時以 props 為準，多來源 watch 只在值真的變動時觸發；轉鎖定與收到 pickup_code_locked 共用 enterLocked，轉解鎖恢復分頁與送出鈕——一併處理 review-r10-f7 殘留「開著期間解鎖不反映」）。除 9 條 red_cases 外另有 6 條：逐格輸入自動跳格 / 非數字忽略 / Backspace 回上一格 / 貼上含空白與「-」、已鎖定授權開啟即在強制完成分頁（無 override 只剩關閉）、送出中只送一次（格子與 footer 停用，直接派發 paste / Enter 也不重送）、其他錯誤顯示後端 message 且表單保留、關閉再開同一張授權與開著時換授權都重設、接送碼格 52×60 / 分頁 48px / 關閉鈕 44px（?raw 原始碼斷言）。聚焦：FormDialog 的 @opened 在 happy-dom 不會觸發、且 el-dialog 的 focus trap（focus-start-el=container）會在開啟後幾個 tick 無條件把焦點放到容器，故元件自己在 setTimeout 0 聚焦（開啟 / 切分頁 / 碼錯清空後），FormDialog 傳 autofocus=false；spec 的 settle 多等 20ms 真實 timer。成功畫面的方式標籤取自本次操作（code / visual_match / override），不依賴回應欄位。突變自檢：鎖定回應不進鎖定、碼錯不清空、強制完成不檢查備註、鎖定無 override 仍顯示 footer、busy 不擋重送、貼上不去分隔符、成功不 emit verified、圖片失敗不退回、重開不重設、props 轉鎖定不切換、鎖定無 override 不回接送碼分頁、props 更新不清掉回應推得的鎖定、拿掉整個 props watch 各使對應測試轉紅。"
       },
       "review": {
         "status": "concern",
