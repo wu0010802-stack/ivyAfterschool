@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 155,
-  "last_updated": "2026-10-16T06:14:54Z",
+  "version": 156,
+  "last_updated": "2026-10-16T06:15:07Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3186,7 +3186,7 @@
       "target_path": "apps/web/src/parent/stores/notifications.ts",
       "source_ref": null,
       "status": "in_progress",
-      "assignee_session": "impl-parent-r10c",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-170",
         "PARENT-173",
@@ -3650,8 +3650,8 @@
       "granularity_unit": "config",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-012"
       ],
@@ -3683,8 +3683,8 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-012"
       ],
