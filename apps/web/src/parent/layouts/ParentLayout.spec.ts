@@ -1,7 +1,7 @@
 import { flushPromises } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { h, nextTick } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { createApiMock, mountWithApp, type MountedApp } from '@/test/helpers'
 import type { ParentMe } from '../api/children'
@@ -65,7 +65,7 @@ function stubRoutes(): RouteRecordRaw[] {
     'component' in record && record.component
       ? ({
           ...record,
-          component: defineComponent({ render: () => h('div', { class: 'route-stub' }, `頁面 ${record.path}`) }),
+          component: { render: () => h('div', { class: 'route-stub' }, `頁面 ${record.path}`) },
         } as RouteRecordRaw)
       : record,
   )
@@ -100,14 +100,19 @@ describe('ParentLayout', () => {
 
   async function mountLayout(
     initialRoute: string,
-    opts: { authed?: boolean; state?: Record<string, unknown>; config?: PublicConfig | 'error' | 'pending' } = {},
+    opts: {
+      authed?: boolean
+      state?: Record<string, unknown>
+      config?: PublicConfig | 'error' | 'pending'
+      extraRoutes?: RouteRecordRaw[]
+    } = {},
   ): Promise<MountedApp> {
     const c = opts.config ?? config()
     if (c === 'error') mock.onGet(CONFIG_URL).reply(500, { error: { code: 'internal_error', message: 'x', details: null } })
     else if (c === 'pending') mock.onGet(CONFIG_URL).reply(() => new Promise<[number, unknown]>(() => undefined))
     else mock.onGet(CONFIG_URL).reply(200, c)
     mounted = await mountWithApp(ParentLayout, {
-      routes: stubRoutes(),
+      routes: [...(opts.extraRoutes ?? []), ...stubRoutes()],
       initialRoute,
       piniaInitialState: {
         parentAuth: { parent: opts.authed ? ME : null, bindPending: null },
@@ -139,6 +144,21 @@ describe('ParentLayout', () => {
     expect(wrapper.text()).toContain('頁面 /login')
   })
 
+  it('ParentLayout hides chrome on public route without hideTabBar meta', async () => {
+    setOffline()
+    const extra: RouteRecordRaw = {
+      path: '/public-only',
+      component: { render: () => h('div', { class: 'route-stub' }, '公開頁') },
+      meta: { title: '公開頁', public: true },
+    }
+    const { wrapper } = await mountLayout('/public-only', { extraRoutes: [extra] })
+
+    expect(nav(wrapper)).toHaveLength(0)
+    expect(wrapper.find('.m3-top-app-bar').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('目前離線')
+    expect(wrapper.classes()).toContain('is-tabbar-hidden')
+  })
+
   it('ParentLayout hides chrome on hideTabBar route', async () => {
     setOffline()
     const { wrapper } = await mountLayout('/bind')
@@ -148,7 +168,9 @@ describe('ParentLayout', () => {
     expect(wrapper.text()).toContain(OFFLINE_TEXT)
     // 一般文流放在頁面最上方（main 內、RouterView 之前），不放進 sticky 頂部區塊
     const main = wrapper.get('main')
-    expect(main.element.firstElementChild?.classList.contains('conn-banner')).toBe(true)
+    const banner = main.get('.conn-banner').element
+    const page = main.get('.route-stub').element
+    expect(banner.compareDocumentPosition(page) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(header(wrapper).exists()).toBe(false)
   })
 
