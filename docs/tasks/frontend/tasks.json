@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 178,
-  "last_updated": "2026-10-16T04:49:49Z",
+  "version": 179,
+  "last_updated": "2026-10-16T04:53:21Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -1993,11 +1993,11 @@
     {
       "id": "FRONTEND-063",
       "title": "實作 views/settings/ReferenceDataView.vue：參考資料頁（科目 / 考試類型 / 國小 / 休息日分頁）",
-      "description": "建立 `apps/web/src/views/settings/ReferenceDataView.vue`（路由 `/settings/reference`，`settings:read`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n- `PageHeader`「參考資料」，副標「科目、考試類型、合作國小與休息日」。\n- el-tabs：科目（FRONTEND-059）、考試類型（FRONTEND-060）、合作國小（FRONTEND-061）、休息日（FRONTEND-062）；分頁存 `route.query.tab`（subjects / exam-types / schools / closed-days），未切到的分頁不載入（lazy）。\n- 任一表格寫入成功後 lookups 快取失效，讓其他頁的下拉選單更新：由各表格元件（FRONTEND-059~061）在寫入成功後呼叫 `useLookupsStore().invalidate(kind)`（FRONTEND-083；科目 → `subjects`、考試類型 → `examTypes`、國小 → `schools`；休息日不在 lookups 中），本頁不重複呼叫。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/ReferenceDataView.vue')`。\n\n**驗收標準**\n- 分頁與 query 同步；未開啟的分頁不發請求。\n- 寫入後 lookups 快取失效。",
+      "description": "建立 `apps/web/src/views/settings/ReferenceDataView.vue`（路由 `/settings/reference`，`settings:read`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n- `PageHeader`「參考資料」，副標「科目、考試類型、合作國小與休息日」。\n- el-tabs：科目（FRONTEND-059）、考試類型（FRONTEND-060）、合作國小（FRONTEND-061）、休息日（FRONTEND-062）；分頁存 `route.query.tab`（subjects / exam-types / schools / closed-days；沒帶或不認得時為科目），未切到的分頁不載入（lazy）。分頁放在白底面板內。\n- 任一表格寫入成功後 lookups 快取失效，讓其他頁的下拉選單更新：由各表格元件（FRONTEND-059~061）在寫入成功後呼叫 `useLookupsStore().invalidate(kind)`（FRONTEND-083；科目 → `subjects`、考試類型 → `examTypes`、國小 → `schools`；休息日不在 lookups 中），本頁不重複呼叫。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/settings/ReferenceDataView.vue')`。\n\n**驗收標準**\n- 分頁與 query 同步；未開啟的分頁不發請求；viewLoaders 接上本頁。\n- 寫入後 lookups 快取失效。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/ReferenceDataView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-059",
@@ -2019,7 +2019,9 @@
         "red_cases": [
           "ReferenceDataView loads only active tab：initialRoute '/settings/reference' → mock.history.get 的 url 只有 '/admin/subjects'；點 '休息日' → 新增 '/admin/closed-days' 請求且 query.tab === 'closed-days'",
           "ReferenceDataView restores tab from query：initialRoute '/settings/reference?tab=schools' → 顯示合作國小表格，第一個請求 url === '/admin/schools'",
-          "ReferenceDataView invalidates lookups after write：在科目分頁新增成功 → useLookupsStore().subjectsLoaded === false"
+          "ReferenceDataView invalidates lookups after write：在科目分頁新增成功 → useLookupsStore().subjectsLoaded === false",
+          "ReferenceDataView shows header and four tabs：h1 '參考資料'、副標 '科目、考試類型、合作國小與休息日'、分頁標題依序 ['科目','考試類型','合作國小','休息日']、預設作用中為 '科目'",
+          "ReferenceDataView is wired in view loaders：(await VIEW_LOADERS.ReferenceDataView()).default === ReferenceDataView"
         ],
         "run": "just web-test src/views/settings/ReferenceDataView.spec.ts -t \"ReferenceDataView\"",
         "notes": ""
