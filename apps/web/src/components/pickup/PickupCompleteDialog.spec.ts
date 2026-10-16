@@ -6,6 +6,7 @@ import type { Guardian } from '@/api/guardians'
 import { adminHttp } from '@/api/http'
 import type { StaffAuthorization } from '@/api/pickupAuthorizations'
 import { completePickupRequest, type PickupCompleteBody, type PickupRequest } from '@/api/pickupRequests'
+import FormDialog from '@/components/common/FormDialog.vue'
 import type { PickupBoard } from '@/composables/usePickupBoard'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import dialogSource from './PickupCompleteDialog.vue?raw'
@@ -140,6 +141,12 @@ async function submit(): Promise<void> {
   await settle()
 }
 
+/** 繞過送出鈕的停用狀態直接觸發 FormDialog 的 submit：驗證元件本身不會送出無效的選擇 */
+async function forceSubmit(wrapper: VueWrapper): Promise<void> {
+  wrapper.findComponent(FormDialog).vm.$emit('submit')
+  await settle()
+}
+
 const completeBodies = (): unknown[] =>
   mock.history.post.filter((r) => r.url === COMPLETE_URL).map((r) => JSON.parse(r.data as string))
 const guardianLoads = (): number => mock.history.get.filter((r) => r.url === GUARDIANS_URL).length
@@ -250,6 +257,86 @@ describe('PickupCompleteDialog', () => {
 
     expect(dialog().text()).toContain('此授權的接送碼已鎖定，需由主任強制完成。')
     expect(submitButton().text()).toBe('前往核驗')
+  })
+
+  it('PickupCompleteDialog clears a proxy choice whose authorization is no longer active', async () => {
+    mock.onGet(GUARDIANS_URL).reply(200, [FATHER, GRANDMA])
+    mock.onPost(COMPLETE_URL).reply(200, makeRequest({ status: 'completed' }))
+    const wrapper = await mountDialog({ authorizations: [authorization('pa1')] })
+    await choose('陳阿姨')
+    expect(submitButton().text()).toBe('前往核驗')
+
+    // board 重抓清單但選取的授權仍有效：保留選擇
+    await wrapper.setProps({ authorizations: [authorization('pa1'), authorization('pa4', { proxy_name: '李叔叔' })] })
+    await settle()
+    expect(option('陳阿姨').classes()).toContain('is-checked')
+    expect(submitButton().text()).toBe('前往核驗')
+    expect(dialog().find('.el-alert--error').exists()).toBe(false)
+
+    // 家長取消代理授權後 board 重抓清單：選取的授權不再出現在代理組
+    await wrapper.setProps({
+      authorizations: [authorization('pa1', { status: 'cancelled', effective_status: 'cancelled' }), authorization('pa4', { proxy_name: '李叔叔' })],
+    })
+    await settle()
+
+    expect(dialog().text()).not.toContain('陳阿姨')
+    expect(dialog().findAll('.el-radio.is-checked')).toHaveLength(0)
+    expect(submitButton().text()).toBe('完成交付')
+    expect(submitButton().attributes('disabled')).toBeDefined()
+    expect(dialog().find('.el-alert--error').text()).toContain('代理授權已失效，請重新選擇')
+
+    await forceSubmit(wrapper)
+
+    expect(completeBodies()).toEqual([])
+    expect(wrapper.emitted('verify-authorization')).toBeUndefined()
+    expect(wrapper.emitted('done')).toBeUndefined()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('PickupCompleteDialog never sends an unknown choice as a guardian', async () => {
+    mock.onGet(GUARDIANS_URL).reply(200, [FATHER, GRANDMA])
+    mock.onPost(COMPLETE_URL).reply(200, makeRequest({ status: 'completed' }))
+    const wrapper = await mountDialog()
+
+    for (const value of ['a:pa9', 'x:g1']) {
+      wrapper.findComponent({ name: 'ElRadioGroup' }).vm.$emit('update:modelValue', value)
+      await settle()
+      await forceSubmit(wrapper)
+    }
+
+    expect(completeBodies()).toEqual([])
+    expect(wrapper.emitted('verify-authorization')).toBeUndefined()
+    expect(wrapper.emitted('done')).toBeUndefined()
+  })
+
+  it('PickupCompleteDialog ignores a guardian response that returns after closing', async () => {
+    const releases: Array<() => void> = []
+    const responses = [[FATHER], [GRANDMA]]
+    mock.onGet(GUARDIANS_URL).reply(
+      () =>
+        new Promise((resolve) => {
+          const body = responses[releases.length]
+          releases.push(() => resolve([200, body]))
+        }),
+    )
+    const wrapper = await mountDialog()
+    await wrapper.setProps({ modelValue: false })
+    await settle()
+
+    releases[0]?.()
+    await settle()
+    // dialog 關閉後內容仍留在 DOM：舊回應不寫入、不預選
+    expect(document.body.textContent).not.toContain('王大明')
+    expect(dialog().find('.el-skeleton').exists()).toBe(true)
+
+    await wrapper.setProps({ modelValue: true })
+    await settle()
+    releases[1]?.()
+    await settle()
+
+    expect(guardianLoads()).toBe(2)
+    expect(dialog().text()).not.toContain('王大明')
+    expect(option('王阿嬤').classes()).toContain('is-checked')
   })
 
   it('PickupCompleteDialog override requires note and permission', async () => {
