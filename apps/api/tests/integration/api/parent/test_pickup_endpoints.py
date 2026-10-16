@@ -3,6 +3,7 @@ BACKEND-444 / 445 / 446：家長端常用接送人（列表、新增 multipart �
 BACKEND-447 / 448：家長端代理接送授權（列表、建立；接送碼只回一次、Cache-Control: no-store）。
 BACKEND-440 / 442 / 443：接送請求「我要來接」（含 arrived 捷徑）、「我到了」、取消。
 BACKEND-524：代理接送授權重新產生接送碼（舊碼失效、新碼只回一次、重設連錯與鎖定）。
+BACKEND-449：家長取消代理接送授權（只驗所有權，不套用寫入守衛）。
 BACKEND-557：暫停（suspended）學生的家長端寫入一律 409 student_not_active（讀取不受影響）。"""
 
 from __future__ import annotations
@@ -1198,3 +1199,167 @@ def test_parent_scope_for_write_pickup_authorization_create_suspended_409(
     assert _authorization_count(db_session, ming.id) == 0
     assert listed.status_code == 200
     assert listed.json() == []
+
+
+# --- BACKEND-449：POST /api/parent/pickup-authorizations/{id}/cancel ------------------------------
+
+
+def _auth_cancel_url(auth_id: object) -> str:
+    return f"/api/parent/pickup-authorizations/{auth_id}/cancel"
+
+
+def test_parent_pickup_auth_cancel_success(
+    parent_client: ParentClientFactory, db_session: Session
+) -> None:
+    client, parent = parent_client()
+    ming = _own_child(db_session, parent)
+    auth = make_pickup_authorization(db_session, ming, service_date=_TODAY, code="111111")
+    future = make_pickup_authorization(
+        db_session, ming, service_date=_TODAY + timedelta(days=3), code="222222"
+    )
+    db_session.commit()
+
+    resp = client.post(_auth_cancel_url(auth.id))
+    future_resp = client.post(_auth_cancel_url(future.id))
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body) == {
+        "id",
+        "student_id",
+        "service_date",
+        "pickup_person_id",
+        "proxy_name",
+        "proxy_phone",
+        "code_last4",
+        "status",
+        "effective_status",
+        "verified_at",
+        "verification_method",
+        "created_at",
+    }
+    assert body["id"] == str(auth.id)
+    assert body["student_id"] == str(ming.id)
+    assert body["status"] == "cancelled"
+    assert body["effective_status"] == "cancelled"
+    assert body["code_last4"] == "1111"
+    assert "code_hash" not in resp.text
+    assert future_resp.status_code == 200
+    assert future_resp.json()["status"] == "cancelled"
+    # 請求後重讀 DB：取消已 commit（handler 少了 db.commit() 會被請求結束的 rollback 還原）
+    db_session.expire_all()
+    stored = _reload_auth(db_session, auth.id)
+    assert (stored.status, stored.verified_at, stored.code_attempts) == ("cancelled", None, 0)
+    assert _reload_auth(db_session, future.id).status == "cancelled"
+    # 取消後列表仍看得到這筆，狀態為 cancelled
+    listed = client.get(_auths_url(ming.id)).json()
+    assert {a["id"]: a["status"] for a in listed} == {
+        str(auth.id): "cancelled",
+        str(future.id): "cancelled",
+    }
+
+
+def test_parent_pickup_auth_cancel_422(
+    parent_client: ParentClientFactory, assert_error: AssertError
+) -> None:
+    client, _ = parent_client()
+
+    assert_error(client.post(_auth_cancel_url("abc")), 422, "validation_error")
+
+
+def test_parent_pickup_auth_cancel_401(
+    api_client: TestClient, staff_client: StaffClientFactory, assert_error: AssertError
+) -> None:
+    assert_error(api_client.post(_auth_cancel_url(uuid4())), 401, "unauthenticated")
+    staff, _ = staff_client(permissions=["pickup:operate", "pickup:override"])
+    assert_error(staff.post(_auth_cancel_url(uuid4())), 401, "unauthenticated")
+
+
+def test_parent_pickup_auth_cancel_idor(
+    parent_client: ParentClientFactory, db_session: Session, assert_error: AssertError
+) -> None:
+    client_a, _ = parent_client()
+    _, parent_b = parent_client()
+    hua = _own_child(db_session, parent_b, name="陳小華")
+    theirs = make_pickup_authorization(db_session, hua, service_date=_TODAY, code="111111")
+    db_session.commit()
+
+    theirs_resp = client_a.post(_auth_cancel_url(theirs.id))
+    missing = client_a.post(_auth_cancel_url(uuid4()))
+
+    assert_error(theirs_resp, 404, "pickup_authorization_not_found")
+    assert theirs_resp.json() == missing.json()
+    db_session.expire_all()
+    assert _reload_auth(db_session, theirs.id).status == "active"
+
+
+def test_parent_pickup_auth_cancel_409(
+    parent_client: ParentClientFactory, db_session: Session, assert_error: AssertError
+) -> None:
+    client, parent = parent_client()
+    ming = _own_child(db_session, parent)
+    completed = make_pickup_authorization(
+        db_session, ming, service_date=_TODAY, code="111111", status="completed"
+    )
+    cancelled = make_pickup_authorization(
+        db_session, ming, service_date=_TODAY, code="222222", status="cancelled"
+    )
+    db_session.commit()
+
+    completed_resp = client.post(_auth_cancel_url(completed.id))
+    cancelled_resp = client.post(_auth_cancel_url(cancelled.id))
+
+    assert_error(completed_resp, 409, "authorization_not_active")
+    assert_error(cancelled_resp, 409, "authorization_not_active")
+    # 失敗的請求不改狀態、不抹掉核銷紀錄
+    db_session.expire_all()
+    stored = _reload_auth(db_session, completed.id)
+    assert (stored.status, stored.verification_method) == ("completed", "code")
+    assert stored.verified_at is not None
+    assert _reload_auth(db_session, cancelled.id).status == "cancelled"
+
+
+def test_parent_pickup_auth_cancel_twice(
+    parent_client: ParentClientFactory, db_session: Session, assert_error: AssertError
+) -> None:
+    client, parent = parent_client()
+    ming = _own_child(db_session, parent)
+    auth = make_pickup_authorization(db_session, ming, service_date=_TODAY)
+    db_session.commit()
+
+    first = client.post(_auth_cancel_url(auth.id))
+    second = client.post(_auth_cancel_url(auth.id))
+
+    assert first.status_code == 200
+    assert_error(second, 409, "authorization_not_active")
+    db_session.expire_all()
+    assert _reload_auth(db_session, auth.id).status == "cancelled"
+
+
+def test_parent_pickup_auth_cancel_suspended_student_allowed(
+    parent_client: ParentClientFactory, db_session: Session
+) -> None:
+    """取消是保護性操作，不套用寫入守衛：暫停學生仍為 active 的（過去日期）授權家長可以取消。"""
+    client, parent = parent_client()
+    ming = _own_suspended_child(db_session, parent)
+    past = make_pickup_authorization(
+        db_session, ming, service_date=_TODAY - timedelta(days=2), code="111111"
+    )
+    today = make_pickup_authorization(db_session, ming, service_date=_TODAY, code="222222")
+    db_session.commit()
+    assert past.status == "active"
+
+    past_resp = client.post(_auth_cancel_url(past.id))
+    today_resp = client.post(_auth_cancel_url(today.id))
+
+    assert past_resp.status_code == 200
+    assert past_resp.json()["status"] == "cancelled"
+    assert past_resp.json()["student_id"] == str(ming.id)
+    assert today_resp.status_code == 200
+    db_session.expire_all()
+    assert _reload_auth(db_session, past.id).status == "cancelled"
+    assert _reload_auth(db_session, today.id).status == "cancelled"
+    # 同一位暫停學生建立新授權仍被寫入守衛擋下（取消放行不影響其他寫入）
+    blocked = client.post(_auths_url(ming.id), json=_proxy_body())
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "student_not_active"
