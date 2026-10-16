@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 287,
-  "last_updated": "2026-10-16T15:25:49Z",
+  "version": 288,
+  "last_updated": "2026-10-16T15:26:32Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5048,7 +5048,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupAuthorizationsView.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-188",
@@ -5058,7 +5058,7 @@
         "FRONTEND-024"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f6 打回】(1) 碼錯與鎖定後清單不會更新（核可稿 decision「碼錯 → ……摘要與清單上的錯誤次數同步更新」與鎖定那條沒有落實）：後端 verify_code（BACKEND-426）錯碼累計與第 5 次鎖定都不推播 pickup.authorization_updated，推播只在建立、家長取消、重新產生接送碼、核銷、停讀退班收尾；本頁又只在推播時重抓，核驗 dialog 只 emit verified。反例（reviewer 以臨時 probe 實測，probe 已刪除）：pa1 尚無錯誤 → dialog 輸錯 1 次 → dialog 顯示「已錯誤 1 次，還可嘗試 4 次」，卡片仍沒有錯誤標示；連錯 5 次鎖定 → 關閉 dialog 後卡片仍是「有效」+「核驗」、沒有「已鎖定」，授權清單的 GET 次數仍為 1；再按「核驗」開啟的 dialog 顯示「尚無錯誤（連續錯誤 5 次會鎖定）」與 6 格輸入，要再送一次才收到 409 pickup_code_locked 回到鎖定。description「dialog 的 authorization 以 id 從今天的清單取現值（推播重抓後的錯誤次數 / 鎖定即時反映）」的前提在錯碼 / 鎖定時不成立；spec「passes the current authorization to the open dialog」的情境註解「另一台平板輸錯碼：推播」也不是後端目前的行為。要求：本頁的核驗嘗試失敗（碼錯 / 鎖定）後，卡片與之後重開的 dialog 都要反映最新的錯誤次數與鎖定（例如 dialog 關閉時或收到錯誤後重抓清單；若要改由 FRONTEND-201 emit 事件，由協調者決定），並補測試與修正該註解。(2) 跨午夜：頁面的 today 在 setup 時固定，usePickupBoard 跨午夜會以新的一天重抓清單，頁面的日期欄、isToday 與可選範圍卻停在昨天。反例：頁面開著跨過午夜 → 日期欄仍顯示昨天、沒有「僅供查詢」提示，清單卻是今天的資料；日期選擇器把真正的今天當成未來而停用，選不到。平板常駐此頁會遇到。要求「今天」隨跨日更新並與 board 一致，補測試。(3) description 的條目沒有測試（突變實測照綠）：過去日期的序號防護（晚到的舊日期回應覆蓋新日期）、?verify 處理後與「清除」只顯示時保留其他 query（改成清空整個 query 照綠）、載入中計數顯示「—」與 4 張骨架卡、不可選未來日期（disabled-date 拿掉上限照綠）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/PickupAuthorizationsView.spec.ts",
@@ -5085,9 +5085,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f6",
+        "notes": "打回（3 項，見 risk_notes）。tdd.run 14 passed，14 條 red_case 名稱逐一對到；b5be407 紅燈先於 64a022e 實作。682098d 不是放寬：成功文案由 FRONTEND-201 的 dialog 產生，方式標籤是「接送碼核驗」，與核可稿 decision「已完成接送：王小明 由 陳阿姨 接走（接送碼核驗）」一致，原測試寫錯。cca6e13 寫回的偏離都合理、沒有放寬驗收：verify 參數只用一次並從網址移除、非 active 或無核驗權限時不開（稿：找不到或已不是有效狀態就只顯示清單）；過去日期序號防護、回今天沿用 board 清單；只有第一次載入失敗顯示錯誤頁（推播重抓失敗不應把整頁換成錯誤）；錯誤頁說明用實際錯誤訊息（稿上的「網路連線中斷……」只是網路錯誤的示意，網路錯誤本身已正規化為「網路連線異常，請稍後再試」）。突變 23 個，17 個轉紅（計數受搜尋影響、排序兩種、搜尋去「-」與含學生姓名、verify 不檢查 active / 權限、不移除 verify、dialog 不取現值、核驗不寫回、過去日期可核驗、只顯示不過濾、重試、空狀態副標、清除篩選不清搜尋、載入後失敗換錯誤頁）；轉不紅 6 個：過去日期序號防護、回今天不使舊請求失效（等價：今天不讀 pastItems）、移除 verify / 清除只顯示時清掉其他 query 兩個、載入中「—」、骨架張數、不可選未來（打回項 3）。Chromium 1024×768（外框側欄收合後內容寬 928）實測與稿一致：工具列高 44，日期 170×44、搜尋 280×44 且 placeholder 完整顯示、「清除」62×44；狀態分段高 44；卡片兩欄各 458 寬；「核驗」88×44；載入中 4 張骨架、計數「—」；錯誤頁「無法載入代理接送授權」+ 實際訊息 +「重試」44 高；空清單文案；只有 pickup:read 時「僅檢視」且沒有「核驗」；無 page error。just web-lint 3 檔乾淨；just web-typecheck 的 5 個錯誤都在其他 agent 進行中的檔案（LeaveFormDialog.vue、PickupProxyView.spec.ts、HomeworkBoardView.spec.ts（實作未提交）、StaffAccountsView.vue），本 task 的檔案沒有錯誤。殘留（不擋）：其他員工在另一台平板連錯鎖定（稿 decision「即時」那條）需要後端在錯碼 / 鎖定時推播，本頁無法單獨做到，建議協調者開 BACKEND task（BACKEND-437 commit 錯碼累計後推播 pickup.authorization_updated，FRONTEND-188 收到即重抓）；usePickupBoard 也會抓佇列，佇列失敗時第一次載入會顯示錯誤頁，即使授權清單成功；核驗成功以 HTTP 結果 applyAuthorization，後端核銷結果的 photo_url 為 null，卡片照片要等該次核驗推播觸發的重抓才回來。"
       }
     },
     {
