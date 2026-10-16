@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 195,
-  "last_updated": "2026-10-16T15:18:13Z",
+  "version": 196,
+  "last_updated": "2026-10-16T15:18:50Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1314,7 +1314,7 @@
         "PARENT-196"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "外部瀏覽器登出依賴 PARENT-197（LIFF init 改 withLoginOnExternalBrowser: false）；197 完成前，外部瀏覽器在本頁未初始化過 LIFF 且 LIFF 本地登入已失效時，登出會被 init 轉去 LINE 登入而失效。",
+      "risk_notes": "外部瀏覽器登出（PARENT-197 已改 LIFF init 不自動登入）要部署後在真實外部瀏覽器實機確認：登出後停在「您已登出」、不會被轉去 LINE 再登入。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/composables/useParentLogout.spec.ts",
