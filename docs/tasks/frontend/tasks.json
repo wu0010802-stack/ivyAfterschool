@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 258,
-  "last_updated": "2026-10-16T14:32:37Z",
+  "version": 259,
+  "last_updated": "2026-10-16T14:33:49Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -653,7 +653,7 @@
       "granularity_unit": "config",
       "target_path": "apps/web/src/bootstrap.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-027",
@@ -681,9 +681,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 通過。tdd.run 10/10 綠；8 條 red_case 都有對應測試（第 5 條分成 ws close 帶目前頁、public 頁只清狀態、第一次導航前交給守衛三個測試，皆被 -t \"createAdminApp\" 選到）。紅燈 8a8384c（10 個測試，bootstrap.ts 不存在全紅）→ 斷言修正 40b5bc0 → 實作 89a099b → in_review 0f64669。40b5bc0 不是放寬：(a) 原斷言「flush 後 currentRoute 仍是 START_LOCATION」不可能成立（app.use(router) 立即啟動第一次導航），保留核心斷言「router.replace 未被呼叫」並加上落點 /login 的更強斷言，拿掉 START_LOCATION 判斷仍轉紅；(b) ElMessageBox.close() 不會結束 confirm 的 promise，改為點「取消」並斷言 promise 以 cancel 結束，按鈕文字斷言不變。description 三點補述皆合理：(1) 第一次導航前只清狀態交給 authGuard——真實 Chromium 以 401 回應 /admin/auth/me 與 refresh，進 #/students、#/classes?academic_year=115 都落在 /login?redirect=<原目標>（若改成照常 replace 會以 redirect=/ 取消守衛的導航、遺失目標）；ws 4401 / 4403 走 FRONTEND-020 的 triggerAuthFailure 同一 handler；(2) errorHandler 另 console.error 原始錯誤只供除錯、不影響顯示；(3) provideGlobalConfig({ locale: zhTw }, app, true)——Chromium 實測命令式 ElMessageBox.confirm 按鈕為「取消 / 確定」、點取消以 cancel 結束。base.css 實測：body margin 0、背景 / 文字色 / 字型為 Element Plus 變數、全域 border-box、1024 寬無水平捲動；FRONTEND-201 接送碼格在真實 base.css 下為 52×60。突變 11 項（拿掉 START_LOCATION 判斷、拿掉 public 判斷、redirect 改 path、authFailure 不 reset、refresh 不 setUser、不導 /change-password、拿掉全域語系、取消不略過、顯示原始錯誤訊息、拿掉 border-box、CSS 匯入順序對調）皆使對應測試轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 乾淨（exit 0；前兩次只因他人暫存檔 review_r10_p3_probe_login.spec.ts、__r10d_att_harness__ 執行中被刪而報 TS6053）。殘留：errorHandler 的 console.error 會把原始錯誤物件（含 axios 請求設定）印在瀏覽器 console，只在本機可見。"
       }
     },
     {
@@ -5089,7 +5089,7 @@
       "review": {
         "status": "pass",
         "reviewer": "review-r10-f7",
-        "notes": "review-r10-f7 複審通過。打回項（開著時 authorization.locked 由 props 轉 true 不切強制完成）已修正：規格 2ce6ce4（description 補「開著時父層更新同一張授權以 props 為準、轉鎖定同收到 pickup_code_locked、無 override 回接送碼分頁、轉解鎖恢復且目前分頁不變」，新增 2 條 red_case）→ 紅燈測試 b19fc42 → 實作 d97fcd2（id / locked / code_attempts 多來源 watch + 共用 enterLocked），順序正確。tdd.run 15/15 綠，9 條 red_case 皆以同名測試選到。突變：拿掉 props 轉鎖定的 enterLocked、無 override 不回接送碼分頁、props 更新不清本次回應推得的鎖定、不清 localAttempts 各使對應新測試轉紅，還原後 diff 乾淨。真實 Chromium 1024×768 實測：canOverride 停在接送碼 → props 轉鎖定 → 切到「主管強制完成」、footer「取消 / 強制完成」、焦點在備註；再轉解鎖 → 鎖定提示消失、摘要「尚無錯誤」、分頁不變；無 override 停在目視核對 → 轉鎖定 → 回接送碼分頁、只剩「關閉」；轉解鎖 → 6 格與「核驗接送碼」回來。初審已驗的權限（強制完成只在 canOverride、備註必填、送出中防重送、只顯示末四碼）、聚焦、尺寸與 13 項流程不變。web-lint 乾淨；web-typecheck 本檔無錯（全專案 2 個錯誤在他人進行中的 bootstrap.ts、AttendanceTodayView.spec.ts）。殘留：(1) 同一 macrotask 內連續送入多鍵（keyboard.type delay 0）會掉一碼（跳格聚焦排在 setTimeout 0）；人手輸入與貼上 / one-time-code 不受影響。(2) 接送碼格 52×60 依賴 FRONTEND-028 base.css 的全域 box-sizing: border-box，沒有該規則時 Chromium 量到 54×62。(3) 無 override 時 props 轉解鎖後焦點不回第 1 格（description 未要求）。(4) 收到 pickup_code_locked 後若父層再送來 locked 為 false 的舊資料，畫面會先解鎖到下一次送出才回鎖定；後端仍擋，FRONTEND-200 依規格收推播後重抓清單，實務上拿到的是現值。"
+        "notes": "review-r10-f7 複審通過。打回項（開著時 authorization.locked 由 props 轉 true 不切強制完成）已修正：規格 2ce6ce4（description 補「開著時父層更新同一張授權以 props 為準、轉鎖定同收到 pickup_code_locked、無 override 回接送碼分頁、轉解鎖恢復且目前分頁不變」，新增 2 條 red_case）→ 紅燈測試 b19fc42 → 實作 d97fcd2（id / locked / code_attempts 多來源 watch + 共用 enterLocked），順序正確。tdd.run 15/15 綠，9 條 red_case 皆以同名測試選到。突變：拿掉 props 轉鎖定的 enterLocked、無 override 不回接送碼分頁、props 更新不清本次回應推得的鎖定、不清 localAttempts 各使對應新測試轉紅，還原後 diff 乾淨。真實 Chromium 1024×768 實測：canOverride 停在接送碼 → props 轉鎖定 → 切到「主管強制完成」、footer「取消 / 強制完成」、焦點在備註；再轉解鎖 → 鎖定提示消失、摘要「尚無錯誤」、分頁不變；無 override 停在目視核對 → 轉鎖定 → 回接送碼分頁、只剩「關閉」；轉解鎖 → 6 格與「核驗接送碼」回來。初審已驗的權限（強制完成只在 canOverride、備註必填、送出中防重送、只顯示末四碼）、聚焦、尺寸與 13 項流程不變。web-lint 乾淨；web-typecheck 本檔無錯（全專案 2 個錯誤在他人進行中的 bootstrap.ts、AttendanceTodayView.spec.ts）。殘留：(1) 同一 macrotask 內連續送入多鍵（keyboard.type delay 0）會掉一碼（跳格聚焦排在 setTimeout 0）；人手輸入與貼上 / one-time-code 不受影響。(2) 接送碼格 52×60 依賴 FRONTEND-028 base.css 的全域 box-sizing: border-box（028 已落地，Chromium 以真實 base.css 實測 52×60）。(3) 無 override 時 props 轉解鎖後焦點不回第 1 格（description 未要求）。(4) 收到 pickup_code_locked 後若父層再送來 locked 為 false 的舊資料，畫面會先解鎖到下一次送出才回鎖定；後端仍擋，FRONTEND-200 依規格收推播後重抓清單，實務上拿到的是現值。"
       }
     },
     {
