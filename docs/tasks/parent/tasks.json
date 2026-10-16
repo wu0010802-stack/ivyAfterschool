@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 159,
-  "last_updated": "2026-10-16T12:58:02Z",
+  "version": 160,
+  "last_updated": "2026-10-16T12:58:44Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1557,8 +1557,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/home/TodayStatusCard.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
         "FRONTEND-005",

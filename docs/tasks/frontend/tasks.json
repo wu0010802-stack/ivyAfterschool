@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 228,
-  "last_updated": "2026-10-16T12:58:19Z",
+  "version": 229,
+  "last_updated": "2026-10-16T12:58:44Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2692,8 +2692,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentListPanel.vue",
       "source_ref": "FE:src/components/student/workbench/StudentListPanel.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-083",
@@ -4732,8 +4732,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/QueuePanel.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosQueuePanel.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-195",
         "FRONTEND-184"
