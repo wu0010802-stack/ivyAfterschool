@@ -277,7 +277,7 @@ describe('LeaveFormDialog', { timeout: 20_000 }, () => {
     expect(fieldError('學生')).toBe('此學生不是在學狀態')
   })
 
-  it('LeaveFormDialog shows student not active: validation errors map to fields', async () => {
+  it('LeaveFormDialog maps validation errors to fields', async () => {
     mock.onPost(LEAVES_URL).reply(422, {
       error: {
         code: 'validation_error',
@@ -300,7 +300,7 @@ describe('LeaveFormDialog', { timeout: 20_000 }, () => {
     expect(fieldError('請假期間')).toBe('日期格式不正確')
   })
 
-  it('LeaveFormDialog shows student not active: dirty form confirms before closing', async () => {
+  it('LeaveFormDialog confirms before closing dirty form', async () => {
     const wrapper = await mountDialog()
 
     await chooseType('病假')
@@ -314,5 +314,56 @@ describe('LeaveFormDialog', { timeout: 20_000 }, () => {
       '尚未儲存的變更將會遺失',
     )
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('LeaveFormDialog shows other errors and keeps dialog open', async () => {
+    mock
+      .onPost(LEAVES_URL)
+      .replyOnce(500, { error: { code: 'internal_error', message: '伺服器忙碌中，請稍後再試', details: null } })
+      .onPost(LEAVES_URL)
+      .replyOnce(503, { error: { code: 'service_unavailable', message: '', details: null } })
+    const wrapper = await mountDialog()
+
+    await chooseType('事假')
+    await pickRange(wrapper, '2026-10-05', '2026-10-06')
+    await fillReason('家庭旅遊')
+    await submit()
+
+    expect(document.body.textContent).toContain('伺服器忙碌中，請稍後再試')
+    expect(wrapper.emitted('created')).toBeUndefined()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    // 表單值保留，可直接再送
+    expect(formItem('假別').find('.el-radio-button.is-active').text()).toBe('事假')
+    expect(rangePicker(wrapper).props('modelValue')).toEqual(['2026-10-05', '2026-10-06'])
+    expect(formItem('原因（選填）').find<HTMLTextAreaElement>('textarea').element.value).toBe('家庭旅遊')
+
+    // 沒有後端訊息時用預設文字
+    await submit()
+    expect(document.body.textContent).toContain('送出失敗，請稍後再試')
+    expect(posted()).toHaveLength(2)
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('LeaveFormDialog recomputes today on each open', async () => {
+    // 台北 2026-10-02 23:59
+    vi.setSystemTime(new Date('2026-10-02T15:59:00Z'))
+    const wrapper = await mountDialog()
+    expect(formItem('請假期間').text()).toContain('最早可選 2026-09-02（30 天前）')
+
+    await wrapper.setProps({ modelValue: false })
+    await settle()
+    // 跨過台北午夜後重新開啟
+    vi.setSystemTime(new Date('2026-10-02T16:01:00Z'))
+    await wrapper.setProps({ modelValue: true })
+    await settle()
+
+    expect(formItem('請假期間').text()).toContain('最早可選 2026-09-03（30 天前）')
+    const picker = rangePicker(wrapper)
+    const disabledDate = picker.props('disabledDate') as (d: Date) => boolean
+    expect(disabledDate(new Date(2026, 8, 2))).toBe(true)
+    expect(disabledDate(new Date(2026, 8, 3))).toBe(false)
+    const shortcuts = picker.props('shortcuts') as { text: string; value: () => Date[] }[]
+    expect(shortcuts[0]!.value().map((d) => d.getDate())).toEqual([3, 3])
+    expect(shortcuts[1]!.value().map((d) => d.getDate())).toEqual([4, 4])
   })
 })
