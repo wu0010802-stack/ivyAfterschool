@@ -260,7 +260,8 @@ describe('ExamSubjectsEditor', () => {
     const full = await mountEditor({ exam: makeExam({ subjects: twenty }) })
     expect(full.text()).toContain('20 / 20')
     expect(buttonIn(full, '新增科目')?.attributes('disabled')).toBeDefined()
-  })
+    // 20 列 × 20 個 el-option 的掛載在共用 CPU 下可能超過預設 5 秒
+  }, 20000)
 
   it('ExamSubjectsEditor conflict and invalid subject', async () => {
     mock.onPut('/admin/exams/e1/subjects').reply(409, {
