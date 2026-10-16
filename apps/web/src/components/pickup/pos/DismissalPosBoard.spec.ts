@@ -18,6 +18,7 @@ import {
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import boardSource from './DismissalPosBoard.vue?raw'
 import DismissalPosBoard, { type PosBoardSource } from './DismissalPosBoard.vue'
+import QueuePanel from './QueuePanel.vue'
 
 const NOW = Date.parse('2026-10-02T09:10:00Z')
 
@@ -222,6 +223,13 @@ async function clickMessageBoxButton(text: string): Promise<void> {
   await settle()
 }
 
+/** QueuePanel 收到的佇列項目（直接 emit 時用） */
+function queueItemOf(panel: VueWrapper, id: string): unknown {
+  const item = (panel.props('items') as Array<{ id: string }>).find((i) => i.id === id)
+  if (!item) throw new Error(`佇列沒有 ${id}`)
+  return item
+}
+
 const cancelBodies = (id: string): unknown[] =>
   mock.history.post.filter((r) => r.url === cancelUrl(id)).map((r) => JSON.parse((r.data as string) || '{}'))
 
@@ -407,10 +415,14 @@ describe('DismissalPosBoard', () => {
 
   it('DismissalPosBoard narrow width uses bottom drawer', async () => {
     vi.stubGlobal('innerWidth', 800)
-    const { wrapper } = await mountBoard()
+    const added = vi.spyOn(window, 'addEventListener')
+    const removed = vi.spyOn(window, 'removeEventListener')
+    const closed = makeRequest('r8', WANG, CLASS_A, { status: 'completed', completed_at: '2026-10-02T08:50:00Z' })
+    const { wrapper } = await mountBoard({ board: makeBoard({ queue: makeQueue([R1, R2], [closed]) }) })
 
     expect(wrapper.find('.pos-board__queue').exists()).toBe(false)
     const fab = wrapper.find('.pos-board__fab button')
+    // N = 倒數 + 進行中，不含已結束
     expect(fab.text()).toBe('佇列（2）')
     // 有家長已到：紅色數字徽章
     expect(wrapper.find('.pos-board__fab .el-badge__content').text()).toBe('1')
@@ -428,12 +440,26 @@ describe('DismissalPosBoard', () => {
     await settle()
     expect(wrapper.findComponent({ name: 'ElDrawer' }).props('modelValue')).toBe(false)
 
-    // 寬度回到 900 以上：恢復右欄、不再有浮動按鈕
+    // 抽屜開著時寬度回到 900 以上：恢復右欄、不再有浮動按鈕，抽屜收起（再變窄時不會自己跳出來）
+    await wrapper.find('.pos-board__fab button').trigger('click')
+    await settle()
     vi.stubGlobal('innerWidth', 1024)
     window.dispatchEvent(new Event('resize'))
     await settle()
     expect(wrapper.find('.pos-board__fab').exists()).toBe(false)
-    expect(queueCards(queueColumn(wrapper))).toHaveLength(2)
+    expect(queueCards(queueColumn(wrapper)).map((c) => c.id)).toEqual(['qc-r2', 'qc-r1'])
+    expect(queueColumn(wrapper).textContent).toContain('今日已結束（1）')
+    vi.stubGlobal('innerWidth', 800)
+    window.dispatchEvent(new Event('resize'))
+    await settle()
+    expect(wrapper.findComponent({ name: 'ElDrawer' }).props('modelValue')).toBe(false)
+
+    // 卸載時移除 resize 監聽
+    const resizeHandlers = added.mock.calls.filter(([type]) => type === 'resize').map(([, fn]) => fn)
+    expect(resizeHandlers.length).toBeGreaterThan(0)
+    wrapper.unmount()
+    const removedHandlers = removed.mock.calls.filter(([type]) => type === 'resize').map(([, fn]) => fn)
+    for (const fn of resizeHandlers) expect(removedHandlers).toContain(fn)
   })
 
   it('DismissalPosBoard narrow fab hides the badge when nobody has arrived', async () => {
@@ -453,7 +479,7 @@ describe('DismissalPosBoard', () => {
           release = () => resolve([200, { ...R1, status: 'acknowledged' }])
         }),
     )
-    await mountBoard()
+    const { wrapper } = await mountBoard()
 
     cardButton('r1', '確認').click()
     await settle()
@@ -461,8 +487,9 @@ describe('DismissalPosBoard', () => {
     expect(cardButton('r1', '確認').classList.contains('is-loading')).toBe(true)
     expect(cardButton('r1', '回覆時間').disabled).toBe(true)
 
-    // 送出中再點一次（繞過按鈕停用）：不再送
+    // 送出中再點一次（繞過按鈕停用）、或佇列直接再送同一動作：都不再送
     cardButton('r1', '確認').dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    wrapper.findComponent(QueuePanel).vm.$emit('acknowledge', R1)
     await settle()
     expect(mock.history.post.filter((r) => r.url === ackUrl('r1'))).toHaveLength(1)
 
@@ -491,7 +518,7 @@ describe('DismissalPosBoard', () => {
           release = () => resolve([200, { ...R1, status: 'cancelled' }])
         }),
     )
-    const { board } = await mountBoard()
+    const { wrapper, board } = await mountBoard()
 
     await swipeOpen('r1')
     cardButton('r1', '取消').click()
@@ -500,6 +527,14 @@ describe('DismissalPosBoard', () => {
 
     expect(cardButton('r1', '確認').classList.contains('is-loading')).toBe(true)
     expect(board.reload).not.toHaveBeenCalled()
+    // 取消送出中：佇列再送取消或確認都忽略（不再開 prompt、不送 acknowledge）
+    const boxes = document.body.querySelectorAll('.el-message-box').length
+    const panel = wrapper.findComponent(QueuePanel)
+    panel.vm.$emit('cancel', queueItemOf(panel, 'r1'))
+    panel.vm.$emit('acknowledge', R1)
+    await settle()
+    expect(document.body.querySelectorAll('.el-message-box')).toHaveLength(boxes)
+    expect(mock.history.post.map((r) => r.url)).toEqual([cancelUrl('r1')])
 
     release()
     await settle()
