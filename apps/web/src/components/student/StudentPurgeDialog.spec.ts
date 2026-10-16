@@ -188,6 +188,45 @@ describe('StudentPurgeDialog', () => {
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 
+  it('StudentPurgeDialog requires exact student number: enter does not submit mismatched value', async () => {
+    mock.onPost(PURGE_URL).reply(200, { student_id: 's1', purged_at: '2026-10-02T08:00:00Z', anonymized_student_no: 'P' })
+    const wrapper = await mountDialog()
+
+    await typeConfirm('S100')
+    await confirmInput().trigger('keyup', { key: 'Enter' })
+    await settle()
+
+    expect(mock.history.post).toHaveLength(0)
+    expect(wrapper.emitted('purged')).toBeUndefined()
+  })
+
+  it('StudentPurgeDialog requires exact student number: overlay click does not close', async () => {
+    const wrapper = await mountDialog()
+
+    const overlay =
+      document.body.querySelector<HTMLElement>('.el-overlay-dialog') ?? document.body.querySelector<HTMLElement>('.el-overlay')
+    overlay!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    overlay!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    overlay!.click()
+    await settle()
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('StudentPurgeDialog requires exact student number: reopening clears input', async () => {
+    const wrapper = await mountDialog()
+
+    await typeConfirm('S1001')
+    expect(button('永久刪除').element.disabled).toBe(false)
+    await wrapper.setProps({ modelValue: false })
+    await settle()
+    await wrapper.setProps({ modelValue: true })
+    await settle()
+
+    expect(confirmInput().element.value).toBe('')
+    expect(button('永久刪除').element.disabled).toBe(true)
+  })
+
   it('StudentPurgeDialog handles confirmation mismatch: cancel closes', async () => {
     const wrapper = await mountDialog()
 
