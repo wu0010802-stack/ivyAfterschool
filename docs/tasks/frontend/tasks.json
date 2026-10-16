@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 245,
-  "last_updated": "2026-10-16T14:15:28Z",
+  "version": 246,
+  "last_updated": "2026-10-16T14:16:12Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2744,8 +2744,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentDetailPanel.vue",
       "source_ref": "FE:src/components/student/StudentDetailPanel.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-088",
@@ -3746,8 +3746,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveFormDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
         "FRONTEND-096",
@@ -4682,8 +4682,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentGrid.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentGrid.vue::default",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
         "FRONTEND-193"
@@ -4725,7 +4725,7 @@
         "FRONTEND-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "[review-r10-f7 打回] 鍵盤操作 ⋮ 會同時觸發卡片的 quick-dispatch：根元素 @keydown.enter.prevent / @keydown.space.prevent 會收到從 ⋮（el-dropdown 觸發鈕）冒泡上來的 keydown，⋮ 只有 @click.stop（核可稿與 ivy 同寫法，屬疏漏）。反例（真實 Chromium 1024×768 實測）：在班等待、canOperate 的學生卡，聚焦「王小明 的選項」⋮ 後按 Enter 或空白鍵 → 選單打開，同時 emit quick-dispatch（頁面會開始 5 秒倒數、時間到建立員工代建接送請求）；接送中 / 家長已到且有代理授權的卡片同理會多 emit focus-request。期望：只有卡片本身收到 Enter / 空白鍵才觸發 onTap（例如 .self 修飾，或判斷 event.target === event.currentTarget），⋮ 的鍵盤操作只開選單。驗收：spec 補一條「對 ⋮ 按鈕觸發 keydown Enter 與空白鍵 → 沒有 quick-dispatch」，拿掉修正要轉紅；卡片本身 Enter / 空白鍵仍可發起的既有斷言保留。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/pos/StudentCard.spec.ts",
@@ -5045,7 +5045,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "[review-r10-f7 打回] description「鎖定（authorization.locked 或收到 pickup_code_locked）…canOverride 時自動切到強制完成」目前只在開啟（reset）與收到 pickup_code_locked 時切換；dialog 開著時 props.authorization.locked 由 false 變 true（FRONTEND-200 收 pickup.authorization_updated 原地更新，稿 decisions：其他員工核驗或連錯鎖定）不會切。反例（真實 Chromium 實測）：canOverride、停在接送碼分頁 → 同一張授權 props 改為 {locked: true, code_attempts: 5} → 警示寫「已切換到「主管強制完成」。」，但目前分頁仍是已停用的「接送碼」、footer「核驗接送碼」停用（停在目視核對分頁時同理）。期望：locked 轉 true 且 canOverride 時切到「主管強制完成」並聚焦備註（與收到 pickup_code_locked 相同）。驗收：spec 補一條「開著時 setProps authorization 改 locked: true → 目前分頁為主管強制完成、footer 送出鈕為『強制完成』」，拿掉修正要轉紅。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/AuthorizationVerifyDialog.spec.ts",
