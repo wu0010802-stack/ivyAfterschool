@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 208,
-  "last_updated": "2026-10-16T05:45:54Z",
+  "version": 209,
+  "last_updated": "2026-10-16T05:46:37Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3117,11 +3117,11 @@
     {
       "id": "FRONTEND-097",
       "title": "實作 views/ClassesView.vue：班級管理頁",
-      "description": "建立 `apps/web/src/views/ClassesView.vue`（路由 `/classes`，`classes:read`）。移植 ivy `FE:src/views/ClassroomView.vue` 的班級卡 / 表格、學年度切換、新增 / 編輯 / 刪除流程；**去掉** 容量、預留名額、招生計畫、學期、班級異動紀錄抽屜、年級表。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-classes.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：班級列表（學年度切換、含封存、只看我的班）、新增 / 編輯 dialog、指派負責老師 dialog、封存仍有學生時的錯誤、只有 classes:read 時唯讀、空清單。\n\n**內容**\n- `PageHeader`「班級管理」；篩選：學年度（academicYearOptions，預設 currentAcademicYear）、「只看我的班」（mine）、「含已封存」；資料 `listClasses`。\n- 表格：班級名稱、年級（gradeLevelsLabel）、在學人數（連結 → `/students?class_id={id}`）、負責老師（lead 粗體在前，assistant 其後，以「、」分隔；無 → 「尚未指派」）、排序、狀態（封存 tag + 封存日）。依 sort_order、名稱排序。\n- 有 `classes:write`：「新增班級」→ `ClassFormDialog`（FRONTEND-098）；每列（未封存）「編輯」「指派老師」（FRONTEND-099）「封存」。\n- 封存：確認「封存後此班級不會出現在班級選單，確定要封存 {name} 嗎？」→ `archiveClass`；409 `class_has_students` → 警告對話框「班級仍有 {student_count} 位在學學生，請先將學生調班或退班」（人數取 `details.student_count`，後端含暫停中的學生，可能比表格的在學人數多），按鈕「查看班上學生」（→ `/students?class_id={id}`）/「關閉」。\n- 寫入成功後 `useLookupsStore().invalidate('classes')`。\n- 空清單：「{year} 學年度還沒有班級」（附新增按鈕）；勾「只看我的班」後沒有結果時改用專用空狀態「{year} 學年度沒有你負責的班級」+ 說明「負責老師由有「管理班級」權限的人在「指派老師」設定」+「顯示全部班級」按鈕（取消勾選並重新查詢）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/ClassesView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/views/ClassesView.vue`（路由 `/classes`，`classes:read`）。移植 ivy `FE:src/views/ClassroomView.vue` 的班級卡 / 表格、學年度切換、新增 / 編輯 / 刪除流程；**去掉** 容量、預留名額、招生計畫、學期、班級異動紀錄抽屜、年級表。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-classes.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：班級列表（學年度切換、含封存、只看我的班）、新增 / 編輯 dialog、指派負責老師 dialog、封存仍有學生時的錯誤、只有 classes:read 時唯讀、空清單。\n\n**內容**\n- `PageHeader`「班級管理」+ 副標「安親班內部的班級；學生就讀國小的班級在學生資料裡填寫」；篩選：學年度（academicYearOptions，預設 currentAcademicYear）、「只看我的班」（mine）、「含已封存」，三個值同步到網址 query（academic_year / mine / include_archived；學年度不在選項內時用目前學年度），右側「共 N 班」；資料 `listClasses`，不分頁。\n- 表格：班級名稱、年級（gradeLevelsLabel）、在學人數（> 0 為連結 → `/students?class_id={id}`，0 為淡灰不可點）、負責老師（lead 粗體在前，assistant 其後，以「、」分隔；無 → 「尚未指派」）、排序、狀態（只在勾選「含已封存」時出現：封存 tag + 封存日，整列變灰；未封存「—」）。依 sort_order、名稱排序。\n- 有 `classes:write`：「新增班級」→ `ClassFormDialog`（FRONTEND-098）；每列（未封存）「編輯」「指派老師」（FRONTEND-099）「封存」，已封存的列「—」。沒有 `classes:write` 時整個操作欄移除。封存成功 ElMessage.success「已封存 {name}」並重新載入。載入失敗 EmptyState error「無法載入班級」+「重試」取代表格。\n- 封存：確認「封存後此班級不會出現在班級選單，確定要封存 {name} 嗎？」→ `archiveClass`；409 `class_has_students` → 警告對話框「班級仍有 {student_count} 位在學學生，請先將學生調班或退班」（人數取 `details.student_count`，後端含暫停中的學生，可能比表格的在學人數多），按鈕「查看班上學生」（→ `/students?class_id={id}`）/「關閉」。\n- 寫入成功後 `useLookupsStore().invalidate('classes')`。\n- 空清單：「{year} 學年度還沒有班級」（附新增按鈕）；勾「只看我的班」後沒有結果時改用專用空狀態「{year} 學年度沒有你負責的班級」+ 說明「負責老師由有「管理班級」權限的人在「指派老師」設定」+「顯示全部班級」按鈕（取消勾選並重新查詢）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/ClassesView.vue')`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ClassesView.vue",
       "source_ref": "FE:src/views/ClassroomView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-080",
@@ -3147,7 +3147,13 @@
           "ClassesView hides write actions without permission：permissions ['classes:read'] → 沒有 '新增班級'、'編輯'、'指派老師'、'封存'",
           "ClassesView empty state per year：回 [] → 文字含 '115 學年度還沒有班級'",
           "ClassesView invalidates lookups after write：新增班級成功 → useLookupsStore().classesLoaded === false",
-          "ClassesView mine empty state：勾 '只看我的班' 後 GET 回 [] → 文字含 '115 學年度沒有你負責的班級'，不含 '115 學年度還沒有班級'；點 '顯示全部班級' → 最後一次 GET params.mine === false"
+          "ClassesView mine empty state：勾 '只看我的班' 後 GET 回 [] → 文字含 '115 學年度沒有你負責的班級'，不含 '115 學年度還沒有班級'；點 '顯示全部班級' → 最後一次 GET params.mine === false",
+          "ClassesView archives class and reloads：封存確認後 POST 回 200 → 文字含 '已封存 低年級A班'、GET 再呼叫一次、classesLoaded === false",
+          "ClassesView syncs filters with query：選 '114 學年度' → 最後一次 GET params 深等於 {academic_year:114,include_archived:false,mine:false} 且 query.academic_year === '114'；勾 '含已封存' → 出現 '狀態' 欄，已封存列有 cls-row-archived、'已封存'、'2026/09/01' 且沒有操作按鈕",
+          "ClassesView restores filters from query：initialRoute '/classes?academic_year=114&mine=true&include_archived=true' → 第一次 GET params 深等於 {academic_year:114,include_archived:true,mine:true}，兩個勾選框為勾選",
+          "ClassesView opens edit and staff dialogs：點 '編輯' → dialog 標題 '編輯班級'；點 '指派老師' → '指派老師：低年級A班'",
+          "ClassesView shows retry on load failure：GET 500 → 文字含 '無法載入班級'、沒有表格與筆數；點 '重試' 回 200 → 顯示 1 列",
+          "ClassesView is wired in view loaders：(await VIEW_LOADERS.ClassesView()).default === ClassesView"
         ],
         "run": "just web-test src/views/ClassesView.spec.ts -t \"ClassesView\"",
         "notes": ""
