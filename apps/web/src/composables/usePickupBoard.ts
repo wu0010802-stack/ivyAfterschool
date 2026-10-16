@@ -7,6 +7,8 @@
 // - mutation：成功以回傳值 applyRequest；404 pickup_request_not_found / 409 invalid_pickup_status 提示並 reload、
 //   resolve null（呼叫端關 dialog 即可）；其他錯誤 rethrow 給 dialog 顯示。
 // - withRoster 另訂閱 attendance / homework 就地更新名單；topic 被拒時改為每 60 秒重抓名單。
+// - 授權事件（pickup.authorization_updated）只帶家長端形狀（BACKEND-420 PickupAuthorizationOut），沒有學生摘要、照片、
+//   錯誤次數與鎖定：收到當天的事件就重抓 B436 清單（序號防護），不就地合併；沒載入授權清單時不寫入，改重抓名單。
 import { ElMessage } from 'element-plus'
 import { computed, onScopeDispose, ref, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
 import type { AttendanceRow } from '@/api/attendance'
@@ -52,6 +54,15 @@ export interface PickupBoardOptions {
 
 export type RequestListener = (req: PickupRequest) => void
 
+/**
+ * ws `pickup.authorization_updated` 的 data：後端 PickupAuthorizationOut（docs/tasks/api_index.md §14 的 ParentAuthorization 形狀），
+ * 沒有 student / photo_url / code_attempts / locked / verified_by_name，不能當 StaffAuthorization 放進清單。
+ */
+export type AuthorizationEvent = Omit<
+  StaffAuthorization,
+  'student' | 'photo_url' | 'code_attempts' | 'locked' | 'verified_by_name'
+>
+
 export interface PickupBoard {
   queue: Ref<PickupQueue | null>
   roster: Ref<PickupRoster | null>
@@ -68,6 +79,7 @@ export interface PickupBoard {
   complete(id: string, body: PickupCompleteBody): Promise<PickupRequest | null>
   create(body: PickupRequestCreate): Promise<PickupRequest | null>
   applyRequest(req: PickupRequest): void
+  /** HTTP 核驗結果（B437~439 回傳的完整授權）；ws 授權事件不走這裡，改重抓清單 */
   applyAuthorization(auth: StaffAuthorization): void
   /** 狀態從非 arrived 變成 arrived（含第一次看到就是 arrived）；回傳解除函式 */
   onArrived(fn: RequestListener): () => void
@@ -159,10 +171,13 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     if (mySeq === rosterSeq) roster.value = res
   }
 
-  async function loadAuthorizations(): Promise<void> {
+  /** 回傳這次的回應是否被採用（較新的請求已發出時晚到的回應丟棄） */
+  async function loadAuthorizations(): Promise<boolean> {
     const mySeq = ++authSeq
     const res = await listPickupAuthorizations({ date })
-    if (mySeq === authSeq) authorizations.value = res
+    if (mySeq !== authSeq) return false
+    authorizations.value = res
+    return true
   }
 
   /** 同時進行的多次 reload：只有最後一次會收尾 loading / error */
@@ -239,17 +254,50 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     else if (!previous && req.status === 'pending') runListeners(newRequestListeners, req)
   }
 
-  function recountAuthorizations(studentId: string): void {
-    if (!roster.value) return
-    const count = authorizations.value.filter((a) => a.student_id === studentId && a.effective_status === 'active').length
-    patchStudent(studentId, { active_authorization_count: count })
+  /** 以目前的授權清單重算名單上每位學生的 active 授權數（只換掉數字有變的學生） */
+  function recountAuthorizations(): void {
+    const current = roster.value
+    if (!current) return
+    const active = new Map<string, number>()
+    for (const a of authorizations.value) {
+      if (a.effective_status === 'active') active.set(a.student_id, (active.get(a.student_id) ?? 0) + 1)
+    }
+    const countOf = (s: RosterStudent): number => active.get(s.student_id) ?? 0
+    if (current.classes.every((c) => c.students.every((s) => s.active_authorization_count === countOf(s)))) return
+    roster.value = {
+      ...current,
+      classes: current.classes.map((c) => ({
+        ...c,
+        students: c.students.map((s) =>
+          s.active_authorization_count === countOf(s) ? s : { ...s, active_authorization_count: countOf(s) },
+        ),
+      })),
+    }
+  }
+
+  async function refetchAuthorizations(): Promise<void> {
+    try {
+      if (await loadAuthorizations()) recountAuthorizations()
+    } catch (err) {
+      console.error('[usePickupBoard] 重抓代理授權失敗', err)
+    }
   }
 
   function applyAuthorization(auth: StaffAuthorization): void {
     if (auth.service_date !== date) return
+    // 沒載入授權清單時不寫入（清單不完整），名單上的計數改由後端重算
+    if (!withAuthorizations) {
+      void reloadRoster()
+      return
+    }
     authorizations.value = upsert(authorizations.value, auth, 'keep')
-    // 沒載入完整授權清單時無法由清單重算，改重抓名單
-    if (withAuthorizations) recountAuthorizations(auth.student_id)
+    recountAuthorizations()
+  }
+
+  /** 推播只帶家長端形狀：不就地合併（重新產生接送碼會重設錯誤次數與鎖定，推播不帶這兩欄），一律重抓 */
+  function onAuthorizationEvent(event: AuthorizationEvent): void {
+    if (event?.service_date !== date) return
+    if (withAuthorizations) void refetchAuthorizations()
     else void reloadRoster()
   }
 
@@ -304,7 +352,7 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     'pickup',
     {
       'pickup.request_updated': (req: PickupRequest) => applyRequest(req),
-      'pickup.authorization_updated': (auth: StaffAuthorization) => applyAuthorization(auth),
+      'pickup.authorization_updated': (event: AuthorizationEvent) => onAuthorizationEvent(event),
     },
     { resync: reload },
   )
