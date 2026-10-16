@@ -1,5 +1,4 @@
-// FRONTEND-024：後台 view 的延遲載入集中在這裡，routes.ts 只引用 VIEW_LOADERS.X。
-// 初始全部指向 PlaceholderView；各 view task 完成時把自己的 loader 改為 `() => import('@/views/...')`。
+// FRONTEND-024：後台 view 的延遲載入集中在這裡，routes.ts 只引用 VIEW_LOADERS.X；每個 loader 載入同名的 view 檔。
 import type { Component } from 'vue'
 
 export type ViewName =
@@ -23,8 +22,6 @@ export type ViewName =
   | 'RolesView'
   | 'AuditLogView'
 
-const placeholder = () => import('@/router/PlaceholderView.vue')
-
 export const VIEW_LOADERS: Record<ViewName, () => Promise<Component>> = {
   LoginView: () => import('@/views/LoginView.vue'),
   ChangePasswordView: () => import('@/views/ChangePasswordView.vue'),
@@ -36,7 +33,7 @@ export const VIEW_LOADERS: Record<ViewName, () => Promise<Component>> = {
   AttendanceMonthlyView: () => import('@/views/AttendanceMonthlyView.vue'),
   LeavesView: () => import('@/views/LeavesView.vue'),
   HomeworkBoardView: () => import('@/views/HomeworkBoardView.vue'),
-  PickupPosView: placeholder,
+  PickupPosView: () => import('@/views/PickupPosView.vue'),
   PickupAuthorizationsView: () => import('@/views/PickupAuthorizationsView.vue'),
   ExamsView: () => import('@/views/ExamsView.vue'),
   ExamDetailView: () => import('@/views/ExamDetailView.vue'),
