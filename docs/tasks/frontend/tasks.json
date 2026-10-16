@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 250,
-  "last_updated": "2026-10-16T14:24:53Z",
+  "version": 251,
+  "last_updated": "2026-10-16T14:25:27Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4764,14 +4764,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/QueuePanel.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosQueuePanel.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-195",
         "FRONTEND-184"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "送出中防連點（例如連點「確認」送出兩次 acknowledge）不在本元件處理：QueueCard（FRONTEND-195）沒有 busy prop，由 board 層（FRONTEND-188 / 189）負責。",
+      "risk_notes": "送出中防連點（例如連點「確認」送出兩次 acknowledge）不在本元件處理：QueueCard（FRONTEND-195）沒有 busy prop，由 board 層（FRONTEND-188 / 189）負責。\n【review-r10-f2 打回】送出中防連點沒有落地：核可稿 page-pickup-pos.html 的 QueuePanel 有必填的 busyIds，對每張 QueueCard 傳 :busy=\"busyIds.has(it.id)\"，QueueCard 的「確認」:loading=\"busy\"、其餘按鈕 :disabled=\"busy\"，對應 decisions「佇列卡按鈕…送出中按鈕 loading / 停用」。本元件沒有 busyIds，QueueCard（FRONTEND-195）也沒有 busy prop；本欄原寫「由 board 層（FRONTEND-188 / 189）負責」，但 188 / 189 的 description 與 red_cases 都沒有這項（README：移交驗收四者缺一等同刪除），而且 board 沒有管道讓卡片按鈕顯示 loading / 停用。反例（reviewer 以 Chromium 觸控實測）：同一張 pending 卡 120ms 內點兩次「確認」→ QueuePanel emit acknowledge 2 次；usePickupBoard 的 mutate 沒有在途去重，第二次 POST 得到 409 invalid_pickup_status，畫面跳「此請求狀態已變更（目前：已確認）」並整個重新載入。驗收：QueuePanel 依稿新增 busyIds（以 item.id 判斷）並傳給 QueueCard 的 busy；QueueCard 加 busy prop（「確認」loading、其餘按鈕停用，busy 時點擊不 emit）——這是部分改寫 FRONTEND-195，依 README 在 194 description 寫明改寫範圍並同步 195 的 description / red_cases（或由協調者重開 195）；誰維護 busyIds（稿中由頁面在 API 呼叫前後加入 / 移除）要寫進 FRONTEND-189（或 188）的 description 與 red_cases，本欄原本的移交說明改寫為實際落點。測試：busyIds 含 r1 時 r1 的「確認」為 loading、其他按鈕 disabled、點擊不 emit；不含時照常 emit。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/pos/QueuePanel.spec.ts",
@@ -4792,9 +4792,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f2",
+        "notes": "打回 1 項（見 risk_notes【review-r10-f2 打回】）：送出中防連點沒有落地（稿的 busyIds）。其餘檢查通過：red_cases 8 條皆有同名測試（另有 live minute clock、styles 2 條），tdd.run 10 綠；fe216a7（紅，QueuePanel.vue 尚不存在，spec 之後未再改）→ 91ee4d0 → 01e6a7f。01e6a7f 的 description 補述（items 順序由 185 決定、loading 的骨架與「—」、事件原樣轉發、focus 的找卡 / 展開 / scrollIntoView / is-flash 重播規則、已結束卡傳 now 且 canOperate 固定 false）都與核可稿 page-pickup-pos.html 的 QueuePanel 段及 decisions（右欄佇列、三態的 3 張骨架卡、點學生卡定位閃爍 1.5 秒、唯讀）一致。Chromium 實測（scratchpad 的 Vite harness，用完已關）：收合鈕 320×44 整列、標題「進行中（2）」、左滑提示、focus 後卡內 .queue-card 套用 qcard-flash 1.5s 動畫、1.5 秒後移除。突變 14 項中 12 項轉紅（不清前一個計時、預設展開、計數含已結束、無進行中卡也提示、focus 不展開、閃爍 1 秒、固定 now、不轉發 acknowledge、不捲動、找不到也保留閃爍、loading 仍顯示已結束區、空狀態沒有副標），還原後 git diff 乾淨；兩項仍綠：已結束卡改傳 canOperate（QueueCard 對已結束卡本來就不渲染按鈕與左滑，觀測不到）、reduced motion 也用 smooth（description 有寫但沒有測試，修正時順手補）。web-lint 乾淨；web-typecheck 的錯誤都在他人進行中的檔案（StudentGrid.vue、parent BindView.vue / HomeworkView.spec.ts、AttendanceTodayView.spec.ts）。依賴：本元件的 PosQueueItem 型別、項目順序（staging → active → closed）與「同一學生已有倒數或進行中請求時不列稍早已結束的紀錄」都來自 FRONTEND-185（目前 in_review、被 review-r10-f6 打回），194 與 195 的 depends_on 都應補 FRONTEND-185；185 的兩個打回項（排序測試、本地樂觀版本移除）不改 PosQueueItem 形狀，194 不需隨之修改。另一個不屬於本 task、但會讓本元件在桌機無法操作的缺陷（請協調者另案處理）：Chromium 以滑鼠點擊進行中卡（canOperate）的「回覆時間 / 確認 / 完成交付」三種事件都 0 次（觸控 tap 與 element.click() 正常）。原因是 QueueCard 的卡片本體在 pointerdown 就經 useSwipeReveal setPointerCapture，pointerup 改送到卡片本體，click 落在卡片本體而不是按鈕；happy-dom 測不到。屬 FRONTEND-195 / 186（皆 done），稿 decisions 有桌機寬度（右欄 340），需修正並以 Playwright 實測驗收。"
       }
     },
     {
