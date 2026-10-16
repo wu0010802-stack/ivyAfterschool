@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 153,
-  "last_updated": "2026-10-16T06:13:50Z",
+  "version": 154,
+  "last_updated": "2026-10-16T06:13:51Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1943,7 +1943,7 @@
       "target_path": "apps/web/src/parent/stores/pickupRequests.ts",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::refresh",
       "status": "in_progress",
-      "assignee_session": "impl-parent-r10c",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
         "PARENT-090",
