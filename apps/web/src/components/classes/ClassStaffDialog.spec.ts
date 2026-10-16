@@ -207,6 +207,22 @@ describe('ClassStaffDialog', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 
+  it('ClassStaffDialog highlights invalid staff: other errors show backend message', async () => {
+    mock.onGet(OPTIONS_URL).reply(200, STAFF_OPTIONS)
+    mock.onPut(PUT_URL).reply(409, {
+      error: { code: 'class_archived', message: '班級已封存，無法修改', details: null },
+    })
+    const wrapper = await mountDialog(klass([CHEN_LEAD]))
+
+    await submit()
+
+    expect(document.body.textContent).toContain('班級已封存，無法修改')
+    expect(dialog().text()).not.toContain('部分員工已停用或不存在，請重新選擇')
+    expect(row(0).classes()).not.toContain('is-error')
+    expect(wrapper.emitted('saved')).toBeUndefined()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
   it('ClassStaffDialog clears all staff', async () => {
     mock.onGet(OPTIONS_URL).reply(200, STAFF_OPTIONS)
     mock.onPut(PUT_URL).reply(200, klass())

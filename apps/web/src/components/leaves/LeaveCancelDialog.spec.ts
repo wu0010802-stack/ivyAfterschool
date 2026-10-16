@@ -167,6 +167,17 @@ describe('LeaveCancelDialog', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
 
+  it('LeaveCancelDialog surfaces ended error: other errors do not emit failed', async () => {
+    mock.onPost(CANCEL_URL).networkError()
+    const wrapper = await mountDialog(leave('2026-10-05', '2026-10-06'))
+
+    await submit('取消請假')
+
+    expect(dialog().find('.el-alert--error').text()).toContain('網路連線異常，請稍後再試')
+    expect(wrapper.emitted('failed')).toBeUndefined()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
   it('LeaveCancelDialog ended leave only allows cancel all', async () => {
     mock.onPost(CANCEL_URL).reply(200, { ...leave('2026-09-28', '2026-09-30'), status: 'cancelled' })
     await mountDialog(leave('2026-09-28', '2026-09-30'))
