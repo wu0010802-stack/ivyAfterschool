@@ -533,8 +533,11 @@ async function setOverall(student: BoardStudent, mode: 'done' | 'auto'): Promise
   margin-left: 0;
 }
 
-.hw-toolbar__date {
+/* el-date-picker 的根節點不帶本元件的 scoped 屬性，從工具列往下選（稿：190px，平板 1024 寬時篩選列維持單行）；
+   根節點高度同 44px，否則 44px 的內層會溢出 Element Plus 預設 32px 的根節點、比同列控制項低 6px */
+.hw-toolbar :deep(.hw-toolbar__date.el-date-editor) {
   width: 190px;
+  height: 44px;
 }
 
 .hw-toolbar__class {
