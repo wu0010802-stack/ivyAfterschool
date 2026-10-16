@@ -123,7 +123,9 @@ describe('StudentPurgeDialog', () => {
     await typeConfirm('S1001')
     await purge()
 
-    expect(dialog().find('.purge-alert.el-alert--error').text()).toBe('只能刪除已封存且退班的學生')
+    // 錯誤 alert 在 dialog 內（測試環境的 Transition stub 會把 class 掛在外層，所以以 class 範圍內找 error alert）
+    const alert = dialog().find('.purge-alert')
+    expect(alert.find('.el-alert--error').text()).toBe('只能刪除已封存且退班的學生')
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     expect(wrapper.emitted('purged')).toBeUndefined()
     // 輸入保留，可以再試
@@ -175,6 +177,9 @@ describe('StudentPurgeDialog', () => {
     expect(dialog().find('.el-dialog__headerbtn').exists()).toBe(false)
     expect(confirmInput().element.disabled).toBe(true)
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }))
+    await settle()
+    // 其他關閉路徑（例如 dialog 自己的 handleClose）也會經過 before-close，送出中一律忽略
+    ;(wrapper.findComponent({ name: 'ElDialog' }).vm as unknown as { handleClose: () => void }).handleClose()
     await settle()
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
 
