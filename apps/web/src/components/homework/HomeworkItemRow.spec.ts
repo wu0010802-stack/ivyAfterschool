@@ -31,6 +31,13 @@ async function mountRow(item: HomeworkItem, props: Record<string, unknown> = {})
   return wrapper as VueWrapper
 }
 
+/** 掛到 document 上：click 才會沿路冒泡到 window（Element Plus 下拉的「點外面就收起」掛在 window） */
+async function mountAttachedRow(item: HomeworkItem, props: Record<string, unknown> = {}): Promise<VueWrapper> {
+  const wrapper = await mountRow(item, props)
+  document.body.appendChild(wrapper.element)
+  return wrapper
+}
+
 function segments(wrapper: VueWrapper): DOMWrapper<Element>[] {
   return wrapper.findAll('[role=radio]')
 }
@@ -51,9 +58,16 @@ function menuItem(label: string): HTMLElement | undefined {
   )
 }
 
-function menuOpen(): boolean {
-  const popper = document.body.querySelector<HTMLElement>('.el-dropdown__popper')
-  return !!popper && popper.style.display !== 'none'
+/** 選單是否開著：⋮ 的 aria-expanded 隨開關即時更新（不必等 happy-dom 不會結束的關閉動畫） */
+function menuOpen(wrapper: VueWrapper): boolean {
+  return menuButton(wrapper).attributes('aria-expanded') === 'true'
+}
+
+/** 長按：在 target 上 pointerdown，推進 ms 毫秒 */
+async function press(target: DOMWrapper<Element>, ms: number): Promise<void> {
+  await target.trigger('pointerdown')
+  vi.advanceTimersByTime(ms)
+  await settle()
 }
 
 describe('HomeworkItemRow', () => {
@@ -131,34 +145,83 @@ describe('HomeworkItemRow', () => {
 
   it('HomeworkItemRow long press opens menu', async () => {
     vi.useFakeTimers()
-    const wrapper = await mountRow(makeItem({ status: 'todo' }))
+    const wrapper = await mountAttachedRow(makeItem({ status: 'todo' }))
     const row = wrapper.find('.hw-item')
 
     // 短按不開選單
-    await row.trigger('pointerdown')
-    vi.advanceTimersByTime(300)
+    await press(row, 300)
     await row.trigger('pointerup')
     vi.advanceTimersByTime(600)
     await settle()
-    expect(menuOpen()).toBe(false)
+    expect(menuOpen(wrapper)).toBe(false)
 
     // 在狀態段上長按 600ms：開選單，放開後的 click 不切換狀態
-    await segment(wrapper, '完成').trigger('pointerdown')
-    vi.advanceTimersByTime(599)
-    await settle()
-    expect(menuOpen()).toBe(false)
+    await press(segment(wrapper, '完成'), 599)
+    expect(menuOpen(wrapper)).toBe(false)
     vi.advanceTimersByTime(1)
     await settle()
+    // Element Plus 下拉開啟有短暫延遲
     vi.advanceTimersByTime(200)
     await settle()
-    expect(menuOpen()).toBe(true)
+    expect(menuOpen(wrapper)).toBe(true)
     await segment(wrapper, '完成').trigger('pointerup')
     await segment(wrapper, '完成').trigger('click')
     expect(wrapper.emitted('set-status')).toBeUndefined()
 
     // 下一次正常點擊照常切換
+    await segment(wrapper, '完成').trigger('pointerdown')
+    await segment(wrapper, '完成').trigger('pointerup')
     await segment(wrapper, '完成').trigger('click')
     expect(wrapper.emitted('set-status')?.[0]).toEqual(['done'])
+  })
+
+  it('HomeworkItemRow long press menu stays open after release click', async () => {
+    vi.useFakeTimers()
+    const wrapper = await mountAttachedRow(makeItem({ status: 'todo' }))
+
+    await press(segment(wrapper, '進行中'), 700)
+    expect(menuOpen(wrapper)).toBe(true)
+
+    // 放開：pointerup + 冒泡到 window 的 click（Element Plus 的點外面判定在 window 捕獲階段）
+    await segment(wrapper, '進行中').trigger('pointerup')
+    await segment(wrapper, '進行中').trigger('click')
+    vi.advanceTimersByTime(0)
+    await settle()
+
+    expect(menuOpen(wrapper)).toBe(true)
+    expect(wrapper.emitted('set-status')).toBeUndefined()
+    menuItem('編輯')?.click()
+    await settle()
+    expect(wrapper.emitted('edit')).toHaveLength(1)
+  })
+
+  it('HomeworkItemRow tap works after touch long press without click', async () => {
+    vi.useFakeTimers()
+    const wrapper = await mountAttachedRow(makeItem({ status: 'todo' }))
+
+    // 觸控長按放開可能不產生 click
+    await press(segment(wrapper, '進行中'), 700)
+    await segment(wrapper, '進行中').trigger('pointerup')
+    await settle()
+
+    // 下一次點擊不可被吞掉
+    await segment(wrapper, '完成').trigger('pointerdown')
+    await segment(wrapper, '完成').trigger('pointerup')
+    await segment(wrapper, '完成').trigger('click')
+    expect(wrapper.emitted('set-status')?.[0]).toEqual(['done'])
+  })
+
+  it('HomeworkItemRow pointerleave cancels long press', async () => {
+    vi.useFakeTimers()
+    const wrapper = await mountAttachedRow(makeItem({ status: 'todo' }))
+    const row = wrapper.find('.hw-item')
+
+    await press(row, 300)
+    await row.trigger('pointerleave')
+    vi.advanceTimersByTime(600)
+    await settle()
+
+    expect(menuOpen(wrapper)).toBe(false)
   })
 
   it('HomeworkItemRow long press does nothing when readonly', async () => {
