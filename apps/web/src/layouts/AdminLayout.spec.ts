@@ -206,7 +206,7 @@ describe('AdminLayout', () => {
     await advance(2000)
     expect(wrapper.text()).toContain(BANNER_TEXT)
     // 橫幅在頂欄正下方、內容區之前，不蓋住內容
-    const banner = wrapper.find('.el-alert')
+    const banner = wrapper.find('.admin-layout__banner')
     expect(banner.element.previousElementSibling?.tagName).toBe('HEADER')
     expect(banner.element.nextElementSibling?.tagName).toBe('MAIN')
     expect(banner.find('.el-alert__close-btn').exists()).toBe(false)
@@ -379,12 +379,14 @@ describe('AdminLayout', () => {
     setViewportWidth(390)
     await nextTick()
     expect(header().props('mobile')).toBe(true)
-    expect(drawerEl()).toBeNull()
+    // 抽屜關閉時還沒渲染側欄
+    expect(wrapper.findComponent({ name: 'ElDrawer' }).props('modelValue')).toBe(false)
+    expect(drawerEl()?.querySelector('[data-test=admin-sidebar]')).toBeNull()
 
     await wrapper.find('[aria-label=切換側欄]').trigger('click')
     await nextTick()
 
-    expect(drawerEl()).not.toBeNull()
+    expect(wrapper.findComponent({ name: 'ElDrawer' }).props('modelValue')).toBe(true)
     expect(drawerEl()?.querySelector('[data-test=admin-sidebar]')).not.toBeNull()
     // 手機開關抽屜不動桌機的收合狀態與記憶
     expect(header().props('collapsed')).toBe(true)
@@ -446,7 +448,7 @@ describe('AdminLayout', () => {
     const { wrapper } = await mountLayout()
     await wrapper.find('[aria-label=切換側欄]').trigger('click')
     await nextTick()
-    expect(drawerEl()).not.toBeNull()
+    expect(wrapper.findComponent({ name: 'ElDrawer' }).props('modelValue')).toBe(true)
 
     setViewportWidth(1280)
     await nextTick()
@@ -475,14 +477,19 @@ describe('AdminLayout', () => {
   })
 
   it('AdminLayout removes the resize listener on unmount', async () => {
+    const add = vi.spyOn(window, 'addEventListener')
+    const remove = vi.spyOn(window, 'removeEventListener')
     const { wrapper } = await mountLayout()
+    const resizeHandlers = add.mock.calls.filter(([type]) => type === 'resize').map(([, fn]) => fn)
+    expect(resizeHandlers.length).toBeGreaterThan(0)
+    const removedBefore = remove.mock.calls.filter(([type]) => type === 'resize').map(([, fn]) => fn)
+    expect(resizeHandlers.some((fn) => !removedBefore.includes(fn))).toBe(true)
+
     wrapper.unmount()
 
-    setViewportWidth(390)
-    await nextTick()
-
-    // 卸載後 resize 不會再更新（沒有拋錯、也沒有殘留的抽屜）
-    expect(drawerEl()).toBeNull()
+    // 掛載期間加上的每一個 resize 監聽（含本元件的）卸載後都已移除
+    const removed = remove.mock.calls.filter(([type]) => type === 'resize').map(([, fn]) => fn)
+    expect(resizeHandlers.filter((fn) => !removed.includes(fn))).toEqual([])
   })
 
   it('AdminLayout keeps only the main area scrollable with the approved paddings', () => {
