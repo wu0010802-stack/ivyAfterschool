@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 288,
-  "last_updated": "2026-10-16T15:26:32Z",
+  "version": 289,
+  "last_updated": "2026-10-16T15:27:35Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3773,11 +3773,11 @@
     {
       "id": "FRONTEND-130",
       "title": "實作 components/leaves/LeaveFormDialog.vue：員工代登記請假",
-      "description": "建立 `apps/web/src/components/leaves/LeaveFormDialog.vue`（BACKEND-352：同一學生 active 請假不可重疊；送出即生效並把期間出勤改為請假）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-leaves.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：請假列表（篩選：學生 / 班級 / 狀態 / 假別 / 建立者 / 日期區間）、代登記 dialog（含期間重疊錯誤）、取消 dialog（剩餘日子 / 整筆兩種範圍與說明）、附件檢視（圖片預覽 / PDF 另開）、只有 leaves:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`、`presetStudent?: {id, name, student_no, class_name}`；emits `update:modelValue`、`created(leave: Leave)`。外觀以設計稿 `docs/mockups/page-leaves.html` 的 decisions 為準。\n- `FormDialog`（FRONTEND-040）md，標題「代登記請假」，送出鈕「送出」；有輸入後關閉需確認（dirty）。\n- 欄位（label 在上）：學生（`StudentSelect`；presetStudent 時預選並作為 initialOption）→ 假別（病假 / 事假 / 其他三段按鈕，必填、沒有預設值）→ 請假期間（el-date-picker daterange「開始日 ~ 結束日」；`todayTaipei() − 30` 天以前 disabled；快捷「今天」「明天」；下方提示「單日請假：開始與結束選同一天。最早可選 {date}（30 天前）」）→ 原因（選填，≤200 字計數，placeholder「例如：發燒看醫生」）。\n- 表單下方 info alert「送出後立即生效，期間內的出勤會改為請假，並通知班級負責老師」。\n- 前端驗證（不送請求，錯誤顯示在對應欄位下方）：「請選擇學生」「請選擇假別」「請選擇請假期間」；`end_date − start_date > 60` 天 →「單筆請假最長 61 天」（同後端上限）。\n- `createLeave({student_id, leave_type, start_date, end_date, reason?})`：原因去頭尾空白後為空時不帶 reason；成功 ElMessage.success('已登記請假')、emit created、關閉。\n- 錯誤（顯示在對應欄位下方）：`leave_overlap` → 期間欄「與既有請假（{details.start_date}~{details.end_date}）重疊」（同一天只顯示一天）；`no_service_days_in_range` → 期間欄「所選期間沒有營業日」；`student_not_active` → 學生欄「此學生不是在學狀態」；422 `validation_error` 以 `validationFieldErrors` 對到欄位（start_date / end_date 對到期間欄）；其他錯誤 ElMessage.error(errorMessage(err, '送出失敗，請稍後再試'))，dialog 保持開啟。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/leaves/LeaveFormDialog.vue`（BACKEND-352：同一學生 active 請假不可重疊；送出即生效並把期間出勤改為請假）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-leaves.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：請假列表（篩選：學生 / 班級 / 狀態 / 假別 / 建立者 / 日期區間）、代登記 dialog（含期間重疊錯誤）、取消 dialog（剩餘日子 / 整筆兩種範圍與說明）、附件檢視（圖片預覽 / PDF 另開）、只有 leaves:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`、`presetStudent?: {id, name, student_no, class_name}`；emits `update:modelValue`、`created(leave: Leave)`。外觀以設計稿 `docs/mockups/page-leaves.html` 的 decisions 為準。\n- `FormDialog`（FRONTEND-040）md，標題「代登記請假」，送出鈕「送出」；有輸入後關閉需確認（dirty）。\n- 欄位（label 在上）：學生（`StudentSelect`；presetStudent 時預選並作為 initialOption）→ 假別（病假 / 事假 / 其他三段按鈕，必填、沒有預設值）→ 請假期間（el-date-picker daterange「開始日 ~ 結束日」；`todayTaipei() − 30` 天以前 disabled；快捷「今天」「明天」；下方提示「單日請假：開始與結束選同一天。最早可選 {date}（30 天前）」）；今天、最早可選日與快捷鍵在每次開啟時以 `todayTaipei()` 重算（dialog 掛著跨過台北午夜後再開不會晚一天）→ 原因（選填，≤200 字計數，placeholder「例如：發燒看醫生」）。\n- 表單下方 info alert「送出後立即生效，期間內的出勤會改為請假，並通知班級負責老師」。\n- 前端驗證（不送請求，錯誤顯示在對應欄位下方）：「請選擇學生」「請選擇假別」「請選擇請假期間」；`end_date − start_date > 60` 天 →「單筆請假最長 61 天」（同後端上限）。\n- `createLeave({student_id, leave_type, start_date, end_date, reason?})`：原因去頭尾空白後為空時不帶 reason；成功 ElMessage.success('已登記請假')、emit created、關閉。\n- 錯誤（顯示在對應欄位下方）：`leave_overlap` → 期間欄「與既有請假（{details.start_date}~{details.end_date}）重疊」（同一天只顯示一天）；`no_service_days_in_range` → 期間欄「所選期間沒有營業日」；`student_not_active` → 學生欄「此學生不是在學狀態」；422 `validation_error` 以 `validationFieldErrors` 對到欄位（start_date / end_date 對到期間欄）；其他錯誤 ElMessage.error(errorMessage(err, '送出失敗，請稍後再試'))，dialog 保持開啟。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveFormDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
@@ -3799,7 +3799,9 @@
           "LeaveFormDialog requires student and type：未選學生、假別與期間點送出 → 文字含 '請選擇學生'、'請選擇假別'、'請選擇請假期間'，無請求",
           "LeaveFormDialog rejects range over 61 days：期間 2026-10-05~2026-12-05 → 文字含 '單筆請假最長 61 天'，無請求",
           "LeaveFormDialog omits blank reason：原因只輸入空白 → POST body 沒有 reason 鍵",
-          "LeaveFormDialog shows student not active：POST 回 409 student_not_active → 文字含 '此學生不是在學狀態'"
+          "LeaveFormDialog shows student not active：POST 回 409 student_not_active → 文字含 '此學生不是在學狀態'",
+          "LeaveFormDialog shows other errors and keeps dialog open：POST 回 500 {message:'伺服器忙碌中，請稍後再試'} → body 含該訊息；再送一次回 503 且 message 為空 → body 含 '送出失敗，請稍後再試'；兩次都沒有 emit created / update:modelValue，假別 '事假'、期間 2026-10-05~2026-10-06、原因 '家庭旅遊' 保留",
+          "LeaveFormDialog recomputes today on each open：台北 2026-10-02 23:59 開啟 → 提示含 '最早可選 2026-09-02'；關閉後時間到 2026-10-03 00:01 再開 → 提示含 '最早可選 2026-09-03'，disabled-date 對 2026-09-02 為 true、2026-09-03 為 false，快捷「今天」為 10/03、「明天」為 10/04"
         ],
         "run": "just web-test src/components/leaves/LeaveFormDialog.spec.ts -t \"LeaveFormDialog\"",
         "notes": "happy-dom 下在 daterange 輸入框打字不會觸發選取，spec 以 el-date-picker 元件本身 emit update:modelValue / change 模擬在面板上點選；disabled-date 與快捷鍵以元件 props 驗證。表單含真實 daterange 與 StudentSelect，describe 逾時放寬為 20 秒。"
