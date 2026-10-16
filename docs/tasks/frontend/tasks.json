@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 244,
-  "last_updated": "2026-10-16T14:12:57Z",
+  "version": 245,
+  "last_updated": "2026-10-16T14:15:28Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4718,7 +4718,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentCard.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentCard.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
@@ -4745,9 +4745,9 @@
         "notes": "紅燈 commit c550a5a（補強 903d4a3）、實作 commit 3b89791；打回修正：規格 2ce6ce4、紅燈測試 b19fc42、實作 d97fcd2（卡片的 keydown.enter / space 加 .self，⋮ 冒泡上來的按鍵只開選單）。除 7 條 red_cases 外另有 2 條：⋮ 選單 emit create-request 與已離班停用說明 / 請假無選單 / 倒數中選單停用、⋮ 44×44 與 role=button aria-label（?raw 原始碼斷言）。選單項目「代建接送請求…」依核可稿在 staging 時不列出、el-dropdown 以 :disabled=staging 停用；「查看代理授權」由元件直接 router.push。突變自檢：唯讀者可 quick-dispatch、唯讀者顯示選單、家長已到也顯示請求小字、拿掉 Enter 的 .self、拿掉空白鍵的 .self 各使對應測試轉紅。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f7",
-        "notes": "review-r10-f7 打回 1 項（見 risk_notes）：鍵盤操作 ⋮ 會冒泡觸發卡片 quick-dispatch。其餘通過：tdd.run 8/8 綠，6 條 red_case 以同名測試選到；c550a5a / 903d4a3（測試）先於 3b89791（實作）。description 逐條相符（狀態 tag 與請假假別、請求小字含家長已到只補「待回覆」、作業與 ready_eta、Postcard icon +「代理 n」、staging 遮罩、點擊規則含唯讀者 focus-request、⋮ 只給 canOperate 且至少一項、代建 / 查看代理授權 / 今天已離班停用）。「查看代理授權」由元件 router.push：e8672b5 之前的 description 原文即為 router.push，e8672b5 只補註稿內為 emit，合理。稿 decisions 第 7~10、22、25 條相符；真實 Chromium 1024×768 實測 ⋮ 44×44、滑鼠點 ⋮ 不觸發卡片、選單「查看代理授權」導到 /pickup/authorizations?student_id=s1、staging 時點卡片無 emit。突變：導頁 query key、staging 仍可派發、假別直接顯示代碼 → 對應測試轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯。"
+        "notes": "review-r10-f7 複審通過。打回項（⋮ 的 Enter / 空白鍵冒泡觸發卡片 quick-dispatch）已修正：規格 2ce6ce4（description 補鍵盤規則、新增 red_case「StudentCard ignores keyboard on menu button」）→ 紅燈測試 b19fc42 → 實作 d97fcd2（卡片 keydown.enter / space 加 .self），順序正確。tdd.run 9/9 綠，7 條 red_case 皆以同名測試選到。突變：拿掉 Enter 的 .self、拿掉空白鍵的 .self 各使新測試轉紅，還原後 diff 乾淨。真實 Chromium 1024×768 實測：聚焦 ⋮ 按 Enter / 空白鍵只開選單（無任何 emit），卡片本身 Enter / 空白鍵與點擊照常 quick-dispatch。初審已驗的部分不變：description 逐條相符、稿 decisions 第 7~10、22、25 條相符、⋮ 44×44、選單導頁 /pickup/authorizations?student_id=、staging 點擊無 emit；「查看代理授權」由元件 router.push 依 description。web-lint 乾淨；web-typecheck 本檔無錯（全專案 2 個錯誤在他人進行中的 bootstrap.ts、AttendanceTodayView.spec.ts）。"
       }
     },
     {
@@ -5038,7 +5038,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/AuthorizationVerifyDialog.vue",
       "source_ref": "FE:src/views/PickupAuthorizationsView.vue::submitVerify",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-181",
@@ -5067,9 +5067,9 @@
         "notes": "紅燈 commit 17b9d39（補強 a833d14）、實作 commit 9905486；打回修正：規格 2ce6ce4、紅燈測試 b19fc42、實作 d97fcd2（同一張授權的 locked / code_attempts 由父層更新時以 props 為準，多來源 watch 只在值真的變動時觸發；轉鎖定與收到 pickup_code_locked 共用 enterLocked，轉解鎖恢復分頁與送出鈕——一併處理 review-r10-f7 殘留「開著期間解鎖不反映」）。除 9 條 red_cases 外另有 6 條：逐格輸入自動跳格 / 非數字忽略 / Backspace 回上一格 / 貼上含空白與「-」、已鎖定授權開啟即在強制完成分頁（無 override 只剩關閉）、送出中只送一次（格子與 footer 停用，直接派發 paste / Enter 也不重送）、其他錯誤顯示後端 message 且表單保留、關閉再開同一張授權與開著時換授權都重設、接送碼格 52×60 / 分頁 48px / 關閉鈕 44px（?raw 原始碼斷言）。聚焦：FormDialog 的 @opened 在 happy-dom 不會觸發、且 el-dialog 的 focus trap（focus-start-el=container）會在開啟後幾個 tick 無條件把焦點放到容器，故元件自己在 setTimeout 0 聚焦（開啟 / 切分頁 / 碼錯清空後），FormDialog 傳 autofocus=false；spec 的 settle 多等 20ms 真實 timer。成功畫面的方式標籤取自本次操作（code / visual_match / override），不依賴回應欄位。突變自檢：鎖定回應不進鎖定、碼錯不清空、強制完成不檢查備註、鎖定無 override 仍顯示 footer、busy 不擋重送、貼上不去分隔符、成功不 emit verified、圖片失敗不退回、重開不重設、props 轉鎖定不切換、鎖定無 override 不回接送碼分頁、props 更新不清掉回應推得的鎖定、拿掉整個 props watch 各使對應測試轉紅。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f7",
-        "notes": "review-r10-f7 打回 1 項（見 risk_notes）：dialog 開著時 authorization.locked 由 props 轉 true 不會自動切到強制完成、警示卻寫已切換。其餘通過：tdd.run 13/13 綠，7 條 red_case 以同名測試選到；17b9d39 / a833d14（測試）先於 9905486（實作）。權限：「主管強制完成」分頁只在 canOverride 出現、送出走 override-complete（後端另有 pickup:override 守衛）；備註 trim 後必填；送出中 run() 擋重送、格子與 footer 停用、FormDialog loading 期間不可關閉；畫面只顯示末四碼。setTimeout 0 聚焦 + FormDialog autofocus=false（tdd.notes）：真實 Chromium 實測開啟即聚焦第 1 碼、錯碼後回第 1 碼、切到強制完成與已鎖定開啟時聚焦備註，合理。稿 decisions 第 7~13、15、19 條相符；實測 dialog 560px、分頁高 48px、「關閉」44px、接送碼格 52×60。實測流程：逐格輸入（間隔 ≥ 20ms）滿 6 碼自動送出、核驗中格子與 footer 停用、送出中按 Enter 不重送（只 1 次 POST）、錯碼「還可嘗試 2 次」+ 清空 + 摘要更新、貼上「12 34-56」送 123456、其他錯誤顯示後端 message 且保留輸入、Backspace 回上一格、鎖定回應切強制完成、無 override 只剩「關閉」。突變 8 項（鎖定不切分頁、不檢查備註、強制完成分頁不看權限、拿掉 busy 守衛、錯碼不清空、鎖定時目視核對不停用、鎖定無 override 仍有 footer、成功不 emit verified）皆轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯。殘留：(1) 同一 macrotask 內連續送入多鍵（Playwright keyboard.type delay 0）會掉一碼（跳格聚焦排在 setTimeout 0，下一鍵進到舊格）；人手輸入與貼上 / one-time-code 不受影響。(2) lockedByResponse / localAttempts 在開著期間不隨 props 更新（例如家長重新產生接送碼解鎖），需關閉再開。(3) 接送碼格 52×60 依賴 FRONTEND-028 base.css 的全域 box-sizing: border-box；目前 main.ts 為佔位，沒有該規則時 Chromium 量到 54×62。"
+        "notes": "review-r10-f7 複審通過。打回項（開著時 authorization.locked 由 props 轉 true 不切強制完成）已修正：規格 2ce6ce4（description 補「開著時父層更新同一張授權以 props 為準、轉鎖定同收到 pickup_code_locked、無 override 回接送碼分頁、轉解鎖恢復且目前分頁不變」，新增 2 條 red_case）→ 紅燈測試 b19fc42 → 實作 d97fcd2（id / locked / code_attempts 多來源 watch + 共用 enterLocked），順序正確。tdd.run 15/15 綠，9 條 red_case 皆以同名測試選到。突變：拿掉 props 轉鎖定的 enterLocked、無 override 不回接送碼分頁、props 更新不清本次回應推得的鎖定、不清 localAttempts 各使對應新測試轉紅，還原後 diff 乾淨。真實 Chromium 1024×768 實測：canOverride 停在接送碼 → props 轉鎖定 → 切到「主管強制完成」、footer「取消 / 強制完成」、焦點在備註；再轉解鎖 → 鎖定提示消失、摘要「尚無錯誤」、分頁不變；無 override 停在目視核對 → 轉鎖定 → 回接送碼分頁、只剩「關閉」；轉解鎖 → 6 格與「核驗接送碼」回來。初審已驗的權限（強制完成只在 canOverride、備註必填、送出中防重送、只顯示末四碼）、聚焦、尺寸與 13 項流程不變。web-lint 乾淨；web-typecheck 本檔無錯（全專案 2 個錯誤在他人進行中的 bootstrap.ts、AttendanceTodayView.spec.ts）。殘留：(1) 同一 macrotask 內連續送入多鍵（keyboard.type delay 0）會掉一碼（跳格聚焦排在 setTimeout 0）；人手輸入與貼上 / one-time-code 不受影響。(2) 接送碼格 52×60 依賴 FRONTEND-028 base.css 的全域 box-sizing: border-box，沒有該規則時 Chromium 量到 54×62。(3) 無 override 時 props 轉解鎖後焦點不回第 1 格（description 未要求）。(4) 收到 pickup_code_locked 後若父層再送來 locked 為 false 的舊資料，畫面會先解鎖到下一次送出才回鎖定；後端仍擋，FRONTEND-200 依規格收推播後重抓清單，實務上拿到的是現值。"
       }
     },
     {
