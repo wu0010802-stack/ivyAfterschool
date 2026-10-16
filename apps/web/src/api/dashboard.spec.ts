@@ -22,13 +22,13 @@ describe('dashboardApi', () => {
       is_service_day: true,
       attendance: { expected_total: 80, arrived: 70, present: 60, left: 10, not_arrived: 4, leave: 5, absent: 1 },
       pickup: { open: 3, needs_reply: 1, arrived: 1, completed: 12 },
-      homework: { total: 70, done: 40, in_progress: 20, not_started: 10, completion_rate: 0.571 },
+      homework: { total: 70, done: 40, in_progress: 20, not_started: 10, completion_rate: 57.1 },
       recent_leaves: [],
     })
 
     const today = await fetchDashboardToday()
 
-    expect(today.homework.completion_rate).toBe(0.571)
+    expect(today.homework.completion_rate).toBe(57.1)
     expect(today.attendance.not_arrived).toBe(4)
     expect(today.recent_leaves).toEqual([])
   })

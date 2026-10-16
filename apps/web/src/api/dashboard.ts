@@ -27,7 +27,7 @@ export interface DashboardHomeworkCounts {
   done: number
   in_progress: number
   not_started: number
-  /** 0~1；total 為 0 時 0 */
+  /** 0~100，1 位小數；total 為 0 時 0 */
   completion_rate: number
 }
 
