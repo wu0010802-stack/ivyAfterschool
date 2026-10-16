@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 189,
-  "last_updated": "2026-10-16T05:05:16Z",
+  "version": 190,
+  "last_updated": "2026-10-16T05:05:53Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2992,8 +2992,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentImportDialog.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-006",
@@ -3033,8 +3033,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/GradePromotionDialog.vue",
       "source_ref": "FE:src/api/students.ts::bulkGraduateStudents",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-084",
@@ -3897,8 +3897,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-150",
         "FRONTEND-038",
@@ -3975,8 +3975,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkItemRow.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-005",
         "FRONTEND-150"
