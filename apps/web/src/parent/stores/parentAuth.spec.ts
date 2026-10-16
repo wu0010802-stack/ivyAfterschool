@@ -246,12 +246,18 @@ describe('parentAuth store', () => {
     expect(store.bindPending).toBeNull()
 
     setActivePinia(createPinia())
-    sessionStorage.setItem(ME_KEY, JSON.stringify({ display_name: '沒有 id' }))
+    sessionStorage.setItem(ME_KEY, JSON.stringify({ display_name: '沒有 id', children: [] }))
     sessionStorage.setItem(BIND_KEY, JSON.stringify({ nameHint: 42 }))
     const again = useParentAuthStore()
 
     expect(again.isAuthed).toBe(false)
     expect(again.bindPending).toBeNull()
+
+    setActivePinia(createPinia())
+    sessionStorage.setItem(ME_KEY, JSON.stringify({ id: 'p1', display_name: '沒有 children' }))
+    const third = useParentAuthStore()
+
+    expect(third.isAuthed).toBe(false)
   })
 
   it('parentAuth displayName falls back to empty string', () => {
