@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 182,
-  "last_updated": "2026-10-16T14:57:01Z",
+  "version": 183,
+  "last_updated": "2026-10-16T14:58:26Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -472,8 +472,8 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/main.ts",
       "source_ref": "FE:src/parent/main.ts::ensureSessionProbed",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-001",
         "PARENT-004",
