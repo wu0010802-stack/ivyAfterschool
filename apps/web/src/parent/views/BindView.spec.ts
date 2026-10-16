@@ -10,6 +10,7 @@ import { parentHttp, parentRefreshHttp } from '../api/http'
 import { useChildrenStore } from '../stores/children'
 import { useParentAuthStore, type BindPending } from '../stores/parentAuth'
 import { useSnackbarStore } from '../stores/snackbar'
+import BindCodeErrorNotice from '../components/bind/BindCodeErrorNotice.vue'
 import BindView from './BindView.vue'
 import source from './BindView.vue?raw'
 
@@ -82,7 +83,13 @@ describe('BindView', () => {
 
   /** 掛在 document 上（焦點與送出鈕的 submit 才會生效） */
   async function mountBind(
-    opts: { route?: string; parent?: ParentMe | null; bindPending?: BindPending | null; kids?: ChildSummary[] } = {},
+    opts: {
+      route?: string
+      parent?: ParentMe | null
+      bindPending?: BindPending | null
+      kids?: ChildSummary[]
+      kidsLoaded?: boolean
+    } = {},
   ): Promise<Mounted> {
     const router = createRouter({
       history: createMemoryHistory(),
@@ -95,7 +102,11 @@ describe('BindView', () => {
       stubActions: false,
       initialState: {
         parentAuth: { parent: opts.parent ?? null, bindPending: opts.bindPending ?? null },
-        parentChildren: { items: opts.kids ?? [], loaded: true, selectedId: opts.kids?.[0]?.id ?? null },
+        parentChildren: {
+          items: opts.kids ?? [],
+          loaded: opts.kidsLoaded ?? true,
+          selectedId: opts.kids?.[0]?.id ?? null,
+        },
       },
     })
     const wrapper = mount(BindView, { attachTo: document.body, global: { plugins: [router, pinia] } })
@@ -106,7 +117,7 @@ describe('BindView', () => {
 
   const firstMode = (route = '/bind', nameHint: string | null = '王媽媽') =>
     mountBind({ route, bindPending: { nameHint } })
-  const additionalMode = (kids: ChildSummary[] = [MING]) => mountBind({ parent: me(kids), kids })
+  const additionalMode = (kids: ChildSummary[] = [MING], route = '/bind') => mountBind({ parent: me(kids), kids, route })
 
   const bindPosts = () => mock.history.post.filter((r) => r.url === BIND_URL)
   const refreshPosts = () => refreshMock.history.post.filter((r) => r.url === REFRESH_URL)
@@ -140,6 +151,9 @@ describe('BindView', () => {
     expect(auth.bindPending).toBeNull()
     expect(useChildrenStore(pinia).items.map((c) => c.id)).toEqual(['s1'])
     expect(refreshPosts()).toHaveLength(0)
+    // 模式在進頁時固定：setParent 後畫面不切成加綁模式
+    expect(wrapper.get('h1').text()).toBe('綁定小孩')
+    expect(wrapper.text()).not.toContain('加綁其他小孩')
   })
 
   it('BindView first bind ignores unsafe redirect', async () => {
@@ -211,7 +225,7 @@ describe('BindView', () => {
   it('BindView additional bind selects new child', async () => {
     mock.onGet(CONFIG_URL).reply(200, config({ add_friend_url: FRIEND_URL }))
     mock.onPost(BIND_URL).reply(200, { parent: me([MING, HUA]) })
-    const { wrapper, router, pinia } = await additionalMode([MING])
+    const { wrapper, router, pinia } = await additionalMode([MING], '/bind?redirect=/homework')
 
     expect(wrapper.get('h1').text()).toBe('加綁其他小孩')
     expect(wrapper.text()).not.toContain('第一次使用')
@@ -306,6 +320,35 @@ describe('BindView', () => {
     await flushPromises()
   })
 
+  it('BindView additional bind resends when another tab is refreshing', async () => {
+    mock.onGet(CONFIG_URL).reply(200, config())
+    mock
+      .onPost(BIND_URL)
+      .replyOnce(401, apiError('unauthenticated'))
+      .onPost(BIND_URL)
+      .replyOnce(200, { parent: me([MING, HUA]) })
+    // 409 refresh_in_progress：另一個分頁剛輪替過 cookie（PARENT-004 同語意，視同成功）
+    refreshMock.onPost(REFRESH_URL).reply(409, apiError('refresh_in_progress'))
+    const { wrapper, router, pinia } = await additionalMode([MING])
+
+    await submit(wrapper, 'ABCD2345')
+
+    expect(bindPosts()).toHaveLength(2)
+    expect(useParentAuthStore(pinia).isAuthed).toBe(true)
+    expect(router.currentRoute.value.path).toBe('/')
+  })
+
+  it('BindView additional mode loads children after reload', async () => {
+    mock.onGet(CONFIG_URL).reply(200, config())
+    mock.onGet('/parent/children').reply(200, [MING, HUA])
+    // 重新整理後 children 尚未載入（只有 sessionStorage 還原的登入資料）
+    const { wrapper } = await mountBind({ parent: me([MING, HUA]), kids: [], kidsLoaded: false })
+
+    expect(mock.history.get.filter((r) => r.url === '/parent/children')).toHaveLength(1)
+    expect(wrapper.findAll('.bound-row').map((r) => r.get('.bound-row__name').text())).toEqual(['王小明', '王小華'])
+    expect(wrapper.text()).not.toContain('目前沒有已綁定的小孩')
+  })
+
   it('BindView additional bind logs out when refresh fails', async () => {
     mock.onGet(CONFIG_URL).reply(200, config())
     mock.onPost(BIND_URL).reply(401, apiError('unauthenticated'))
@@ -319,6 +362,7 @@ describe('BindView', () => {
     expect(useParentAuthStore(pinia).isAuthed).toBe(false)
     expect(useChildrenStore(pinia).items).toEqual([])
     expect(router.currentRoute.value.path).toBe('/login')
+    expect(wrapper.text()).not.toContain('第一次使用')
   })
 
   it('BindView additional bind stops after second 401', async () => {
@@ -403,6 +447,10 @@ describe('BindView', () => {
 
     expect(wrapper.get('[role="alert"]').text()).toContain('綁定失敗，請稍後再試')
     expect(wrapper.text()).not.toContain('Internal Server Error')
+    // 未知錯誤碼一律傳 null、不傳 fallbackMessage
+    const notice = wrapper.findComponent(BindCodeErrorNotice)
+    expect(notice.props('code')).toBeNull()
+    expect(notice.props('fallbackMessage')).toBe('')
     expect(wrapper.findAll('a').some((a) => (a.attributes('href') ?? '').startsWith('tel:'))).toBe(false)
   })
 
@@ -475,6 +523,31 @@ describe('BindView', () => {
     await flushPromises()
 
     expect(router.currentRoute.value.path).toBe('/homework')
+  })
+
+  it('BindView start using ignores unsafe redirect', async () => {
+    mock.onGet(CONFIG_URL).reply(200, config({ add_friend_url: FRIEND_URL }))
+    mock.onPost(BIND_URL).reply(200, { parent: me([MING]) })
+    const { wrapper, router } = await firstMode('/bind?redirect=//evil.com')
+
+    await submit(wrapper, 'ABCD2345')
+    await button(wrapper, '開始使用')!.trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('BindView additional bind finds new child before children load', async () => {
+    mock.onGet(CONFIG_URL).reply(200, config())
+    mock.onGet('/parent/children').reply(() => new Promise<[number, unknown]>(() => undefined))
+    mock.onPost(BIND_URL).reply(200, { parent: me([MING, HUA]) })
+    // 重新整理後小孩清單還在載入，只有 sessionStorage 還原的登入資料
+    const { wrapper, pinia } = await mountBind({ parent: me([MING]), kids: [], kidsLoaded: false })
+
+    await submit(wrapper, 'ABCD2345')
+
+    expect(useChildrenStore(pinia).selectedId).toBe('s2')
+    expect(useSnackbarStore(pinia).items[0]?.message).toBe('已加綁 王小華')
   })
 
   it('BindView style follows design decisions', () => {
