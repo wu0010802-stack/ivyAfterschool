@@ -87,7 +87,8 @@ async function settle(router: Router): Promise<void> {
   await flushPromises()
 }
 
-describe('parentMain', () => {
+// 第一個測試要 lazy import 真實的 LoginView / LeavesView（vite 轉譯），容器負載高時會超過預設 5 秒
+describe('parentMain', { timeout: 20_000 }, () => {
   it('parentMain redirects to login on unauthenticated', async () => {
     mock.onGet('/parent/me').replyOnce(200, ME).onGet('/parent/me').reply(401, UNAUTHORIZED)
     refreshMock.onPost('/parent/auth/refresh').reply(401, UNAUTHORIZED)
@@ -105,7 +106,7 @@ describe('parentMain', () => {
     // 頁面上的 API 401 且 refresh 也 401 → PARENT-004 呼叫 unauthenticated handler
     await expect(listChildLeaves('s1')).rejects.toMatchObject({ status: 401 })
     // handler 發起的導向要載入 LoginView（lazy import），不只一個 tick
-    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/leaves'))
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/leaves'), { timeout: 10_000 })
 
     expect(auth.isAuthed).toBe(false)
     expect(children.items.length).toBe(0)
@@ -147,7 +148,7 @@ describe('parentMain', () => {
     router.afterEach(afterEach)
 
     await expect(parentHttp.get('/parent/children')).rejects.toMatchObject({ status: 401 })
-    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/exams'))
+    await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/login?redirect=/exams'), { timeout: 10_000 })
     await flushPromises()
 
     // /login 守衛的探測也 401：不再發起第二次導向
