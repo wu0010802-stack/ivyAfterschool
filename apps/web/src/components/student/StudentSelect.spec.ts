@@ -91,7 +91,7 @@ describe('StudentSelect', () => {
     mock.onGet('/admin/students').reply(200, page([WANG]))
     const wrapper = await mountSelect({ classId: 'c1' })
 
-    expect(input(wrapper).attributes('placeholder')).toBe('輸入學號或姓名搜尋')
+    expect(wrapper.find('.el-select__placeholder').text()).toBe('輸入學號或姓名搜尋')
     await type(wrapper, '王')
     await advance(299)
     expect(studentGets()).toHaveLength(0)
@@ -105,7 +105,7 @@ describe('StudentSelect', () => {
     mock.onGet('/admin/students').reply(200, page([WANG]))
     const wrapper = await mountSelect({ statuses: ['suspended', 'active'], placeholder: '輸入學號或姓名（中年級班）' })
 
-    expect(input(wrapper).attributes('placeholder')).toBe('輸入學號或姓名（中年級班）')
+    expect(wrapper.find('.el-select__placeholder').text()).toBe('輸入學號或姓名（中年級班）')
     await type(wrapper, '   ')
     await advance(1000)
     expect(studentGets()).toHaveLength(0)
