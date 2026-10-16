@@ -366,6 +366,13 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     await button(wrapper, '代理接送核驗')?.trigger('click')
     await settle()
     expect(router.currentRoute.value.path).toBe('/pickup/authorizations')
+
+    // 主管確認交付只看 pickup:override
+    wrapper.unmount()
+    const operator = await mountView({ permissions: ['pickup:read', 'pickup:operate'] })
+    const operatorBoard = operator.wrapper.findComponent({ name: 'DismissalPosBoard' })
+    expect(operatorBoard.props('canOperate')).toBe(true)
+    expect(operatorBoard.props('canOverride')).toBe(false)
   })
 
   it('PickupPosView chimes for request created directly as arrived', async () => {
@@ -398,6 +405,18 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
 
     // 同一筆的 pickup 推播晚到：不重播
     socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r6', status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
+    await settle()
+    expect(spokenArrivals()).toBe(1)
+  })
+
+  it('PickupPosView speaks transient arrival from the queued request while roster is loading', async () => {
+    mock.onGet(QUEUE_URL).reply(200, makeQueue([makeRequest({ status: 'arrived', arrived_at: '2026-10-02T08:58:00Z' })]))
+    mock.onGet(ROSTER_URL).reply(() => new Promise(() => undefined))
+    mock.onGet(AUTH_URL).reply(200, [])
+    const { wrapper } = await mountView()
+    await tap(wrapper)
+
+    socket().serverMessage('notification.transient', arrivedTransient('r1'))
     await settle()
     expect(spokenArrivals()).toBe(1)
   })
@@ -533,8 +552,14 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
   })
 
   it('PickupPosView shows load error with retry', async () => {
+    let release: () => void = () => undefined
     mock.onGet(QUEUE_URL).replyOnce(500, { error: { code: 'internal_error', message: '伺服器暫時沒有回應', details: null } })
-    mock.onGet(QUEUE_URL).reply(200, makeQueue([]))
+    mock.onGet(QUEUE_URL).reply(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve([200, makeQueue([])])
+        }),
+    )
     mock.onGet(ROSTER_URL).reply(200, ROSTER)
     mock.onGet(AUTH_URL).reply(200, [])
     const { wrapper } = await mountView()
@@ -547,8 +572,14 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     tick()
     await button(wrapper, '重試')?.trigger('click')
     await settle()
+    // 重試中：回到載入狀態（board 畫骨架），不停在錯誤畫面
     expect(wrapper.text()).not.toContain('無法載入接送資料')
     expect(wrapper.findComponent({ name: 'DismissalPosBoard' }).exists()).toBe(true)
+
+    release()
+    await settle()
+    expect(wrapper.text()).not.toContain('無法載入接送資料')
+    expect(chipText(wrapper)).toEqual(['待回覆 0', '等待確認 0', '已確認 0', '家長已到 0'])
   })
 
   it('PickupPosView layout follows the approved mockup', () => {
