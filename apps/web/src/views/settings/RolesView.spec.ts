@@ -263,7 +263,7 @@ describe('RolesView', () => {
     await setDetailName(wrapper, '資深行政')
 
     await clickCard(wrapper, '課輔老師')
-    expect(document.body.textContent).toContain('尚未儲存的變更將會遺失')
+    expect(document.body.textContent).toContain('尚未儲存的變更將會遺失，確定要放棄變更嗎？')
     await answerMessageBox('繼續編輯')
 
     expect(router.currentRoute.value.query.role).toBe('clerk')
@@ -283,7 +283,7 @@ describe('RolesView', () => {
 
     const leaving = router.push('/students')
     await settle()
-    expect(document.body.textContent).toContain('尚未儲存的變更將會遺失')
+    expect(document.body.textContent).toContain('尚未儲存的變更將會遺失，確定要放棄變更嗎？')
     await answerMessageBox('繼續編輯')
     await leaving
 

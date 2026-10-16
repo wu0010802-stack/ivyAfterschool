@@ -368,7 +368,7 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
     await settle()
     await settle()
     expect(grid.flushCalls).toBe(1)
-    expect(lastMessageBox()?.textContent).toContain('尚未儲存的變更將會遺失')
+    expect(lastMessageBox()?.textContent).toContain('尚未儲存的變更將會遺失，確定要放棄變更嗎？')
     await answerMessageBox('繼續編輯')
     await nav
     expect(router.currentRoute.value.path).toBe('/exams/e1')
@@ -452,7 +452,7 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
     wrapper.findComponent(ExamFormDialog).vm.$emit('saved', renamed)
     await settle()
     await settle()
-    expect(lastMessageBox()?.textContent).toContain('尚未儲存的變更將會遺失')
+    expect(lastMessageBox()?.textContent).toContain('尚未儲存的變更將會遺失，確定要放棄變更嗎？')
     await answerMessageBox('放棄變更')
     expect(grid.reloadCalls).toBe(1)
     expect(grid.mounts).toBe(1)
@@ -469,7 +469,7 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
     await settle()
     await settle()
     expect(grid.flushCalls).toBe(1)
-    expect(lastMessageBox()?.textContent).toContain('尚未儲存的變更將會遺失')
+    expect(lastMessageBox()?.textContent).toContain('尚未儲存的變更將會遺失，確定要放棄變更嗎？')
     await answerMessageBox('繼續編輯')
     await nav
     expect(router.currentRoute.value.path).toBe('/exams/e1')
@@ -528,6 +528,68 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
     expect(router.currentRoute.value.path).toBe('/exams')
     // 考試已刪除：不再送出成績格、也不詢問放棄變更
     expect(grid.flushCalls).toBe(0)
+  })
+
+  it('ExamDetailView unpublish flushes and confirms before rebuilding grid', async () => {
+    // ScoreGrid stub 模擬「有一格送出失敗（PUT 500），flush 重送後仍失敗」
+    mock.onGet(EXAM_URL).reply(200, PUBLISHED)
+    mock.onPost('/admin/exams/e1/unpublish').reply(200, DRAFT)
+    grid.hasUnsaved = true
+    grid.failedCount = 1
+    grid.afterFlush = { hasUnsaved: true, failedCount: 1 }
+    const { wrapper } = await mountView()
+    expect(grid.mounts).toBe(1)
+
+    await clickHeader(wrapper, '取消發布')
+    await answerMessageBox('取消發布')
+    expect(grid.flushCalls).toBe(1)
+    expect(lastMessageBox()?.textContent).toContain('尚未儲存的變更將會遺失，確定要放棄變更嗎？')
+    await answerMessageBox('繼續編輯')
+    expect(mock.history.post).toHaveLength(0)
+    expect(grid.mounts).toBe(1)
+
+    await clickHeader(wrapper, '取消發布')
+    await answerMessageBox('取消發布')
+    expect(grid.flushCalls).toBe(2)
+    await answerMessageBox('放棄變更')
+    expect(mock.history.post.map((c) => c.url)).toEqual(['/admin/exams/e1/unpublish'])
+    // 以 key 重建成績格（丟棄未儲存的格子、回到伺服器值），不是只 reload
+    expect(grid.mounts).toBe(2)
+    expect(grid.reloadCalls).toBe(0)
+  })
+
+  it('ExamDetailView ignores stale scored counts', async () => {
+    const E2 = { ...DRAFT, id: 'e2', name: '第二次段考' }
+    mock.onGet(EXAM_URL).reply(200, DRAFT)
+    mock.onGet('/admin/exams/e2').reply(200, E2)
+    mock.onGet('/admin/subjects').reply(200, [])
+    let releaseE1: (() => void) | undefined
+    let e1Calls = 0
+    mock.onGet(SUMMARY_URL).reply(() => {
+      e1Calls += 1
+      // e1 的 summary 回應延後到切到 e2、e2 已回應之後才送達
+      return new Promise((resolve) => {
+        releaseE1 = () => resolve([200, summary([5, 5])])
+      })
+    })
+    mock.onGet('/admin/exams/e2/summary').reply(200, {
+      ...summary([1, 2]),
+      exam_id: 'e2',
+    })
+    const { wrapper, router } = await mountView(ALL, '/exams/e1?tab=subjects')
+    expect(e1Calls).toBe(1)
+
+    await router.push('/exams/e2?tab=subjects')
+    await settle()
+    await settle()
+    const editor = wrapper.findComponent({ name: 'ExamSubjectsEditor' })
+    expect(editor.props('scoredCounts')).toEqual({ sub1: 29, sub2: 28 })
+
+    // e1 的回應晚到：不得覆蓋 e2 的筆數
+    releaseE1!()
+    await settle()
+    await settle()
+    expect(wrapper.findComponent({ name: 'ExamSubjectsEditor' }).props('scoredCounts')).toEqual({ sub1: 29, sub2: 28 })
   })
 
   it('ExamDetailView is wired in view loaders', async () => {

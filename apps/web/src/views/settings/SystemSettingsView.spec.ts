@@ -295,6 +295,17 @@ describe('SystemSettingsView', () => {
     expect(expireMinutesValue(wrapper)).toBe('90')
   })
 
+  it('SystemSettingsView uses page discard wording', async () => {
+    mock.onGet(LIST_URL).reply(200, { items: settingsFixture() })
+    const { wrapper } = await mountView('/settings/system?tab=pickup')
+    await setExpireMinutes(wrapper, '90')
+
+    await clickTab(wrapper, '通知')
+    expect(document.body.textContent).toContain('尚未儲存的變更將會遺失，確定要放棄變更嗎？')
+    expect(document.body.textContent).not.toContain('確定要關閉嗎？')
+    await answerMessageBox('繼續編輯')
+  })
+
   it('SystemSettingsView discards changes when confirmed', async () => {
     mock.onGet(LIST_URL).reply(200, { items: settingsFixture() })
     const { wrapper, router } = await mountView('/settings/system?tab=pickup')

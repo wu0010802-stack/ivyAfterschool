@@ -90,6 +90,27 @@ describe('useFormDirty', () => {
     expect(await kept).toBe(false)
   })
 
+  it('useFormDirty confirmDiscardChanges page scope', async () => {
+    const page = confirmDiscardChanges('page')
+    await waitForDialog()
+    const pageBox = Array.from(document.body.querySelectorAll<HTMLElement>('.el-message-box')).at(-1)
+    expect(pageBox?.querySelector('.el-message-box__message')?.textContent?.trim()).toBe(
+      '尚未儲存的變更將會遺失，確定要放棄變更嗎？',
+    )
+    expect(pageBox?.querySelector('.el-message-box__title')?.textContent?.trim()).toBe('未儲存的變更')
+    await clickDialogButton('放棄變更')
+    expect(await page).toBe(true)
+
+    const dialog = confirmDiscardChanges()
+    await waitForDialog()
+    const dialogBox = Array.from(document.body.querySelectorAll<HTMLElement>('.el-message-box')).at(-1)
+    expect(dialogBox?.querySelector('.el-message-box__message')?.textContent?.trim()).toBe(
+      '尚未儲存的變更將會遺失，確定要關閉嗎？',
+    )
+    await clickDialogButton('繼續編輯')
+    expect(await dialog).toBe(false)
+  })
+
   it('useFormDirty confirmDiscardChanges stays open on hashchange', async () => {
     // hash router 的上一頁 / 下一頁：路由守衛在 popstate 期間開確認框，緊接著瀏覽器派發 hashchange
     const kept = confirmDiscardChanges()
