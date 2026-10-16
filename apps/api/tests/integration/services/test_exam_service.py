@@ -943,6 +943,133 @@ def test_exam_summary_empty_subject(db_session: Session) -> None:
     assert (row.average, row.max, row.min) == (None, None, None)
 
 
+# --- BACKEND-559 get_exam_summary：只計目前應考名單 ---
+
+
+def test_exam_summary_roster_cleared_cell_is_missing(db_session: Session) -> None:
+    class_a = make_class(db_session, grade_levels=(3,))
+    exam = _exam_with_subjects(db_session, "數學", grade_level=None, class_=class_a)
+    math = _subject(db_session, "數學")
+    ming, hua, _an = (make_student(db_session, class_=class_a) for _ in range(3))
+    make_exam_score(db_session, exam, ming, math, score=Decimal("90"))
+    # 清空過的格子：有成績列、score 為 null、沒標缺考
+    make_exam_score(db_session, exam, hua, math, score=None, is_absent=False)
+    # 林小安沒有成績列
+
+    summary = get_exam_summary(db_session, exam.id)
+
+    [row] = summary.subjects
+    assert summary.roster_count == 3
+    assert (row.scored_count, row.absent_count, row.missing_count) == (1, 0, 2)
+    assert row.average == Decimal("90.00")
+    assert (row.max, row.min) == (Decimal("90"), Decimal("90"))
+
+
+def test_exam_summary_roster_excludes_out_of_roster(db_session: Session) -> None:
+    class_a = make_class(db_session, name="A班", grade_levels=(3,))
+    class_b = make_class(db_session, name="B班", grade_levels=(3,))
+    exam = _exam_with_subjects(db_session, "數學", grade_level=None, class_=class_a)
+    math = _subject(db_session, "數學")
+    ming = make_student(db_session, class_=class_a)
+    make_student(db_session, class_=class_a)  # 陳小華：名單內、未登分
+    outsider = make_student(db_session, class_=class_b)  # 考後轉班：不在名單，成績列保留
+    make_exam_score(db_session, exam, ming, math, score=Decimal("70"))
+    make_exam_score(db_session, exam, outsider, math, score=Decimal("100"))
+
+    summary = get_exam_summary(db_session, exam.id)
+
+    [row] = summary.subjects
+    assert summary.roster_count == 2
+    assert (row.scored_count, row.absent_count, row.missing_count) == (1, 0, 1)
+    assert row.average == Decimal("70.00")
+    assert (row.max, row.min) == (Decimal("70"), Decimal("70"))
+    # 名單外學生的成績列照樣保留
+    kept = db_session.execute(
+        select(func.count()).select_from(ExamScore).where(ExamScore.exam_id == exam.id)
+    ).scalar_one()
+    assert kept == 2
+
+
+def test_exam_summary_roster_excludes_inactive_students_scores(db_session: Session) -> None:
+    class_a = make_class(db_session, grade_levels=(3,))
+    exam = _exam_with_subjects(db_session, "數學", grade_level=None, class_=class_a)
+    math = _subject(db_session, "數學")
+    ming = make_student(db_session, class_=class_a)
+    make_student(db_session, class_=class_a)
+    # 考後退班 / 封存的學生有分數、有缺考，都不列入任何統計
+    gone = make_student(db_session, class_=class_a)
+    archived = make_student(db_session, class_=class_a, archived=True)
+    make_exam_score(db_session, exam, ming, math, score=Decimal("60"))
+    make_exam_score(db_session, exam, gone, math, score=Decimal("100"))
+    make_exam_score(db_session, exam, archived, math, score=None, is_absent=True)
+    gone.status = "withdrawn"
+    gone.withdrawn_on = date(2026, 10, 1)
+    db_session.flush()
+
+    summary = get_exam_summary(db_session, exam.id)
+
+    [row] = summary.subjects
+    assert summary.roster_count == 2
+    assert (row.scored_count, row.absent_count, row.missing_count) == (1, 0, 1)
+    assert (row.average, row.max, row.min) == (Decimal("60.00"), Decimal("60"), Decimal("60"))
+
+
+def test_exam_summary_roster_absent_not_missing(db_session: Session) -> None:
+    class_a = make_class(db_session, grade_levels=(3,))
+    exam = _exam_with_subjects(db_session, "數學", grade_level=None, class_=class_a)
+    math = _subject(db_session, "數學")
+    ming, hua, _an = (make_student(db_session, class_=class_a) for _ in range(3))
+    make_exam_score(db_session, exam, ming, math, score=None, is_absent=True)
+    make_exam_score(db_session, exam, hua, math, score=Decimal("60"))
+    # 林小安未登分
+
+    summary = get_exam_summary(db_session, exam.id)
+
+    [row] = summary.subjects
+    assert (row.absent_count, row.scored_count, row.missing_count) == (1, 1, 1)
+    assert row.scored_count + row.absent_count + row.missing_count == summary.roster_count
+    assert row.average == Decimal("60.00")
+
+
+def test_exam_summary_roster_query_count_is_constant(db_session: Session) -> None:
+    def build(subject_names: tuple[str, ...], roster_size: int) -> UUID:
+        class_x = make_class(db_session, grade_levels=(3,))
+        exam = _exam_with_subjects(db_session, *subject_names, grade_level=None, class_=class_x)
+        for index in range(roster_size):
+            student = make_student(db_session, class_=class_x)
+            for name in subject_names:
+                if index % 2 == 0:  # 一半的學生登分，其餘未填
+                    make_exam_score(
+                        db_session, exam, student, _subject(db_session, name), score=Decimal("80")
+                    )
+        # 名單外學生的成績列不影響查詢數
+        outsider = make_student(db_session, class_=make_class(db_session, grade_levels=(3,)))
+        make_exam_score(
+            db_session, exam, outsider, _subject(db_session, subject_names[0]), score=Decimal("1")
+        )
+        db_session.expire_all()
+        return exam.id
+
+    def count_queries(exam_id: UUID) -> int:
+        statements: list[str] = []
+
+        def record(_conn: object, _cur: object, statement: str, *_args: object) -> None:
+            statements.append(statement)
+
+        engine = db_session.get_bind()
+        event.listen(engine, "before_cursor_execute", record)
+        try:
+            get_exam_summary(db_session, exam_id)
+        finally:
+            event.remove(engine, "before_cursor_execute", record)
+        return len(statements)
+
+    small = count_queries(build(("數學",), 2))
+    large = count_queries(build(("數學", "英語", "國語"), 6))
+
+    assert large == small
+
+
 # --- BACKEND-456 update_exam ---
 
 
