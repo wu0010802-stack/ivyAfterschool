@@ -212,7 +212,7 @@ describe('ExamFormDialog', () => {
     expect(subjectBox('國語').find('.el-input-number').classes()).not.toContain('is-disabled')
     // 部分勾選時「全選」半選
     expect(dialog().find('.ef-section .el-checkbox').classes()).not.toContain('is-checked')
-    expect(dialog().find('.ef-section .el-checkbox input[type=checkbox]').attributes('aria-checked')).toBe('mixed')
+    expect(dialog().find('.ef-section .el-checkbox__input').classes()).toContain('is-indeterminate')
 
     await submit('建立')
 
