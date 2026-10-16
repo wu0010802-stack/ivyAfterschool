@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 166,
-  "last_updated": "2026-10-16T14:03:51Z",
+  "version": 167,
+  "last_updated": "2026-10-16T14:11:45Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3194,7 +3194,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/notifications.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-170",
@@ -3202,7 +3202,7 @@
         "INFRA-013"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "review-r10-p1 打回項（三條一起修）：(1) refreshUnread 沒有序號 / 世代檢查：家長 A 的 refreshUnread 在途時 clear()（PARENT-013 的 401 handler 或 PARENT-033 登出），晚到的回應會把 A 的 unread_count 寫回。反例已重現：refreshUnread() 在途 → clear() → 回應 unread_count 5 → unreadCount 為 5，應為 0。下一位家長登入後，「更多」分頁徽章會先顯示上一位的數字；若該家長自己的 refreshUnread 失敗，就一直停在上一位的數字。另外 refreshUnread 早於 load 發出、晚於 load 回來時，會用較舊的未讀數蓋掉 load 的結果，應一併丟棄。(2) markAllRead 的 await 之後沒有檢查 clear()：A 的 markAllRead 在途 → clear() → B 的 load 回 b1、b2 未讀、unread_count 2 → A 的回應到達後，B 的 b1、b2 在本地被標成已讀，unreadCount 變 0（已重現）。建議做法：clear() 遞增一個世代計數器，refreshUnread / markRead / markAllRead / load / loadMore 在 await 前記下、之後不同就不寫 state；refreshUnread 另比對 load 序號。(3) 補測試：clear() 之後，在途的 load、loadMore、refreshUnread、markAllRead 晚到回應都不改 items / total / unreadCount / loaded；refreshUnread 早於 load 發出、晚於 load 回來時不蓋掉 load 的 unread_count。拿掉守衛時這些測試必須轉紅。",
+      "risk_notes": "未讀數的本地增減（markRead 減 1、markAllRead 歸零、ws notification.created 加 1）不參與發出順序取號：在這些操作之前發出、之後才回來的 refreshUnread / load 會用伺服器當時的未讀數覆蓋，要等下一次 refreshUnread（parentWs 輪詢或重新進頁）才會更正。load 的 finally 不看序號就關掉 loading，較舊的 load 若在較新的 load 進行中結束，會讓 loading 提早變 false（沒有測試釘住）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/stores/notifications.spec.ts",
@@ -3226,9 +3226,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-p1",
-        "notes": "打回（review-r10-p1）。5 條 red_case 都有同名測試、tdd.run 14/14 綠、commit 順序 af0fb08 → e040fe7 正確；load / loadMore 以序號丟棄過期回應，clear() 會讓它們的晚到回應失效。但 clear() 沒有讓 refreshUnread 與 markAllRead 的在途請求失效，能構造出換人登入後殘留上一位家長狀態的反例（見 risk_notes 的打回項），而且沒有任何測試釘住『clear 讓在途請求失效』（突變 clear 不遞增 seq 存活）。其他部分正確：突變 11 個殺 10，包括過期回應、去重、markRead 只在原本未讀才減、ws 去重、ws 加 total、poller、refreshUnread 不動 items、markAllRead 歸零、unreadOnly 移出、失敗保留 items。web-lint 乾淨；web-typecheck 對本 task 檔案沒有錯誤。殘留（不擋）：markRead 的 id 不在目前 items 時不知道原本是否未讀，unreadCount 不變，要等下一次 refreshUnread 才更正。"
+        "notes": "複審通過（review-r10-p1）。上次三條打回項都已修正，各有測試對應：(1) refreshUnread：發出時取號，clear() 把已套用號碼推到最新，在途回應作廢——對應『clear invalidates an in-flight refreshUnread』（含 clear 後新的 refreshUnread 照常更新）；較早發出、較晚回來的未讀數不蓋掉較新的 load——對應『refreshUnread does not overwrite a newer load result』。(2) markAllRead / markRead：clear() 遞增 epoch，回來時世代不同就不動本地狀態，呼叫端 promise 照常 resolve——對應『clear invalidates an in-flight markAllRead』『clear invalidates an in-flight markRead』（B 清單剛好有相同 id 也不寫回）。(3) clear 讓在途 load / loadMore 失效的測試已補——對應『clear invalidates an in-flight load / loadMore』。red_case 共 11 條都有同名測試；tdd.run 20/20 綠，名稱清單選得到每一條。commit 順序 23d023c（測試）→ dd9c651（實作，未改 spec）→ 4a94c58（狀態）。我用舊實作 e040fe7 跑新 spec，四條新行為測試轉紅（refreshUnread 兩條、markAllRead、markRead；load / loadMore 舊實作已有序號守衛，所以本來就綠）。我上次的反例探針對修正後的 store 重跑，5 個情境全部正確：clear 後 refreshUnread 晚到未讀數為 0；markAllRead 晚到後 B 的 read_at 皆 null、未讀數 2。守衛逐一突變 11 個殺 10：clear 不遞增 seq / epoch、clear 不作廢未讀號碼、applyUnread 不比號碼、markRead / markAllRead 不檢查 epoch、loadMore 不檢查 seq、load / refreshUnread 不取號、refreshUnread 不遞增號碼，全部轉紅。web-lint 乾淨；web-typecheck 的錯誤都在他人檔案（AuthorizationVerifyDialog.vue、useDismissalPosQueue.ts、AttendanceTodayView.spec.ts、StaffAccountsView.spec.ts），本 task 檔案沒有錯誤。殘留（不擋）：(1) 存活突變：load 的 finally 不看 seq 就把 loading 設 false——較舊的 load 晚於較新的 load 發出前結束時，會提早關掉 loading；這是打回前就有的行為，沒有測試釘住。(2) 本地的 markRead / markAllRead 減數與 ws +1 不取號：在它們之前發出、之後回來的 refreshUnread 會用伺服器當時的數字蓋回，下一次輪詢更正。(3) markRead 的 id 不在目前 items 時不知道原本是否未讀，未讀數要等下一次 refreshUnread 才更正。"
       }
     },
     {
