@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 203,
-  "last_updated": "2026-10-16T15:45:02Z",
+  "version": 204,
+  "last_updated": "2026-10-16T15:46:19Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3511,8 +3511,8 @@
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/parent/login-bind-pickup.spec.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "INFRA-014",
         "PARENT-008",
@@ -3789,6 +3789,39 @@
         "status": "pass",
         "reviewer": "review-r10-p1",
         "notes": "通過（review-r10-p1）。2 條 red_case 都有同名測試；PARENT-008 原本斷言 true 的測試已改為 false；tdd.run 11/11 綠，名稱清單選得到兩條。commit 順序 9d60b93（測試，當時實作仍是 true，新測試會紅）→ 655bc54（實作，只改 init 參數與註解）→ a4f7a34（狀態）。替身的忠實度：我讀了 node_modules 內 @liff/init 2.31.1 的 init。實際邏輯是 `!withLoginOnExternalBrowser || isLoggedIn() ? 繼續 : (login(), await new Promise(() => {}))`，沒有檢查 isInClient。替身多加了 !isInClient()，但測試把 isInClient 設為 false，在這個情境下與 SDK 行為相同；LINE 內 isLoggedIn 恆為 true，兩者也相同。可以接受。能否抓到改回 true：把實作改回 true 時，三條測試轉紅（init 參數兩條，外部瀏覽器那條在 109ms 逾時，且 login 被呼叫）；把參數整個拿掉時，嚴格相等的兩條轉紅。beforeEach 補 isInClient true 不影響既有案例。LoginView（PARENT-030）spec 在 197 落地後跑一次 23/23 綠。web-lint 乾淨；web-typecheck（耗時 108 秒）只剩他人進行中的 PickupProxyView.spec.ts 兩個錯誤，本 task 檔案沒有錯誤。殘留（不擋）：外部瀏覽器那條用真實 100ms 計時器搭 Promise.race，機器高負載時 initLiff 的 microtask / mock 匯入若超過 100ms 會誤紅。可改成直接 await initLiff()，以 vitest 測試逾時當保護，並斷言 login 0 次（不 resolve 的分支必定先呼叫 login）。真實 LINE App 與外部瀏覽器的轉址行為仍待部署後實機確認（risk_notes）。"
+      }
+    },
+    {
+      "id": "PARENT-198",
+      "title": "ConfirmDialog 間距對齊已核可元件稿（按鈕列上方 8px、勾選列上下 −4px）",
+      "description": "部分改寫 `apps/web/src/parent/components/ConfirmDialog.vue`（PARENT-026）的樣式，對齊已核可稿 docs/mockups/parent-component-confirm-dialog.html：\n- `.dialog__actions` 加 `margin-top: 8px`（按鈕列與上方內容的間距 = gap 16 + 8）。\n- `.dialog__extra`（default slot，例如「下次不再提醒」勾選列）加 `margin: -4px 0`；`:empty` 時仍 `display: none`。\n其餘行為不變。review-r10-p1 審 PARENT-097 時量到：沒有 slot 的取消對話框 342×144（稿 152）；有勾選列的「我到了」對話框兩項差異互相抵銷仍為 342×244。所有家長端確認對話框（登出、取消接送、我到了、刪除接送人等）都受影響。\n\n**驗收標準**：每一條對應下列 red_case（happy-dom 不算版面，以 `?raw` 讀 SFC 原始碼斷言樣式規則）；另以真實 Chromium 390×844 實測並寫進回報：無 slot 對話框（只有標題 + 說明）高度與稿相同、有勾選列的對話框 342×244 不變。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/parent/components/ConfirmDialog.vue",
+      "source_ref": "FE:src/parent/components/ConfirmDialog.vue::defineEmits",
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10d",
+      "depends_on": [
+        "PARENT-026"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/parent/components/ConfirmDialog.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ConfirmDialog actions spacing follows mockup：以 ?raw 讀 ConfirmDialog.vue，`.dialog__actions` 規則含 `margin-top: 8px`",
+          "ConfirmDialog extra slot spacing follows mockup：以 ?raw 讀 ConfirmDialog.vue，`.dialog__extra` 規則含 `margin: -4px 0`，且 `.dialog__extra:empty` 仍為 `display: none`"
+        ],
+        "run": "just web-test src/parent/components/ConfirmDialog.spec.ts -t \"ConfirmDialog\"",
+        "notes": "版面以 Chromium 390×844 實測寫進回報（見 description）；harness 的 vite 一律 dts: false。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]
