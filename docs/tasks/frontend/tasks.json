@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 190,
-  "last_updated": "2026-10-16T05:05:53Z",
+  "version": 191,
+  "last_updated": "2026-10-16T05:08:45Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2081,11 +2081,11 @@
     {
       "id": "FRONTEND-065",
       "title": "實作 components/settings/StaffUserFormDialog.vue：建立 / 編輯員工帳號（角色與個別權限調整）",
-      "description": "建立 `apps/web/src/components/settings/StaffUserFormDialog.vue`。移植 ivy `FE:src/components/settings/SettingsAccountsTab.vue` 建立 / 編輯表單與角色卡選擇（RoleCardsGrid）；**去掉** 自訂密碼欄位、portal-only 角色。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-accounts.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：列表（啟用 / 停用 / 需改密碼 tag）、篩選、建立 / 編輯 dialog（含個別權限調整）、臨時密碼只顯示一次的 dialog、停用與重新啟用確認、只有 staff:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue: boolean`、`user?: StaffUser`（有值 = 編輯）、`roles: Role[]`、`catalog: PermissionCatalog`；emits `update:modelValue`、`created({user, temp_password})`、`updated(user)`。\n**表單**\n- 帳號（建立時必填，3~30 碼小寫英數與 `._-`，編輯時唯讀）、姓名（必填 ≤30）、電話、Email（格式檢查）。\n- 角色：`RoleCardsGrid`（FRONTEND-067）單選，必填。\n- 個別權限調整（摺疊區，預設收合，有調整時展開）：以 `PermissionPicker`（FRONTEND-068）呈現「最終有效權限」——預設勾選 = 所選角色的 effective_permissions；使用者取消勾選角色內的碼 → 進 `revoked_permissions`，勾選角色外的碼 → 進 `extra_permissions`。切換角色時重新計算（保留仍然有意義的 extra / revoked）。區塊下方摘要「額外授予 N 項、移除 M 項」。\n- 編輯自己：角色與個別權限區 disabled，提示「不可修改自己的權限」（後端 cannot_modify_self_permissions）。\n- 送出：建立 → `createStaffUser` → emit `created`；編輯 → 只送有變更的欄位 → `updateStaffUser` → emit `updated`。\n- 無法授出的權限即時提示：所選角色的 effective_permissions 加上 extra_permissions、扣掉 revoked_permissions 之後，只要含目前登入者 `auth.permissions` 沒有的碼，角色卡下方立即顯示橘字（warning）「包含你沒有的 N 項權限（{中文標籤以「、」串接}），送出時會被拒絕。請改選其他角色，或在「個別權限調整」取消勾選這些權限。」；調整到不含這些碼後提示消失。提示不阻擋送出（仍以後端 cannot_grant_permissions 為準）。\n- 錯誤：`username_taken` → 帳號欄位「帳號已被使用」；`cannot_grant_permissions` → 摘要區列出 `details.permissions` 的中文標籤「你沒有以下權限，無法授出：…」；422 欄位錯誤對應；其他 ElMessage.error。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/settings/StaffUserFormDialog.vue`。移植 ivy `FE:src/components/settings/SettingsAccountsTab.vue` 建立 / 編輯表單與角色卡選擇（RoleCardsGrid）；**去掉** 自訂密碼欄位、portal-only 角色。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-accounts.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：列表（啟用 / 停用 / 需改密碼 tag）、篩選、建立 / 編輯 dialog（含個別權限調整）、臨時密碼只顯示一次的 dialog、停用與重新啟用確認、只有 staff:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue: boolean`、`user?: StaffUser`（有值 = 編輯）、`roles: Role[]`、`catalog: PermissionCatalog`；emits `update:modelValue`、`created({user, temp_password})`、`updated(user)`。\n**表單**\n- 帳號（建立時必填，3~30 碼小寫英數與 `._-` 且以英數開頭（後端 USERNAME_PATTERN），輸入時自動轉小寫，編輯時唯讀純文字）、姓名（必填 ≤30）、電話（≤20）、Email（格式檢查「Email 格式不正確」）；電話 / Email 空白送 null。\n- 角色：`RoleCardsGrid`（FRONTEND-067）單選，必填。\n- 個別權限調整（摺疊區，預設收合，有調整時展開）：以 `PermissionPicker`（FRONTEND-068）呈現「最終有效權限」——預設勾選 = 所選角色的 effective_permissions；使用者取消勾選角色內的碼 → 進 `revoked_permissions`，勾選角色外的碼 → 進 `extra_permissions`。切換角色時重新計算（保留仍然有意義的 extra / revoked）。區塊下方摘要「額外授予 N 項、移除 M 項」。\n- 編輯自己：角色與個別權限區 disabled，提示「不可修改自己的權限」（後端 cannot_modify_self_permissions）。\n- 送出：建立 → `createStaffUser` → emit `created` 並關閉；編輯 → 只送有變更的欄位（角色與勾選都沒變時不送 `extra_permissions` / `revoked_permissions`；有變時只送與原值不同的那幾個）→ `updateStaffUser` → ElMessage.success「已更新」、emit `updated` 並關閉。編輯沒有變更時「儲存」disabled；有變更時關閉 dialog 先 `confirmDiscardChanges`（FormDialog dirty）。\n- 無法授出的權限即時提示：所選角色的 effective_permissions 加上 extra_permissions、扣掉 revoked_permissions 之後，只要含目前登入者 `auth.permissions` 沒有、且不是目標帳號原本就有的碼（建立時原本為空；與後端 BACKEND-089 / 090 只限制新授出的碼一致），角色卡下方立即顯示橘字（warning）「包含你沒有的 N 項權限（{中文標籤以「、」串接}），送出時會被拒絕。請改選其他角色，或在「個別權限調整」取消勾選這些權限。」；調整到不含這些碼後提示消失。提示不阻擋送出（仍以後端 cannot_grant_permissions 為準）。\n- 錯誤：`username_taken` → 帳號欄位「帳號已被使用」；`cannot_grant_permissions` → 自動展開個別權限調整，在 PermissionPicker 上方可關閉的紅色 alert 列出 `details.permissions` 的中文標籤「你沒有以下權限，無法授出：…」；422 欄位錯誤對應（帳號、姓名、電話、Email、角色）；其他 ElMessage.error。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/StaffUserFormDialog.vue",
       "source_ref": "FE:src/components/settings/SettingsAccountsTab.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-052",
@@ -2107,7 +2107,12 @@
           "StaffUserFormDialog edits only changed fields：user 原 display_name '陳師' → 改為 '陳老師' 送出 → PATCH /admin/staff-users/u2 body 深等於 {display_name:'陳老師'}",
           "StaffUserFormDialog blocks self permission edit：user.id === auth.user.id → 角色卡與 PermissionPicker 皆 disabled，文字含 '不可修改自己的權限'",
           "StaffUserFormDialog maps backend errors：POST 回 409 username_taken → 帳號欄位文字 '帳號已被使用'；回 403 cannot_grant_permissions details {permissions:['staff:write']} → 文字含 '你沒有以下權限，無法授出' 與 staff:write 的中文標籤",
-          "StaffUserFormDialog warns about ungrantable permissions：auth.permissions ['staff:read','staff:write','students:read']，選角色卡 '主任'（effective_permissions 含 'roles:write'）→ 文字含 '包含你沒有的' 與 roles:write 的中文標籤；改選 '課輔老師'（effective_permissions ['students:read']）→ 該提示文字消失"
+          "StaffUserFormDialog warns about ungrantable permissions：auth.permissions ['staff:read','staff:write','students:read']，選角色卡 '主任'（effective_permissions 含 'roles:write'）→ 文字含 '包含你沒有的' 與 roles:write 的中文標籤；改選 '課輔老師'（effective_permissions ['students:read']）→ 該提示文字消失",
+          "StaffUserFormDialog lowercases username and validates fields：輸入 'Tutor02' → 欄位值 'tutor02'；帳號 'ab'、Email 'chen@'、姓名空白、未選角色 → 點 '建立' 顯示 '3~30 碼，只能使用小寫英文、數字與 . _ -'、'請輸入姓名'、'Email 格式不正確'、'請選擇角色' 且沒有 POST；帳號清空 → '請輸入帳號'",
+          "StaffUserFormDialog keeps meaningful adjustments when switching role：行政下移除 leaves:write、額外 pickup:override → 改選主任仍為移除 leaves:write、額外 pickup:override（摘要 '額外授予 1 項、移除 1 項'）；再改課輔老師（沒有 leaves:write）→ 摘要 '額外授予 1 項、移除 0 項'",
+          "StaffUserFormDialog edits permissions and clears contact fields：user 角色行政、extra ['pickup:override'] → 個別權限調整預設展開；清空電話與 Email、取消勾選 leaves:write → PATCH body 深等於 {phone:null,email:null,revoked_permissions:['leaves:write']}",
+          "StaffUserFormDialog maps validation errors to fields：POST 回 422 validation_error details loc ['body','phone'] → 電話欄位顯示該訊息",
+          "StaffUserFormDialog confirms discard when closing with changes：沒有變更點 '取消' → 直接 emit update:modelValue false；改姓名後點 '取消' → 出現 '尚未儲存的變更將會遺失'、尚未 emit，點 '放棄變更' → emit [[false]]"
         ],
         "run": "just web-test src/components/settings/StaffUserFormDialog.spec.ts -t \"StaffUserFormDialog\"",
         "notes": ""
