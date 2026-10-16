@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 460,
-  "last_updated": "2026-10-16T23:20:22Z",
+  "version": 461,
+  "last_updated": "2026-10-16T23:24:32Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -10636,7 +10636,7 @@
     {
       "id": "BACKEND-414",
       "title": "實作 PickupRequestService.get_queue：接送佇列",
-      "description": "在 `apps/api/app/services/pickup/requests.py` 實作（domain_spec §2 `GET /pickup/queue?date=`）：\n```python\ndef get_queue(session: Session, query: PickupQueueQuery, *, clock: Clock) -> PickupQueueOut: ...\n```\n- d = query.date or today；該日全部請求。\n- open（非終態）排序：arrived 優先、再 pending、acknowledged；同狀態依 expected_arrival_at（null 最後）、created_at。\n- closed（終態）依 coalesce(completed_at, cancelled_at, updated_at) 新到舊。\n- counts：pending、acknowledged、arrived、needs_reply（open 中 needs_reply 為 True 者）。\n- 以 `build_request_views`（BACKEND-404）組裝。\n- 移植 ivy `api/dismissal_calls.py::list_dismissal_calls` 的「只看當日」；去掉班級篩選。\n\n**驗收標準**\n- open / closed 分組與排序正確；counts 正確。",
+      "description": "在 `apps/api/app/services/pickup/requests.py` 實作（domain_spec §2 `GET /pickup/queue?date=`）：\n```python\ndef get_queue(session: Session, query: PickupQueueQuery, *, clock: Clock) -> PickupQueueOut: ...\n```\n- d = query.date or today；該日全部請求。\n- open（非終態）排序：arrived 優先、再 pending、acknowledged；同狀態依 expected_arrival_at（null 最後）、created_at。\n- closed（終態）依 coalesce(completed_at, cancelled_at, updated_at) 新到舊。\n- counts：pending、acknowledged、arrived、needs_reply（open 中 needs_reply 為 True 者）。\n- latest_expected_arrival：`get_setting(session, PICKUP_WINDOW).latest_expected_arrival`（目前設定值，不隨 date 變化；員工代建 / 回覆的預計時間選項上限）。\n- 以 `build_request_views`（BACKEND-404）組裝。\n- 移植 ivy `api/dismissal_calls.py::list_dismissal_calls` 的「只看當日」；去掉班級篩選。\n\n**驗收標準**\n- open / closed 分組與排序正確；counts 正確；latest_expected_arrival 跟著 pickup.window。",
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/pickup/requests.py",
       "source_ref": "BE:api/dismissal_calls.py::list_dismissal_calls",
@@ -10657,7 +10657,9 @@
         "red_cases": [
           "test_pickup_queue_order：當日 pending(ETA 17:30)、arrived、acknowledged、pending(無 ETA)、completed → open 的 status 依序 ['arrived','pending','pending','acknowledged']，第一個 pending 的 expected_arrival_at == '17:30'；closed 長度 1",
           "test_pickup_queue_counts：counts == {'pending':2,'acknowledged':1,'arrived':1,'needs_reply':<無 ETA 的 pending 數>}",
-          "test_pickup_queue_other_date：date=昨天 → 只回昨天的請求"
+          "test_pickup_queue_other_date：date=昨天 → 只回昨天的請求",
+          "test_pickup_queue_latest_expected_arrival_default：pickup.window 為種子預設值 → latest_expected_arrival == 19:00",
+          "test_pickup_queue_latest_expected_arrival_follows_setting：同一交易內把 pickup.window.latest_expected_arrival 改為 20:30 → 今天與昨天的佇列皆回 20:30"
         ],
         "run": "just test-int apps/api/tests/integration/services/pickup/test_pickup_requests.py -k \"test_pickup_queue_\"",
         "notes": ""
@@ -11193,7 +11195,7 @@
     {
       "id": "BACKEND-429",
       "title": "實作 GET /api/admin/pickup/queue endpoint",
-      "description": "建立 / 沿用 `apps/api/app/api/admin/pickup.py`（`router = APIRouter(prefix='/pickup', tags=['admin-pickup'])`，掛到 admin_router）。寫入型 handler 呼叫 service 後自行 `db.commit()`。\n- `GET /api/admin/pickup/queue?date=`，`Depends(require_permission(Permission.PICKUP_READ))` → BACKEND-414 → 200 `PickupQueueOut`。\n\n**驗收標準**\n- 成功回應形狀如上；422；401；403（缺 pickup:read）；業務錯誤碼如 red_cases。\n- 路由通過 BACKEND-073 route audit。",
+      "description": "建立 / 沿用 `apps/api/app/api/admin/pickup.py`（`router = APIRouter(prefix='/pickup', tags=['admin-pickup'])`，掛到 admin_router）。寫入型 handler 呼叫 service 後自行 `db.commit()`。\n- `GET /api/admin/pickup/queue?date=`，`Depends(require_permission(Permission.PICKUP_READ))` → BACKEND-414 → 200 `PickupQueueOut`（鍵 date / open / closed / counts / latest_expected_arrival）。\n\n**驗收標準**\n- 成功回應形狀如上；422；401；403（缺 pickup:read）；業務錯誤碼如 red_cases。\n- 路由通過 BACKEND-073 route audit。",
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/admin/pickup.py",
       "source_ref": "BE:api/dismissal_calls.py::list_dismissal_calls",
@@ -11214,11 +11216,12 @@
           "integration"
         ],
         "red_cases": [
-          "test_admin_pickup_queue_success：staff_client(permissions=['pickup:read']) → 200，open[0].status == 'arrived'",
+          "test_admin_pickup_queue_success：staff_client(permissions=[pickup:read]) → 200，open[0].status == arrived，body 鍵集合 == {date, open, closed, counts, latest_expected_arrival}",
           "test_admin_pickup_queue_422：date=bad → 422",
           "test_admin_pickup_queue_401：無 cookie → 401",
           "test_admin_pickup_queue_403：只有 homework:read → 403",
-          "test_admin_pickup_queue_empty_day：無請求的日期 → 200 open == [] 且 counts 全 0"
+          "test_admin_pickup_queue_empty_day：無請求的日期 → 200 open == [] 且 counts 全 0",
+          "test_admin_pickup_queue_latest_expected_arrival：pickup:read → 200，body[latest_expected_arrival] == 19:00"
         ],
         "run": "just test-int apps/api/tests/integration/api/admin/test_pickup_endpoints.py -k \"test_admin_pickup_queue_\"",
         "notes": ""
@@ -15651,11 +15654,11 @@
     {
       "id": "BACKEND-563",
       "title": "接送佇列回應附 latest_expected_arrival（pickup.window 的最晚預計抵達時間）",
-      "description": "修改 `apps/api/app/schemas/pickup.py` 的 `PickupQueueOut` 與 `apps/api/app/services/pickup/requests.py::get_queue`（部分改寫 BACKEND-414 / 429）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\ndomain_spec §4 `/pickup`：員工代建與回覆的預計時間選項上限為 `pickup.window` 的最晚預計抵達時間，後台要讀得到這個設定（FRONTEND-298 使用）。\n- `PickupQueueOut` 加 `latest_expected_arrival: TimeHM`；`get_queue` 以 `get_setting(session, PICKUP_WINDOW).latest_expected_arrival` 填入。值是目前的設定，不隨 `date` 參數變化。\n- 放在佇列回應的理由：POS 的 `usePickupBoard`（FRONTEND-188）一定會載入佇列、權限同為 `pickup:read`；只多回這一個欄位，不讓 staff 讀到其他設定（`/admin/settings` 需要 `settings:read`）。\n- 後端驗證不變：員工代建原本就套用 latest_expected_arrival（422 `expected_arrival_too_late`）；回覆（B431）不檢查上限。\n- `docs/tasks/api_index.md` B429 與 domain_spec §2 已寫入新欄位。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_pickup_queue_` / `test_admin_pickup_queue_` 全綠且斷言不變。",
+      "description": "修改 `apps/api/app/schemas/pickup.py` 的 `PickupQueueOut` 與 `apps/api/app/services/pickup/requests.py::get_queue`（部分改寫 BACKEND-414 / 429）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\ndomain_spec §4 `/pickup`：員工代建與回覆的預計時間選項上限為 `pickup.window` 的最晚預計抵達時間，後台要讀得到這個設定（FRONTEND-298 使用）。\n- `PickupQueueOut` 加 `latest_expected_arrival: TimeHM`；`get_queue` 以 `get_setting(session, PICKUP_WINDOW).latest_expected_arrival` 填入。值是目前的設定，不隨 `date` 參數變化。\n- 放在佇列回應的理由：POS 的 `usePickupBoard`（FRONTEND-188）一定會載入佇列、權限同為 `pickup:read`；只多回這一個欄位，不讓 staff 讀到其他設定（`/admin/settings` 需要 `settings:read`）。\n- 後端驗證不變：員工代建原本就套用 latest_expected_arrival（422 `expected_arrival_too_late`）；回覆（B431）不檢查上限。\n- `docs/tasks/api_index.md` B429 與 domain_spec §2 已寫入新欄位。\n\n**驗收標準**：每一條對應下列 red_case；既有 `test_pickup_queue_` / `test_admin_pickup_queue_` 全綠且斷言不變。\n\n**實作備註**：既有 `test_admin_pickup_queue_success` 的 `set(body)` 鍵集合斷言必須納入新欄位（否則轉紅），這是唯一改動的既有斷言；BACKEND-414 / 429 的 description 與 red_cases 已同步。",
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/pickup/requests.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-414",
