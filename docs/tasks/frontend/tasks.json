@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 211,
-  "last_updated": "2026-10-16T05:47:04Z",
+  "version": 212,
+  "last_updated": "2026-10-16T05:54:26Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2770,7 +2770,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentSensitiveFields.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081"
@@ -2793,9 +2793,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f3",
+        "notes": "review-r10-f3：通過。tdd.run 7 綠，4 條 red_case 皆有同名測試（無權限只顯示已填寫 / 未填寫且不含英數片段、遮罩與顯示切換、換學生恢復遮罩、健康備註保留換行）；bb9f1ab（測試）先於 3273610（實作），之後 spec 無變更。安全（domain_spec M3、§3 students:sensitive）：元件只顯示不送出；sensitive 為 null 時只依 has_* 顯示「已填寫（需敏感資料權限才能檢視）」/「未填寫」；有權限時遮罩狀態 DOM 不含明文（Playwright 量 outerHTML 不含 A123456789、沒有任何 title 屬性），原始碼沒有 console / storage / router / location。突變 7 項全轉紅：不遮罩、換學生不恢復遮罩、遮罩保留前 2 碼、短值不全遮、無權限身分證 / 健康備註一律已填寫、健康備註不保留換行。稿 page-students.html（approved）屬本元件的 decision（敏感欄位：有權限遮罩第 1 碼 + 末 3 碼 +「顯示 / 隱藏」文字按鈕、切學生恢復遮罩、健康備註換行；無權限鎖頭 +「已填寫（需敏感資料權限才能檢視）」或灰字「未填寫」）一致；「基本資料分頁下方獨立小節（鎖頭標題）」屬 087 詳情面板。Chromium 實測健康備註兩行、點「顯示」後才出現全碼。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：「顯示 / 隱藏」用 el-button link type=primary（主色），稿是預設色 link，decision 未指定顏色。"
       }
     },
     {
@@ -2805,7 +2805,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentFormDialog.vue",
       "source_ref": "FE:src/components/student/StudentEditDialog.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
@@ -2815,7 +2815,7 @@
         "FRONTEND-009"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f3 打回】以下 description 載明的行為沒有任何測試，突變後 tdd.run 17 條仍全綠（實作本身正確，只需補測試並以對應突變確認轉紅）：(1) 83f7868 補述的「編輯時學生目前的安親班班級 / 就讀國小不在選單內仍列出」：拿掉 classOptions 或 schoolOptions 的補列都不轉紅。要求：編輯 student.class = {id:\"k1\", name:\"去年的班\"}（114 學年，選單只列 115）→ 安親班班級欄顯示「去年的班」且下拉含此項；student.school 不在 GET /admin/schools 回應內 → 就讀國小欄顯示其 short_name（無則 name）。(2) 83f7868 補述的「學校與班級選項載入失敗 ElMessage.error(errorMessage(err, '無法載入學校與班級選項'))」：拿掉不轉紅。要求：GET /admin/classes（或 schools）回 500 → body 含後端 message（或無 message 時「無法載入學校與班級選項」）。(3) description「生日（不可晚於今天）」：拿掉 validate 的生日檢查、或拿掉 :disabled-date 都不轉紅。要求：fake now 2026-10-02 時生日填 2026/10/03 → 生日欄「生日不可晚於今天」且不送請求；建議另驗 disabled-date 對明天為 true、今天為 false。(4) description「dirty 時關閉需確認（FormDialog）」：把 :dirty=\"isDirty\" 改成 :dirty=\"false\" 不轉紅。要求：改任一欄位後按「取消」→ 出現放棄變更確認框且未 emit update:modelValue；未改任何欄位按「取消」直接 emit update:modelValue(false)。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentFormDialog.spec.ts",
@@ -2836,9 +2836,9 @@
         "notes": "el-date-picker 在 happy-dom 每個約 0.6 秒且隨數量超線性變慢：除「creates student with defaults」與「confirms before suspending or withdrawing」用真實日期元件外，其餘案例以 stub（顯示 YYYY/MM/DD、change 回 YYYY-MM-DD）取代；describe 逾時放寬為 20 秒。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f3",
+        "notes": "review-r10-f3：打回（4 項無測試的 description 行為，見 risk_notes），其餘通過。tdd.run 17 綠，8 條 red_case 皆有同名測試；085afe0（測試）先於 c6ed863（實作），44304db 只加 overflow-x: clip。c6ed863 對 spec 的改動：el-date-picker 換 stub（除 creates with defaults 與 confirms before suspending or withdrawing 兩條仍用真實元件，兩者分別驗證入學日顯示 2026/10/02 → body 2026-10-02、輸入 2026/10/02 → body withdrawn_on 2026-10-02，日期元件接線仍被驗到）、selectedText 改只取 .el-select__placeholder（EP 的 .el-select__selected-item 會先命中空的 input-wrapper，原寫法取不到選中文字；斷言值仍是「在學」/「退班」）、describe 逾時 20 秒；沒有放寬任何 red_case 的斷言（退班日必填、送出 body、日期錯誤對應皆不變）。敏感欄位：沒有 students:sensitive 時敏感分段不渲染、新增 / 編輯 body 都不帶 id_number / health_note 鍵；編輯時輸入框初始為空，Chromium 量編輯 dialog 的 outerHTML 不含學生的身分證與健康備註明文；只填空白不送（避免後端把空白視同清除）。api：createStudent → POST /admin/students、updateStudent → PATCH /admin/students/{id} 只送變更欄位，與 BACKEND-151 / 152（model_fields_set、清除給 null、withdrawn → active 時 withdrawn_on 給 null）一致。突變 23 項 17 項轉紅（無權限渲染敏感分段、新增帶敏感鍵、清除不送 null、編輯送全部欄位、不確認停用、暫停改回在學也確認、不轉大寫、身分證格式放寬、退班日不必填、入學日不預設、學號重複對應、invalid_dates 對應、班級不限本學年、其他錯誤提示、emit saved）；不轉紅的 6 項：舊班級補列、舊學校補列、選項載入失敗提示、生日檢查、生日 disabled-date、dirty 關閉確認（即打回項）；另「編輯時無權限也組敏感鍵」為等價突變（無權限時輸入不渲染、值恆空），不算缺測。83f7868 的補述（舊班級 / 學校補列、選項載入失敗、其他送出錯誤）內容合理且與稿一致（學年升級保留原班，補列才不會顯示成 id），但前兩項沒有測試。稿 page-students.html（approved）屬本元件的 decisions 逐條：FormDialog lg 800、四分段、敏感分段只在 students:sensitive 渲染且標題帶鎖頭、退班日只在退班時出現且必填、編輯敏感欄位初始為空 + placeholder「留空表示不變更」+「目前已填寫」tag +「清除已填寫的資料」（勾了停用輸入框）一致；暫停 / 退班確認（標題「確認將 {姓名} 改為{暫停 / 退班}」、內容照規格、取消保留表單、新增不跳）一致。Chromium 實測 dialog 800、body 無橫向溢出（scrollWidth = clientWidth，手機 390 滿版亦同）、三欄 261 / 兩欄 392、編輯舊學年班級顯示「去年的班」。web-lint 乾淨、web-typecheck 0 錯誤。殘留（不擋）：性別選項標籤無測試（靜態選項）；isFutureDate 以瀏覽器本地日期比對台北今天，瀏覽器不在台北時區時邊界差一天。"
       }
     },
     {
@@ -2848,14 +2848,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentPhotoUploader.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-081",
         "FRONTEND-006"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f3 打回】83f7868 補進 description 的「成功 ElMessage.success('已更新照片')」沒有測試：把該行拿掉後 tdd.run 8 條仍全綠。要求：在「StudentPhotoUploader uploads and emits new url」（或另補一條）斷言 body 含「已更新照片」，以拿掉該行的突變確認轉紅後還原；實作本身正確，只需補 spec。順帶（不擋）：description 寫「姓名首字頭像（monogram）」，red_case 與稿都是取最後一字，description 文字請改成「姓名最後一字」。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentPhotoUploader.spec.ts",
@@ -2873,9 +2873,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f3",
+        "notes": "review-r10-f3：打回 1 項（成功訊息無測試，見 risk_notes），其餘通過。tdd.run 8 綠，5 條 red_case 皆有同名測試；84e511d（測試）先於 238ce58（實作），之後 spec 無變更。api：uploadStudentPhoto → POST /admin/students/{id}/photo（FormData file），前端檢查 checkUpload(PHOTO_RULE)（5 MB、JPG / PNG / WEBP）與 BACKEND-154 一致；失敗顯示後端 message（413 / 415 / 502）。突變 8 項 7 項轉紅（monogram 取首字、載入失敗不換 monogram、不做前端檢查、失敗不還原、不 emit uploaded、不可編輯也有 input、不顯示 loading），只有「成功不提示」不轉紅。83f7868 補的成功訊息與稿一致（稿的元件程式就有 ElMessage.success「已更新照片」），屬合理補述，但缺測試。稿 page-students.html（approved）屬本元件的 decisions：詳情 header 的 96×96 圓角照片與姓名最後一字 monogram、可編輯時 hover「更換照片」遮罩 + 右下常駐相機小圓鈕、上傳中半透明遮罩 + 轉圈、失敗還原舊照片並 ElMessage 後端訊息，逐條一致。Chromium 實測 96×96、圓角 12px、hover 遮罩 opacity 0 → 1、相機鈕 26×26、選檔後本地預覽（blob:）+ 轉圈 + aria-busy，完成後出現「已更新照片」。web-lint 乾淨、web-typecheck 0 錯誤。"
       }
     },
     {
