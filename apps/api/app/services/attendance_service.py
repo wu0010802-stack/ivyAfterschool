@@ -8,7 +8,7 @@
 - BACKEND-312：``get_monthly_attendance``（月出勤報表；入班前與未來日期不計）。
 - BACKEND-303：``initialize_daily_attendance``（營業日為在學學生建立出勤列，冪等）。
 - BACKEND-305 / 309：``check_in`` / ``mark_absent``（條件式更新，防兩位員工同時操作）。
-- BACKEND-314：``get_child_monthly_attendance``（家長端單一小孩月出勤，不含內部欄位）。
+- BACKEND-314 / 561：``get_child_monthly_attendance``（家長端月出勤，不含內部欄位；``in_stats``）。
 - BACKEND-306 / 307：``check_out`` / ``mark_left_by_pickup``（條件式更新；接送完成來源為 pickup）。
 - BACKEND-308：``batch_check_in``（逐生條件式更新、回報略過原因、只廣播一次）。
 """
@@ -729,8 +729,9 @@ def get_child_monthly_attendance(
 ) -> ParentMonthlyAttendanceOut:
     """家長端單一小孩月出勤（呼叫端已驗證所有權）；stats 規則同 get_monthly_attendance。
 
-    不回傳 note、updated_by 等內部欄位。移植 ivy ``api/parent_portal/attendance.py::
-    get_monthly_attendance``；去掉 tenant 與 SQLite 分支。
+    每日 ``in_stats`` 標示該日是否計入 stats（營業日、不晚於今天、不早於入學日；入學日為空不限），
+    ``stats`` 由這個旗標計算，兩者不會分歧。不回傳 note、updated_by 等內部欄位。移植 ivy
+    ``api/parent_portal/attendance.py::get_monthly_attendance``；去掉 tenant 與 SQLite 分支。
     """
     month_start, month_end = _parse_month(month)
     today = clock.today()
@@ -758,7 +759,6 @@ def get_child_monthly_attendance(
 
     days: list[ParentAttendanceDayOut] = []
     statuses: list[AttendanceStatus | None] = []
-    counted: list[bool] = []
     d = month_start
     while d <= month_end:
         is_service = d in service_days
@@ -767,6 +767,8 @@ def get_child_monthly_attendance(
             ParentAttendanceDayOut(
                 date=d,
                 is_service_day=is_service,
+                # 計入統計的唯一判斷：stats 與前端顯示（未登記）都依這個旗標
+                in_stats=is_service and d <= today and (enrolled_on is None or d >= enrolled_on),
                 status=status,
                 check_in_at=check_in_at,
                 check_out_at=check_out_at,
@@ -774,13 +776,12 @@ def get_child_monthly_attendance(
             )
         )
         statuses.append(status if is_service else None)
-        counted.append(is_service and d <= today and (enrolled_on is None or d >= enrolled_on))
         d += timedelta(days=1)
     return ParentMonthlyAttendanceOut(
         student_id=student_id,
         month=f"{month_start.year:04d}-{month_start.month:02d}",
         days=days,
-        stats=_monthly_stats(statuses, counted),
+        stats=_monthly_stats(statuses, [day.in_stats for day in days]),
     )
 
 

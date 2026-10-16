@@ -170,6 +170,7 @@ class MonthlyAttendanceOut(OutModel):
 class ParentAttendanceDayOut(OutModel):
     date: dt.date
     is_service_day: bool
+    in_stats: bool  # 計入 stats：營業日、不晚於今天、不早於入學日
     status: AttendanceStatus | None
     check_in_at: dt.datetime | None
     check_out_at: dt.datetime | None

@@ -237,7 +237,7 @@
 
 | task | method | path | request → response |
 |---|---|---|---|
-| B323 | GET | `/children/{id}/attendance?month=YYYY-MM` | → `{student_id, month, days: [{date, is_service_day, status, check_in_at, check_out_at, leave_type}], stats: {service_days, attended, absent, leave, unrecorded}}` |
+| B323 | GET | `/children/{id}/attendance?month=YYYY-MM` | → `{student_id, month, days: [{date, is_service_day, in_stats, status, check_in_at, check_out_at, leave_type}], stats: {service_days, attended, absent, leave, unrecorded}}`；`in_stats` 為該日是否計入 stats（營業日、不晚於今天、不早於入學日），`stats.service_days` 等於 `in_stats` 為 true 的天數 |
 | B355 | GET | `/children/{id}/leaves` | → `Page[ParentLeave]` |
 | B356 | POST | `/leaves` | `{student_id, leave_type, start_date, end_date, reason?}` → 201 `ParentLeave`；422 `leave_date_out_of_window`（範圍取自 config.limits.leave_past_days / leave_future_days）/ `no_service_days_in_range`；409 `leave_overlap` / `student_not_active` |
 | B357 | POST | `/leaves/{id}/cancel` | → `ParentLeave`：未開始（含今天開始）整筆 cancelled；已開始則取消今天起的日子（end_date 改為昨天、status 仍 active）；409 `leave_already_ended` / `leave_not_active` |
