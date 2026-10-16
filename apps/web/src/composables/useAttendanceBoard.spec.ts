@@ -313,6 +313,30 @@ describe('useAttendanceBoard', () => {
     expect(board.error.value).toBeNull()
   })
 
+  it('useAttendanceBoard keeps data only for the same filters when load fails', async () => {
+    mock
+      .onGet(DAILY_URL)
+      .replyOnce(200, daily([S1, S2]))
+      .onGet(DAILY_URL)
+      .reply(500, { error: { code: 'internal_error', message: '伺服器忙碌中' } })
+    const classId = ref<string | null>(null)
+    const { board } = await mountBoard(ref(DATE), classId)
+    expect(board.data.value?.items).toHaveLength(2)
+
+    // 同一篩選重抓失敗（例如斷線輪詢）：保留畫面上的資料
+    await board.reload()
+    expect(board.error.value).toBe('伺服器忙碌中')
+    expect(board.data.value?.items).toHaveLength(2)
+
+    // 換篩選後載入失敗：不再顯示別的篩選的舊資料
+    classId.value = 'c1'
+    await settle()
+    expect(dailyGets().at(-1)?.params).toEqual({ date: DATE, class_id: 'c1' })
+    expect(board.error.value).toBe('伺服器忙碌中')
+    expect(board.data.value).toBeNull()
+    expect(board.loading.value).toBe(false)
+  })
+
   it('useAttendanceBoard batch check-in applies succeeded rows', async () => {
     mock
       .onGet(DAILY_URL)
