@@ -16,6 +16,9 @@ const props = withDefaults(
     errorText?: string
     disabled?: boolean
     maxlength?: number
+    /** 原樣綁到原生 input（只對 date / time 有意義）；未給時不輸出屬性 */
+    min?: string
+    max?: string
     inputmode?: HTMLAttributes['inputmode']
     autocomplete?: string
     id?: string
@@ -28,6 +31,8 @@ const props = withDefaults(
     errorText: '',
     disabled: false,
     maxlength: undefined,
+    min: undefined,
+    max: undefined,
     inputmode: undefined,
     autocomplete: undefined,
     id: undefined,
@@ -97,6 +102,8 @@ function onKeydown(event: KeyboardEvent): void {
         v-else
         v-bind="fieldAttrs"
         :type="type"
+        :min="min"
+        :max="max"
         :inputmode="inputmode"
         :autocomplete="autocomplete"
         @input="onInput"

@@ -197,6 +197,21 @@ describe('LeaveForm', () => {
     expect(submitted(w)[0]).toMatchObject({ start_date: '2026-10-08', end_date: '2026-10-09' })
   })
 
+  it('LeaveForm clears date errors when only the start date changes', async () => {
+    const w = mountForm()
+    await field(w, '開始日期').setValue('2026-10-08')
+    await field(w, '結束日期').setValue('2026-10-06')
+    await button(w, '送出請假').trigger('click')
+    expect(field(w, '結束日期').attributes('aria-invalid')).toBe('true')
+
+    // 新的開始日不晚於結束日，結束日不動；錯誤仍要清掉
+    await field(w, '開始日期').setValue('2026-10-05')
+
+    expect(field(w, '結束日期').element.value).toBe('2026-10-06')
+    expect(field(w, '結束日期').attributes('aria-invalid')).toBe('false')
+    expect(w.text()).not.toContain('結束日期不可早於開始日期')
+  })
+
   it('LeaveForm treats an emptied date as out of range', async () => {
     const w = mountForm()
     await field(w, '開始日期').setValue('')
