@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 461,
-  "last_updated": "2026-10-16T23:24:32Z",
+  "version": 462,
+  "last_updated": "2026-10-16T23:26:37Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15863,11 +15863,11 @@
     {
       "id": "BACKEND-569",
       "title": "代理接送核驗 endpoint 補『錯碼 400 / 鎖定 409 時確實推播』的測試",
-      "description": "只改 `apps/api/tests/integration/api/admin/test_pickup_endpoints.py`（補 BACKEND-437 / 562 在 endpoint 層的測試缺口）。B437 的 handler 先 `db.commit()` 再依結果回 400 `pickup_code_mismatch` 或 409 `pickup_code_locked`；BACKEND-562 的 `pickup.authorization_updated` 推播登記在 after_commit，必須靠這個先 commit 才會送出。目前只有 service 層測試，endpoint 若改成先拋錯再 commit（或不 commit）推播就會消失而無測試轉紅。\n\n**驗收標準**：每一條對應下列 red_case（以既有的 `published` fixture 收集推播）。",
+      "description": "只改 `apps/api/tests/integration/api/admin/test_pickup_endpoints.py`（補 BACKEND-437 / 562 在 endpoint 層的測試缺口）。B437 的 handler 先 `db.commit()` 再依結果回 400 `pickup_code_mismatch` 或 409 `pickup_code_locked`；BACKEND-562 的 `pickup.authorization_updated` 推播登記在 after_commit，必須靠這個先 commit 才會送出。目前只有 service 層測試，endpoint 若改成先拋錯再 commit（或不 commit）推播就會消失而無測試轉紅。\n\n**驗收標準**：每一條對應下列 red_case（以既有的 `published` fixture 收集推播）。\n\n**實作備註**：原 red_cases 寫 data.code_attempts / data.locked，但 `pickup.authorization_updated` 的 data 依 api_index 為 PickupAuthorizationOut（不含這兩欄，後台收到後重抓 B436 清單），因此改為斷言推播存在＋B436 清單的 code_attempts / locked；推播形狀未改。測試檔新增本地 `published` fixture（endpoint 測試檔原本沒有）。兩條突變皆已實測轉紅後還原。",
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/api/admin/test_pickup_endpoints.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-437",
@@ -15882,8 +15882,8 @@
           "integration"
         ],
         "red_cases": [
-          "test_admin_pickup_verify_mismatch_broadcasts：錯碼 POST /api/admin/pickup/authorizations/{id}/verify → 400 pickup_code_mismatch，admin:pickup 頻道恰收到 1 則 type 'pickup.authorization_updated'，data.id == 授權 id、data.code_attempts == 1，訊息內不含接送碼（突變：handler 改成不 commit 直接拋錯 → 轉紅）",
-          "test_admin_pickup_verify_lock_broadcasts：第 5 次錯碼 → 409 pickup_code_locked，該次請求的推播 data.code_attempts == 5 且 data.locked is True；家長頻道（student:<id>）沒有任何 authorization_updated（突變：鎖定分支跳過 commit → 轉紅）"
+          "test_admin_pickup_verify_mismatch_broadcasts：錯碼 POST /api/admin/pickup/authorizations/{id}/verify → 400 pickup_code_mismatch，admin:pickup 頻道恰收到 1 則 type pickup.authorization_updated，data.id == 授權 id、data.status == active，data 不含 code_attempts / locked（推播形狀＝PickupAuthorizationOut，api_index pickup 事件表），訊息內不含接送碼與 code_hash；隨後 GET /authorizations 該筆 code_attempts == 1、locked is False（突變：handler 改成不 commit 直接拋錯 → 轉紅）",
+          "test_admin_pickup_verify_lock_broadcasts：授權已錯 4 次，再送錯碼（第 5 次）→ 409 pickup_code_locked，該次請求恰 1 則 admin:pickup pickup.authorization_updated（data.id、data.status active），GET /authorizations 該筆 code_attempts == 5 且 locked is True；家長頻道（student:<id>）沒有任何 authorization_updated（突變：鎖定分支跳過 commit → 轉紅）"
         ],
         "run": "just test-int apps/api/tests/integration/api/admin/test_pickup_endpoints.py -k \"test_admin_pickup_verify_\"",
         "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。"
