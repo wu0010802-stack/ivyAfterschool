@@ -114,6 +114,38 @@ describe('adminHttp', () => {
     expect(refresh).toHaveBeenCalledTimes(0)
   })
 
+  it('adminHttp does not refresh for public config', async () => {
+    const refresh = vi.fn(() => Promise.resolve())
+    const authFailure = vi.fn()
+    setAdminHttpHandlers({ refresh, authFailure })
+    mock.onGet('/parent/config').reply(401, UNAUTHORIZED)
+
+    const err = await apiErrorOf(adminHttp.get('/parent/config'))
+
+    expect(err.status).toBe(401)
+    expect(refresh).toHaveBeenCalledTimes(0)
+    expect(authFailure).toHaveBeenCalledTimes(0)
+    expect(mock.history.get.length).toBe(1)
+  })
+
+  it('adminHttp still refreshes for admin endpoints', async () => {
+    const refresh = vi.fn(() => Promise.resolve())
+    const authFailure = vi.fn()
+    setAdminHttpHandlers({ refresh, authFailure })
+    mock
+      .onGet('/admin/students')
+      .replyOnce(401, UNAUTHORIZED)
+      .onGet('/admin/students')
+      .replyOnce(200, { items: [{ id: 's1' }], total: 1 })
+
+    const res = await adminHttp.get('/admin/students')
+
+    expect(res.data.total).toBe(1)
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(authFailure).toHaveBeenCalledTimes(0)
+    expect(mock.history.get.length).toBe(2)
+  })
+
   it('adminHttp refresh endpoint 401 inside refresh does not loop', async () => {
     const authFailure = vi.fn()
     setAdminHttpHandlers({
