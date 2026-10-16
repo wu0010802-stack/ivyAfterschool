@@ -59,14 +59,23 @@ export function useFormDirty<T extends object>(
   return { isDirty, markClean }
 }
 
+/** dialog：關閉表單對話框；page：切換分頁 / 離開頁面 / 重新載入等頁面層級的放棄 */
+export type DiscardScope = 'dialog' | 'page'
+
+const DISCARD_MESSAGES: Record<DiscardScope, string> = {
+  dialog: '尚未儲存的變更將會遺失，確定要關閉嗎？',
+  page: '尚未儲存的變更將會遺失，確定要放棄變更嗎？',
+}
+
 /**
  * 詢問是否放棄未儲存的變更；使用者選「放棄變更」回 true，「繼續編輯」或關閉對話框回 false。
+ * 內文依 scope：dialog（預設）「確定要關閉嗎？」、page「確定要放棄變更嗎？」；標題與按鈕相同。
  * closeOnHashChange 關閉：hash router 的上一頁 / 下一頁會在路由守衛開框後緊接著派發 hashchange，
  * Element Plus 以 hashchange 關框時不送結果，Promise 永不結束、導航卡住（FRONTEND-058 / 071）。
  */
-export async function confirmDiscardChanges(): Promise<boolean> {
+export async function confirmDiscardChanges(scope: DiscardScope = 'dialog'): Promise<boolean> {
   try {
-    await ElMessageBox.confirm('尚未儲存的變更將會遺失，確定要關閉嗎？', '未儲存的變更', {
+    await ElMessageBox.confirm(DISCARD_MESSAGES[scope], '未儲存的變更', {
       confirmButtonText: '放棄變更',
       cancelButtonText: '繼續編輯',
       closeOnHashChange: false,

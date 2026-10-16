@@ -125,11 +125,14 @@ watch(tab, (t) => {
   if (tabFromQuery() !== t) void router.replace({ query: { ...route.query, tab: t } })
 })
 
-/** 科目設定需要各科已輸入成績數（移除有成績的科目前確認） */
+/** 科目設定需要各科已輸入成績數（移除有成績的科目前確認）；序號防護：快速換考試時只套用最新一次的回應 */
 const scoredCounts = ref<Record<string, number>>({})
+let scoredSeq = 0
 async function loadScoredCounts(): Promise<void> {
+  const seq = ++scoredSeq
   try {
     const summary = await fetchExamSummary(props.id)
+    if (seq !== scoredSeq) return
     scoredCounts.value = Object.fromEntries(summary.subjects.map((s) => [s.subject_id, s.scored_count]))
   } catch {
     // 拿不到筆數時沿用上一次的值；科目設定本身仍可操作
@@ -156,7 +159,7 @@ async function settleGrid(): Promise<GridSettle> {
   if (!grid || !grid.hasUnsaved) return 'clean'
   await grid.flush()
   if (!grid.hasUnsaved) return 'clean'
-  return (await confirmDiscardChanges()) ? 'discard' : 'cancel'
+  return (await confirmDiscardChanges('page')) ? 'discard' : 'cancel'
 }
 
 /** 重新載入成績格；settled 為已先處理過未儲存格子的結果（避免重複詢問） */

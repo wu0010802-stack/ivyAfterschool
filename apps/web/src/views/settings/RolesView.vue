@@ -65,7 +65,7 @@ function onSelect(id: string): void {
 /** 詳情沒有未儲存變更，或使用者選「放棄變更」時回 true */
 async function confirmLeave(): Promise<boolean> {
   if (!detail.value?.isDirty) return true
-  return confirmDiscardChanges()
+  return confirmDiscardChanges('page')
 }
 
 onBeforeRouteUpdate(() => confirmLeave())

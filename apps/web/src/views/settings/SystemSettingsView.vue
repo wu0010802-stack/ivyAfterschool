@@ -80,7 +80,7 @@ function dirtyCards(): CardInstance[] {
 async function confirmLeave(): Promise<boolean> {
   const dirty = dirtyCards()
   if (!dirty.length) return true
-  if (!(await confirmDiscardChanges())) return false
+  if (!(await confirmDiscardChanges('page'))) return false
   for (const c of dirty) c.reset()
   return true
 }
