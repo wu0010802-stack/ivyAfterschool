@@ -431,6 +431,9 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
 
     expect(chipText(wrapper)).toEqual(['待回覆 –', '等待確認 –', '已確認 –', '家長已到 –'])
     expect(button(wrapper, '代建接送請求')?.attributes('disabled')).toBeDefined()
+    // 載入中：主體顯示（由 board 自己畫骨架），不是錯誤畫面
+    expect(wrapper.findComponent({ name: 'DismissalPosBoard' }).exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('無法載入接送資料')
 
     release()
     await settle()
@@ -484,6 +487,18 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     await settle()
 
     expect(boardStub.focusRequest.mock.calls).toEqual([['r1']])
+  })
+
+  it('PickupPosView stops listening to transient notifications after unmount', async () => {
+    mockData(makeQueue([]))
+    const { wrapper } = await mountView()
+    await tap(wrapper)
+    wrapper.unmount()
+
+    socket().serverMessage('notification.transient', arrivedTransient('r8'))
+    await settle()
+    expect(spokenArrivals()).toBe(0)
+    expect(boardStub.focusRequest).not.toHaveBeenCalled()
   })
 
   it('PickupPosView retries focus when the card was not found yet', async () => {
