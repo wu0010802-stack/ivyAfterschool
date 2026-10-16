@@ -10,6 +10,9 @@ const baseURL = resolveBaseUrl(process.env)
 export default defineConfig({
   testDir: 'e2e',
   outputDir: 'test-results',
+  // FRONTEND-290：e2e 專用 admin 只在 run 期間啟用（有設 E2E_ADMIN_USERNAME 時）
+  globalSetup: './e2e/support/global-setup.ts',
+  globalTeardown: './e2e/support/global-teardown.ts',
   retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
