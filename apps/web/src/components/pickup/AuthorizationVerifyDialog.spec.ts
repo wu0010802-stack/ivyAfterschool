@@ -328,6 +328,69 @@ describe('AuthorizationVerifyDialog', () => {
     expect(reader.emitted('update:modelValue')?.at(-1)).toEqual([false])
   })
 
+  it('AuthorizationVerifyDialog switches to override when authorization becomes locked while open', async () => {
+    const wrapper = await mountDialog(makeAuthorization({ code_attempts: 3 }), true)
+    await typeDigit(0, '1')
+    expect(activeTab()).toBe('接送碼')
+
+    // 父層收到推播後重抓清單：同一張授權已鎖定（例如另一台平板連錯）
+    await wrapper.setProps({ authorization: makeAuthorization({ code_attempts: 5, locked: true }) })
+    await settle()
+    await settle()
+
+    expect(dialogText()).toContain('接送碼已連續錯誤 5 次而鎖定')
+    expect(dialogText()).toContain('已錯誤 5 次，已鎖定')
+    expect(activeTab()).toBe('主管強制完成')
+    expect(footerButton('強制完成').attributes('disabled')).toBeUndefined()
+    expect(dialog().findAll('.el-dialog__footer button').map((b) => b.text().trim())).toEqual(['取消', '強制完成'])
+    expect(document.activeElement).toBe(dialog().find('textarea').element)
+    wrapper.unmount()
+    document.body.innerHTML = ''
+
+    // 停在目視核對分頁時同樣切換
+    const visual = await mountDialog(makeAuthorization(), true)
+    await switchTab('目視核對')
+    await visual.setProps({ authorization: makeAuthorization({ code_attempts: 5, locked: true }) })
+    await settle()
+    await settle()
+    expect(activeTab()).toBe('主管強制完成')
+    visual.unmount()
+    document.body.innerHTML = ''
+
+    // 沒有 pickup:override：停在接送碼分頁，只剩「關閉」
+    const reader = await mountDialog(makeAuthorization(), false)
+    await switchTab('目視核對')
+    await reader.setProps({ authorization: makeAuthorization({ code_attempts: 5, locked: true }) })
+    await settle()
+    await settle()
+    expect(activeTab()).toBe('接送碼')
+    expect(dialogText()).toContain('接送碼已鎖定，不能再輸入')
+    expect(dialogText()).toContain('請聯絡主任以強制完成')
+    expect(textButtons()).toEqual(['關閉'])
+  })
+
+  it('AuthorizationVerifyDialog reflects unlock from props while open', async () => {
+    mock.onPost(VERIFY_URL).reply(409, {
+      error: { code: 'pickup_code_locked', message: '接送碼已鎖定', details: null },
+    })
+    const wrapper = await mountDialog(makeAuthorization({ code_attempts: 4 }), false)
+    await paste(0, '000000')
+    expect(textButtons()).toEqual(['關閉'])
+    expect(dialogText()).toContain('已錯誤 5 次，已鎖定')
+
+    // 家長重新產生接送碼：後端重設錯誤次數與鎖定，父層重抓後更新 props
+    await wrapper.setProps({ authorization: makeAuthorization({ code_attempts: 0, locked: false }) })
+    await settle()
+    await settle()
+
+    expect(dialogText()).not.toContain('而鎖定')
+    expect(dialogText()).toContain('尚無錯誤（連續錯誤 5 次會鎖定）')
+    expect(activeTab()).toBe('接送碼')
+    expect(digitInputs()).toHaveLength(6)
+    expect(footerButton('核驗接送碼').exists()).toBe(true)
+    expect(dialog().findAll('.el-tabs__item.is-disabled')).toHaveLength(0)
+  })
+
   it('AuthorizationVerifyDialog visual match with and without photo', async () => {
     mock.onPost(VISUAL_URL).reply(200, verifyResult('visual_match'))
     const withPhoto = await mountDialog(makeAuthorization({ photo_url: PHOTO }))

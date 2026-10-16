@@ -206,6 +206,35 @@ describe('StudentCard', () => {
     expect(staging.wrapper.find('.el-dropdown').classes()).toContain('is-disabled')
   })
 
+  it('StudentCard ignores keyboard on menu button', async () => {
+    // ⋮ 的 Enter / 空白鍵只開選單：冒泡到卡片時不可同時發起代建或定位請求
+    const waiting = await mountCard(makeStudent({ active_authorization_count: 1 }))
+    await moreButton(waiting.wrapper).trigger('keydown', { key: 'Enter' })
+    await moreButton(waiting.wrapper).trigger('keydown', { key: ' ' })
+    await settle()
+    expect(waiting.wrapper.emitted('quick-dispatch')).toBeUndefined()
+
+    // 卡片本身的 Enter / 空白鍵照常發起
+    await waiting.wrapper.trigger('keydown', { key: 'Enter' })
+    await waiting.wrapper.trigger('keydown', { key: ' ' })
+    expect(waiting.wrapper.emitted('quick-dispatch')).toHaveLength(2)
+    waiting.wrapper.unmount()
+    document.body.innerHTML = ''
+
+    const requested = await mountCard(
+      makeStudent({
+        active_authorization_count: 1,
+        open_request: { id: 'r1', status: 'pending', expected_arrival_at: null, needs_reply: false },
+      }),
+    )
+    await moreButton(requested.wrapper).trigger('keydown', { key: 'Enter' })
+    await moreButton(requested.wrapper).trigger('keydown', { key: ' ' })
+    await settle()
+    expect(requested.wrapper.emitted('focus-request')).toBeUndefined()
+    await requested.wrapper.trigger('keydown', { key: 'Enter' })
+    expect(requested.wrapper.emitted('focus-request')?.[0]).toEqual(['r1'])
+  })
+
   it('StudentCard hides menu for readers', async () => {
     const { wrapper } = await mountCard(makeStudent({ active_authorization_count: 2 }), { canOperate: false })
     expect(moreButton(wrapper).exists()).toBe(false)
