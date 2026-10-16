@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 148,
-  "last_updated": "2026-10-16T06:06:37Z",
+  "version": 149,
+  "last_updated": "2026-10-16T06:06:53Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1177,7 +1177,7 @@
           "LoginView shows contact button for unrecoverable errors：GET /parent/config 回 org_phone '02-2345-6789 #12'；liff-login 回 403 parent_disabled → 畫面有 href 'tel:0223456789'、文字「聯絡安親班 02-2345-6789 #12」的連結；回 line_login_not_configured → 同樣有該連結；回 429 too_many_attempts → 畫面沒有 href 以 'tel:' 開頭的元素",
           "LoginView hides contact button without phone：GET /parent/config 回 org_phone null、liff-login 回 403 parent_disabled → 畫面含「您的家長帳號已停用，請聯絡安親班」且沒有 href 以 'tel:' 開頭的元素",
           "LoginView shows brand from config：GET /parent/config 回 {org_name:'向日葵安親班', logo_url:'https://cdn.example.com/logo.png'} → img src === 'https://cdn.example.com/logo.png'、h1 文字 '向日葵安親班'、畫面含 '家長端'；logo_url null → 無 img、圓形首字為 '向'",
-          "LoginView falls back to generic brand：GET /parent/config 回 500、initLiff mock reject 一般 Error → h1 文字為 '家長端'、沒有副標 '家長端' 以外的名稱、畫面含「LINE 登入初始化失敗，請稍後再試」"
+          "LoginView falls back to generic brand：GET /parent/config 回 500、initLiff mock reject 一般 Error → h1 文字為 '家長端'、畫面文字中 '家長端' 只出現一次（不顯示副標）、畫面含「LINE 登入初始化失敗，請稍後再試」"
         ],
         "run": "just web-test src/parent/views/LoginView.spec.ts -t \"LoginView\"",
         "notes": ""
