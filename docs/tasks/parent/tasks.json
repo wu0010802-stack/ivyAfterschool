@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 197,
-  "last_updated": "2026-10-16T15:28:07Z",
+  "version": 198,
+  "last_updated": "2026-10-16T15:30:10Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -472,7 +472,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/main.ts",
       "source_ref": "FE:src/parent/main.ts::ensureSessionProbed",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-001",
@@ -509,9 +509,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p3",
+        "notes": "通過（review-r10-p3）。10 條 red_case 皆有同名測試（另有樣式 import 與不碰後台程式碼 1 條），tdd.run 11/11 綠，verbose 名稱清單含全部 10 條。commit 順序 7c8e2dc / d93631f / a0122cd（測試，當時 main.ts 是 INFRA-005 的 3 行佔位檔，不匯出 createParentApp）→ b9ca8bd（實作）→ 7186a75（補「重新登入後再次 401 仍導向」）。a0122cd 只把 describe 逾時設為 20 秒、兩處 vi.waitFor 給 10 秒，斷言未改，不是放寬。實作者寫回 description 的三處偏離判斷皆合理：(1) createParentApp({ history? }) 選填，預設 hash history，與後台 bootstrap 一致；(2) handler 在 app.use(router) 之前註冊、START_LOCATION 時只清狀態交給守衛（第一次造訪帶原本路徑，/parent/me 只探測 1 次）、導向登入期間 /login 守衛探測也 401 時不重複導向、完成後恢復；(3) mountParentApp 等第一次導航完成才掛載、isReady reject 也照樣掛載。reviewer 以 Chromium（390×844，scratchpad 的 Vite dev 設定，Components / AutoImport dts: false，API 以 Playwright route 模擬）實開 parent/index.html：冷啟動無 session 開 #/leaves → #/login?redirect=/leaves，第一次畫出的版面就是 is-tabbar-hidden、整個過程沒有出現底部導覽與頂部列（沒有閃一下），/parent/me 1 次；已登入在 #/more 後 session 失效、換頁到 #/attendance 的 API 401（refresh 401）→ #/login?redirect=/attendance，/login 守衛探測再 401 時沒有第二次導向；已登入在 #/more 後換到 #/login?logged_out=1 → 停在該網址、顯示「您已登出」、不再探測 /parent/me、不自動 liff.login（與 PARENT-196 / 030 一致）。PARENT-031 加綁的 /parent/auth/bind 與 PARENT-030 的 liff-login 都在 parentHttp 的 noRefreshPaths，401 不會觸發本 handler（FRONTEND-001），加綁自己 refresh 的流程不受影響。INFRA-029：以 scratchpad 的 build 設定（與 vite.config.ts 相同，只改 dts: false 與 outDir）重跑 vite build 與 check_parent_bundle.mjs --graph，結果「家長端 bundle 檢查通過：靜態收集 4 個 chunk、88 個模組」；共用 dist/ 未產生，components.d.ts / auto-imports.d.ts 前後 md5 相同。突變 14 個殺 12（不清登入狀態 / 小孩 / ws、不看 START_LOCATION、不看 public、不擋重複導向、旗標不重設、不帶 redirect、不等第一次導航、導航失敗不掛載、檔尾直接 mount、不載入 icons.css）；存活 2 個：「handler 在 app.use(router) 之後註冊」為等價突變（第一次導航的探測是非同步的，緊接著註冊仍趕得上）；「replace 改 push」沒有測試（見殘留）。還原後 git diff 乾淨。web-lint 乾淨；web-typecheck 全綠。殘留（不擋）：(1) 導向登入用 replace 的語意沒有測試，改成 push 不會轉紅。(2) 跨 PARENT-033：登出流程 router.replace(/login?logged_out=1) 尚未完成時，若有在途請求剛好 401（refresh 401），handler 看到的目前路由仍是登出前的非 public 頁，會改導 /login?redirect=…、取消 logged_out 的導頁；需要在途請求在登出 API 之後才 401，機率低，建議 PARENT-033 審查時一併確認。(3) 直接呼叫 createParentApp().app.mount() 的地方（目前只有 spec）仍會在 START_LOCATION 先畫出頂部列與底部導覽，正式入口走 mountParentApp 不受影響（risk_notes 已記）。"
       }
     },
     {
