@@ -493,4 +493,111 @@ describe('useAttendanceBoard', () => {
     await settle()
     expect(board.data.value?.date).toBe(DATE)
   })
+
+  it('useAttendanceBoard keeps row updated by ws during reload', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mock
+      .onGet(DAILY_URL)
+      .replyOnce(200, daily([S1, S2]))
+      .onGet(DAILY_URL)
+      .reply(async () => {
+        await gate
+        // 伺服器在 ws 事件之前產生的快照：s1 仍 expected、s2 已到班
+        return [200, daily([S1, { ...S2, status: 'present' }])]
+      })
+    const { board } = await mountBoard()
+
+    const reloading = board.reload()
+    await settle()
+    socket().serverMessage('attendance.updated', { ...S1, status: 'present', check_in_at: '2026-10-02T06:05:00Z' })
+    await settle()
+    expect(statusOf(board, 's1')).toBe('present')
+
+    release()
+    await reloading
+    await settle()
+    expect(statusOf(board, 's1')).toBe('present')
+    expect(statusOf(board, 's2')).toBe('present')
+    expect(board.data.value?.summary.present).toBe(2)
+    expect(board.data.value?.summary.total).toBe(2)
+  })
+
+  it('useAttendanceBoard keeps row updated by ws during reload: keeps rows missing from the response', async () => {
+    const S3 = makeRow({ id: 'a3', student_id: 's3', student_no: 'S11303', student_name: '林小華', status: 'present' })
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mock
+      .onGet(DAILY_URL)
+      .replyOnce(200, daily([S1, S2]))
+      .onGet(DAILY_URL)
+      .reply(async () => {
+        await gate
+        return [200, daily([S1, S2])]
+      })
+    const { board } = await mountBoard()
+
+    const reloading = board.reload()
+    await settle()
+    socket().serverMessage('attendance.updated', S3)
+    await settle()
+    release()
+    await reloading
+    await settle()
+
+    expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s1', 's2', 's3'])
+    expect(board.data.value?.summary).toEqual({ total: 3, expected: 2, present: 1, left: 0, absent: 0, leave: 0 })
+  })
+
+  it('useAttendanceBoard applies reload rows untouched since request', async () => {
+    mock
+      .onGet(DAILY_URL)
+      .replyOnce(200, daily([S1, S2]))
+      .onGet(DAILY_URL)
+      .reply(200, daily([{ ...S1, status: 'left' }, S2]))
+    const { board } = await mountBoard()
+
+    // reload 之前 ws 改過 s1
+    socket().serverMessage('attendance.updated', { ...S1, status: 'present' })
+    await settle()
+    expect(statusOf(board, 's1')).toBe('present')
+
+    await board.reload()
+    await settle()
+    expect(statusOf(board, 's1')).toBe('left')
+    expect(board.data.value?.summary.left).toBe(1)
+    expect(board.data.value?.summary.present).toBe(0)
+  })
+
+  it('useAttendanceBoard keeps operation result during reload', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mock
+      .onGet(DAILY_URL)
+      .replyOnce(200, daily([S1, S2]))
+      .onGet(DAILY_URL)
+      .reply(async () => {
+        await gate
+        return [200, daily([S1, S2])]
+      })
+    mock.onPost('/admin/attendance/s1/check-in').reply(200, { ...S1, status: 'present', check_in_source: 'manual' })
+    const { board } = await mountBoard()
+
+    const reloading = board.reload()
+    await settle()
+    await board.checkIn(S1)
+    expect(statusOf(board, 's1')).toBe('present')
+
+    release()
+    await reloading
+    await settle()
+    expect(statusOf(board, 's1')).toBe('present')
+    expect(board.data.value?.summary.present).toBe(1)
+  })
 })
