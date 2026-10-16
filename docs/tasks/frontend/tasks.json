@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 294,
-  "last_updated": "2026-10-16T15:34:02Z",
+  "version": 295,
+  "last_updated": "2026-10-16T15:34:03Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3432,7 +3432,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/AttendanceTodayView.vue",
       "source_ref": "FE:src/views/StudentAttendanceView.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-126",
@@ -3444,7 +3444,7 @@
         "FRONTEND-042"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f3 打回】以下 description / 已核可稿 decision 載明的行為沒有測試，突變後 tdd.run 12 條仍全綠（實作本身正確，只需補 spec，並以括號內的突變確認轉紅後還原）：(1) description「已有資料時「重新整理」失敗以 ElMessage.error 顯示錯誤並保留畫面」（b506264 補述）：拿掉 refresh() 的 ElMessage.error 不轉紅。要求：先載入成功，再讓 GET /admin/attendance/daily 回 500 並點「重新整理」→ body 含後端 message、卡片仍在、沒有「無法載入出勤資料」EmptyState。(2) description「改判：卡片 emit amend → AttendanceAmendDialog」：拿掉 openAmend 的 amendOpen = true、或拿掉 @amended=\"board.applyRow\" 都不轉紅。要求：點卡片 ⋮ →「改判」開出「改判出勤：{姓名}」dialog；送出改判（mock 改判 API 回傳新列）後該卡片顯示回傳的狀態。(3) 稿 decision 3「日期選擇器不可選未來日期」：拿掉 :disabled-date、或拿掉 onDateChange 的 value <= today 檢查都不轉紅。要求：日期元件的 disabled-date 對明天回 true、今天回 false；並在日期欄輸入未來日期（例 2026-10-03）→ 不重新請求、不出現「檢視 …，僅可改判」。(4) 稿 decision 11「「全選未到」只選目前畫面上（套用班級、chip、搜尋後）可選的學生」：selectAllAbsent 改成從全部列選取不轉紅。要求：套用搜尋（或 chip）後按「全選未到」→ 送出的 student_ids 只含畫面上可選的學生。(5) 選取模式下換班級或換日期會離開選取模式（watch 內 cancelBatch；否則已選但已不在畫面上的學生仍會被批次到班，換到過去日期時批次列也還在）：拿掉 watch(classId) 的 cancelBatch、或 watch(date) 內的處理都不轉紅。要求：選取模式選了學生後換班級 → 批次列消失、再進入時已選為 0；換到過去日期同樣離開選取模式。(6) 稿 decision 14「載入中：摘要 chip 顯示 StatCard skeleton，下方 8 張骨架卡」：骨架卡 v-if 改 false、或 AttendanceSummaryBar 的 :loading 改 false 都不轉紅。要求：GET 尚未回應時有 8 張骨架卡且摘要為載入中樣式、沒有學生卡；回應後骨架消失。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/AttendanceTodayView.spec.ts",
@@ -3469,9 +3469,9 @@
         "notes": "頁面含日期元件、兩個下拉與多張帶 el-dropdown 的卡片，happy-dom 下單一案例約 3~6 秒，describe 逾時放寬為 20 秒。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f3",
-        "notes": "review-r10-f3：打回 6 項（description / 稿 decision 載明但無測試的行為，見 risk_notes），其餘通過。tdd.run 12 綠，6 條 red_case 皆有同名測試；a155f71（測試）先於 ddf7ec0（實作）。ddf7ec0 對 spec 只改 dailyGets 的回傳型別（改由推斷，vue-tsc）與 describe 逾時 20 秒，沒有放寬斷言；同一 commit 把 viewLoaders 的 AttendanceTodayView 改為實際 view，routes.ts 的 /attendance 已有 meta.tablet 與 attendance:read。b506264 補的「已有資料時重新整理失敗用 ElMessage、首次載入失敗用 EmptyState + 重試」：後者是稿 decision 14，前者稿沒有（稿的 refresh 只示意轉圈），屬合理補述（與儀表板頁同模式），但沒有測試（打回項 1）。api：useAttendanceBoard（FRONTEND-126）負責 GET /admin/attendance/daily {date, class_id?}、逐生操作、batchCheckIn 與 ws；本頁只做篩選與畫面狀態，用法與 126 的介面一致。突變 20 項 9 項轉紅（非今天也可操作、不看 operate 權限、選了班級仍顯示組標題、學號搜尋不分大小寫、已到班可選、批次成功不離開選取、非營業日不看列數、ws denied 不提示、過去日期不提示）；不轉紅 11 項：重新整理失敗不提示、改判不開 dialog、改判結果不套用、disabled-date、onDateChange 未來日期檢查、全選未到含畫面外、換班級不離開選取、換日期不清篩選 / 不離開選取、沒有骨架卡、摘要不顯示載入中、批次失敗清掉選取——前 10 項即打回項，「批次失敗保留選取」只是註解層級的行為（description / 稿未載明），記為殘留。稿 page-attendance-today.html（approved）16 條 decisions 對本頁：1 平板 1024、側欄收合（meta.tablet）、grid 220 一列 4 張、可點目標 ≥ 44 一致；2 無 PageHeader、工具列 large 撐 44 一致；3 不可選未來 實作有但無測試（打回 3）、非今天提示與隱藏操作 一致；4、5 摘要 chip 傳入 summarize(全部列) 且前端過濾 一致；6 分組標題與後端排序 一致；7~9、12 屬 124 / 125 元件，本頁傳入 canOperate / canAmend 一致、改判接線無測試（打回 2）；10 選取模式（說明列、全選未到 N、底部固定列）一致；11 只選畫面上 實作有但無測試（打回 4、5）；13 非營業日 / 空名單 / 無結果 一致；14 載入失敗 一致、載入中骨架無測試（打回 6）；15 denied warning 一致；16 唯讀 一致。Chromium 實測（模擬 AdminLayout：側欄 64、主內容 padding 16 / 20、overflow auto）：1024×768 工具列日期 / 班級 / 重新整理 / 批次到班 44、卡片按鈕與 ⋮ 44、批次列與說明列按鈕 44、一列 4 張、無橫向溢出；批次列在捲動頂端與底端都貼齊內容區底緣與左右（差 0px）；1280×800 一列 5 張、同樣貼齊、無溢出。web-lint 乾淨。web-typecheck 的錯誤在 PickupCompleteDialog.vue、parent/main.spec.ts、ExamsView.vue（他人檔案 / 進行中），非本 task。殘留（不擋）：日期與搜尋輸入框的 wrapper 實測 46px、班級下拉 44px（content-box 的 1px 內距），差 2px；viewLoaders 接線沒有測試（與其他已接線頁面相同）；批次失敗保留選取無測試。"
+        "notes": "review-r10-f3：通過（複審）。初審打回 6 項缺測試，b80fd6c 只新增 spec（實作最後一次仍是 ddf7ec0，既有斷言未動），aeb7c82 同步 6 條 red_case，逐項對應：(1) 重新整理失敗 →「refresh failure keeps current data」（先載入兩位，daily 回 500 後點重新整理 → 顯示後端訊息、卡片保留、沒有 EmptyState）；(2) 改判接線 →「amend opens dialog and applies returned row」（⋮ →「改判」開出「改判出勤：李承恩」，選缺席、填原因、儲存，PATCH /admin/attendance/a4 回 absent → 卡片 tag「缺席」）；(3) 不可選未來日期 →「past date is amend-only: future dates are not selectable」（disabled-date 對 2026-10-03 true、2026-10-02 false；元件送出未來日期不重新請求、仍是今天）；(4) 全選未到只選畫面上 →「select all only visible」（搜尋「林」後全選未到（1）→ body {student_ids:['s2']}）；(5) 換班級 / 日期離開選取 →「leaving on class or date change」；(6) 載入中骨架 →「loading skeleton」（8 張 .acard-skeleton、摘要 stat-skeleton、無學生卡，回應後消失）。複審：tdd.run 18 綠；初審不轉紅的突變全部轉紅——重新整理失敗不提示、改判不開 dialog、改判結果不套用、拿掉 :disabled-date、拿掉 onDateChange 未來日期檢查、全選未到含畫面外、沒有骨架卡、摘要不顯示載入中、換班級不離開選取、換日期不離開選取；還原後 git diff 乾淨；spec web-lint 乾淨。初審其餘結論維持：6 條原 red_case 對應、a155f71 先於 ddf7ec0、ddf7ec0 的 spec 改動未放寬、viewLoaders 接線與 /attendance 的 meta.tablet / attendance:read、b506264 補述合理、稿 16 條 decisions 逐條一致；Chromium 實測 1024×768 控制項 / 卡片按鈕 / ⋮ / 批次列按鈕 44px、一列 4 張、批次列在捲動頂端與底端都貼齊內容區底緣與左右、無橫向溢出，1280×800 一列 5 張同樣貼齊。web-typecheck 的唯一錯誤在 src/components/student/StudentDetailPanel.spec.ts（FRONTEND-087 他人進行中、未提交），非本 task。殘留（不擋）：換日期時清除狀態 chip 篩選無測試（拿掉 activeStatus 重設不轉紅；description / 稿未載明）；批次失敗保留選取無測試（只在註解）；viewLoaders 接線無測試（與其他已接線頁面相同）；日期與搜尋輸入框外框 46px、班級下拉 44px，差 2px。"
       }
     },
     {
