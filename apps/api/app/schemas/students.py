@@ -7,10 +7,10 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Self
+from typing import Final
 from uuid import UUID
 
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, ValidationInfo, field_validator
 
 from app.models.students import Gender, StudentStatus
 from app.schemas.classes import ClassBriefOut
@@ -137,19 +137,27 @@ class StudentPurgeOut(OutModel):
 # --- BACKEND-165：學年升級 ------------------------------------------------------------------------
 
 
+EXPECTED_TOTAL_REQUIRED_MESSAGE: Final = "執行升級必須提供 expected_total（預覽當時的人數）"
+
+
 class PromoteGradeIn(RequestModel):
     """``dry_run=true`` 只預覽；執行（``dry_run=false``）必須帶預覽當時的 ``expected_total``。"""
 
     from_academic_year: int = Field(ge=100, le=200)
     dry_run: bool = True
-    expected_total: int | None = Field(default=None, ge=0, le=100_000)
+    # validate_default：沒給時也要跑下方驗證器，錯誤 loc 才會指向 expected_total
+    expected_total: int | None = Field(default=None, ge=0, le=100_000, validate_default=True)
     withdrawn_on: date | None = None
 
-    @model_validator(mode="after")
-    def _require_expected_total_for_execute(self) -> Self:
-        if not self.dry_run and self.expected_total is None:
-            raise ValueError("執行升級必須提供 expected_total（預覽當時的人數）")
-        return self
+    @field_validator("expected_total")
+    @classmethod
+    def _require_expected_total_for_execute(
+        cls, value: int | None, info: ValidationInfo
+    ) -> int | None:
+        # dry_run 宣告在前：info.data 已有它（dry_run 本身驗證失敗時不在 data 內，交給該欄位報錯）
+        if info.data.get("dry_run") is False and value is None:
+            raise ValueError(EXPECTED_TOTAL_REQUIRED_MESSAGE)
+        return value
 
 
 class PromotionItemOut(OutModel):

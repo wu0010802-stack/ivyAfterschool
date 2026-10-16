@@ -26,7 +26,8 @@ photo_url；update_student 沒有 storage 參數）→ commit → 200 ``StudentD
 ``POST /api/admin/students/promote-grade``（BACKEND-165）：students:write；``PromoteGradeIn``
 dry_run=true → BACKEND-157 ``preview``（不寫入）→ ``PromotionPreviewOut``；dry_run=false →
 BACKEND-158 ``execute`` → commit → ``PromotionResultOut``。409 already_promoted / preview_stale、
-422 invalid_dates 由 service 拋出（不 commit）。
+422 invalid_dates 由 service 拋出（不 commit）。執行缺 ``expected_total`` 由 schema 擋，handler 另以
+明確檢查回 422 validation_error（loc ``['body','expected_total']``，BACKEND-568）。
 ``POST /api/admin/students/import``（BACKEND-166）：students:write；multipart ``file`` /
 ``academic_year`` / ``dry_run``。上傳檔先經 BACKEND-016 ``read_validated_upload``（分塊讀、5 MiB
 上限 413、空檔 422、非 xlsx 415）才交給 service（zip / XML 深度防護在 BACKEND-155 內）：
@@ -43,6 +44,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 
 from app.api.admin._query import query_model
@@ -56,6 +58,7 @@ from app.core.storage import Storage, get_storage
 from app.core.uploads import XLSX_MAX_BYTES, XLSX_TYPES, read_validated_upload
 from app.schemas.guardians import GuardianCreateIn, GuardianOut
 from app.schemas.students import (
+    EXPECTED_TOTAL_REQUIRED_MESSAGE,
     ImportPreviewOut,
     ImportResultOut,
     PhotoUploadOut,
@@ -136,7 +139,17 @@ def promote_grade(
     if body.dry_run:
         preview = grade_promotion_service.preview(db, from_academic_year=body.from_academic_year)
         return PromotionPreviewOut.model_validate(preview)
-    assert body.expected_total is not None  # noqa: S101  PromoteGradeIn 已保證執行時必填
+    if body.expected_total is None:
+        # PromoteGradeIn 已擋；驗證器被移除時仍回 422（與 schema 驗證錯誤同形狀），不變 500
+        raise RequestValidationError(
+            [
+                {
+                    "loc": ("body", "expected_total"),
+                    "msg": f"Value error, {EXPECTED_TOTAL_REQUIRED_MESSAGE}",
+                    "type": "value_error",
+                }
+            ]
+        )
     result = grade_promotion_service.execute(
         db,
         from_academic_year=body.from_academic_year,

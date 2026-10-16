@@ -235,5 +235,6 @@ def get_owned_student_for_write(
     parent: Annotated[CurrentParent, Depends(get_current_parent)],
     db: Annotated[Session, Depends(get_db)],
 ) -> Student:
-    """家長端寫入用：同 get_owned_student，另對 withdrawn 學生 409 ``student_not_active``。"""
+    """家長端寫入用：同 get_owned_student，另對退班（withdrawn）或暫停（suspended）學生
+    409 ``student_not_active``。"""
     return assert_parent_owns_student(db, parent.id, student_id, for_write=True)
