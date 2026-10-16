@@ -333,6 +333,55 @@ describe('StudentWorkbenchView', { timeout: 20_000 }, () => {
     expect(drawerVisible()).toBe(false)
     expect(stubMounts.GuardianManager).toBe(1)
     expect(detailGets('s1')).toBe(1)
+
+    // 跨回寬版時抽屜收起，動畫結束送出 closed：詳情仍在雙欄、不卸載重掛
+    wrapper.findComponent({ name: 'ElDrawer' }).vm.$emit('closed')
+    await settle()
+    expect(detailInColumn(wrapper)).toBe(true)
+    expect(detailName()).toContain('王小明')
+    expect(stubMounts.GuardianManager).toBe(1)
+    expect(detailGets('s1')).toBe(1)
+  })
+
+  it('StudentWorkbenchView keeps new selection when an earlier close finishes late', async () => {
+    setWidth(1200)
+    const { wrapper, router } = await mountView('/students?student=s1')
+
+    document.body.querySelector<HTMLButtonElement>('.el-drawer [aria-label=關閉]')!.click()
+    await settle()
+    expect(router.currentRoute.value.query.student).toBeUndefined()
+
+    // 關閉動畫期間點另一位學生，之後才收到上一次關閉的 closed
+    await clickRow(wrapper, '陳小美')
+    wrapper.findComponent({ name: 'ElDrawer' }).vm.$emit('closed')
+    await settle()
+
+    expect(router.currentRoute.value.query.student).toBe('s2')
+    expect(drawerVisible()).toBe(true)
+    expect(detailInDrawer()).toBe(true)
+    expect(detailName()).toContain('陳小美')
+  })
+
+  it('StudentWorkbenchView closes drawer with Escape and overlay click', async () => {
+    setWidth(1200)
+    const { router } = await mountView('/students?student=s1&tab=guardians&status=all&page=2')
+    expect(drawerVisible()).toBe(true)
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }))
+    await settle()
+    expect(router.currentRoute.value.query).toEqual({ status: 'all', page: '2' })
+    expect(drawerVisible()).toBe(false)
+
+    await router.replace({ query: { ...router.currentRoute.value.query, student: 's2', tab: 'guardians' } })
+    await settle()
+    await settle()
+    expect(drawerVisible()).toBe(true)
+
+    const overlay = document.body.querySelector('.el-drawer')!.closest<HTMLElement>('.el-overlay')!
+    for (const type of ['mousedown', 'mouseup', 'click']) overlay.dispatchEvent(new MouseEvent(type, { bubbles: true }))
+    await settle()
+    expect(router.currentRoute.value.query).toEqual({ status: 'all', page: '2' })
+    expect(drawerVisible()).toBe(false)
   })
 
   it('StudentWorkbenchView keeps selection across list query changes', async () => {
