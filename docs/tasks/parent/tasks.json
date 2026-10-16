@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 141,
-  "last_updated": "2026-10-16T05:27:04Z",
+  "version": 142,
+  "last_updated": "2026-10-16T05:33:46Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2786,7 +2786,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveDetailSheet.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveDetailSheet.vue::emit",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "FRONTEND-003",
@@ -2798,7 +2798,7 @@
         "PARENT-005"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "狀態膠囊規則（cancelled 優先、請假中 / 已排定 / 已結束的日期判斷與 tone）與 PARENT-136 LeaveListItem 各自實作，改規則要兩處同步，或另開 chore 抽共用 util（需改 PARENT-136）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/leaves/LeaveDetailSheet.spec.ts",
