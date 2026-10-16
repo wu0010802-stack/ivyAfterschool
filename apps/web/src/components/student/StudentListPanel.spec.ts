@@ -256,7 +256,7 @@ describe('StudentListPanel', () => {
     const archived = rowOf(wrapper, '李小華')
     expect(archived.text()).toContain('已封存')
     expect(archived.classes()).toContain('row-archived')
-    expect(archived.findAll('td').map((td) => td.text())).toEqual([
+    expect(archived.findAll('td').map((td) => td.text().replace(/\s+/g, ''))).toEqual([
       'S1002',
       '李小華已封存',
       '三年級',
