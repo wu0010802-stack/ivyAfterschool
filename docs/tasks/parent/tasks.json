@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 172,
-  "last_updated": "2026-10-16T14:25:39Z",
+  "version": 173,
+  "last_updated": "2026-10-16T14:26:08Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1610,8 +1610,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ChildHubView.vue",
       "source_ref": "FE:src/parent/views/ChildHubView.vue::targetId",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-010",
         "PARENT-027",
@@ -2125,8 +2125,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/PickupView.vue",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::submit",
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-006",
         "PARENT-010",
