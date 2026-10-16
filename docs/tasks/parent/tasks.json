@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 136,
-  "last_updated": "2026-10-16T05:09:13Z",
+  "version": 137,
+  "last_updated": "2026-10-16T05:17:14Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1878,7 +1878,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/parent/api/pickupAuthorizations.ts",
       "source_ref": "FE:src/parent/api/pickup.ts::regeneratePickupCode",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "BACKEND-447",
@@ -1906,9 +1906,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。4 條 red_case 都有同名測試；tdd.run 12/12 綠，verbose 名稱清單含全部 4 條。commit 順序 9d2bac2（測試，當時 pickupAuthorizations.ts 不存在）→ 7775cd1（實作）。逐個 endpoint 對照後端實作 app/api/parent/pickup.py 與 schemas/pickup.py：list GET /parent/children/{id}/pickup-authorizations → list[PickupAuthorizationOut]（BACKEND-447，get_owned_student）；create POST 同路徑、JSON body PickupAuthorizationCreateIn（兩種模式恰一）→ 201 PickupAuthorizationCreatedOut（BACKEND-448，回應 no-store）；cancel POST /parent/pickup-authorizations/{id}/cancel、無 body → PickupAuthorizationOut（BACKEND-449）；regenerate POST /parent/pickup-authorizations/{id}/regenerate-code、無 body → PickupAuthorizationCreatedOut（BACKEND-524）。ParentAuthorization 欄位與 nullability 逐欄一致，status / effective_status / verification_method 以 FRONTEND-002 的型別對應後端 Literal；錯誤碼 authorization_limit_reached、authorization_expired、authorization_not_active、pickup_authorization_not_found（404）都與 app/services/pickup/authorizations.py 一致。路徑 id 一律 encodeURIComponent（測試用 '/'、'?' 釘住）；create 送 JSON（斷言 Content-Type 與 body 深等於輸入，不多帶欄位）；401 refresh 後重送同一個 body 也有測試。本模組沒有任何模組層狀態、storage 或 console 呼叫，接送碼只回給呼叫端。突變 10 個殺 8：child / 授權路徑不編碼、create 多帶欄位、cancel 路徑錯、regenerate 送空 body、console.log 接送碼、list 路徑錯、create 改 FormData，全部轉紅。存活 2 個（測試缺口，實作本身正確）：regenerate 依 id 快取結果、以 console.warn 記錄新碼。web-lint 兩檔乾淨；本輪 web-typecheck 全專案 0 錯誤。殘留（不擋）：(1) 『不快取』沒有測試釘住，建議日後補『同一 id 連續 regenerate 兩次 → 兩次 POST、回傳第二次的新碼』；(2) 『never logs the code』只監看 console.log / info / debug，建議擴到 warn / error。(3) id 為 '..' 時 encodeURIComponent 不編碼（全專案 api client 共通，kickoff 已列 chore）。"
       }
     },
     {
@@ -3588,7 +3588,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-130",
@@ -3612,9 +3612,9 @@
         "notes": "既有 AttendanceCalendar.spec.ts 的 day() 測資 helper 要補 in_stats 預設值（依日期與 today 推算），既有案例的期望值不變。\nattendanceApi 的 in_stats 案例是 passthrough：執行期在實作前就綠，紅燈只在 `just web-typecheck`（fixture 多出 `in_stats` 屬性的 excess property 錯誤），實作加上型別欄位後轉綠。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。3 條 red_case 都有同名測試：AttendanceCalendar.spec 的『shows unrecorded for counted days without a record』『keeps no-record before enrollment』與 attendance.spec 的『passes in_stats through』；tdd.run 兩條指令分別 29/29、4/4 綠，verbose 名稱清單都選得到。commit 順序 b5086a4（測試，當時 AttendanceCalendar.vue 與 attendance.ts 都沒有 in_stats）→ 215db50（實作）。規格核對：AttendanceDay 加 in_stats: boolean，與後端 ParentAttendanceDayOut（BACKEND-561，in_stats: bool 非 null）一致；月曆判斷依序為非營業日 → 休息（不看 in_stats）、沒有出勤列且 in_stats → 未登記（與今天以前的 expected 同一種格：同 class、同 remove 圖示）、其餘沒有出勤列 → 無紀錄，有狀態的日子規則不變（今天以前 expected 未登記、今天與之後預計到班），符合 domain_spec M4『家長端月出勤日曆』與使用者第 10 輪裁定。突變 6 個全殺：還原舊規則、沒有出勤列一律未登記、in_stats 先於休息、in_stats 覆蓋有狀態的 expected、未登記改用 none 樣式，以及 api 在執行期丟掉 in_stats。attendanceApi passthrough 案例可以接受：getChildAttendance 原樣回傳 res.data，前端能釘住的就是型別契約；我把型別欄位拿掉後跑 web-typecheck 確認轉紅（attendance.spec.ts 6 處、AttendanceCalendar.spec.ts 11 處、AttendanceCalendar.vue 1 處），而且執行期案例在 api 改成轉換回應、丟掉欄位時也會轉紅，不是恆真測試。設計稿：parent-component-attendance-calendar.html（preview-tasks 為 PARENT-131,PARENT-194）與 parent-page-attendance.html 只改示範判斷邏輯 describeDay、示範資料（10/14 改成計入統計、沒有出勤列）、統計示範的 in_stats 欄位、明細選項與 decisions 文字，CSS 與格子樣式沒有變；內嵌 script 以 node --check 檢查語法正確；preview-status 維持 approved，符合 description。web-lint 四檔乾淨；本輪 web-typecheck 全專案 0 錯誤。殘留（不擋）：(1) spec 的 day() helper 用 DEFAULT_TODAY 推算 in_stats 預設，不跟著 mountCalendar 的 today，日後新增 today 不同又沒有出勤列的案例時要自己覆寫 in_stats（目前沒有受影響的案例）。(2) docs/mockups/index.html 的 tasks 欄仍只列 PARENT-131（見 risk_notes，待協調者補）。(3) 單日明細的 in_stats 未登記由 PARENT-132 負責（description 已寫）。"
       }
     }
   ]
