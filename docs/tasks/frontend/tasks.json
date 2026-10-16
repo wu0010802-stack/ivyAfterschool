@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 326,
-  "last_updated": "2026-10-16T23:13:02Z",
+  "version": 327,
+  "last_updated": "2026-10-16T23:15:53Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6039,11 +6039,11 @@
     {
       "id": "FRONTEND-290",
       "title": "建立 e2e 支援工具：admin 登入、API 種子資料與清理（apps/web/e2e/support）",
-      "description": "建立 `apps/web/e2e/support/admin.ts`，供 FRONTEND-291~293 共用。e2e 只跑本機（INFRA-014 環境守衛）。\n\n**介面**\n```ts\nexport async function loginAsAdmin(page: Page): Promise<void>            // 走 UI：/#/login 填 E2E_ADMIN_USERNAME / PASSWORD，等待離開登入頁\nexport async function adminApi(request: APIRequestContext): Promise<AdminApi>   // 以 API 登入（POST /api/admin/auth/login）取得 cookie 的 request context\nexport interface SeedResult { runId: string; classId: string; className: string; studentIds: string[]; studentNames: string[]; guardianIds: string[] }\nexport async function seedBasic(api: AdminApi, opts?: { students?: number }): Promise<SeedResult>\n  // runId = Date.now().toString(36)；建立班級「E2E班-{runId}」（當前學年度）、N 位學生「E2E生{n}-{runId}」（學號 E2E{runId}{n}）、每生一位可接送且收通知的監護人\nexport async function cleanup(api: AdminApi, seed: SeedResult): Promise<void>   // 依序封存監護人（DELETE /api/admin/guardians/{id}）、學生、班級；失敗只記 log（封存學生不會連帶封存監護人）\n```\n- 測資姓名使用擬真假名格式，不使用真實個資。\n- 缺 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 時 throw `Error('缺少 E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD')`。\n\n**驗收標準**：每一條對應下列 red_case（`apps/web/e2e/admin/support.spec.ts`）。",
+      "description": "建立 `apps/web/e2e/support/admin.ts`，供 FRONTEND-291~293 共用。e2e 只跑本機（INFRA-014 環境守衛）。\n\n**介面**\n```ts\nexport async function loginAsAdmin(page: Page): Promise<void>            // 走 UI：/#/login 填 E2E_ADMIN_USERNAME / PASSWORD，等待離開登入頁\nexport async function adminApi(request: APIRequestContext): Promise<AdminApi>   // 以 API 登入（POST /api/admin/auth/login）取得 cookie 的 request context\nexport interface SeedResult { runId: string; classId: string; className: string; studentIds: string[]; studentNames: string[]; guardianIds: string[] }\nexport async function seedBasic(api: AdminApi, opts?: { students?: number }): Promise<SeedResult>\n  // runId = Date.now().toString(36)；建立班級「E2E班-{runId}」（當前學年度）、N 位學生「E2E生{n}-{runId}」（學號 E2E{runId}{n}）、每生一位可接送且收通知的監護人\nexport async function cleanup(api: AdminApi, seed: SeedResult): Promise<void>   // 依序封存監護人（DELETE /api/admin/guardians/{id}）、學生、班級；失敗只記 log（封存學生不會連帶封存監護人）\n```\n- 測資姓名使用擬真假名格式，不使用真實個資。\n- 缺 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 時 throw `Error('缺少 E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD')`。\n- e2e 專用 admin 只在 run 期間啟用：`playwright.config.ts` 掛 `globalSetup`（`e2e/support/global-setup.ts`）啟用、`globalTeardown`（`e2e/support/global-teardown.ts`）停用，實作在 `e2e/support/ownerDb.ts`：以 owner（compose 的 postgres，`docker compose exec db psql`）依 username 只改 `staff_users.is_active`（停用時 `token_version + 1`），不刪列、不碰 audit_logs；沒設 `E2E_ADMIN_USERNAME` 時不做事。owner 連線只限這個前後置用途（停用的帳號無法登入、無法經 API 自行啟用），其餘寫入一律經 API（app_backend）。理由：共用本機 DB 的整合測試（例如 test_staff_user_service 的 test_deactivate_concurrent_last_admins）要求沒有其他啟用中的員工。\n\n**驗收標準**：每一條對應下列 red_case（`apps/web/e2e/admin/support.spec.ts`）。",
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/support/admin.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "INFRA-014",
@@ -6064,10 +6064,11 @@
         "red_cases": [
           "e2e support login lands on first allowed page：loginAsAdmin(page) → page.url() 以 '#/' 結尾且頁面標題含 '今日儀表板'",
           "e2e support seeds and cleans up：seedBasic(api,{students:2}) → GET /api/admin/students?class_id={classId} 回 total 2；cleanup 後同查詢（不含封存）total 0，且 GET /api/admin/students/{studentIds[0]}/guardians 回 []",
+          "e2e support teardown deactivates admin：globalTeardown() 後 isStaffActive(E2E_ADMIN_USERNAME) === false 且 adminApi 登入回 401；globalSetup() 後恢復 true",
           "e2e support fails fast without credentials：刪除 E2E_ADMIN_USERNAME 後呼叫 loginAsAdmin → throw message 含 '缺少 E2E_ADMIN_USERNAME'"
         ],
-        "run": "just e2e e2e/admin/support.spec.ts -g \"e2e support\"",
-        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin，帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數。create-admin 建立的帳號 must_change_password=true，登入後會被導到 /change-password：先以 UI 或 `POST /api/admin/auth/change-password` 改成 `E2E_ADMIN_PASSWORD` 再跑 e2e。API / Web 不在 8341 / 5341 時設 `E2E_BASE_URL`，且 API 的 `CORS_ORIGINS` 要含該 Web origin（Origin 檢查，BACKEND-019）。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。"
+        "run": "flock /tmp/afterschool_db.lock timeout 600 just e2e e2e/admin/support.spec.ts -g \"e2e support\"",
+        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin，帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數。create-admin 建立的帳號 must_change_password=true，登入後會被導到 /change-password：先以 UI 或 `POST /api/admin/auth/change-password` 改成 `E2E_ADMIN_PASSWORD` 再跑 e2e。e2e 會在共用本機 DB 建立未封存的學生 / 班級並啟用 e2e.admin，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯；run 結束由 globalTeardown 停用 e2e.admin（owner 連線，理由見 description）。API / Web 不在 8341 / 5341 時設 `E2E_BASE_URL`，且 API 的 `CORS_ORIGINS` 要含該 Web origin（Origin 檢查，BACKEND-019）。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。驗收：跑完一次 e2e 後以 flock 跑 test_staff_user_service.py -k test_deactivate_concurrent_last_admins、test_attendance_jobs.py、test_grade_promotion_service.py 全綠。"
       },
       "review": {
         "status": "concern",
