@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 197,
-  "last_updated": "2026-10-16T05:25:15Z",
+  "version": 198,
+  "last_updated": "2026-10-16T05:26:52Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3190,7 +3190,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/classes/ClassStaffDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-080",
@@ -3206,7 +3206,7 @@
           "vitest"
         ],
         "red_cases": [
-          "ClassStaffDialog saves full staff list：初始 staff [{staff_user_id:'u3',role:'lead'}]、新增一列選 '林老師'（u4）角色 '協助老師' → PUT /admin/classes/c1/staff body 深等於 {items:[{staff_user_id:'u3',role:'lead'},{staff_user_id:'u4',role:'assistant'}]}",
+          "ClassStaffDialog saves full staff list：初始 staff [{staff_user_id:'u3',role:'lead'}]、新增一列選 '林老師'（u4，新列預設角色 '協助老師'）並把它的角色改選 '負責老師'、既有列 u3 角色改 '協助老師' → PUT /admin/classes/c1/staff body 深等於 {items:[{staff_user_id:'u3',role:'assistant'},{staff_user_id:'u4',role:'lead'}]}（角色下拉不寫回時要轉紅）",
           "ClassStaffDialog prevents duplicate staff：第一列已選 u3 → 第二列下拉中 '陳老師' 選項 disabled",
           "ClassStaffDialog loads options and handles load failure：開啟時 GET /admin/staff-users/options 回 [{id:'u3',display_name:'陳老師'},{id:'u4',display_name:'林老師'}] → 下拉選項文字為 ['陳老師','林老師']；另一案回 500 → 文字含 '無法載入員工清單'，'新增老師' 按鈕 disabled，點 '重試' 且回 200 後 enabled",
           "ClassStaffDialog highlights invalid staff：PUT 回 422 {error:{code:'invalid_staff',details:{invalid:['u4']}}} → 文字含 '部分員工已停用或不存在，請重新選擇'，第二列有 class is-error",
