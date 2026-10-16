@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 186,
-  "last_updated": "2026-10-16T05:03:24Z",
+  "version": 187,
+  "last_updated": "2026-10-16T05:03:40Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3431,11 +3431,11 @@
     {
       "id": "FRONTEND-124",
       "title": "實作 components/attendance/AttendanceStudentCard.vue：逐生出勤卡片（依狀態顯示操作）",
-      "description": "建立 `apps/web/src/components/attendance/AttendanceStudentCard.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-today.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級篩選與狀態摘要 chip、逐生卡片的五種狀態（預計到班 / 已到班 / 已離班 / 缺席 / 請假）與各狀態可按的按鈕、批次到班選取模式與結果（部分略過）、改判 dialog（需 attendance:amend）、非今天日期的唯讀檢視、非營業日、即時連線中斷提示、只有 attendance:read 時的唯讀樣式、空清單、載入中。\n\n**props / emits**：`row: AttendanceRow`、`canOperate: boolean`（有 attendance:operate 且日期是今天）、`canAmend: boolean`（有 attendance:amend）、`selectable?: boolean`、`selected?: boolean`、`busy?: boolean`；emits `check-in(row)`、`check-out(row)`、`mark-absent(row)`、`amend(row)`、`toggle-select(row)`。\n**內容**\n- 姓名（大字）、學號、年級、班級；狀態 tag（ATTENDANCE_STATUS_META）；時間：到班 `formatTime(check_in_at)`、離班 `formatTime(check_out_at)`，來源非 manual 時加小標（「刷卡」/「接送完成」，CHECK_*_SOURCE_LABELS）。請假列顯示「{leave_type_label} {start_date}~{end_date}」。`note` 有值顯示 ChatDotRound icon +「備註」（`data-test=\"att-note\"`），點按 / hover 以 tooltip 顯示 note 全文；不用 emoji。\n- 操作按鈕（`canOperate` 時，觸控高度 ≥ 44px）：expected →「到班」（primary）+「缺席」；absent →「到班」（遲到）；present →「離班」；left / leave → 無。\n- `canAmend` 且 `row.id` 非 null 且 status 不是 leave → ⋮ 選單「改判」。\n- `busy` 時按鈕 loading 且 disabled（防連點）。\n- `selectable`：整卡可點選切換（只有 expected / absent 可選，其他顯示 disabled 遮罩）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/attendance/AttendanceStudentCard.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-today.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級篩選與狀態摘要 chip、逐生卡片的五種狀態（預計到班 / 已到班 / 已離班 / 缺席 / 請假）與各狀態可按的按鈕、批次到班選取模式與結果（部分略過）、改判 dialog（需 attendance:amend）、非今天日期的唯讀檢視、非營業日、即時連線中斷提示、只有 attendance:read 時的唯讀樣式、空清單、載入中。\n\n**props / emits**：`row: AttendanceRow`、`canOperate: boolean`（有 attendance:operate 且日期是今天）、`canAmend: boolean`（有 attendance:amend）、`selectable?: boolean`、`selected?: boolean`、`busy?: boolean`；emits `check-in(row)`、`check-out(row)`、`mark-absent(row)`、`amend(row)`、`toggle-select(row)`。\n**內容**\n- 姓名（大字）、學號、年級、班級（null 顯示「未分班」）；狀態 tag（ATTENDANCE_STATUS_META）；時間：到班 `formatTime(check_in_at)`、離班 `formatTime(check_out_at)`，來源非 manual 時加小標（「刷卡」/「接送完成」，CHECK_*_SOURCE_LABELS）。請假列顯示「{leave_type_label} {start_date}~{end_date}」。`note` 有值顯示 ChatDotRound icon +「備註」（`data-test=\"att-note\"`），點按 / hover 以 tooltip 顯示 note 全文；不用 emoji。\n- 操作按鈕（`canOperate` 時，觸控高度 ≥ 44px）：expected →「到班」（primary）+「缺席」；absent →「到班」（遲到）；present →「離班」；left / leave → 無。\n- `canAmend` 且 `row.id` 非 null 且 status 不是 leave → ⋮ 選單「改判」（44×44；選取模式時隱藏）。\n- `busy` 時按鈕 loading 且 disabled（防連點）。\n- `selectable`：整卡可點選切換（只有 expected / absent 可選，其他顯示 disabled 遮罩）；可選的卡 role=checkbox、tabindex 0、空白鍵切換，右上顯示圓形勾選框；選取模式隱藏操作按鈕與 ⋮。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/attendance/AttendanceStudentCard.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-005",
@@ -3456,8 +3456,9 @@
           "AttendanceStudentCard shows times and sources：present 列 check_in_at '2026-10-02T06:05:00Z'、check_in_source 'nfc' → 文字含 '到班 14:05' 與 '刷卡'；left 列 check_out_source 'pickup' → 含 '接送完成'",
           "AttendanceStudentCard shows leave info：leave 列 leave {leave_type_label:'病假',start_date:'2026-10-02',end_date:'2026-10-03'} → 文字含 '病假 2026-10-02~2026-10-03'",
           "AttendanceStudentCard amend menu requires permission and real row：canAmend true、row.id 'a1'、status present → 有 '改判'；row.id null → 沒有；status leave → 沒有；canAmend false → 沒有",
-          "AttendanceStudentCard busy disables buttons and selectable rules：busy true → '到班' 按鈕 disabled；selectable true 時點 present 卡 → emitted('toggle-select') 為 undefined，點 expected 卡 → 長度 1",
-          "AttendanceStudentCard shows note tooltip trigger：row.note '下午看牙醫，16:00 才到' → [data-test=att-note] 存在、文字含 '備註' 且不含 '💬'，觸發 tooltip 後 body 含 '下午看牙醫，16:00 才到'；note null → [data-test=att-note] 不存在"
+          "AttendanceStudentCard busy disables buttons and selectable rules：busy true → '到班' 按鈕 disabled；selectable true 時點 present 卡 → emitted('toggle-select') 為 undefined，點 expected 卡 → 長度 1；可選的卡 tabindex 0、空白鍵 emit toggle-select，不可選的卡按空白鍵不 emit",
+          "AttendanceStudentCard shows note tooltip trigger：row.note '下午看牙醫，16:00 才到' → [data-test=att-note] 存在、文字含 '備註' 且不含 '💬'，觸發 tooltip 後 body 含 '下午看牙醫，16:00 才到'；note null → [data-test=att-note] 不存在",
+          "AttendanceStudentCard keeps touch targets at least 44px：happy-dom 不計算版面，以 `?raw` 原始碼斷言 `.acard__actions` 內 `.el-button` 的 `min-height: 44px` 與 `.acard__more` 的 `width: 44px; height: 44px`"
         ],
         "run": "just web-test src/components/attendance/AttendanceStudentCard.spec.ts -t \"AttendanceStudentCard\"",
         "notes": ""
@@ -3471,11 +3472,11 @@
     {
       "id": "FRONTEND-125",
       "title": "實作 components/attendance/AttendanceAmendDialog.vue：出勤改判（attendance:amend，需填原因）",
-      "description": "建立 `apps/web/src/components/attendance/AttendanceAmendDialog.vue`（BACKEND-310：寫 audit；請假狀態不可改判）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-today.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級篩選與狀態摘要 chip、逐生卡片的五種狀態（預計到班 / 已到班 / 已離班 / 缺席 / 請假）與各狀態可按的按鈕、批次到班選取模式與結果（部分略過）、改判 dialog（需 attendance:amend）、非今天日期的唯讀檢視、非營業日、即時連線中斷提示、只有 attendance:read 時的唯讀樣式、空清單、載入中。\n\n**props / emits**：`modelValue`、`row: AttendanceRow`；emits `update:modelValue`、`amended(row: AttendanceRow)`。\n**表單**\n- 狀態（radio：預計到班 / 已到班 / 已離班 / 缺席；初始為 row.status）。\n- 到班時間（status 為 present / left 時顯示、必填）、離班時間（left 時顯示、必填）：以 `HH:MM` el-time-picker 輸入，送出時以 `hhmmToUtcIso(row.service_date, hhmm)`（FRONTEND-003）轉 UTC；初始值 `utcIsoToHHMM(check_in_at)`。前端檢查離班不早於到班（「離班時間不可早於到班時間」）。\n- 備註（選填 ≤200）、改判原因（必填 ≤200，「請填寫改判原因，將記錄於稽核紀錄」）。\n- 只送有變更的欄位 + reason；全部未變更時「儲存」disabled。\n- 錯誤：`no_changes`「沒有任何變更」、`check_in_required` / `check_out_required` / `invalid_times` / `time_not_on_service_date` → 對應時間欄位顯示後端 message；`attendance_managed_by_leave` →「請假中的出勤請到請假頁取消請假」；成功 emit amended、ElMessage.success('已改判')。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/attendance/AttendanceAmendDialog.vue`（BACKEND-310：寫 audit；請假狀態不可改判）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-today.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級篩選與狀態摘要 chip、逐生卡片的五種狀態（預計到班 / 已到班 / 已離班 / 缺席 / 請假）與各狀態可按的按鈕、批次到班選取模式與結果（部分略過）、改判 dialog（需 attendance:amend）、非今天日期的唯讀檢視、非營業日、即時連線中斷提示、只有 attendance:read 時的唯讀樣式、空清單、載入中。\n\n**props / emits**：`modelValue`、`row: AttendanceRow`；emits `update:modelValue`、`amended(row: AttendanceRow)`。\n**表單**\n- 上方灰底資訊列：「{service_date}・{班級}・目前：{狀態}・到班 HH:mm・離班 HH:mm」（沒有的時間不顯示）。\n- 狀態（radio-button 分段按鈕，高度 ≥ 44px：預計到班 / 已到班 / 已離班 / 缺席；初始為 row.status）。\n- 到班時間（status 為 present / left 時顯示、必填）、離班時間（left 時顯示、必填）：以 `HH:MM` el-time-picker 輸入，送出時以 `hhmmToUtcIso(row.service_date, hhmm)`（FRONTEND-003）轉 UTC；初始值 `utcIsoToHHMM(check_in_at)`。未填顯示「請填寫到班時間」/「請填寫離班時間」；前端檢查離班不早於到班（「離班時間不可早於到班時間」）。時間欄位高度 ≥ 44px。\n- 備註（選填 ≤200）、改判原因（必填 ≤200，「請填寫改判原因，將記錄於稽核紀錄」）。\n- 以開啟當下的 row 為比較基準，只送有變更的欄位 + reason（時間以 HH:MM 比較，未改的時間不送；狀態改為 expected / absent 或由 left 改回 present 時不送時間，由後端清空）；除原因外全部未變更時「儲存」disabled；關閉確認看整張表單（含原因，FormDialog dirty）。\n- 錯誤：`no_changes`「沒有任何變更」、`check_in_required` / `check_out_required` / `invalid_times` / `time_not_on_service_date` → 對應時間欄位顯示後端 message；`attendance_managed_by_leave` →「請假中的出勤請到請假頁取消請假」；其他錯誤 `ElMessage.error(errorMessage(err, '改判失敗，請稍後再試'))`；成功 emit amended、ElMessage.success('已改判') 並 emit update:modelValue(false)。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/attendance/AttendanceAmendDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
@@ -3495,7 +3496,9 @@
           "AttendanceAmendDialog converts times to utc and sends changed fields：row {id:'a1',service_date:'2026-10-02',status:'present',check_in_at:'2026-10-02T06:05:00Z'} → 狀態改 '已離班'、離班時間 17:30、原因 '家長提早接走未登記' → PATCH /admin/attendance/a1 body 深等於 {status:'left',check_out_at:'2026-10-02T09:30:00.000Z',reason:'家長提早接走未登記'}",
           "AttendanceAmendDialog validates time order client side：到班 16:00、離班 15:00 → 文字含 '離班時間不可早於到班時間'",
           "AttendanceAmendDialog maps backend time error：PATCH 回 422 {error:{code:'time_not_on_service_date',message:'時間必須在出勤當日'}} → 到班時間欄下文字 '時間必須在出勤當日'",
-          "AttendanceAmendDialog disables save when unchanged：開啟後未修改 → '儲存' disabled"
+          "AttendanceAmendDialog disables save when unchanged：開啟後未修改 → '儲存' disabled",
+          "AttendanceAmendDialog maps conflict errors to messages：row present 改「缺席」、填原因 → PATCH 依序回 409 attendance_managed_by_leave、422 no_changes → body 依序含 '請假中的出勤請到請假頁取消請假'、'沒有任何變更'；第二次 body 深等於 {status:'absent',reason:'家長來電請假'}；不 emit amended",
+          "AttendanceAmendDialog keeps touch targets at least 44px：happy-dom 不計算版面，以 `?raw` 原始碼斷言 `.amend-status` 內 `.el-radio-button__inner` 與 `.amend-times` 內 `.el-input__wrapper` 的 `min-height: 44px`"
         ],
         "run": "just web-test src/components/attendance/AttendanceAmendDialog.spec.ts -t \"AttendanceAmendDialog\"",
         "notes": ""
@@ -3509,11 +3512,11 @@
     {
       "id": "FRONTEND-126",
       "title": "實作 composables/useAttendanceBoard.ts：今日出勤資料、操作與 ws 即時合併",
-      "description": "建立 `apps/web/src/composables/useAttendanceBoard.ts`，今日出勤頁（FRONTEND-122）的資料擁有者。\n\n**介面**\n```ts\nexport function useAttendanceBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  data: Ref<DailyAttendance | null>; loading: Ref<boolean>; error: Ref<string | null>\n  busyIds: Ref<ReadonlySet<string>>                      // 操作中的 student_id\n  reload(): Promise<void>\n  checkIn(row): Promise<void>; checkOut(row): Promise<void>; markAbsent(row): Promise<void>\n  batchCheckIn(studentIds: string[]): Promise<BatchCheckInResult>\n  applyRow(row: AttendanceRow): void                      // 以 student_id 取代並重算 summary\n  wsStatus: ComputedRef<WsStatus>; wsDenied: ComputedRef<boolean>\n}\n```\n- date / classId 變更時重新載入（序號防護，只採用最新回應）。\n- 操作：同一學生進行中再呼叫直接忽略；成功以回傳 row `applyRow`；失敗 `ElMessage.error(errorMessage(err, '操作失敗'))`，409（already_checked_in / already_checked_out / not_checked_in / student_on_leave）額外重新載入該日資料以修正畫面。\n- `summary` 由 items 重算（不信任舊 summary），與後端一致：total = items 數、各狀態計數。\n- ws：`useAdminWsTopic('attendance', {...}, { resync: reload })`（FRONTEND-038）。`attendance.updated` → 若 `row.service_date === date` 且（classId 為 null 或相同）則 applyRow（不在清單中則加入並依班級、學號排序），否則忽略；`attendance.batch_updated` → 逐筆同上；`attendance.bulk_updated` → `dates` 含目前 date 時 reload。\n- 只有 date 為今天時才訂閱有意義，但仍一律訂閱（改判過去日期也會推播）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/useAttendanceBoard.ts`，今日出勤頁（FRONTEND-122）的資料擁有者。\n\n**介面**\n```ts\nexport function useAttendanceBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  data: Ref<DailyAttendance | null>; loading: Ref<boolean>; error: Ref<string | null>\n  busyIds: Ref<ReadonlySet<string>>                      // 操作中的 student_id\n  reload(): Promise<void>\n  checkIn(row): Promise<void>; checkOut(row): Promise<void>; markAbsent(row): Promise<void>\n  batchCheckIn(studentIds: string[]): Promise<BatchCheckInResult>\n  applyRow(row: AttendanceRow): void                      // 以 student_id 取代並重算 summary\n  wsStatus: ComputedRef<WsStatus>; wsDenied: ComputedRef<boolean>\n}\n```\n- 掛載時與 date / classId 變更時重新載入（序號防護，只採用最新回應）；classId 為 null 或空字串時不帶 class_id。\n- 載入失敗：`error = errorMessage(err, '無法載入出勤資料')`，成功時清為 null；同一篩選的重抓失敗（例如斷線輪詢）保留舊 data，換日期 / 班級後的載入失敗則 data 清為 null（不顯示別的篩選的舊資料）。\n- 操作：同一學生進行中再呼叫直接忽略；成功以回傳 row `applyRow`；失敗 `ElMessage.error(errorMessage(err, '操作失敗'))`，409（already_checked_in / already_checked_out / not_checked_in / student_on_leave）額外重新載入該日資料以修正畫面。\n- `batchCheckIn`：成功列套用（同 applyRow）；`skipped` 含上述畫面過期的 code 時重新載入；請求失敗 `ElMessage.error(errorMessage(err, '批次到班失敗'))` 後 reject 原錯誤（409 過期類同樣重新載入），呼叫端只需決定畫面狀態。\n- `applyRow` 只套用與目前資料同日（`data.date`）的列；不在清單中的列依班級、學號插入：沿用清單既有的班級順序（後端依班級 sort_order、班名排序，列上沒有 sort_order），同班內依學號，清單中沒有該班時接在最後。\n- `summary` 由 items 重算（不信任舊 summary），與後端一致：total = items 數、各狀態計數。\n- ws：`useAdminWsTopic('attendance', {...}, { resync: reload })`（FRONTEND-038）。`attendance.updated` → 若 `row.service_date === date` 且（classId 為 null 或相同）則 applyRow（不在清單中則加入並依班級、學號排序），否則忽略；`attendance.batch_updated` → 逐筆同上；`attendance.bulk_updated` → `dates` 含目前 date 時 reload。\n- 只有 date 為今天時才訂閱有意義，但仍一律訂閱（改判過去日期也會推播）。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
@@ -3531,10 +3534,13 @@
         "red_cases": [
           "useAttendanceBoard check-in applies returned row and recomputes summary：初始 s1 expected（summary expected 1）→ POST /admin/attendance/s1/check-in 回 status present → data.items 中 s1.status === 'present'，summary.present === 1、expected === 0",
           "useAttendanceBoard ignores duplicate operations while busy：同時呼叫 checkIn(s1) 兩次 → mock.history.post.length === 1；進行中 busyIds 含 's1'，完成後不含",
-          "useAttendanceBoard reloads after conflict：check-in 回 409 already_checked_in → body 含後端 message，且 GET /admin/attendance/daily 請求數增加 1",
-          "useAttendanceBoard merges ws attendance updates by date and class：classId 'c1'、date '2026-10-02' → ws attendance.updated（service_date 同日、class_id 'c1'、s2 present）→ s2 狀態更新；class_id 'c9' 的事件 → items 不變；service_date '2026-10-01' → 不變",
+          "useAttendanceBoard reloads after conflict：check-in 回 409 already_checked_in → body 含後端 message，且 GET /admin/attendance/daily 請求數增加 1；422 等非衝突錯誤只提示、不重抓",
+          "useAttendanceBoard merges ws attendance updates by date and class：classId 'c1'、date '2026-10-02' → ws attendance.updated（service_date 同日、class_id 'c1'、s2 present）→ s2 狀態更新；class_id 'c9' 的事件 → items 不變；service_date '2026-10-01' → 不變；attendance.batch_updated 逐筆套用同樣條件（c1 的列套用、c9 的列忽略）",
           "useAttendanceBoard reloads on bulk update for current date：ws attendance.bulk_updated {student_id:'s3',dates:['2026-10-02','2026-10-03']} → GET daily 請求數 +1；dates 不含當日 → 不重抓",
-          "useAttendanceBoard uses latest response when filters change：classId 改 c1 再改 c2，c1 回應較晚到 → data 為 c2 的結果"
+          "useAttendanceBoard uses latest response when filters change：classId 改 c1 再改 c2，c1 回應較晚到 → data 為 c2 的結果",
+          "useAttendanceBoard inserts unseen ws rows by class and student number：清單 [c3:S11301(s1), c3:S11303(s3), c1:S11300(s4)] → ws 新列 c3:S11302(s5)、c1:S11399(s6)、c8:S11201(s7) → student_id 順序 ['s1','s5','s3','s4','s6','s7']、summary.total 6",
+          "useAttendanceBoard keeps data only for the same filters when load fails：首次載入 2 筆後 GET 改回 500 → reload() 後 error '伺服器忙碌中' 且 items 仍 2 筆；classId 改 c1 → data 為 null、loading false",
+          "useAttendanceBoard batch check-in applies succeeded rows：batch 回 succeeded [s1 present]、skipped [] → s1 present、summary.present 1、不重抓；再回 skipped [{student_id:'s2',code:'student_on_leave'}] → GET daily +1、s2 為重抓後的 leave"
         ],
         "run": "just web-test src/composables/useAttendanceBoard.spec.ts -t \"useAttendanceBoard\"",
         "notes": ""
@@ -3591,11 +3597,11 @@
     {
       "id": "FRONTEND-128",
       "title": "實作 components/attendance/MonthlyAttendanceGrid.vue：日期 × 學生出勤格狀表",
-      "description": "建立 `apps/web/src/components/attendance/MonthlyAttendanceGrid.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-monthly.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：月份與班級篩選、日期 × 學生格狀表（狀態符號與顏色、非營業日灰底、今天標示）、每生統計欄與合計列、匯出按鈕、空清單、載入中。\n\n**props**：`data: MonthlyAttendance`、`today?: string`（預設 todayTaipei）、`hideClassColumn?: boolean`（view 選了班級時為 true）、`loading?: boolean`（重抓時 v-loading）。外觀以設計稿 `docs/mockups/page-attendance-monthly.html` 的 decisions 為準。\n- 圖例列（表格正上方）：● 已到班、✓ 已離班、✕ 缺席、假 請假、○ 預計到班（未點名）、— 無紀錄 / 尚未到、灰色方塊 非營業日、淡藍方塊 今天。\n- el-table（border、size small）：固定左欄「學號」（76）、「姓名」（80，過長 tooltip）、「班級」（96，null 顯示「未分班」；`hideClassColumn` 時不渲染）；中間每日一欄（32px，表頭兩行「{日}」/「{週}」，週取 `weekday`，0 = 週一）；右側固定欄「出席 / 缺席 / 請假 / 未登記」（各 64，取 `stats`）。\n- 表格一律固定高度（max-height 撐滿可視區）+ 捲動：表頭、左右固定欄與合計列在捲動時不動；學生數多（> 60）時沿用同一做法，不做虛擬捲動。\n- 儲存格符號：present「●」、left「✓」、absent「✕」、leave「假」（淡灰底小方塊）、expected「○」（營業日但未登記）、null 且非營業日 → 灰底空白、null 且營業日（尚未到或無紀錄）→「—」。顏色依 ATTENDANCE_STATUS_META tone，「—」為淡灰。儲存格 title「{MM/DD}（{週}）{姓名}：{狀態}」（null 為「無紀錄」，未來日期為「尚未到」）。\n- 每日欄的 class：一律 `mg-day`；非營業日加 `is-closed`（整欄含表頭灰底）；今天加 `is-today`（表頭主色淡底 + 主色粗體 + 底線、整欄淡底）；晚於今天加 `is-future`（內容 40% 透明）。\n- 統計欄：數值 0 淡灰、缺席 > 0 danger 粗體、未登記 > 0 warning 粗體。四個統計欄可點表頭排序（前端依 `stats` 值升冪 / 降冪 / 取消）；其他欄不排序，預設維持後端順序（學號）。\n- 合計列（show-summary，固定在表格底部）：學號欄「合計」；每日欄 = 當天 present + left 人數（只算不晚於 today 的營業日，其餘空白）；統計欄 = `data.totals`。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/attendance/MonthlyAttendanceGrid.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-attendance-monthly.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：月份與班級篩選、日期 × 學生格狀表（狀態符號與顏色、非營業日灰底、今天標示）、每生統計欄與合計列、匯出按鈕、空清單、載入中。\n\n**props**：`data: MonthlyAttendance`、`today?: string`（預設 todayTaipei）、`hideClassColumn?: boolean`（view 選了班級時為 true）、`loading?: boolean`（重抓時 v-loading）。外觀以設計稿 `docs/mockups/page-attendance-monthly.html` 的 decisions 為準。\n- 圖例列（表格正上方）：● 已到班、✓ 已離班、✕ 缺席、假 請假、○ 預計到班（未點名）、— 無紀錄 / 尚未到、灰色方塊 非營業日、淡藍方塊 今天。\n- el-table（border、size small）：固定左欄「學號」（76）、「姓名」（80，過長 tooltip）、「班級」（96，null 顯示「未分班」；`hideClassColumn` 時不渲染）；中間每日一欄（32px，表頭兩行「{日}」/「{週}」，週取 `weekday`，0 = 週一）；右側固定欄「出席 / 缺席 / 請假 / 未登記」（各 64，取 `stats`）。\n- 表格一律固定高度（max-height 撐滿可視區：元件量測表格頂端位置，max-height = 視窗高 − 表格頂端 − 40px 頁面底部留白，最小 240，視窗 resize 時重算）+ 捲動：表頭、左右固定欄與合計列在捲動時不動；學生數多（> 60）時沿用同一做法，不做虛擬捲動。\n- 儲存格符號：present「●」、left「✓」、absent「✕」、leave「假」（淡灰底小方塊）、expected「○」（營業日但未登記）、null 且非營業日 → 灰底空白、null 且營業日（尚未到或無紀錄）→「—」。顏色依 ATTENDANCE_STATUS_META tone，「—」為淡灰。儲存格 title「{MM/DD}（{週}）{姓名}：{狀態}」（expected 為「預計到班（未點名）」，null 為「無紀錄」，未來日期的 null 為「尚未到」）。\n- 每日欄的 class：一律 `mg-day`；非營業日加 `is-closed`（整欄含表頭灰底）；今天加 `is-today`（表頭主色淡底 + 主色粗體 + 底線、整欄淡底）；晚於今天加 `is-future`（內容 40% 透明）。\n- 統計欄：數值 0 淡灰、缺席 > 0 danger 粗體、未登記 > 0 warning 粗體。四個統計欄可點表頭排序（前端依 `stats` 值升冪 / 降冪 / 取消）；其他欄不排序，預設維持後端順序（學號）。\n- 合計列（show-summary，固定在表格底部）：學號欄「合計」；每日欄 = 當天 present + left 人數（只算不晚於 today 的營業日，其餘空白）；統計欄 = `data.totals`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/attendance/MonthlyAttendanceGrid.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-120",
@@ -3611,11 +3617,12 @@
         ],
         "red_cases": [
           "MonthlyAttendanceGrid maps statuses to symbols：days 3 天（第 3 天非營業日）、學生 statuses ['present','absent',null] → 該列儲存格文字依序 ['●','✕','']，第 3 格 class 含 is-closed",
-          "MonthlyAttendanceGrid distinguishes unrecorded service day：營業日 status null → '—'；status 'expected' → '○'；'leave' → '假'；'left' → '✓'",
+          "MonthlyAttendanceGrid distinguishes unrecorded service day：營業日 status null → '—'；status 'expected' → '○'；'leave' → '假'；'left' → '✓'；title 依序 '10/01（四）王小明：無紀錄'、'10/02（五）王小明：預計到班（未點名）'…，晚於 today 的 null 為 '尚未到' 且欄 class 含 is-future",
           "MonthlyAttendanceGrid highlights today column and stats：today '2026-10-02' → 表頭 '2' 欄 class 含 is-today；stats {attended:18,absent:1,leave:2,unrecorded:0} → 該列右側文字含 '18'、'1'、'2'、'0'",
           "MonthlyAttendanceGrid summary row counts attended per day：today '2026-10-05'、days 2026-10-01~2026-10-03（第 3 天非營業日）、3 位學生第 1 天 statuses 依序 'present'、'left'、'absent'、totals.attended 330 → 合計列學號欄 '合計'、第 1 天欄 '2'、第 3 天欄空白、出席欄 '330'",
           "MonthlyAttendanceGrid sorts by stats columns：3 位學生 stats.absent 依序 [0,3,1] → 點「缺席」表頭一次後各列 absent 依序 [0,1,3]，再點一次為 [3,1,0]",
-          "MonthlyAttendanceGrid hides class column when requested：hideClassColumn true → 表頭沒有 '班級'；false → 有 '班級'，class_name null 的列顯示 '未分班'"
+          "MonthlyAttendanceGrid hides class column when requested：hideClassColumn true → 表頭沒有 '班級'；false → 有 '班級'，class_name null 的列顯示 '未分班'",
+          "MonthlyAttendanceGrid fixes columns and fills viewport height：innerHeight 900、表格頂端 200 → 固定左欄表頭 ['學號','姓名','班級']、固定右欄 ['出席','缺席','請假','未登記']、有合計列與 loading 遮罩、body 捲動區 max-height '660px'；innerHeight 改 1000 並 resize → '760px'；圖例依序列出 8 項"
         ],
         "run": "just web-test src/components/attendance/MonthlyAttendanceGrid.spec.ts -t \"MonthlyAttendanceGrid\"",
         "notes": ""
