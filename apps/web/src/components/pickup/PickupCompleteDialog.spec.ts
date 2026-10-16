@@ -339,6 +339,41 @@ describe('PickupCompleteDialog', () => {
     expect(option('王阿嬤').classes()).toContain('is-checked')
   })
 
+  it('PickupCompleteDialog ignores guardian responses that return after reopening', async () => {
+    const releases: Array<() => void> = []
+    const responses: Array<[number, unknown]> = [
+      [200, [FATHER]],
+      [500, { error: { code: 'internal_error', message: '伺服器暫時沒有回應', details: null } }],
+      [200, [GRANDMA]],
+    ]
+    mock.onGet(GUARDIANS_URL).reply(
+      () =>
+        new Promise((resolve) => {
+          const response = responses[releases.length]!
+          releases.push(() => resolve(response))
+        }),
+    )
+    const wrapper = await mountDialog()
+    for (const open of [false, true, false, true]) {
+      await wrapper.setProps({ modelValue: open })
+      await settle()
+    }
+
+    // 第三次開啟後，前兩次開啟的回應（一成功一失敗）才回來：都不寫入
+    releases[0]?.()
+    releases[1]?.()
+    await settle()
+    expect(dialog().find('.el-skeleton').exists()).toBe(true)
+    expect(dialog().find('.el-alert--error').exists()).toBe(false)
+
+    releases[2]?.()
+    await settle()
+    expect(guardianLoads()).toBe(3)
+    expect(dialog().text()).not.toContain('王大明')
+    expect(dialog().find('.el-alert--error').exists()).toBe(false)
+    expect(option('王阿嬤').classes()).toContain('is-checked')
+  })
+
   it('PickupCompleteDialog override requires note and permission', async () => {
     mock.onGet(GUARDIANS_URL).reply(200, [MOTHER])
     mock.onPost(COMPLETE_URL).reply(200, makeRequest({ status: 'completed', completion_method: 'override' }))
