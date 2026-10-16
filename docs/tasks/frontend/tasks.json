@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 191,
-  "last_updated": "2026-10-16T05:08:45Z",
+  "version": 192,
+  "last_updated": "2026-10-16T05:14:01Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -682,11 +682,11 @@
     {
       "id": "FRONTEND-029",
       "title": "實作 layouts/AdminLayout.vue：側欄 + 頂欄 + 內容區、啟動 ws 與通知、斷線提示",
-      "description": "建立 `apps/web/src/layouts/AdminLayout.vue`。移植 ivy `FE:src/layouts/AdminLayout.vue` 的版面骨架與手機抽屜；**去掉** high-risk audit count、portal context 判斷、tenant、輪詢 summary。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：桌機（側欄展開 / 收合）、平板 1024×768（`meta.tablet` 頁面側欄預設收合成 icon）、手機（側欄改抽屜）、斷線橫幅、通知面板展開。\n\n**行為**\n- 版面：左 `AdminSidebar`（FRONTEND-031）、上 `AdminHeader`（FRONTEND-032）、中 `<slot />`。側欄收合狀態存 `localStorage['admin.sidebarCollapsed']`（try/catch，讀不到用預設）；`route.meta.tablet` 頁面初次進入時預設收合；視窗寬 < 768 改為 el-drawer（寬 240，內放 `<AdminSidebar drawer>`：不顯示收合按鈕，FRONTEND-031），點選選單（`navigate`）後關閉。\n- 頂欄接線：`<AdminHeader :collapsed :mobile @toggle-sidebar>`（FRONTEND-032）——`collapsed` 傳桌機側欄目前的收合狀態、`mobile` 傳視窗寬 < 768；`toggle-sidebar` 在桌機切換收合（並寫入 localStorage），在手機開關抽屜。\n- onMounted：`useAdminWsStore().start()`（FRONTEND-037）、`useNotificationsStore().fetch()` 並綁定 ws（FRONTEND-034）；onUnmounted：`adminWs.stop()`。\n- `adminWs.status` 為 `reconnecting` 超過 5 秒 → 頂欄下方顯示 warning 橫幅「即時連線中斷，畫面每 15 秒自動更新」；回到 `open` 時橫幅消失。\n\n**驗收標準**\n- 掛載後建立 `/api/ws/admin` 連線並取得通知清單。\n- 斷線 5 秒後出現橫幅、恢復後消失。\n- 收合狀態可切換且被記住；平板頁預設收合。",
+      "description": "建立 `apps/web/src/layouts/AdminLayout.vue`。移植 ivy `FE:src/layouts/AdminLayout.vue` 的版面骨架與手機抽屜；**去掉** high-risk audit count、portal context 判斷、tenant、輪詢 summary。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：桌機（側欄展開 / 收合）、平板 1024×768（`meta.tablet` 頁面側欄預設收合成 icon）、手機（側欄改抽屜）、斷線橫幅、通知面板展開。\n\n**行為**\n- 版面：左 `AdminSidebar`（FRONTEND-031）、上 `AdminHeader`（FRONTEND-032）、中 `<slot />`。側欄收合狀態存 `localStorage['admin.sidebarCollapsed']`（try/catch，讀不到用預設）；`route.meta.tablet` 頁面初次進入時預設收合；視窗寬 < 768 改為 el-drawer（寬 240，內放 `<AdminSidebar drawer>`：不顯示收合按鈕，FRONTEND-031），點選選單（`navigate`）後關閉。\n- 頂欄接線：`<AdminHeader :collapsed :mobile @toggle-sidebar>`（FRONTEND-032）——`collapsed` 傳桌機側欄目前的收合狀態、`mobile` 傳視窗寬 < 768；`toggle-sidebar` 在桌機切換收合（並寫入 localStorage），在手機開關抽屜。\n- onMounted：`useAdminWsStore().start()`（FRONTEND-037）、`useNotificationsStore().fetch()` 並綁定 ws（FRONTEND-034）；onUnmounted：`adminWs.stop()`。\n- `adminWs.status` 為 `reconnecting` 超過 5 秒 → 頂欄下方顯示 warning 橫幅「即時連線中斷，畫面每 15 秒自動更新」；回到 `open` 時橫幅消失。\n\n**實作細節**：視窗寬以 `window.innerWidth` 搭配 `resize` 監聽判斷（卸載時移除）；縮放回 >= 768 時自動關閉抽屜。抽屜為 `el-drawer`（左側 `ltr`、寬 240、無標題列、`title=\"導覽選單\"` 作為 aria-label、根元素 `data-test=\"admin-sidebar-drawer\"`），內放 `<AdminSidebar drawer>`。沒有記錄時收合狀態依目前路由的 `meta.tablet` 決定（導到平板頁會收合、導回一般頁會展開）；使用者切換過一次後以記住的值為準，localStorage 的值不是 `true` / `false` 視為沒有記錄。橫幅在 `adminWs.status` 進入 `reconnecting` 時開始計 5 秒（重連過程中 status 維持 `reconnecting`，不重新計時），離開 `reconnecting`（`open` / `idle` / `closed`）立即清除計時並隱藏；`connecting` 不顯示。背景預載通知失敗不提示（鈴鐺的未讀數維持 0，`loaded` 仍為 false，使用者開啟通知面板時再載入並顯示錯誤）。卸載時解除通知 ws 綁定並停 ws。內容區 padding 20px，視窗寬 <= 1024px 為 16px、<= 767px 為 12px。\n\n**驗收標準**\n- 掛載後建立 `/api/ws/admin` 連線並取得通知清單。\n- 斷線 5 秒後出現橫幅、恢復後消失。\n- 收合狀態可切換且被記住；平板頁預設收合。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/layouts/AdminLayout.vue",
       "source_ref": "FE:src/layouts/AdminLayout.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-031",
@@ -4403,11 +4403,11 @@
     {
       "id": "FRONTEND-187",
       "title": "實作 composables/useDismissalChime.ts：家長到達提示音、新請求提示音、中文語音與靜音",
-      "description": "建立 `apps/web/src/composables/useDismissalChime.ts`（domain_spec M7 流程 4：家長按「我到了」員工端提示音）。移植 ivy `FE:src/composables/useDismissalChime.ts` 的 `drawChimeTones`（雙音）、`drawSoftChime`（C5 單音）、`speakZh` / `unlockSpeechZh`（zh-TW voice 選擇、無中文 voice 時不播）；**去掉** reservation chime（ivy useDismissalReservationChime）。\n\n**介面**\n```ts\nexport function useDismissalChime(opts?: { audioContextFactory?: () => AudioContext; speech?: { speak(text: string): void; unlock(): void } }): {\n  muted: Ref<boolean>                       // localStorage 'pickup.chimeMuted'（try/catch，讀不到預設 false）\n  toggleMute(): void\n  unlock(): void                            // 第一次使用者手勢時呼叫：建立 / resume AudioContext 並預熱語音\n  onArrived(req: PickupRequest): void       // 雙音 + 語音「{class_name} {student_name} 家長到了」\n  onNewRequest(req: PickupRequest): void    // 單音（不播語音）\n}\n```\n- muted 時兩者都不發聲；AudioContext 尚未 unlock（state 為 suspended 且 resume 失敗）時靜默略過，不 throw。\n- 同一 request id 的 arrived 只播一次（記住已播 id，跨日清空）；請求不論是經 pending 轉為 arrived，或家長以「我已經到了」捷徑直接建立為 arrived，都以 onArrived 播放。\n- 已播過 arrived 的 request id 之後再收到 onNewRequest 一律略過。\n- 2 秒內多個 arrived 合併為一次雙音，語音依序播報。\n\n**實作細節**：到達雙音為 C5 → G5 兩個音（2 個 oscillator）。批次視窗從雙音開始起算 2 秒：視窗內其他 arrived 只播語音；AudioContext 非 running 時先 resume，resume 失敗（尚未解鎖）略過該次雙音並重置視窗。`onNewRequest` 同一 request id 只播一次。靜音時 onArrived 仍記下 request id（取消靜音後被補抓重送的舊到達不補響）。`onArrived` / `onNewRequest` 的參數型別為 `ChimeRequest = {id, student: {name, class_name}}`（`PickupRequest` 符合）。\n\n**驗收標準**：每一條對應下列 red_case（注入 fake AudioContext 與 speech）。",
+      "description": "建立 `apps/web/src/composables/useDismissalChime.ts`（domain_spec M7 流程 4：家長按「我到了」員工端提示音）。移植 ivy `FE:src/composables/useDismissalChime.ts` 的 `drawChimeTones`（雙音）、`drawSoftChime`（C5 單音）、`speakZh` / `unlockSpeechZh`（zh-TW voice 選擇、無中文 voice 時不播）；**去掉** reservation chime（ivy useDismissalReservationChime）。\n\n**介面**\n```ts\nexport function useDismissalChime(opts?: { audioContextFactory?: () => AudioContext; speech?: { speak(text: string): void; unlock(): void } }): {\n  muted: Ref<boolean>                       // localStorage 'pickup.chimeMuted'（try/catch，讀不到預設 false）\n  toggleMute(): void\n  unlock(): void                            // 第一次使用者手勢時呼叫：建立 / resume AudioContext 並預熱語音\n  onArrived(req: PickupRequest): void       // 雙音 + 語音「{class_name} {student_name} 家長到了」\n  onNewRequest(req: PickupRequest): void    // 單音（不播語音）\n}\n```\n- muted 時兩者都不發聲；AudioContext 尚未 unlock（state 不是 running）時靜默略過，不 throw、也不呼叫 `resume()`。\n- 同一 request id 的 arrived 只播一次（記住已播 id，跨日清空）；請求不論是經 pending 轉為 arrived，或家長以「我已經到了」捷徑直接建立為 arrived，都以 onArrived 播放。\n- 已播過 arrived 的 request id 之後再收到 onNewRequest 一律略過。\n- 2 秒內多個 arrived 合併為一次雙音，語音依序播報。\n\n**實作細節**：到達雙音為 C5 → G5 兩個音（2 個 oscillator）。批次視窗從雙音開始起算 2 秒：視窗內其他 arrived 只播語音；只有 AudioContext 為 running 才畫音。尚未呼叫 `unlock()` 且 state 不是 running 時直接略過（不呼叫 `resume()`：依 Web Audio 規範，context 未獲允許啟動前 `resume()` 不會 reject 而是一直 pending，第一次使用者手勢時才一併 resolve，會把先前略過的音全部補播，連按「提示音：關」的那次手勢也會響）並重置視窗；已 `unlock()` 但 context 又被瀏覽器暫停（例如平板休眠後）時才 `resume()`，完成當下已靜音或距離呼叫超過 2 秒就丟棄，reject 則略過並重置視窗（重置只清自己開的視窗）。`onNewRequest` 同一 request id 只播一次。靜音時 onArrived 仍記下 request id（取消靜音後被補抓重送的舊到達不補響）。`onArrived` / `onNewRequest` 的參數型別為 `ChimeRequest = {id, student: {name, class_name}}`（`PickupRequest` 符合）。\n\n**驗收標準**：每一條對應下列 red_case（注入 fake AudioContext 與 speech）。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalChime.ts",
       "source_ref": "FE:src/composables/useDismissalChime.ts::drawChimeTones",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-180",
@@ -4427,7 +4427,11 @@
           "useDismissalChime new request plays soft tone without speech：onNewRequest(req) → createOscillator 呼叫數 1、speak 0 次",
           "useDismissalChime batches arrivals within two seconds：0ms 與 500ms 各一筆不同 request 的 onArrived → 雙音只播一次（oscillator 2 個），speak 依序收到兩段文字",
           "useDismissalChime survives suspended audio context：AudioContext.resume reject → onArrived 不 throw，speak 仍被呼叫",
-          "useDismissalChime plays for first-seen arrived request：未曾呼叫 onNewRequest 的 r5 直接 onArrived(r5) → createOscillator 呼叫數 2、speak 收到 1 次；接著對 r5 呼叫 onNewRequest 不再發出單音（已到的請求不補播新請求音）"
+          "useDismissalChime plays for first-seen arrived request：未曾呼叫 onNewRequest 的 r5 直接 onArrived(r5) → createOscillator 呼叫數 2、speak 收到 1 次；接著對 r5 呼叫 onNewRequest 不再發出單音（已到的請求不補播新請求音）",
+          "useDismissalChime stays silent before unlock and never replays skipped tones afterwards：pending-resume fake（未獲允許前 resume() 一直 pending，允許後 state 轉 running 並 resolve 全部）；unlock 前 onArrived(r1)、onNewRequest(r2)、60 秒後 onArrived(r3) → createOscillator 0 次、resume 未被呼叫、speak 2 次；unlock() + 允許 + flushPromises 後 createOscillator 仍 0；之後 onArrived(r4) → 2 個 oscillator、onNewRequest(r5) → 再 1 個",
+          "useDismissalChime first gesture muting does not play skipped tones：unlock 前 onArrived(r1)，toggleMute() 後 unlock() + 允許 → createOscillator 0",
+          "useDismissalChime plays when a suspended context resumes right after unlock：unlock() 後 context 仍 suspended，onArrived(r1) → resume 完成前 0、允許後 2 個 oscillator",
+          "useDismissalChime drops a tone whose resume resolves after muting / too late：unlock() 後 onArrived(r1) 使 resume pending，toggleMute() 後才允許 → 0；或 60 秒後才允許 → 0，其後 onArrived(r3) → 2 個 oscillator；逾時丟棄的音不影響後來提示音的批次視窗（2500ms 後的 r2 響、500ms 後的 r3 合併不再響）"
         ],
         "run": "just web-test src/composables/useDismissalChime.spec.ts -t \"useDismissalChime\"",
         "notes": ""
