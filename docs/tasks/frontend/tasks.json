@@ -1,6 +1,6 @@
 {
   "area": "frontend",
-  "version": 205,
+  "version": 206,
   "last_updated": "2026-10-16T05:43:18Z",
   "tasks": [
     {
@@ -682,11 +682,11 @@
     {
       "id": "FRONTEND-029",
       "title": "實作 layouts/AdminLayout.vue：側欄 + 頂欄 + 內容區、啟動 ws 與通知、斷線提示",
-      "description": "建立 `apps/web/src/layouts/AdminLayout.vue`。移植 ivy `FE:src/layouts/AdminLayout.vue` 的版面骨架與手機抽屜；**去掉** high-risk audit count、portal context 判斷、tenant、輪詢 summary。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：桌機（側欄展開 / 收合）、平板 1024×768（`meta.tablet` 頁面側欄預設收合成 icon）、手機（側欄改抽屜）、斷線橫幅、通知面板展開。\n\n**行為**\n- 版面：左 `AdminSidebar`（FRONTEND-031）、上 `AdminHeader`（FRONTEND-032）、中 `<slot />`。側欄收合狀態存 `localStorage['admin.sidebarCollapsed']`（try/catch，讀不到用預設）；`route.meta.tablet` 頁面初次進入時預設收合；視窗寬 < 768 改為 el-drawer（寬 240，內放 `<AdminSidebar drawer>`：不顯示收合按鈕，FRONTEND-031），點選選單（`navigate`）後關閉。\n- 頂欄接線：`<AdminHeader :collapsed :mobile @toggle-sidebar>`（FRONTEND-032）——`collapsed` 傳桌機側欄目前的收合狀態、`mobile` 傳視窗寬 < 768；`toggle-sidebar` 在桌機切換收合（並寫入 localStorage），在手機開關抽屜。\n- onMounted：`useAdminWsStore().start()`（FRONTEND-037）、`useNotificationsStore().fetch()` 並綁定 ws（FRONTEND-034）；onUnmounted：`adminWs.stop()`。\n- `adminWs.status` 為 `reconnecting` 超過 5 秒 → 頂欄下方顯示 warning 橫幅「即時連線中斷，畫面每 15 秒自動更新」；回到 `open` 時橫幅消失。\n\n**實作細節**：視窗寬以 `window.innerWidth` 搭配 `resize` 監聽判斷（卸載時移除）；縮放回 >= 768 時自動關閉抽屜。抽屜為 `el-drawer`（左側 `ltr`、寬 240、無標題列、`title=\"導覽選單\"` 作為 aria-label、根元素 `data-test=\"admin-sidebar-drawer\"`），內放 `<AdminSidebar drawer>`。沒有記錄時收合狀態依目前路由的 `meta.tablet` 決定（導到平板頁會收合、導回一般頁會展開）；使用者切換過一次後以記住的值為準，localStorage 的值不是 `true` / `false` 視為沒有記錄。橫幅在 `adminWs.status` 進入 `reconnecting` 時開始計 5 秒（重連過程中 status 維持 `reconnecting`，不重新計時），離開 `reconnecting`（`open` / `idle` / `closed`）立即清除計時並隱藏；`connecting` 不顯示。背景預載通知失敗不提示（鈴鐺的未讀數維持 0，`loaded` 仍為 false，使用者開啟通知面板時再載入並顯示錯誤）。卸載時解除通知 ws 綁定並停 ws。內容區 padding 20px，視窗寬 <= 1024px 為 16px、<= 767px 為 12px。\n\n**驗收標準**\n- 掛載後建立 `/api/ws/admin` 連線並取得通知清單。\n- 斷線 5 秒後出現橫幅、恢復後消失。\n- 收合狀態可切換且被記住；平板頁預設收合。",
+      "description": "建立 `apps/web/src/layouts/AdminLayout.vue`。移植 ivy `FE:src/layouts/AdminLayout.vue` 的版面骨架與手機抽屜；**去掉** high-risk audit count、portal context 判斷、tenant、輪詢 summary。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：桌機（側欄展開 / 收合）、平板 1024×768（`meta.tablet` 頁面側欄預設收合成 icon）、手機（側欄改抽屜）、斷線橫幅、通知面板展開。\n\n**行為**\n- 版面：左 `AdminSidebar`（FRONTEND-031）、上 `AdminHeader`（FRONTEND-032）、中 `<slot />`。側欄收合狀態存 `localStorage['admin.sidebarCollapsed']`（try/catch，讀不到用預設）；`route.meta.tablet` 頁面初次進入時預設收合；視窗寬 < 768 改為 el-drawer（寬 240，內放 `<AdminSidebar drawer>`：不顯示收合按鈕，FRONTEND-031），點選選單（`navigate`）後關閉。\n- 頂欄接線：`<AdminHeader :collapsed :mobile @toggle-sidebar>`（FRONTEND-032）——`collapsed` 傳桌機側欄目前的收合狀態、`mobile` 傳視窗寬 < 768；`toggle-sidebar` 在桌機切換收合（並寫入 localStorage），在手機開關抽屜。\n- onMounted：`useAdminWsStore().start()`（FRONTEND-037）、`useNotificationsStore().fetch()` 並綁定 ws（FRONTEND-034）；onUnmounted：解除通知 ws 綁定、`useNotificationsStore().reset()`（清空收件匣並讓在途請求失效）、`adminWs.stop()`。\n- `adminWs.status` 為 `reconnecting` 超過 5 秒 → 頂欄下方顯示 warning 橫幅「即時連線中斷，畫面每 15 秒自動更新」；回到 `open` 時橫幅消失。\n\n**實作細節**：視窗寬以 `window.innerWidth` 搭配 `resize` 監聽判斷（卸載時移除）；縮放回 >= 768 時自動關閉抽屜。抽屜為 `el-drawer`（左側 `ltr`、寬 240、無標題列、`title=\"導覽選單\"` 作為 aria-label、根元素 `data-test=\"admin-sidebar-drawer\"`），內放 `<AdminSidebar drawer>`。沒有記錄時收合狀態依目前路由的 `meta.tablet` 決定（導到平板頁會收合、導回一般頁會展開）；使用者切換過一次後以記住的值為準，localStorage 的值不是 `true` / `false` 視為沒有記錄。橫幅在 `adminWs.status` 進入 `reconnecting` 時開始計 5 秒（重連過程中 status 維持 `reconnecting`，不重新計時），離開 `reconnecting`（`open` / `idle` / `closed`）立即清除計時並隱藏；`connecting` 不顯示。背景預載通知失敗不提示：收件匣維持空的（`unreadCount` 0、`loaded` false、鈴鐺沒有徽章），使用者開啟通知面板時再載入並顯示錯誤；因為收件匣在卸載時就已清空，失敗時不會殘留上一位使用者的資料。卸載時解除通知 ws 綁定、清空通知 store 並停 ws：整個分頁共用同一個 pinia，登出導向 blank layout 後換人登入，下一位使用者不得看到上一位的通知與未讀數，上一位在途的預載回應也不得寫回（`reset()` 讓在途請求失效，下一位的 `fetch` 不共用上一個請求）。本 task 對 FRONTEND-034 產物的改寫範圍：在 `stores/notifications.ts` 新增 `reset()` action（含 reset 之後晚到的 `fetch` / `markRead` / `markAllRead` 結果不得改動狀態），其餘行為不變，034 的 description 與 red_cases 已同步。內容區 padding 20px，視窗寬 <= 1024px 為 16px、<= 767px 為 12px。\n\n**驗收標準**\n- 掛載後建立 `/api/ws/admin` 連線並取得通知清單。\n- 斷線 5 秒後出現橫幅、恢復後消失。\n- 收合狀態可切換且被記住；平板頁預設收合。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/layouts/AdminLayout.vue",
       "source_ref": "FE:src/layouts/AdminLayout.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-031",
@@ -708,7 +708,9 @@
           "AdminLayout toggles and remembers sidebar collapse：點 header 的收合按鈕 → [data-test=admin-sidebar] 有 class is-collapsed，localStorage['admin.sidebarCollapsed'] === 'true'；重新 mount 仍為收合",
           "AdminLayout collapses sidebar on tablet routes：initialRoute '/pickup'（meta.tablet）且 localStorage 無值 → 側欄為收合；initialRoute '/students' → 展開",
           "AdminLayout stops ws on unmount：unmount 後 60 秒內 FakeWebSocket.instances.length 不增加，且最後一個 socket.readyState === CLOSED",
-          "AdminLayout wires header collapse and mobile props：桌機寬 1280 → AdminHeader 的 props collapsed false、mobile false；點 header 切換鈕 → collapsed 變 true。視窗寬改 390（觸發 resize）→ mobile true；再點切換鈕 → el-drawer 開啟（[data-test=admin-sidebar-drawer] 或 drawer 內出現 AdminSidebar），collapsed 與 localStorage 不變"
+          "AdminLayout wires header collapse and mobile props：桌機寬 1280 → AdminHeader 的 props collapsed false、mobile false；點 header 切換鈕 → collapsed 變 true。視窗寬改 390（觸發 resize）→ mobile true；再點切換鈕 → el-drawer 開啟（[data-test=admin-sidebar-drawer] 或 drawer 內出現 AdminSidebar），collapsed 與 localStorage 不變",
+          "AdminLayout does not keep the previous user notifications when mounted again on the same pinia：同一個 pinia 與 router，第一次掛載 GET /admin/notifications 回 1 筆未讀 → 卸載後 store.items 為 []、unreadCount 0、loaded false；第二次掛載 GET 回 500 → items [] 、unreadCount 0、total 0、loaded false、鈴鐺沒有徽章、畫面沒有上一位的通知標題",
+          "AdminLayout ignores an in-flight notification response from the previous mount：第一次掛載的 GET 還在途中就卸載並再掛載（mock.history.get.length === 2，不共用請求）；第一次的回應先到 → store 仍為空、無徽章；第二次的回應到達 → 只有新回應的資料，徽章顯示 1；第一次的回應晚於第二次到達 → store 仍只有第二次的資料"
         ],
         "run": "just web-test src/layouts/AdminLayout.spec.ts -t \"AdminLayout\"",
         "notes": ""
@@ -874,7 +876,7 @@
     {
       "id": "FRONTEND-034",
       "title": "實作 stores/notifications.ts：收件匣、未讀數、已讀、ws 即時新增與暫態提示",
-      "description": "建立 `apps/web/src/stores/notifications.ts`（Pinia，id `notifications`）。移植 ivy `FE:src/stores/notification.ts::useNotificationStore` 的 in-flight 去重；資料來源改為本專案收件匣 API（FRONTEND-033）與 ws 個人訊息（FRONTEND-037）。\n\n**state**：`items: Notification[]`（最新在前，最多保留 50 筆）、`unreadCount`、`total`、`loading`、`loaded`。\n**actions**\n- `fetch({ unreadOnly = false } = {})`：`page_size: 20`；併發呼叫共用 promise。\n- `markRead(id)`：樂觀更新（設 read_at = now、未讀 -1，不低於 0），API 失敗則還原並 rethrow。已讀的不重送。\n- `markAllRead()`：成功後全部 read_at 設定、未讀歸 0。\n- `bindWs()`：以 `adminWs.on('notification.created', n => receive(n))`、`adminWs.on('notification.transient', p => emitTransient(p))` 綁定，回傳解除函式；重複呼叫不重複綁定。\n- `receive(n)`：id 已存在則忽略，否則插到最前、未讀 +1、total +1。\n- `onTransient(listener)`：暫態訊息（例如 `pickup.arrived`）訂閱，接送頁的提示音使用（FRONTEND-187）；同時以 `ElNotification({ title, message: body, type: 'warning' })` 顯示。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/stores/notifications.ts`（Pinia，id `notifications`）。移植 ivy `FE:src/stores/notification.ts::useNotificationStore` 的 in-flight 去重；資料來源改為本專案收件匣 API（FRONTEND-033）與 ws 個人訊息（FRONTEND-037）。\n\n**state**：`items: Notification[]`（最新在前，最多保留 50 筆）、`unreadCount`、`total`、`loading`、`loaded`。\n**actions**\n- `fetch({ unreadOnly = false } = {})`：`page_size: 20`；併發呼叫共用 promise。\n- `markRead(id)`：樂觀更新（設 read_at = now、未讀 -1，不低於 0），API 失敗則還原並 rethrow。已讀的不重送。\n- `markAllRead()`：成功後全部 read_at 設定、未讀歸 0。\n- `bindWs()`：以 `adminWs.on('notification.created', n => receive(n))`、`adminWs.on('notification.transient', p => emitTransient(p))` 綁定，回傳解除函式；重複呼叫不重複綁定。\n- `receive(n)`：id 已存在則忽略，否則插到最前、未讀 +1、total +1。\n- `reset()`：登出時清空收件匣（`items` / `unreadCount` / `total` 歸零、`loaded` 與 `loading` 為 false）並讓在途請求失效——reset 之前發出的 `fetch` 晚到的回應不寫回、reset 後的 `fetch` 不共用 reset 前的 in-flight 請求、reset 之前發出的 `markRead` 失敗還原與 `markAllRead` 成功後的本地更新都不得改動 reset 之後的狀態。不動 ws 綁定與暫態訊息的訂閱（由各自的擁有者解除）。由 FRONTEND-029（AdminLayout 卸載時）呼叫：整個分頁共用同一個 pinia，不清的話換人登入後下一位使用者會看到上一位的通知。\n- `onTransient(listener)`：暫態訊息（例如 `pickup.arrived`）訂閱，接送頁的提示音使用（FRONTEND-187）；同時以 `ElNotification({ title, message: body, type: 'warning' })` 顯示。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "store",
       "target_path": "apps/web/src/stores/notifications.ts",
       "source_ref": "FE:src/stores/notification.ts::useNotificationStore",
@@ -898,7 +900,9 @@
           "notifications store receive dedupes ws notifications：receive({id:'n9',...}) 兩次 → items[0].id === 'n9'、items 中 n9 只出現 1 次、unreadCount 只增加 1",
           "notifications store binds ws once：bindWs() 兩次後 FakeWebSocket 收到 notification.created 信封 → items 只新增 1 筆",
           "notifications store transient listeners receive pickup arrived：onTransient(listener) 後 ws 收到 {type:'notification.transient',data:{event:'pickup.arrived',title:'王小明家長已到',body:'',payload:{request_id:'r1'}}} → listener 收到的 event === 'pickup.arrived'，document.body.textContent 含 '王小明家長已到'",
-          "notifications store markAllRead：POST /admin/notifications/read-all 回 {updated:2} → 所有 items 的 read_at 非 null、unreadCount === 0"
+          "notifications store markAllRead：POST /admin/notifications/read-all 回 {updated:2} → 所有 items 的 read_at 非 null、unreadCount === 0",
+          "notifications store reset clears the inbox state and discards in-flight responses：fetch 取得 2 筆後 reset() → items [] 、unreadCount 0、total 0、loaded false、loading false；fetch 還在途中 reset()，回應（含 1 筆未讀）到達後 items 仍為 []、loaded false、loading false；reset 後再 fetch 不共用上一個請求（mock.history.get.length === 2），上一個請求先到或後到都不寫入，最後只有新回應的資料",
+          "notifications store reset ignores late read marks from before the reset：markAllRead / markRead 還在途中 reset()，下一位 fetch 取得 2 筆未讀；上一位的 markAllRead 成功、markRead 失敗回來後，下一位的 items 仍全為未讀、unreadCount 仍為 2"
         ],
         "run": "just web-test src/stores/notifications.spec.ts -t \"notifications store\"",
         "notes": ""
