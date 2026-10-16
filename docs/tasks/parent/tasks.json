@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 144,
-  "last_updated": "2026-10-16T05:40:35Z",
+  "version": 145,
+  "last_updated": "2026-10-16T05:43:41Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2354,7 +2354,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/AuthorizationListItem.vue",
       "source_ref": "FE:src/parent/views/PickupView.vue::askRegenerate",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -2377,7 +2377,7 @@
           "AuthorizationListItem completed shows verified time：effective_status 'completed'、verified_at '2026-10-03T09:35:00Z' → 含 '17:35 已完成交接'"
         ],
         "run": "just web-test src/parent/components/pickup/AuthorizationListItem.spec.ts -t \"AuthorizationListItem\"",
-        "notes": ""
+        "notes": "M3Button 沒有 danger 變體，「取消授權」的 error 色以本元件 scoped class `.auth__cancel` 覆寫，spec 以 ?raw 斷言該規則。"
       },
       "review": {
         "status": "pending",
@@ -2565,7 +2565,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/AttendanceView.vue",
       "source_ref": "FE:src/parent/views/AttendanceView.vue::prevMonth",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "FRONTEND-003",
@@ -2582,7 +2582,7 @@
         "PARENT-194"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "規格未定義的邊界：小孩清單載入完成卻沒有任何小孩（`children.selectedId` 為 null 且 `loaded`）時，頁面顯示 ParentEmptyState（calendar_month、「目前沒有出勤紀錄」）而不打 API；小孩清單載入失敗則沿用 error 狀態的重試（重試改抓小孩清單）。此文案是實作者依 ExamsView 慣例補的，若使用者另有裁定請調整。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/views/AttendanceView.spec.ts",
@@ -2601,7 +2601,7 @@
           "AttendanceView counted day without record shows unrecorded：days 的 10/01 為 {is_service_day:true, in_stats:true, status:null} → 點 10/01 → 明細含「未登記」與「老師沒有登記這天的到班情形」；10/23 為 {is_service_day:true, in_stats:false, status:null} → 點 10/23 → 含「這天沒有出勤紀錄」"
         ],
         "run": "just web-test src/parent/views/AttendanceView.spec.ts -t \"AttendanceView\"",
-        "notes": ""
+        "notes": "red_case「含 '上課日 21'」以 `.att-stat` 的 dt / dd 文字組成「上課日 21」斷言（dl 的 textContent 沒有空格）；系統時間以 `vi.useFakeTimers({ toFake: ['Date'] })` + `vi.setSystemTime('2026-10-02T01:00:00Z')` 固定。"
       },
       "review": {
         "status": "pending",
