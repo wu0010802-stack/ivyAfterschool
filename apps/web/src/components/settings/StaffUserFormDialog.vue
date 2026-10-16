@@ -381,7 +381,7 @@ const title = computed(() => (props.user ? `編輯員工：${props.user.display_
           class="staff-form__adjust-head"
           data-test="adjust-head"
           :disabled="!role"
-          :aria-expanded="String(isAdjustOpen)"
+          :aria-expanded="isAdjustOpen"
           @click="adjustOpen = !adjustOpen"
         >
           <el-icon>
