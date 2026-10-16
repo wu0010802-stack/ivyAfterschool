@@ -773,6 +773,33 @@ def test_admin_homework_item_update_404(
     assert_error(resp, 404, "homework_item_not_found")
 
 
+# BACKEND-566：homework.window 只限制新增；window 外既有項目的修改不受限（domain_spec M2）
+_OUT_OF_WINDOW = date(2026, 7, 1)  # 今天 2026-10-14、past_days 30 → 最早 2026-09-14
+
+
+@pytest.mark.clock("2026-10-14T10:00:00+08:00")
+def test_admin_homework_item_update_outside_window(
+    staff_client: StaffClientFactory, db_session: Session
+) -> None:
+    ming = make_student(db_session)
+    item = make_homework_item(db_session, ming, service_date=_OUT_OF_WINDOW, title="數學習作")
+    make_homework_progress(db_session, ming, service_date=_OUT_OF_WINDOW)
+    _set_window(db_session, past_days=30, future_days=7)
+    client, _ = staff_client(permissions=["homework:write"])
+
+    resp = client.patch(_item_url(item.id), json={"status": "done"})
+
+    assert resp.status_code == 200
+    assert resp.json()["item"]["status"] == "done"
+    assert (resp.json()["progress"]["service_date"], resp.json()["progress"]["overall_status"]) == (
+        "2026-07-01",
+        "done",
+    )
+    [row] = _items_of(db_session, ming.id)
+    assert row.status == "done"
+    assert _progress_rows(db_session, ming.id)[_OUT_OF_WINDOW].overall_status == "done"
+
+
 # --- BACKEND-389：DELETE /api/admin/homework/items/{item_id} -------------------------------------
 
 
@@ -837,3 +864,27 @@ def test_admin_homework_item_delete_404(
     client, _ = staff_client(permissions=["homework:write"])
 
     assert_error(client.delete(_item_url(uuid4())), 404, "homework_item_not_found")
+
+
+@pytest.mark.clock("2026-10-14T10:00:00+08:00")
+def test_admin_homework_item_delete_outside_window(
+    staff_client: StaffClientFactory, db_session: Session
+) -> None:
+    """BACKEND-566：window 外既有項目的刪除不受 homework.window 限制。"""
+    ming = make_student(db_session)
+    done = make_homework_item(db_session, ming, service_date=_OUT_OF_WINDOW, status="done")
+    todo = make_homework_item(db_session, ming, service_date=_OUT_OF_WINDOW, title="國語生字")
+    make_homework_progress(
+        db_session, ming, service_date=_OUT_OF_WINDOW, overall_status="in_progress"
+    )
+    _set_window(db_session, past_days=30, future_days=7)
+    client, _ = staff_client(permissions=["homework:write"])
+
+    resp = client.delete(_item_url(todo.id))
+
+    assert resp.status_code == 200
+    assert resp.json()["item"] is None
+    assert resp.json()["progress"]["overall_status"] == "done"
+    # 已 commit：重讀 DB，只剩 done 那筆，該日進度重算為 done
+    assert [i.id for i in _items_of(db_session, ming.id)] == [done.id]
+    assert _progress_rows(db_session, ming.id)[_OUT_OF_WINDOW].overall_status == "done"
