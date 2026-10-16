@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 455,
-  "last_updated": "2026-10-16T15:28:18Z",
+  "version": 456,
+  "last_updated": "2026-10-16T15:30:08Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15636,7 +15636,7 @@
         "red_cases": [
           "test_verify_code_mismatch_broadcasts_update：錯碼 '000000' 並 commit → admin:pickup 頻道收到 1 則 type 'pickup.authorization_updated'，data.id 為該授權 id、data.status 'active'；student 頻道沒有任何訊息",
           "test_verify_code_lock_broadcasts_update：連續 5 次錯碼（每次 commit）→ admin:pickup 共收到 5 則 'pickup.authorization_updated'，最後一則對應的授權在 DB code_locked_at 不為 null",
-          "test_verify_code_after_lock_does_not_broadcast：已鎖定的授權再送任意碼並 commit → outcome.locked True，admin:pickup 沒有新增 'pickup.authorization_updated'",
+          "test_verify_code_after_lock_does_not_broadcast：已鎖定的授權（code_attempts=5）再送任意碼 → load_verifiable_authorization 拋 409 pickup_code_locked（BACKEND-426 既有行為，不回 outcome）；另以 monkeypatch 讓載入放行已鎖定的授權（模擬漏鎖），WHERE 守衛沒有更新任何列 → 同樣 409 pickup_code_locked；兩者 commit 後 admin:pickup 都沒有新增 'pickup.authorization_updated'，code_attempts 仍為 5",
           "test_verify_code_success_broadcasts_once：正確碼核銷並 commit → admin:pickup 的 'pickup.authorization_updated' 只有 1 則（不因本次改寫重複推播）"
         ],
         "run": "just test-int apps/api/tests/integration/services/pickup/test_pickup_authorizations.py -k \"test_verify_code_\"",
