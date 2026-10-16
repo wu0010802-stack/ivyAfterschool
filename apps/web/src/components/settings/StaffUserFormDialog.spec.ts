@@ -182,6 +182,16 @@ async function submit(): Promise<void> {
   await settle()
 }
 
+async function clickFooter(text: string): Promise<void> {
+  const btn = dialog()
+    .findAll('.el-dialog__footer button')
+    .find((b) => b.text() === text)
+  if (!btn) throw new Error(`找不到「${text}」`)
+  await btn.trigger('click')
+  await settle()
+  await settle()
+}
+
 function body(method: 'post' | 'patch', index = 0): Record<string, unknown> {
   const call = mock.history[method][index]
   if (!call) throw new Error(`沒有第 ${index + 1} 個 ${method}`)
@@ -411,6 +421,30 @@ describe('StaffUserFormDialog', () => {
     await settleErrors()
 
     expect(formItem('電話').find('.el-form-item__error').text()).toBe('電話最多 20 字')
+  })
+
+  it('StaffUserFormDialog confirms discard when closing with changes', async () => {
+    const clean = await mountDialog({ user: makeUser() })
+    await clickFooter('取消')
+    expect(clean.emitted('update:modelValue')).toEqual([[false]])
+    clean.unmount()
+    document.body.innerHTML = ''
+
+    const wrapper = await mountDialog({ user: makeUser() })
+    await fill('姓名', '陳老師')
+    await clickFooter('取消')
+    expect(document.body.textContent).toContain('尚未儲存的變更將會遺失')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+
+    const box = Array.from(document.body.querySelectorAll<HTMLElement>('.el-message-box')).at(-1)
+    const discard = Array.from(box?.querySelectorAll<HTMLButtonElement>('button') ?? []).find(
+      (b) => b.textContent?.trim() === '放棄變更',
+    )
+    if (!discard) throw new Error('找不到「放棄變更」')
+    discard.click()
+    await settle()
+    await settle()
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
   })
 
   it('StaffUserFormDialog warns about ungrantable permissions', async () => {
