@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 304,
-  "last_updated": "2026-10-16T15:46:19Z",
+  "version": 305,
+  "last_updated": "2026-10-16T15:48:28Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4966,7 +4966,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/PickupCompleteDialog.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
@@ -4974,7 +4974,7 @@
         "FRONTEND-040"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f2 打回】選取的代理授權失效後，送出會變成以授權 id 當 guardian_id 的監護人交付：choice 仍是 a:{id}，但 studentAuthorizations 已不含它（authorizations 由 board 依 ws 重抓更新，例如家長取消代理授權後 effective_status 變 cancelled），chosenAuthorization 變 null、送出鈕從「前往核驗」變成可按的「完成交付」、畫面上沒有任何選項被選；按下後 bodyOf 把非 override 的 choice 一律當監護人，送出 POST /admin/pickup/requests/{id}/complete {method:\"guardian\", guardian_id:\"pa1\"}。反例（reviewer 以 spec 探針實測）：監護人 王大明、王阿嬤皆可接送 + active 授權 pa1 → 選「陳阿姨」→ setProps authorizations 改為 pa1 cancelled → 送出鈕「完成交付」且未停用 → 送出 body {method:\"guardian\",guardian_id:\"pa1\"}；後端回 422 invalid_guardian，使用者看到「監護人資料已變更，請重新選擇」。驗收：選取的授權不再出現在代理組時清掉選擇（送出鈕回到停用、文字「完成交付」），必要時提示授權已失效；bodyOf 只把 g: 開頭的選擇當監護人，其他未知選擇不送出；補對應測試（上述情境不送任何 complete 請求、不 emit verify-authorization）。",
+      "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/pickup/PickupCompleteDialog.spec.ts",
@@ -5001,9 +5001,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f2",
-        "notes": "打回 1 項（見 risk_notes【review-r10-f2 打回】）：選取的代理授權失效後，送出變成以授權 id 當 guardian_id 的監護人交付。其餘檢查通過：red_cases 10 條皆有同名測試（另有骨架、沒有監護人資料、其他錯誤、重開重載、觸控尺寸 5 條），tdd.run 15 綠；e3f2a14 / 088c2a5（紅，PickupCompleteDialog.vue 尚不存在）→ 10d0e61 → 3ecc6b5 → 0402e62。088c2a5 不是放寬：主管確認交付選項的說明（核可稿原文「沒有可接送的監護人或代理授權時，由主管確認後交付」）本身含「沒有可接送的監護人」，原本的部分字串否定斷言在 canOverride 時必然失敗；改為完整提示文案加上沒有 warning alert，仍驗得出警告不出現。0402e62 的實作細節補述與核可稿完成交付 dialog 兩條 decisions 一致。突變 18 項（含修正後重做的載入失敗兩項）中 15 項轉紅；仍綠的：關閉後才回來的監護人舊回應寫入（description 有寫、沒有測試）、dirty 恆為 false（關閉前確認未測）、載入中不停用送出（載入時選擇必為未選，等價）。Chromium 1024×768 實測（scratchpad 的 Vite harness，以虛擬模組載入 HEAD 版本，用完已關）：寬 560、標題「完成交付：王小明」、三組小標「監護人 / 代理接送（今日授權）/ 其他」、每個選項卡 528×56、唯一可接送者預選、主管確認交付顯示備註與「會記錄於稽核紀錄」、選代理後送出鈕「前往核驗」。web-lint 乾淨；web-typecheck 唯一錯誤在他人進行中的 parent ChildHubView.vue。"
+        "notes": "複審通過（只核對 review-r10-f2 的打回項：失效的代理選擇被當成監護人送出）。630ea12（紅，當時沒有清除選擇的 watch、bodyOf 把非 override 一律當監護人）→ 6752ee7 → 07b0a96（補重新開啟後才回來的舊回應測試）→ ebfb558。修法：選取的授權不在代理組時清掉選擇、送出鈕停用並回到「完成交付」、選項上方 error alert「代理授權已失效，請重新選擇」，授權仍在清單則保留選擇；bodyOf 只把 g: 開頭當監護人，失效授權或未知選擇不送 complete、不 emit verify-authorization。reviewer 原探針 probe198 重跑：授權改為 cancelled 後送出鈕「完成交付」且停用、沒有任何 complete 請求、沒有 verify-authorization（打回時送出 {method:guardian, guardian_id:pa1}）。tdd.run 19 綠，新增 4 條 red_case 皆有同名測試；「不得送出」的測試繞過停用鈕直接觸發 FormDialog submit，驗的是元件本身。突變 7 項（不清選擇、授權仍在也清、不顯示失效提示、bodyOf 回到舊寫法、成功舊回應寫入、失敗舊回應寫入、關閉時不使在途載入失效）皆轉紅，還原後 git diff 乾淨；上一輪記的「關閉後才回來的舊回應」測試缺口已由 07b0a96 補上。description 的實作細節段已改寫為最終行為。web-lint 乾淨；web-typecheck 唯一錯誤在他人進行中的 PickupAuthorizationsView.vue。殘留：dirty 關閉確認仍未測（FormDialog 既有行為）；「代理授權已失效」的提示在改選其他選項後仍保留到下一次送出（不影響送出內容）。"
       }
     },
     {
