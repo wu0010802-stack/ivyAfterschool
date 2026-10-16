@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 269,
-  "last_updated": "2026-10-16T14:56:57Z",
+  "version": 270,
+  "last_updated": "2026-10-16T14:56:59Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4701,7 +4701,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/pickup/pos/StudentGrid.vue",
       "source_ref": "FE:src/components/dismissal/pos/DismissalPosStudentGrid.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-183",
@@ -4725,9 +4725,9 @@
         "notes": "規格 75ac600（補 rosterClasses / query 兩個 props：RosterStudent 沒有班級欄位，groupByClass 無從分組；red_case 的空狀態依 query 判斷但原 props 沒有 query；同步 FRONTEND-190 的一行接線）、紅燈測試 f6c741f（修正 ff7a594：多張卡的 ⋮ 選單都留在 body，改以觸發鈕的 aria-controls 找對應選單）、實作 a250e79。除 4 條 red_cases 外另有 3 條：查不到班級或班級為 null 的學生歸「未分班」、staging / canOperate 正確傳給卡片（倒數中卡片不可派發、唯讀者無 ⋮ 但可定位請求）、卡片最小寬 148px 的 auto-fill grid（?raw 原始碼斷言）。標題列、搜尋框與載入骨架依 190 description 由頁面負責，不在本元件。突變自檢：不依權重排序、同權重不依學號、空組也顯示、查不到班級的學生被丟掉、staging 不傳、create-request 不轉發、空狀態不看 query、空白 query 視為有搜尋 各使對應測試轉紅。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f7",
+        "notes": "review-r10-f7 通過。tdd.run 7/7 綠，4 條 red_case 皆以同名測試選到；規格 75ac600 → 紅燈 f6c741f（StudentGrid.vue 不存在全紅）→ 測試修正 ff7a594 → 實作 a250e79 → in_review 0ede2b9。ff7a594 不是放寬：原寫法在 body 取第一個「代建接送請求…」，多張卡的 ⋮ 選單都留在 body 時可能點到別張卡（S1002）的選單；改以觸發鈕 aria-controls 找這張卡自己的選單，並多斷言選單項目存在，斷言更嚴。規格補 rosterClasses / query 合理：RosterStudent 沒有班級欄位，studentsForRail 為扁平結果，groupByClass 無從分組；空狀態依搜尋與否需要 query；190（pending）只同步 StudentGrid 接線一行；標題列、搜尋框與載入骨架依 190 description 由頁面負責。實作逐條相符：useStudentPosStatus → sortWeight 再學號；分組依 rosterClasses 順序、組標題人數為該組顯示人數、空組不顯示、null 或查不到班級歸「未分班」；staging / canOperate 傳給 StudentCard；三種事件轉發；三種空狀態（空白 query 視為沒有搜尋）。稿 decisions 中欄（第 6 條）、第 23 條空狀態、第 25 條觸控相符。真實 Chromium 1024×768 實測（三欄 148 / 彈性 / 320，中欄左右 12px）：含 64px 收合側欄時中欄 grid 寬 468px 一列 3 張、卡寬 149.3px；不含側欄 532px 一列 3 張、卡寬 170.7px；卡高 ≥ 120px、⋮ 44×44、組標題與組內排序正確。突變 7 項（不依權重排序、組順序反轉、組標題人數改用名冊人數、查不到班級的學生被丟掉、quick-dispatch 不轉發、空狀態不看 query、兩種空狀態文字對調）皆轉紅，還原後 diff 乾淨。web-lint 乾淨；web-typecheck 本檔無錯（第一次在 load 34 下逾時，第二次只因他人暫存檔 components/leaves/__r10d_harness__ 執行中被刪而報 TS6053）。殘留：(1)「組標題人數為顯示人數」只由未分班測試把關（分組 red_case 的班級內沒有被過濾掉的學生）。(2) 含 64px 收合側欄時 3 欄只餘 4px（需 464px、實得 468px）；桌機若是非覆蓋式捲軸（約 15px）會掉成 2 欄，屬 FRONTEND-190 頁面版面，平板為覆蓋式捲軸不受影響。(3) 學號同權重排序用字碼比較（稿為 localeCompare），英數大寫學號結果相同。"
       }
     },
     {
