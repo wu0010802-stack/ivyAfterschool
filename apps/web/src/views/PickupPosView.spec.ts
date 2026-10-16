@@ -540,7 +540,7 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     tick()
     await button(wrapper, '代建接送請求')?.trigger('click')
     await settle()
-    const dialog = (): VueWrapper => wrapper.findComponent(PickupCreateDialog) as VueWrapper
+    const dialog = () => wrapper.findComponent(PickupCreateDialog)
     expect(dialog().props('classFilter')).toEqual({ id: 'c1', name: '低年級A班' })
     expect(dialog().props('presetStudent')).toBeUndefined()
 
