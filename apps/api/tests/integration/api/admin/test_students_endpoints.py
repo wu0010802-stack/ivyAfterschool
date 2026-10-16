@@ -17,20 +17,25 @@ BACKEND-166：POST /api/admin/students/import（students:write；multipart 經 r
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+import asyncio
+import json
+from collections.abc import Callable, Coroutine, Sequence
 from datetime import UTC, date, datetime
 from io import BytesIO
+from typing import Any, cast
 from urllib.parse import unquote
 from uuid import uuid4
 
 import httpx2
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 from openpyxl import Workbook, load_workbook
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api.admin import students as students_api
 from app.core.crypto import decrypt_bytes, encrypt_bytes
 from app.core.uploads import XLSX_MAX_BYTES
 from app.models.account import StaffUser
@@ -38,6 +43,7 @@ from app.models.audit import AuditLog
 from app.models.parents import ParentAccount
 from app.models.pickup import PickupRequest
 from app.models.students import Student
+from app.schemas.students import PromoteGradeIn
 from app.services import student_import_service
 from app.services.student_import_service import IMPORT_COLUMNS, ImportPreview
 from app.services.students.id_number import id_number_hmac
@@ -1015,6 +1021,38 @@ def test_admin_promote_422(
         {},
     ):
         assert_error(client.post(_PROMOTE_URL, json=body), 422, "validation_error")
+    # 執行缺 expected_total：錯誤指向該欄位（與 handler 的明確檢查同形狀，BACKEND-568）
+    missing = client.post(_PROMOTE_URL, json={"from_academic_year": 114, "dry_run": False})
+    assert [d["loc"] for d in missing.json()["error"]["details"]] == [["body", "expected_total"]]
+    assert _grades(db_session, first) == [(1, "active", None)]
+    assert _promote_audits(db_session, 114) == []
+
+
+def test_admin_promote_missing_expected_total_without_schema_validator(
+    app: FastAPI, db_session: Session, fake_clock: FakeClock
+) -> None:
+    """BACKEND-568：schema 驗證器被移除時（以 model_construct 繞過），handler 仍回 422 而非 500。"""
+    first, _, _ = _three_grades(db_session)
+    body = PromoteGradeIn.model_construct(
+        from_academic_year=114, dry_run=False, expected_total=None, withdrawn_on=None
+    )
+
+    with pytest.raises(RequestValidationError) as excinfo:
+        students_api.promote_grade(
+            body,
+            cast(Any, None),  # 檢查在讀取 staff / meta 之前
+            db_session,
+            cast(Any, None),
+            fake_clock,
+        )
+    handler = app.exception_handlers[RequestValidationError]
+    pending = handler(Request({"type": "http", "headers": []}), excinfo.value)
+    resp = asyncio.run(cast(Coroutine[Any, Any, Response], pending))
+
+    assert resp.status_code == 422
+    payload = json.loads(bytes(resp.body))
+    assert payload["error"]["code"] == "validation_error"
+    assert payload["error"]["details"][0]["loc"] == ["body", "expected_total"]
     assert _grades(db_session, first) == [(1, "active", None)]
     assert _promote_audits(db_session, 114) == []
 
