@@ -1,4 +1,4 @@
-"""BACKEND-429：GET /api/admin/pickup/queue。
+"""BACKEND-429：GET /api/admin/pickup/queue（BACKEND-563：附 latest_expected_arrival）。
 BACKEND-435：GET /api/admin/pickup/roster（POS 學生卡）。
 BACKEND-436：GET /api/admin/pickup/authorizations（代理接送核驗清單）。
 BACKEND-430 / 432 / 434：POST /api/admin/pickup/requests、/{id}/acknowledge、/{id}/cancel。
@@ -98,7 +98,20 @@ def test_admin_pickup_queue_success(staff_client: StaffClientFactory, db_session
     assert body["open"][1]["needs_reply"] is True
     assert [c["id"] for c in body["closed"]] == [str(completed.id)]
     assert body["counts"] == {"pending": 1, "acknowledged": 0, "arrived": 1, "needs_reply": 1}
-    assert set(body) == {"date", "open", "closed", "counts"}
+    assert set(body) == {"date", "open", "closed", "counts", "latest_expected_arrival"}
+
+
+def test_admin_pickup_queue_latest_expected_arrival(
+    staff_client: StaffClientFactory,
+) -> None:
+    client, _ = staff_client(permissions=["pickup:read"])
+
+    resp = client.get(f"{_URL}/queue")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["latest_expected_arrival"] == "19:00"
+    assert set(body) == {"date", "open", "closed", "counts", "latest_expected_arrival"}
 
 
 def test_admin_pickup_queue_422(

@@ -1,6 +1,6 @@
 """app/services/pickup/requests.py（接送請求查詢與回覆同步）。
 
-- BACKEND-414：get_queue（接送佇列）。
+- BACKEND-414：get_queue（接送佇列；BACKEND-563 附 pickup.window 的 latest_expected_arrival）。
 - BACKEND-415：get_roster（接送 POS 學生卡）。
 - BACKEND-416：list_today_requests_for_parent（家長端今日請求）。
 - BACKEND-413：sync_open_request_reply（作業完成或 ETA 變動時同步回覆）。
@@ -225,6 +225,39 @@ def test_pickup_queue_other_date(db_session: Session, clock: FakeClock) -> None:
     assert [o.id for o in queue.open] == [r["yesterday"].id]
     assert queue.closed == []
     assert queue.counts.pending == 1
+
+
+# --- BACKEND-563 get_queue 附 latest_expected_arrival ---
+
+
+def test_pickup_queue_latest_expected_arrival_default(
+    db_session: Session, clock: FakeClock
+) -> None:
+    queue = get_queue(db_session, PickupQueueQuery(), clock=clock)
+
+    assert queue.latest_expected_arrival == "19:00"
+
+
+def test_pickup_queue_latest_expected_arrival_follows_setting(
+    db_session: Session, clock: FakeClock
+) -> None:
+    """同一交易內改 pickup.window（交易結束 rollback，不動種子值）；值不隨 date 參數變化。"""
+    db_session.execute(
+        text(
+            "update public.system_settings "
+            "set value = jsonb_set(value, '{latest_expected_arrival}', '\"20:30\"'::jsonb) "
+            "where key = 'pickup.window'"
+        )
+    )
+    clear_settings_cache()
+
+    today = get_queue(db_session, PickupQueueQuery(), clock=clock)
+    yesterday = get_queue(
+        db_session, PickupQueueQuery(date=_TODAY - timedelta(days=1)), clock=clock
+    )
+
+    assert today.latest_expected_arrival == "20:30"
+    assert yesterday.latest_expected_arrival == "20:30"
 
 
 # --- BACKEND-415 get_roster ---
