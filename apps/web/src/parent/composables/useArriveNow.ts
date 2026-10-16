@@ -5,6 +5,8 @@
 //
 // 頁面以 ConfirmDialog 呈現 confirmOpen（標題「確認已抵達安親班？」、說明「老師會收到通知並準備帶孩子出來」、
 // default slot 放「下次不再提醒」勾選綁 skipNextTime）。busy 期間再次 request / confirm 一律忽略（防連點）。
+// options.onStale：送出遇到 invalid_pickup_status / pickup_request_not_found 時（snackbar 之後）呼叫，
+// 讓首頁重抓今日狀態（PARENT-199）；onStale 執行期間仍維持 busy。
 import { readonly, ref, type Ref } from 'vue'
 import { isApiError } from '@/shared/types/api'
 import type { ParentPickupRequest } from '../api/pickupRequests'
@@ -22,6 +24,13 @@ const FIXED_ERRORS: Record<string, string> = {
 }
 /** 這些錯誤直接顯示後端的 error.message */
 const BACKEND_MESSAGE_CODES = new Set(['pickup_window_closed', 'student_not_available', 'not_service_day', 'student_not_active'])
+/** 這些錯誤代表畫面上的接送狀態已過期：顯示提示後呼叫 onStale 讓呼叫端重抓 */
+const STALE_CODES = new Set(['invalid_pickup_status', 'pickup_request_not_found'])
+
+export interface ArriveNowOptions {
+  /** 送出遇到 STALE_CODES 時呼叫（snackbar 之後）；拋錯時吞掉並以 console.error 記錄 */
+  onStale?: () => void | Promise<void>
+}
 
 export interface ArriveNow {
   confirmOpen: Ref<boolean>
@@ -60,7 +69,7 @@ function errorMessage(error: unknown): string {
   return BACKEND_MESSAGE_CODES.has(error.code) ? error.message : FALLBACK_ERROR
 }
 
-export function useArriveNow(): ArriveNow {
+export function useArriveNow(options: ArriveNowOptions = {}): ArriveNow {
   const pickupRequests = usePickupRequestsStore()
   const snackbar = useSnackbarStore()
 
@@ -85,6 +94,13 @@ export function useArriveNow(): ArriveNow {
       return result
     } catch (error) {
       snackbar.show(errorMessage(error), { tone: 'error' })
+      if (options.onStale && isApiError(error) && STALE_CODES.has(error.code)) {
+        try {
+          await options.onStale()
+        } catch (staleError) {
+          console.error('[useArriveNow] onStale 失敗', staleError)
+        }
+      }
       return null
     } finally {
       busy.value = false

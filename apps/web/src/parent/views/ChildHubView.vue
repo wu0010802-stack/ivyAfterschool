@@ -2,7 +2,8 @@
 /**
  * 家長端首頁（路由 `/`）：小孩身分卡 → 今日狀態卡 → 常用功能。
  * 以選中小孩為操作對象（參考 ivy ChildHubView）；今日狀態只打 /children/{id}/today 一支，之後由 ws 原地更新（PARENT-052）。
- * 「我已經到了 / 我到了」走 PARENT-105 useArriveNow；成功的回應以 applyPickup 立即套到卡片，留在首頁不導頁。
+ * 「我已經到了 / 我到了」走 PARENT-105 useArriveNow；成功的回應以 applyPickup 立即套到卡片，留在首頁不導頁；
+ * 遇到接送狀態已變更 / 請求不存在時由 onStale 呼叫 refresh 重抓今日狀態（保留卡片、不顯示骨架，PARENT-199）。
  */
 import { computed, onMounted, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
@@ -40,7 +41,9 @@ const children = useChildrenStore()
 const activeChildId = computed(() => (children.selectedChild ? children.selectedId : null))
 
 const { today, loading, error, refresh, applyPickup } = useTodayStatus(activeChildId)
-const { confirmOpen, skipNextTime, lastResult, request: requestArrive, confirm: confirmArrive, dismiss } = useArriveNow()
+const { confirmOpen, skipNextTime, lastResult, request: requestArrive, confirm: confirmArrive, dismiss } = useArriveNow({
+  onStale: refresh,
+})
 
 // 有舊資料時照常顯示（清單重抓失敗不蓋掉畫面）；沒有資料才看載入 / 錯誤 / 空清單
 const childrenState = computed<'loading' | 'error' | 'empty' | 'ready'>(() => {
