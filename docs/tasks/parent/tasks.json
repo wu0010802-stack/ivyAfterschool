@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 160,
-  "last_updated": "2026-10-16T12:58:44Z",
+  "version": 161,
+  "last_updated": "2026-10-16T12:59:22Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3186,11 +3186,11 @@
     {
       "id": "PARENT-172",
       "title": "實作 parent/stores/notifications.ts：收件匣、未讀數與 ws 即時新增",
-      "description": "建立 `apps/web/src/parent/stores/notifications.ts`（Pinia setup store，id `parentNotifications`）：\n- state：`items: Notification[]`、`total`、`unreadCount`、`page`、`unreadOnly`、`loaded`、`loading`、`error: string | null`。\n- actions：`load({ unreadOnly = false } = {})`：重置為第 1 頁（PARENT-170），以序號丟棄過期回應，失敗 `error = '通知載入失敗'`；`loadMore()`：`items.length < total` 時取下一頁附加（以 id 去重）；`refreshUnread()`：以 `page_size: 1` 取 `unread_count` 更新 `unreadCount`（不動 items）；`markRead(id)`：呼叫 API，成功後該筆 `read_at` 更新、原本未讀才 `unreadCount - 1`（不低於 0），unreadOnly 模式下把該筆移出清單；`markAllRead()`：API 成功後所有 items 設 `read_at`、`unreadCount = 0`；`clear()`。\n- ws：向 PARENT-173 `parentWs.on('notification.created', n => ...)` 註冊：id 不存在才插到最前、`total + 1`、`unreadCount + 1`。`parentWs.registerPoller(refreshUnread)`。\n\n新寫功能。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/stores/notifications.ts`（Pinia setup store，id `parentNotifications`）：\n- state：`items: Notification[]`、`total`、`unreadCount`、`page`、`unreadOnly`、`loaded`、`loading`、`error: string | null`。\n- actions：`load({ unreadOnly = false } = {})`：重置為第 1 頁（PARENT-170），以序號丟棄過期回應，失敗 `error = '通知載入失敗'`；`loadMore()`：`items.length < total` 時取下一頁附加（以 id 去重）；`refreshUnread()`：以 `page_size: 1` 取 `unread_count` 更新 `unreadCount`（不動 items）；伺服器回來的未讀數（load / loadMore / refreshUnread）依發出順序取號，只套用比已套用者更新的結果（例如 refreshUnread 早於 load 發出、晚於 load 回來時不蓋掉 load 的 unread_count）；`markRead(id)`：呼叫 API，成功後該筆 `read_at` 更新、原本未讀才 `unreadCount - 1`（不低於 0），unreadOnly 模式下把該筆移出清單；`markAllRead()`：API 成功後所有 items 設 `read_at`、`unreadCount = 0`；`clear()`（登出 / 換人）：清空 state，並讓在途請求全部失效——clear 之前發出的 load / loadMore / refreshUnread / markRead / markAllRead 晚到的回應都不改 items / total / unreadCount / page / loaded，呼叫端的 promise 照常 resolve / reject；clear 之後新發出的請求照常寫回。\n- ws：向 PARENT-173 `parentWs.on('notification.created', n => ...)` 註冊：id 不存在才插到最前、`total + 1`、`unreadCount + 1`。`parentWs.registerPoller(refreshUnread)`。\n\n新寫功能。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/notifications.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-170",
@@ -3210,7 +3210,13 @@
           "notificationsStore markRead decrements once：markRead('n1')（未讀）→ POST '/parent/notifications/n1/read'，n1.read_at 有值、unreadCount 0；再 markRead('n2')（已讀）→ unreadCount 仍為 0",
           "notificationsStore ws prepends new：parentWs 派發 {type:'notification.created', data:{id:'n3', title:'作業已完成', read_at:null}} → items[0].id === 'n3'、unreadCount +1、total +1；同 id 再派發一次 → 數量不變",
           "notificationsStore markAllRead：POST read-all 回 {updated:2} → 所有 items.read_at 非 null、unreadCount 0",
-          "notificationsStore loadMore dedupes：第一頁 20 筆 total 21，第二頁回含第 20 筆重複 + 1 筆新 → items.length 21"
+          "notificationsStore loadMore dedupes：第一頁 20 筆 total 21，第二頁回含第 20 筆重複 + 1 筆新 → items.length 21",
+          "notificationsStore clear invalidates an in-flight load：load() 在途時 clear()，回應 {items:[n1,n2], total:2, unread_count:1} 晚到 → items []、total 0、unreadCount 0、loaded false、loading false",
+          "notificationsStore clear invalidates an in-flight loadMore：已載入 [n1]（total 2），loadMore() 在途時 clear()，回應晚到 → items []、total 0、unreadCount 0、page 1",
+          "notificationsStore clear invalidates an in-flight refreshUnread：refreshUnread() 在途時 clear()，回應 unread_count 5 晚到 → unreadCount 0；之後新的 refreshUnread 回 unread_count 3 → unreadCount 3",
+          "notificationsStore refreshUnread does not overwrite a newer load result：refreshUnread() 先發出、load() 後發出且先回 unread_count 1 → refreshUnread 晚到 unread_count 5 → unreadCount 仍為 1、items 不變",
+          "notificationsStore clear invalidates an in-flight markAllRead：A 已載入 [a1]，markAllRead() 在途 → clear() → B load 回 [b1, b2] 未讀、unread_count 2 → A 的回應到達後 markAllRead resolve，B 的 read_at 皆為 null、unreadCount 2",
+          "notificationsStore clear invalidates an in-flight markRead：A 已載入 [a1]，markRead('a1') 在途 → clear() → B load 回 [a1, b1] 未讀、unread_count 2 → A 的回應（a1 已讀）到達後 markRead resolve，B 清單 read_at 皆為 null、unreadCount 2"
         ],
         "run": "just web-test src/parent/stores/notifications.spec.ts -t \"notificationsStore\"",
         "notes": ""
