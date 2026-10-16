@@ -40,7 +40,7 @@ export const VIEW_LOADERS: Record<ViewName, () => Promise<Component>> = {
   PickupAuthorizationsView: placeholder,
   ExamsView: placeholder,
   ExamDetailView: placeholder,
-  SystemSettingsView: placeholder,
+  SystemSettingsView: () => import('@/views/settings/SystemSettingsView.vue'),
   ReferenceDataView: placeholder,
   StaffAccountsView: placeholder,
   RolesView: placeholder,
