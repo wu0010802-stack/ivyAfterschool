@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 135,
-  "last_updated": "2026-10-16T05:04:12Z",
+  "version": 136,
+  "last_updated": "2026-10-16T05:09:13Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1878,7 +1878,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/parent/api/pickupAuthorizations.ts",
       "source_ref": "FE:src/parent/api/pickup.ts::regeneratePickupCode",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "BACKEND-447",
@@ -3588,7 +3588,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10a",
       "depends_on": [
         "PARENT-130",
@@ -3596,7 +3596,7 @@
         "BACKEND-561"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "`docs/mockups/index.html` 的 tasks 欄仍只列 PARENT-131（不在本 task 可改的檔案清單內，設計稿關卡以 `grep -l PARENT-194 docs/mockups/*.html` 已可查到 parent-component-attendance-calendar.html；index 的一行待協調者補）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.spec.ts",
@@ -3609,7 +3609,7 @@
           "attendanceApi passes in_stats through（apps/web/src/parent/api/attendance.spec.ts）：mock 回應 days[0].in_stats true → getChildAttendance 回傳的 days[0].in_stats === true"
         ],
         "run": "just web-test src/parent/components/attendance/AttendanceCalendar.spec.ts -t \"AttendanceCalendar\" && just web-test src/parent/api/attendance.spec.ts -t \"attendanceApi\"",
-        "notes": "既有 AttendanceCalendar.spec.ts 的 day() 測資 helper 要補 in_stats 預設值（依日期與 today 推算），既有案例的期望值不變。"
+        "notes": "既有 AttendanceCalendar.spec.ts 的 day() 測資 helper 要補 in_stats 預設值（依日期與 today 推算），既有案例的期望值不變。\nattendanceApi 的 in_stats 案例是 passthrough：執行期在實作前就綠，紅燈只在 `just web-typecheck`（fixture 多出 `in_stats` 屬性的 excess property 錯誤），實作加上型別欄位後轉綠。"
       },
       "review": {
         "status": "pending",
