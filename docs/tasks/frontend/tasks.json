@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 249,
-  "last_updated": "2026-10-16T14:20:10Z",
+  "version": 250,
+  "last_updated": "2026-10-16T14:24:53Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4396,7 +4396,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useDismissalPosQueue.ts",
       "source_ref": "FE:src/composables/useDismissalPosQueue.ts::useDismissalPosQueue",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
@@ -4404,7 +4404,7 @@
         "FRONTEND-009"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "【review-r10-f6 打回】(1) red_case「useDismissalPosQueue sorts active and hides superseded closed」沒有釘住 description「arrived 在前（arrived_at 早者先）」：測試裡 arrived 那筆（rB）的 expected_arrival_at 是 17:00，早於 pending 的 17:30，所以拿掉 compareActive 的 arrived 優先那一行（突變實測）測試照綠，整段改成只依 expected_arrival_at / created_at 排序也會得到同樣的 rB、rA、rC。要改成 arrived 那筆的 expected_arrival_at 為 null 或晚於其他筆（例如 18:00），並加第二筆 arrived（arrived_at 較早者排前）釘住「早者先」。(2) description「queue.open 出現同 id 後移除本地版本」沒有測試：拿掉 watch 的移除（本地樂觀版本永遠保留）11 條測試照綠，因為 items 本來就以 knownIds 過濾重複，red_case「r9 只出現 1 次」驗不到移除。後果可觀測：本地樂觀 r9 被 ws 追上後、家長取消使 r9 移到 closed，hasOpenRequest 仍以本地保留的 pending 版本判斷，addToQueue(同一學生) 永遠回 false，POS 無法再替該生代建。補測試：r9 先出現在 queue.open、再移到 closed（cancelled）→ addToQueue(s1) 回 true。",
+      "risk_notes": "取消成功只移除本地樂觀版本並回 boolean（丟掉後端回傳的 PickupRequest），外部 queue 要等 ws（斷線時 15 秒輪詢）才把該請求移到已結束；FRONTEND-189 / 190 需自行處理（例如把回傳交給 usePickupBoard.applyRequest）。倒數到 0 已送出 POST、回應前取消 staging 仍會建立請求，成功後卡片以 active 重新出現（ivy 同此行為）。active 排序依本 description 明文規則（pending / acknowledged 合併比 expected_arrival_at、arrived 依 arrived_at），與 BACKEND-414 的 _open_key（arrived → pending → acknowledged，各組依 expected_arrival_at / created_at）不同；expired 沒有結束時間時以 created_at 排序（後端用 updated_at）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useDismissalPosQueue.spec.ts",
@@ -4425,9 +4425,9 @@
         "notes": "紅燈 commit da42e55、實作 commit a9e60fa；打回補測試 793737e（實作本來就符合 description，屬純補測試，以突變證明會紅；red_cases 寫回 17d112f）。排序 red_case 改為 arrived 的 expected_arrival_at 晚於 / 未填、加第二筆 arrived，並對 open 的 24 種輸入順序斷言同一結果（只拿掉「arrived 在前」那行時比較函式不一致，結果隨輸入順序而變，單一順序可能剛好排對）。除 8 條 red_cases 外另有 4 條：其他 submit 錯誤顯示後端訊息並可再次發起、cancel active 打 API 並移除本地版本（失敗回 false、closed 直接 false）、WS 先於 HTTP 回應時以 studentId 去重、finally 只刪自己那次的 staging entry。fake timers 只 fake Date / setTimeout / setInterval（保留 setImmediate 給 flushPromises）。突變自檢：拿掉 arrived 在前、arrived 之間不依 arrived_at、只依 expected / created 排序、外部追上後不移除本地版本、finally 身分比對、staging 與 active 去重、closed 隱藏規則各使對應測試轉紅。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f6",
-        "notes": "打回（2 項，見 risk_notes）。tdd.run 11 passed，7 條 red_case 名稱逐一對到；da42e55 測試先於 a9e60fa 實作；just web-lint 4 檔乾淨、just web-typecheck 0 錯。突變轉紅：finally 身分比對、staging / active 以 studentId 去重、closed 隱藏、expected null 最後、409 pickup_request_exists 分支、成功建本地 active、倒數長度、cancel active 失敗回 false、closed 直接回 false；轉不紅：arrived 優先、外部追上後移除本地版本（打回項）。殘留（不擋）：① cancel(active) 只回 boolean、丟掉後端回傳的 PickupRequest，board 也沒有 cancel；取消成功後卡片要等 ws（斷線時 15 秒輪詢）才移到已結束。description 只要求「成功移除本地樂觀版本、回 true」，未違反，交 FRONTEND-189 / 190 處理（例如回傳 PickupRequest 交給 board.applyRequest）。② 倒數到 0 已送出 POST、回應前取消 staging 會回 true 並移除倒數，但請求仍會建立，成功後卡片以 active 重新出現（ivy 同此行為）。③ description 寫「active 排序與後端一致」，但 BACKEND-414 的 _open_key 是 arrived → pending → acknowledged、各組內依 expected_arrival_at / created_at（arrived 不依 arrived_at）；實作依 description 明文規則（pending / acknowledged 合併、arrived 依 arrived_at），若要真的一致需協調者決定改哪一邊。④ expired 沒有 completed_at / cancelled_at 時以 created_at 排序（後端用 updated_at），已結束清單中逾時項目會偏後。⑤ 本地樂觀項目只在 queue 出現同 id 時移除；跨午夜 reload 前未被追上的昨天項目會一直顯示（極窄時窗）。⑥ addToQueue 對本地樂觀 active 的阻擋沒有測試（拿掉時只會多送一次 POST 收到 409 info）；dispose 的 clearTimeout 沒被釘住（清空 Map 已足以讓 timer 不送出）；「cancel active calls api and drops local copy」建立兩個 scope 只 stop 第二個。"
+        "notes": "複審通過。上次打回 2 項皆已修正：排序 red_case 改為 arrived 的 expected_arrival_at 晚於 / 未填、加第二筆 arrived，並對 open 的 24 種輸入順序斷言同一結果；新增 red_case「drops local copy once queue catches up」。實作 a9e60fa 未變動，793737e 屬純補測試，以突變證明：拿掉 arrived 在前、arrived 之間不依 arrived_at、只依 expected / created 排序、arrived_at 晚者先，皆使 sorts active 轉紅；外部追上後不移除本地版本、hasOpenRequest 不看本地樂觀版本皆使 drops local copy 轉紅；finally 身分比對、closed 隱藏仍轉紅。tdd.run 12 passed，8 條 red_case 名稱逐一對到；just web-lint 4 檔乾淨；just web-typecheck 有 5 個錯誤，全在其他 agent 未提交的檔案（BindView.vue、HomeworkView.spec.ts、AttendanceMonthlyView.vue、AttendanceTodayView.spec.ts、StaffAccountsView.vue），185 / 188 的檔案沒有錯誤。殘留（不擋，記於 risk_notes）：cancel(active) 只回 boolean，取消後卡片等 ws 才移到已結束，交 FRONTEND-189 / 190；倒數 0 秒送出後取消仍會建立；排序規則與 BACKEND-414 不同（description 宣稱一致）；expired 以 created_at 排序。另有測試面殘留：dispose 的 clearTimeout 沒被釘住（清空 Map 已足以讓 timer 不送出）；「cancel active calls api and drops local copy」建立兩個 scope 只 stop 第二個。"
       }
     },
     {
@@ -4519,7 +4519,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePickupBoard.ts",
       "source_ref": "FE:src/views/DismissalQueueView.vue::handleWsEvent",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-180",
@@ -4529,7 +4529,7 @@
         "FRONTEND-005"
       ],
       "suggested_model": "fable-5",
-      "risk_notes": "多來源（HTTP 回應、ws、輪詢）同時更新同一筆請求，需以 updated 順序或狀態終態優先避免舊資料覆蓋新資料：終態一旦套用，不得被較晚到的 open 狀態訊息覆蓋回去。\n【review-r10-f6 打回】(1) pickup.authorization_updated 的 data 實際是 PickupAuthorizationOut，不是 StaffAuthorization：BACKEND-420 description 寫明「admin 收 PickupAuthorizationOut……後台需要學生或接送人照片時由前端收到事件後重抓 BACKEND-436 清單」，apps/api/app/services/pickup/authorizations.py 的建立 / 家長取消 / 重新產生接送碼 / 核銷（complete_via_authorization）與 student_service.py 停讀退班收尾都以 authorization_out 推播，沒有 student、photo_url、code_attempts、locked、verified_by_name。applyAuthorization 把它當 StaffAuthorization 整筆 upsert，反例：withAuthorizations 載入完整的 pa1 後，另一台平板核驗成功、家長取消或家長重新產生接送碼→ pa1 被換成沒有 student 的物件；家長新建 pa2 → 插入沒有 student 的物件。FRONTEND-202 AuthorizationCard 讀 auth.student.name 會丟 TypeError，照片、鎖定狀態與核驗人也一併遺失（reviewer 以臨時 probe 實測，兩筆的 student 皆為 undefined；probe 已刪除）。docs/tasks/api_index.md §15 寫 StaffAuthorization 與 BACKEND-420、後端實作不一致；spec 的授權事件 fixture（{...pa1, code_attempts: 3}）是後端不會送的形狀。修法依 README「實作中發現規格有錯」：先改 api_index §15 與本 task description，再改實作與測試。建議照 BACKEND-420，收到當天的授權事件就以序號防護重抓 436 清單（只合併欄位不夠：regenerate_code 會把 code_attempts 歸零並解除鎖定，推播卻不帶這兩欄，合併會留下舊的「已鎖定」）；測試改用真實 PickupAuthorizationOut 形狀；未指定 withAuthorizations 時也不要把事件 upsert 進未載入的 authorizations。(2) description「終態同步 roster 時只在該生 open_request 為 null 或 id 相同時才清空」沒有測試：改成一律清空，19 條測試照綠。補測試：名單 s1.open_request 為進行中的 r2，收到 r1 cancelled → s1.open_request 仍為 r2。(3) description「未載入授權清單（withRoster 但無 withAuthorizations）時改重抓 roster」沒有測試（拿掉該分支照綠）；若 (1) 改寫此分支，依新規格補測試。(4) red_case「usePickupBoard ws update moves request to closed and patches roster」的 closed[0].id 為 r1 在初始 closed 為空時恆成立，沒有釘住 description「終態 upsert 到 closed 最前」（upsert 改成 append 照綠）；初始 closed 要先放一筆其他請求。",
+      "risk_notes": "多來源（HTTP 回應、ws、輪詢）同時更新同一筆請求：applyRequest 以狀態機順序單向守衛（終態不被較晚到的 open 蓋回、open 不倒退），但 reload（重連補抓、404 / 409 後、跨日）的回應整包取代 queue / roster，晚於 ws 到達時仍可能蓋掉較新的狀態；同一狀態的較舊訊息（例如兩次 reply）沒有 updated_at 可判斷，仍會覆蓋較新的。授權事件每次都重抓 B436（沒有防抖；停讀退班一次取消多筆時會連發多次 GET，序號防護只採最後一次的回應）；applyAuthorization 套用本機核驗結果後，若先前發出的重抓晚到會暫時蓋回舊狀態，隨後該次核驗的推播觸發的重抓會再修正。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/usePickupBoard.spec.ts",
@@ -4556,9 +4556,9 @@
         "notes": "紅燈 commit f5df1dc、實作 commit ab28700；打回修正：規格 17d112f（api_index §15 授權事件改 ParentAuthorization 形狀、description 與 red_cases）、紅燈測試 793737e、實作 38065c6。授權事件測試 fixture 改為後端實際形狀（AuthorizationEvent＝PickupAuthorizationOut，沒有 student 等 5 欄）。除 14 條 red_cases 外另有 9 條：未指定 withRoster / withAuthorizations 時只抓佇列、open 狀態 upsert 與非今天忽略、遲到的 acknowledged 不倒退 arrived、mutation 成功套用回傳值、其他錯誤 rethrow、出勤 / 作業事件就地更新名單與 bulk_updated 重抓、topic 未被拒時不輪詢、跨午夜重抓新的一天、載入失敗保留資料。fake timers 只 fake Date / setTimeout / setInterval；ws 用 FakeWebSocket。突變自檢：狀態機守衛、arrived 去重、今天過濾、404 分支、被拒輪詢、終態一律清空 open_request、終態 append 到 closed、授權事件就地合併（舊行為）、授權重抓無序號防護、重抓後不重算名單、未載入時事件不重抓名單、未載入時 applyAuthorization 仍寫入清單、授權事件不過濾今天、applyAuthorization 不重算 各使對應測試轉紅。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f6",
-        "notes": "打回（4 項，見 risk_notes）。tdd.run 19 passed，9 條 red_case 名稱逐一對到；f5df1dc 測試先於 ab28700 實作；just web-lint 4 檔乾淨、just web-typecheck 0 錯。ec94f70 寫回 description 的判斷：mutation 回 PickupRequest | null 是原規格「404 不 rethrow」與回傳型別衝突的合理補述；狀態機單向守衛與後端 transition_request 的 from_statuses 一致（pending→acknowledged、pending / acknowledged→arrived、open→終態，沒有倒退），有測試且「只擋終態」的弱化版也會轉紅；roster 終態只清同 id、授權非今天忽略、未載入授權改重抓名單都是合理補強，沒有放寬驗收，但其中兩條沒有測試（打回項 2、3）。篩選類檢查（比照 FRONTEND-126）：佇列、名單、授權都是當天全量載入（queue 無班級篩選、roster 不帶 class_id、授權不帶 status），applyRequest / applyAuthorization / 出勤事件都先比對 service_date，名單只 patch 既有學生、不插入，不會把不屬於看板的請求插進來；授權的問題在事件形狀（打回項 1），不是篩選。突變轉紅：狀態機守衛、arrived 去重、今天過濾（請求 / 授權 / 出勤）、404 分支、409 後 reload、被拒輪詢、completed→left、跨日、counts 由 open 重算、withAuthorizations 重算；轉不紅：roster 終態只清同 id、未載入授權重抓名單、終態放 closed 最前（打回項）、作業事件今天過濾、onNewRequest 只限 pending、queue / roster 序號防護（殘留）。殘留（不擋）：① reload 回應晚於 ws 到達時整包覆蓋較新的狀態（含終態被蓋回 open），協調者另開 chore。② 同狀態（例如兩次 reply）的較舊訊息仍會覆蓋較新的，PickupRequest 沒有 updated_at 無法判斷。③ board.create 成功即 applyRequest，員工自己代建也會觸發 onNewRequest（FRONTEND-189 接 chime 時會對自己的操作響單音），依 description 字面實作，交 189 決定。④ adminWs 收到 unsubscribed(permission_revoked) 只把 topics 歸零、不加入 deniedTopics，執行中被收回 homework / attendance 權限時不會啟動名單輪詢（FRONTEND-037 行為）。⑤ 跨午夜在 reload 成功前 queue 仍是昨天的資料；reload 失敗時今天的 ws 事件會合併進昨天的 queue。⑥ 作業事件的今天過濾、onNewRequest 只限 pending、queue / roster 序號防護沒有測試。"
+        "notes": "複審通過。上次打回 4 項皆已修正：(1) 授權事件：17d112f 先修規格（api_index §15 改為 ParentAuthorization＝後端 PickupAuthorizationOut，與 BACKEND-420、authorization_out 的 _base_fields 一致；description 改為收到當天事件以序號防護重抓 B436 並依新清單重算名單，不就地合併；未載入清單時不寫入、withRoster 改重抓名單、兩者皆無忽略），793737e 紅燈測試（fixture 改為真實形狀，對 ab28700 的舊實作實測 3 條轉紅）先於 38065c6 實作。(2) 終態只清同 id、(3) 未載入授權改重抓名單、(4) 終態放 closed 最前：都有對應 red_case 與測試。突變：終態一律清空、終態 append、授權事件就地合併（舊行為）、重抓無序號防護、重抓後不重算、未載入時事件不重抓名單、未載入時 applyAuthorization 仍寫入、授權事件 / applyAuthorization 不過濾今天、applyAuthorization 不重算、重算不把無授權學生歸零、兩者皆無時仍重抓名單，各使對應測試轉紅；狀態機守衛、被拒輪詢仍轉紅。重算改用 status 而非 effective_status 不轉紅，但只載入當天清單時兩者等價（effective_status 只在過去日期的 active 顯示 expired），屬等價突變。tdd.run 23 passed，14 條 red_case 名稱逐一對到；just web-lint 4 檔乾淨；just web-typecheck 的 5 個錯誤全在其他 agent 未提交的檔案。篩選類檢查維持上次結論：佇列、名單、授權皆為當天全量，事件先比對 service_date，名單只 patch 既有學生，授權清單只採用 B436 回應（核驗結果另以完整 StaffAuthorization upsert）。殘留（不擋）：reload 回應晚到整包覆蓋較新狀態（協調者另開 chore）、同狀態較舊訊息覆蓋、授權事件無防抖、核驗結果被先前發出的重抓暫時蓋回（記於 risk_notes）；board.create 成功也觸發 onNewRequest（員工自己代建會響單音，交 FRONTEND-189 決定）；adminWs 收到 permission_revoked 不加入 deniedTopics，執行中被收回權限不啟動名單輪詢（FRONTEND-037 行為）；跨午夜 reload 成功前 queue 仍是昨天的資料；作業事件的今天過濾、onNewRequest 只限 pending、queue / roster 序號防護沒有測試。"
       }
     },
     {
