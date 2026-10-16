@@ -2,6 +2,8 @@
 // FRONTEND-231：考試列表（/exams，exams:read）。新做（domain_spec §4 / M8）。設計稿：docs/mockups/page-exams.html。
 // - AdminListToolbar：搜尋名稱、狀態 / 類型 / 班級（目前學年度）/ 年級下拉；日期區間放 extra-filters（預設近 90 天到未來 30 天，
 //   可清除 = 不限日期）。usePagedList（syncQuery）+ listExams，後端依 exam_date desc 排序，不提供欄位排序。
+// - 「不限日期」在網址以 date_from=all&date_to=all 表示（不送 API）：usePagedList 會把空值從 query 拿掉，
+//   空字串無法與「沒帶參數 = 預設區間」區分。兩端都是合法日期才算有日期區間，否則日期框與請求一律視為不限日期。
 // - 整列可點進考試頁；名稱是 RouterLink（鍵盤可聚焦、可在新分頁開）。有 exams:write 才有「建立考試」與草稿列的 ⋮ 刪除；
 //   列表沒有編輯入口（編輯在考試頁 header「編輯資訊」）。
 // - el-table-column 是泛型元件，每欄前的 `@vue-generic {Exam}` 註解讓 slot 的 row 型別為 Exam（vue-tsc 專用）。
@@ -24,6 +26,9 @@ import { currentAcademicYear, GRADE_OPTIONS, gradeLabel } from '@/utils/academic
 import { usePermission } from '@/utils/permission'
 
 const PAGE_SIZE = 20
+/** 網址上的「不限日期」標記，不會送到 API */
+const ALL_DATES = 'all'
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const DEFAULT_PAST_DAYS = 90
 const DEFAULT_FUTURE_DAYS = 30
 
@@ -60,6 +65,11 @@ function isExamStatus(v: string): v is ExamStatus {
   return (EXAM_STATUSES as readonly string[]).includes(v)
 }
 
+/** 兩端都是合法日期才有日期區間；「不限日期」標記、空值或手改網址的無效值都視為不限 */
+function dateRangeOf(f: Pick<ExamFilters, 'date_from' | 'date_to'>): [string, string] | null {
+  return ISO_DATE_RE.test(f.date_from) && ISO_DATE_RE.test(f.date_to) ? [f.date_from, f.date_to] : null
+}
+
 /** usePagedList 已去掉空值；這裡只負責型別轉換與丟掉網址帶來的無效值 */
 function toApiParams(params: ExamFilters & { page: number; page_size: number }): ExamListParams {
   const out: ExamListParams = { page: params.page, page_size: params.page_size }
@@ -69,8 +79,11 @@ function toApiParams(params: ExamFilters & { page: number; page_size: number }):
   if (params.class_id) out.class_id = params.class_id
   const grade = Number(params.grade_level)
   if (params.grade_level && Number.isInteger(grade)) out.grade_level = grade
-  if (params.date_from) out.date_from = params.date_from
-  if (params.date_to) out.date_to = params.date_to
+  const range = dateRangeOf({ date_from: params.date_from ?? '', date_to: params.date_to ?? '' })
+  if (range) {
+    out.date_from = range[0]
+    out.date_to = range[1]
+  }
   return out
 }
 
@@ -121,8 +134,10 @@ const toolbarValues = computed<Record<string, unknown>>({
 })
 
 const dateRange = computed({
-  get: (): [string, string] | null => (filters.date_from && filters.date_to ? [filters.date_from, filters.date_to] : null),
-  set: (v: [string, string] | null) => list.setFilters({ date_from: v?.[0] ?? '', date_to: v?.[1] ?? '' }),
+  get: (): [string, string] | null => dateRangeOf(filters),
+  // 清除 = 不限日期：寫入標記值，網址才還原得回來
+  set: (v: [string, string] | null) =>
+    list.setFilters(v ? { date_from: v[0], date_to: v[1] } : { date_from: ALL_DATES, date_to: ALL_DATES }),
 })
 
 /** 台北日期 → 本地時區同一天的 00:00（日期選擇器以本地時區格式化 value-format） */

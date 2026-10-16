@@ -198,9 +198,9 @@ async function search(wrapper: VueWrapper, text: string): Promise<void> {
   await settle()
 }
 
-// 每個案例都掛整頁（PageHeader + AdminListToolbar + el-table，部分再開 dialog / 下拉 / 確認框）；
-// 多位 agent 共用 4 顆 CPU 時單一案例會超過 vitest 預設的 5 秒，整組放寬到 20 秒
-describe('ExamsView', { timeout: 20000 }, () => {
+// 每個案例都掛整頁（PageHeader + AdminListToolbar + el-table，部分再開 dialog / 下拉 / 確認框，或重新掛載兩三次）；
+// 多位 agent 共用 4 顆 CPU（load average 20 以上）時單一案例可達 20 秒，整組上限放寬到 60 秒（只影響逾時，不影響斷言）
+describe('ExamsView', { timeout: 60000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
