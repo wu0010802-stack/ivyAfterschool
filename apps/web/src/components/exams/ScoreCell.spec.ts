@@ -58,6 +58,10 @@ function noteInput(): HTMLTextAreaElement | null {
   return document.body.querySelector<HTMLTextAreaElement>('[data-test=note-input]')
 }
 
+function noteInputs(): HTMLTextAreaElement[] {
+  return Array.from(document.body.querySelectorAll<HTMLTextAreaElement>('[data-test=note-input]'))
+}
+
 function editorEl(): HTMLElement {
   const el = noteInput()?.closest<HTMLElement>('.note-editor')
   if (!el) throw new Error('備註編輯框沒有開啟')
@@ -420,6 +424,22 @@ describe('ScoreCell', () => {
     expect(document.activeElement).toBe(scoreInput)
     expect(scoreInput.selectionStart).toBe(0)
     expect(scoreInput.selectionEnd).toBe('90'.length)
+
+    // 以點圖示開啟（popover 的 focus trap 還焦對象不是分數輸入框）後，Esc / Enter 也要回到分數輸入框
+    scoreInput.blur()
+    expect(document.activeElement).not.toBe(scoreInput)
+    await openEditor(wrapper)
+    expect(document.activeElement).toBe(noteInput())
+    await keydownOn(noteInput(), { key: 'Escape' })
+    expect(noteInput()).toBeNull()
+    expect(document.activeElement).toBe(scoreInput)
+    scoreInput.blur()
+    await openEditor(wrapper)
+    await typeNote('病假')
+    await keydownOn(noteInput(), { key: 'Enter' })
+    expect(changes(wrapper).at(-1)).toEqual({ score: 90, is_absent: false, note: '病假' })
+    expect(document.activeElement).toBe(scoreInput)
+    expect(scoreInput.selectionEnd).toBe('90'.length)
     wrapper.unmount()
 
     // 缺考格：從「缺」勾選開啟，關閉後焦點回到「缺」
@@ -432,5 +452,73 @@ describe('ScoreCell', () => {
     expect(absent.emitted('change')).toBeUndefined()
     expect(noteInput()).toBeNull()
     expect(document.activeElement).toBe(absentInput)
+  })
+
+  it('ScoreCell note trigger re-click leaves no stale swallow', async () => {
+    const wrapper = await mountAttached({ score: 90 })
+    const trigger = noteTrigger(wrapper).element
+
+    // 再點同一格圖示：pointerdown 就確定並關閉；圖示因備註由無變有而換形時，瀏覽器不會派發這次 click
+    await openEditor(wrapper)
+    await typeNote('病假')
+    await pointerdownOn(trigger)
+    expect(changes(wrapper).at(-1)).toEqual({ score: 90, is_absent: false, note: '病假' })
+    expect(noteInput()).toBeNull()
+
+    // 下一次點圖示（新的 pointerdown + click）要能開啟，不能被上一次留下的旗標吞掉
+    await pointerdownOn(trigger)
+    await noteTrigger(wrapper).trigger('click')
+    await settle()
+    expect(noteInput()).not.toBeNull()
+
+    // 按下後拖離（有 pointerdown、沒有 click）：內容不變只關閉、不 emit，之後點圖示照常開啟
+    await pointerdownOn(trigger)
+    expect(noteInput()).toBeNull()
+    expect(changes(wrapper)).toHaveLength(1)
+    await pointerdownOn(trigger)
+    await noteTrigger(wrapper).trigger('click')
+    await settle()
+    expect(noteInput()).not.toBeNull()
+
+    // 緊接在那次 pointerdown 之後的 click 仍被吞掉：不會關閉後又立刻打開
+    await typeNote('遲到')
+    await pointerdownOn(trigger)
+    await noteTrigger(wrapper).trigger('click')
+    await settle()
+    expect(changes(wrapper).at(-1)).toEqual({ score: 90, is_absent: false, note: '遲到' })
+    expect(noteInput()).toBeNull()
+    await pointerdownOn(trigger)
+    await noteTrigger(wrapper).trigger('click')
+    await settle()
+    expect(noteInput()).not.toBeNull()
+  })
+
+  it('ScoreCell note over limit blocks other cell', async () => {
+    const a = await mountAttached({ score: 90 })
+    const b = await mountAttached({ score: 80, note: '遲到' })
+    const bTrigger = noteTrigger(b).element
+
+    // a 格超過 200 字時點 b 格圖示：b 不開、a 不關、不 emit，焦點回 a 的文字框
+    await openEditor(a)
+    await typeNote('字'.repeat(201))
+    await pointerdownOn(bTrigger)
+    await noteTrigger(b).trigger('click')
+    await settle()
+    await waitTimers()
+    expect(noteInputs()).toHaveLength(1)
+    expect(noteInputs()[0]?.value).toBe('字'.repeat(201))
+    expect(document.activeElement).toBe(noteInputs()[0])
+    expect(a.emitted('change')).toBeUndefined()
+    expect(b.emitted('change')).toBeUndefined()
+
+    // 改回合法後點 b 格圖示：a 送出並關閉，只剩 b 的編輯框
+    await typeNote('補考')
+    await pointerdownOn(bTrigger)
+    await noteTrigger(b).trigger('click')
+    await settle()
+    expect(changes(a).at(-1)).toEqual({ score: 90, is_absent: false, note: '補考' })
+    expect(noteInputs()).toHaveLength(1)
+    expect(noteInputs()[0]?.value).toBe('遲到')
+    expect(b.emitted('change')).toBeUndefined()
   })
 })
