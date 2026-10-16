@@ -136,6 +136,16 @@ describe('pickupRequestsStore', () => {
     expect(store.latestFor('s9')).toBeNull()
   })
 
+  it('pickupRequestsStore openFor prefers newest when two are open', async () => {
+    // 後端同一天只允許一筆非終態；舊事件晚到時清單可能短暫同時有兩筆，取 created_at 最新
+    const older = request('r4', { status: 'acknowledged', created_at: '2026-10-02T06:00:00Z' })
+    const newer = request('r5', { status: 'pending', created_at: '2026-10-02T07:30:00Z' })
+    const store = await loadedStore([newer, older])
+
+    expect(store.openFor('s1')?.id).toBe('r5')
+    expect(store.latestFor('s1')?.id).toBe('r5')
+  })
+
   it('pickupRequestsStore latestFor and historyFor order by created_at', async () => {
     const older = request('r4', { status: 'expired', created_at: '2026-10-02T05:00:00Z', can_cancel: false, can_mark_arrived: false })
     const newer = request('r5', { status: 'completed', created_at: '2026-10-02T06:30:00Z', completed_at: '2026-10-02T06:40:00Z', picked_up_by_name: '王媽媽', can_cancel: false, can_mark_arrived: false })
