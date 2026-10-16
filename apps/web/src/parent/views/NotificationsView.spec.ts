@@ -195,6 +195,17 @@ describe('NotificationsView', () => {
     expect(wrapper.get('.empty-state__icon').text()).toBe('done_all')
   })
 
+  it('NotificationsView reselecting current filter does not reload', async () => {
+    listReplies(page([noti('n1')]))
+    const { wrapper } = await mountView()
+
+    await segment(wrapper, 0).trigger('click')
+    await flushPromises()
+
+    expect(listGets()).toHaveLength(1)
+    expect(rows(wrapper)).toHaveLength(1)
+  })
+
   it('NotificationsView unread label caps at 99+', async () => {
     listReplies(page([noti('n1')], 1, 120))
     const { wrapper } = await mountView()
@@ -337,6 +348,20 @@ describe('NotificationsView', () => {
     expect(button(wrapper, '載入更多')).toBeUndefined()
   })
 
+  it('NotificationsView load more shows loading', async () => {
+    const first = Array.from({ length: 20 }, (_, i) => noti(`n${i + 1}`, { read_at: READ_AT }))
+    listReplies(page(first, 25, 0), () => new Promise(() => undefined))
+    const { wrapper } = await mountView()
+
+    await button(wrapper, '載入更多')!.trigger('click')
+    await flushPromises()
+
+    expect(button(wrapper, '載入更多')?.attributes('aria-busy')).toBe('true')
+    await button(wrapper, '載入更多')!.trigger('click')
+    await flushPromises()
+    expect(listGets()).toHaveLength(2)
+  })
+
   it('NotificationsView load more failure keeps button', async () => {
     const first = Array.from({ length: 20 }, (_, i) => noti(`n${i + 1}`, { read_at: READ_AT }))
     listReplies(page(first, 25, 0), [500, SERVER_ERROR])
@@ -405,6 +430,19 @@ describe('NotificationsView', () => {
     const item = useSnackbarStore(pinia).items[0]
     expect(item?.tone).toBe('error')
     expect(item?.message).toBe('更新失敗，請稍後再試')
+  })
+
+  it('NotificationsView refresh error without content shows error state only', async () => {
+    listReplies(page([], 0, 0), [500, SERVER_ERROR])
+    const { wrapper, pinia } = await mountView()
+    expect(wrapper.text()).toContain('目前沒有通知')
+
+    await wrapper.findComponent(PullToRefresh).props('onRefresh')()
+    await flushPromises()
+
+    // 沒有內容可保留：畫面直接是錯誤態，不再另外跳 snackbar
+    expect(wrapper.text()).toContain('通知載入失敗')
+    expect(useSnackbarStore(pinia).items).toHaveLength(0)
   })
 
   it('NotificationsView refresh keeps content and filter', async () => {
