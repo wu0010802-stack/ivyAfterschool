@@ -9,8 +9,23 @@
 // - 已發布考試尚未選擇是否通知家長時（notifyParents null）useScoreAutosave 不送出；本元件在格子變更後同一個 debounce
 //   到期仍在等選擇時開 RenotifyChoiceDialog。expose 的 flush() 不開 dialog（view 離開、發布、重新載入前呼叫）。
 // - 表格高度是 100%：由父層（考試頁）給定內容區剩餘高度，表頭固定、只捲表格本體。
+// - 每場考試各有一個 useScoreAutosave（放在 detached effect scope，examId 固定）。examId 變更時丟棄前一場考試
+//   尚未送出（dirty / 等待通知選擇 / 儲存失敗）的格子：已送出中的請求照原考試完成，之後不再送出前一場的格子，
+//   也不會以新的 examId 送出；表格清空到新考試載入完成。換參數前的送出與「放棄變更」確認由考試頁負責。
 import { CircleCheck, Loading, WarningFilled } from '@element-plus/icons-vue'
-import { computed, nextTick, onBeforeUnmount, reactive, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  effectScope,
+  nextTick,
+  onBeforeUnmount,
+  reactive,
+  ref,
+  shallowRef,
+  watch,
+  type EffectScope,
+  type Ref,
+  type ShallowRef,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import {
   fetchScoreGrid,
@@ -20,7 +35,12 @@ import {
   type ScoreGridStudent,
 } from '@/api/exams'
 import EmptyState from '@/components/common/EmptyState.vue'
-import { DEFAULT_DEBOUNCE_MS, useScoreAutosave, type ScoreCellEdit } from '@/composables/useScoreAutosave'
+import {
+  DEFAULT_DEBOUNCE_MS,
+  useScoreAutosave,
+  type ScoreCellEdit,
+  type UseScoreAutosave,
+} from '@/composables/useScoreAutosave'
 import { errorMessage } from '@/shared/utils/errorMessage'
 import RenotifyChoiceDialog from './RenotifyChoiceDialog.vue'
 import ScoreCell from './ScoreCell.vue'
@@ -39,35 +59,77 @@ const errorText = ref('')
 const exam = shallowRef<Exam | null>(null)
 const students = shallowRef<ScoreGridStudent[]>([])
 const subjects = shallowRef<ExamSubject[]>([])
-const initial = shallowRef<ScoreCellData[]>([])
-/** 草稿固定 false；已發布從 null（尚未選擇）開始 */
-const notifyParents = ref<boolean | null>(false)
 
-const autosave = useScoreAutosave({
-  examId: computed(() => props.examId),
-  initial,
-  notifyParents,
+// RenotifyChoiceDialog 的開關與提示計時器（換考試時一併關閉）
+const dialogOpen = ref(false)
+let promptTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearPromptTimer(): void {
+  if (promptTimer !== null) clearTimeout(promptTimer)
+  promptTimer = null
+}
+
+// ---- 每場考試一個自動儲存 session ----
+interface ExamSession {
+  examId: string
+  initial: ShallowRef<ScoreCellData[]>
+  /** 草稿固定 false；已發布從 null（尚未選擇）開始 */
+  notifyParents: Ref<boolean | null>
+  autosave: UseScoreAutosave
+  scope: EffectScope
+}
+
+function createSession(examId: string): ExamSession {
+  // detached：換考試時由本元件停止，不跟著元件以外的 scope
+  const scope = effectScope(true)
+  const initial = shallowRef<ScoreCellData[]>([])
+  const notifyParents = ref<boolean | null>(false)
+  const autosave = scope.run(() => useScoreAutosave({ examId: ref(examId), initial, notifyParents }))!
+  return { examId, initial, notifyParents, autosave, scope }
+}
+
+/** 丟棄前一場考試尚未送出的格子：送出迴圈看到 null 就不再送出，停止 scope 清掉 debounce 與 watcher */
+function discardSession(s: ExamSession): void {
+  s.notifyParents.value = null
+  s.scope.stop()
+}
+
+const session = shallowRef<ExamSession>(createSession(props.examId))
+
+function current(): UseScoreAutosave {
+  return session.value.autosave
+}
+
+const notifyParents = computed<boolean | null>({
+  get: () => session.value.notifyParents.value,
+  set: (v) => {
+    session.value.notifyParents.value = v
+  },
 })
-const { hasUnsaved, failedCount, saving, awaitingNotifyChoice } = autosave
+const hasUnsaved = computed(() => current().hasUnsaved.value)
+const failedCount = computed(() => current().failedCount.value)
+const saving = computed(() => current().saving.value)
+const awaitingNotifyChoice = computed(() => current().awaitingNotifyChoice.value)
 
 // ---- 載入 ----
 let loadSeq = 0
 
-/** 重新載入時保留畫面上的表格直到新資料回來；只有第一次載入顯示 skeleton */
+/** 重新載入同一場考試時保留畫面上的表格直到新資料回來；第一次載入與換考試時顯示 skeleton */
 async function load(): Promise<void> {
   const seq = ++loadSeq
+  const s = session.value
   if (!exam.value) state.value = 'loading'
   try {
-    const data = await fetchScoreGrid(props.examId)
+    const data = await fetchScoreGrid(s.examId)
     if (seq !== loadSeq) return
     const previous = exam.value
     exam.value = data.exam
     students.value = data.students
     subjects.value = [...data.subjects].sort((a, b) => a.sort_order - b.sort_order)
-    initial.value = data.cells
-    // 換了考試或發布狀態改變：重新決定是否需要選擇通知；同一場已發布考試維持本次編輯期間的選擇
-    if (!previous || previous.id !== data.exam.id || previous.status !== data.exam.status) {
-      notifyParents.value = data.exam.status === 'published' ? null : false
+    s.initial.value = data.cells
+    // 第一次載入或發布狀態改變：重新決定是否需要選擇通知；同一場已發布考試維持本次編輯期間的選擇
+    if (!previous || previous.status !== data.exam.status) {
+      s.notifyParents.value = data.exam.status === 'published' ? null : false
     }
     state.value = 'ready'
   } catch (err) {
@@ -77,9 +139,21 @@ async function load(): Promise<void> {
   }
 }
 
+/** 換考試：丟棄前一場未送出的格子；exam 清空讓 load 顯示 skeleton，新考試載入前不顯示前一場的表格 */
+function switchExam(examId: string): void {
+  discardSession(session.value)
+  session.value = createSession(examId)
+  exam.value = null
+  clearPromptTimer()
+  dialogOpen.value = false
+}
+
 watch(
   () => props.examId,
-  () => void load(),
+  (examId, previous) => {
+    if (previous !== undefined && examId !== previous) switchExam(examId)
+    void load()
+  },
   { immediate: true },
 )
 
@@ -91,7 +165,7 @@ const dirtyCount = computed(() => {
   let n = 0
   for (const st of students.value) {
     for (const sub of subjects.value) {
-      if (autosave.cellState(st.id, sub.subject_id) === 'dirty') n += 1
+      if (current().cellState(st.id, sub.subject_id) === 'dirty') n += 1
     }
   }
   return n
@@ -116,6 +190,7 @@ function cellKey(studentId: string, subjectId: string): string {
 }
 
 function cellProps(studentId: string, sub: ExamSubject) {
+  const autosave = current()
   const value = autosave.cellValue(studentId, sub.subject_id)
   return {
     score: value.score,
@@ -132,13 +207,6 @@ function rowClass({ row }: { row: ScoreGridStudent }): string {
 }
 
 // ---- 重新通知選擇 ----
-const dialogOpen = ref(false)
-let promptTimer: ReturnType<typeof setTimeout> | null = null
-
-function clearPromptTimer(): void {
-  if (promptTimer !== null) clearTimeout(promptTimer)
-  promptTimer = null
-}
 
 /** 與自動儲存同一個 debounce：到期時仍在等通知選擇就開 dialog（Esc / X 關閉後，下一次變更會再開） */
 function schedulePrompt(): void {
@@ -152,7 +220,7 @@ function schedulePrompt(): void {
 
 function onCellChange(studentId: string, subjectId: string, value: ScoreCellEdit): void {
   if (ignoring.has(keyOf(studentId, subjectId))) return
-  autosave.edit(studentId, subjectId, value)
+  current().edit(studentId, subjectId, value)
   schedulePrompt()
 }
 
@@ -164,7 +232,7 @@ function choose(notify: boolean): void {
 }
 
 async function retry(): Promise<void> {
-  await autosave.retryFailed()
+  await current().retryFailed()
   if (awaitingNotifyChoice.value) dialogOpen.value = true
 }
 
@@ -280,10 +348,14 @@ function onCellClick(_row: unknown, _column: unknown, cell: HTMLElement, event: 
 /** 送出未儲存的格子並等請求結束；不開 RenotifyChoiceDialog（已發布且尚未選擇時不送出） */
 async function flush(): Promise<void> {
   clearPromptTimer()
-  await autosave.flush()
+  await current().flush()
 }
 
-onBeforeUnmount(clearPromptTimer)
+// 卸載時停止目前 session 的 debounce 與 watcher（考試頁離開前已 flush）
+onBeforeUnmount(() => {
+  clearPromptTimer()
+  session.value.scope.stop()
+})
 
 defineExpose({ hasUnsaved, failedCount, flush, reload: load })
 </script>

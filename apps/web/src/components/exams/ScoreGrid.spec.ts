@@ -466,13 +466,16 @@ describe('ScoreGrid', { timeout: 30000 }, () => {
   it('ScoreGrid exam switch drops pending cells of previous exam', async () => {
     mock.onPut(ANY_SCORES_URL).reply(200, RESULT)
     const { wrapper } = await mountGrid()
-    mock.onGet(GRID2_URL).reply(200, grid2())
+    mock.onGet(GRID2_URL).reply(() => new Promise((resolve) => setTimeout(() => resolve([200, grid2()]), 300)))
 
     // e1 王小明數學輸入 88，800ms 內換成 e2
     await typeAndBlur(wrapper, 0, 1, '88')
     await tick(300)
     await wrapper.setProps({ examId: 'e2' })
     await tick()
+    // e2 載入完成前不顯示 e1 的表格（避免在舊表格上編輯而寫進 e2）
+    expect(wrapper.find('.el-skeleton').exists()).toBe(true)
+    expect(wrapper.findAll('input[inputmode=decimal]')).toHaveLength(0)
     await tick(2000)
 
     expect(putUrls()).toEqual([])
