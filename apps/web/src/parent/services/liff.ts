@@ -42,7 +42,9 @@ async function loadClient(): Promise<LiffClient> {
   if (!liffId) throw new LiffNotConfiguredError()
   // 動態載入：只有登入流程需要 SDK，不進首屏 chunk
   const { default: liff } = await import('@line/liff')
-  await liff.init({ liffId, withLoginOnExternalBrowser: true })
+  // 外部瀏覽器不自動登入：true 時未登入的 init 會直接轉去 LINE 登入且永不 resolve，
+  // LoginView 到不了 choice 狀態，登出流程（PARENT-033）也會被轉走後自動再登入。LINE 內一律已登入，不受影響。
+  await liff.init({ liffId, withLoginOnExternalBrowser: false })
   return liff
 }
 
