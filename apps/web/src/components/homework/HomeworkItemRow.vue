@@ -3,6 +3,10 @@
 // - 左：科目 tag（無科目不顯示）+ 標題（單行省略，tooltip 顯示全文）；pending 時標題旁小轉圈，切換仍可再點（由 FRONTEND-152 序列化）。
 // - 右：四段切換（未開始 / 進行中 / 訂正中 / 完成），每段 ≥ 48×44（平板觸控），目前段以狀態色實心填滿；點目前段不 emit。
 // - ⋮（44×44）：編輯 / 刪除；長按整列 600ms 開同一個選單，長按放開後的那次 click 不算切換。唯讀時四段 disabled、沒有 ⋮。
+// - 長按放開的 click 會先被 Element Plus 下拉「點外面就收起」的判定（@vueuse onClickOutside，window 捕獲階段，選單打開時
+//   才註冊）收起選單。所以在打開選單「之前」先於 window 捕獲階段註冊一次性的攔截：同一目標上先註冊者先執行，
+//   stopImmediatePropagation 讓那次 click 既不收起選單、也不會到達本列切換狀態。觸控長按放開可能不產生 click，
+//   下一次 pointerdown 就解除攔截，之後的點擊不受影響。
 import { Delete, Edit, Loading, MoreFilled } from '@element-plus/icons-vue'
 import { onBeforeUnmount, ref } from 'vue'
 import type { HomeworkItem } from '@/api/homework'
@@ -26,8 +30,8 @@ const LONG_PRESS_MS = 600
 
 const menu = ref<{ handleOpen: () => void } | null>(null)
 let pressTimer: ReturnType<typeof setTimeout> | null = null
-/** 長按已打開選單：吞掉放開後的那次 click */
-let longPressed = false
+/** 解除「吞掉長按放開的 click」的 window 攔截；沒有攔截時為 null */
+let releaseGuard: (() => void) | null = null
 
 function clearPress(): void {
   if (pressTimer === null) return
@@ -35,25 +39,41 @@ function clearPress(): void {
   pressTimer = null
 }
 
+function disarmReleaseGuard(): void {
+  releaseGuard?.()
+}
+
+/** 必須在打開選單之前呼叫：要比 Element Plus 選單打開時註冊的 window click 監聽更早註冊 */
+function armReleaseGuard(): void {
+  disarmReleaseGuard()
+  const swallowClick = (event: MouseEvent): void => {
+    event.stopImmediatePropagation()
+    event.preventDefault()
+    disarmReleaseGuard()
+  }
+  window.addEventListener('click', swallowClick, true)
+  window.addEventListener('pointerdown', disarmReleaseGuard, true)
+  releaseGuard = () => {
+    window.removeEventListener('click', swallowClick, true)
+    window.removeEventListener('pointerdown', disarmReleaseGuard, true)
+    releaseGuard = null
+  }
+}
+
 function pressStart(): void {
-  longPressed = false
   clearPress()
   if (!props.canWrite) return
   pressTimer = setTimeout(() => {
     pressTimer = null
-    longPressed = true
+    armReleaseGuard()
     menu.value?.handleOpen()
   }, LONG_PRESS_MS)
 }
 
-function onClickCapture(event: MouseEvent): void {
-  if (!longPressed) return
-  longPressed = false
-  event.stopPropagation()
-  event.preventDefault()
-}
-
-onBeforeUnmount(clearPress)
+onBeforeUnmount(() => {
+  clearPress()
+  disarmReleaseGuard()
+})
 
 function pick(status: HomeworkItemStatus): void {
   if (!props.canWrite || status === props.item.status) return
@@ -73,7 +93,6 @@ function onCommand(command: 'edit' | 'remove'): void {
     @pointerup="clearPress"
     @pointerleave="clearPress"
     @pointercancel="clearPress"
-    @click.capture="onClickCapture"
     @contextmenu.prevent
   >
     <div class="hw-item__text">
