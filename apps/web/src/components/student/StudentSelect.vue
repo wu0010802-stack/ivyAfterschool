@@ -139,8 +139,12 @@ function onUpdate(value: string | null | undefined): void {
         <span class="student-option__meta">（{{ o.student_no }}・{{ o.class_name ?? '未分班' }}）</span>
       </span>
     </el-option>
-    <!-- 提供 #empty 時 EP 不再顯示 loading-text，搜尋中自己畫 -->
-    <template #empty>
+    <!-- 提供 #empty 時 EP 不再顯示 loading-text，搜尋中自己畫。
+         沒有輸入時不提供 #empty：EP 的 remote 模式在沒有輸入、沒有選項時就不展開下拉 -->
+    <template
+      v-if="loading || failed || query"
+      #empty
+    >
       <div
         v-if="loading"
         class="student-select__status"

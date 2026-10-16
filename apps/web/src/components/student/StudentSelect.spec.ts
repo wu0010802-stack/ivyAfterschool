@@ -117,6 +117,28 @@ describe('StudentSelect', () => {
     expect(Object.keys(studentGets()[0]?.params as object)).not.toContain('class_id')
   })
 
+  it('StudentSelect empty result copy: empty input does not open dropdown', async () => {
+    mock.onGet('/admin/students').reply(200, page([]))
+    const wrapper = await mountSelect()
+    const popper = (): HTMLElement => dropdown(wrapper).closest<HTMLElement>('.el-select__popper')!
+
+    await wrapper.find('.el-select__wrapper').trigger('click')
+    await advance(300)
+    expect(popper().style.display).toBe('none')
+    expect(studentGets()).toHaveLength(0)
+
+    await type(wrapper, '張')
+    expect(popper().style.display).not.toBe('none')
+    await advance(300)
+    expect(dropdown(wrapper).textContent).toContain('找不到符合的學生')
+
+    // 清掉文字：不再顯示查無結果，也不展開
+    await type(wrapper, '')
+    await advance(300)
+    expect(popper().style.display).toBe('none')
+    expect(studentGets()).toHaveLength(1)
+  })
+
   it('StudentSelect formats options and emits student', async () => {
     mock.onGet('/admin/students').reply(200, page([WANG, WANG_HUA]))
     const wrapper = await mountSelect()
