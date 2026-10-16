@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 322,
-  "last_updated": "2026-10-16T20:05:04Z",
+  "version": 323,
+  "last_updated": "2026-10-16T20:16:15Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4604,7 +4604,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupPosView.vue",
       "source_ref": "FE:src/views/DismissalQueueView.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10b",
       "depends_on": [
         "FRONTEND-188",
@@ -4616,7 +4616,7 @@
         "FRONTEND-042"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "Chromium 實測（impl-frontend-r10b，1024×768、64px 收合側欄、56px 頂欄）：連線正常 / 重新連線中 / 載入中 / 載入失敗 / 唯讀 / 靜音六種狀態、四個計數皆兩位數時，工具列都是單列 64px 高（三個按鈕 44px、連線膠囊 92px），最緊的狀態（可操作 + 兩位數計數 + 重新連線中）仍餘 35px；頁面剛好填滿內容區、外框不捲動。1280 寬單列；800 寬換成兩列（依稿 < 900 才換行）。",
+      "risk_notes": "Chromium 實測（impl-frontend-r10b，1024×768、64px 收合側欄、56px 頂欄）：連線正常 / 重新連線中 / 載入中 / 載入失敗 / 唯讀 / 靜音六種狀態、四個計數皆兩位數時，工具列都是單列 64px 高（三個按鈕 44px、連線膠囊 92px），最緊的狀態（可操作 + 兩位數計數 + 重新連線中）仍餘 35px；頁面剛好填滿內容區、外框不捲動。1280 寬單列；800 寬換成兩列（依稿 < 900 才換行）。\n本機建立以 student_id 抑制新請求提示音（FRONTEND-188）：抑制只涵蓋 board.create 的 POST 往返（快速代建的 5 秒倒數不算在內）。這段期間同一學生若有家長發起的新請求，因同一學生同日只能有一筆進行中請求，員工的建立會收到 409 pickup_request_exists，畫面以「此學生今天已有進行中的接送請求」（代建 dialog）/「{姓名} 已有進行中的接送請求」（快速代建）提示，家長的請求照常出現在佇列，只少了那一聲新請求單音；家長「我已經到了」的到達提示不受影響。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/PickupPosView.spec.ts",
@@ -4646,9 +4646,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f6",
+        "notes": "通過。tdd.run 17 passed，17 條 red_case 名稱逐一對到；b466ad3 紅燈先於 31d636a 實作，10d98b6（024 測試改寫，紅）先於 1e8baad（接線）。部分改寫判斷：185 / 188 / 190 三處都必要且範圍已寫在本 task description（README 部分改寫規則）——190 快速代建原本直接打 API，board 看不到 HTTP 回應，ws 推回時一律當新請求而響；改為注入 board.create（e17e476）需要 185 提供注入點（7e4cc82，回 null 不留本地卡、不注入時行為不變）；188 的引用計數（46e7f6d）處理 ws 比 HTTP 回應先到的競態，代建 dialog 與快速代建都會遇到。三者各自先紅後綠（ac87225 / bdac255 / d2c8f83 在前），tdd.run 皆無回歸：185 13 passed、188 24 passed、190 20 passed、024 6 passed（「every view loader loads a real view」約 12 秒，由 -t \"admin routes\" 選到）。同時段家長真請求的提示音：抑制只涵蓋 POST 往返且只限同一學生；同一學生同日只能有一筆進行中請求，家長先成立時員工端必收到 409 並看到「已有進行中的接送請求」，請求照常進佇列、只少一聲單音，判斷可接受（已記入 risk_notes）。突變：189 17 個中 15 個轉紅（不接 onNewRequest、pointerdown 不 unlock、定位不去重、找不到也記為已定位、卸載不解除監聽、transient 不查佇列、未分班也帶 classFilter、0 不改中性灰、載入中不顯示「–」、重試中仍顯示錯誤、代建鈕不等資料、建立後不定位、canOverride 看 operate、連線膠囊文字、transient 不播語音）；188 改寫 3 / 3、185 改寫 2 / 2、190 改寫 1 / 1 轉紅。Chromium 實測（harness 模擬 64px 收合側欄、56px 頂欄、內容區 padding 16，四個計數皆兩位數，vite 的 AutoImport / Components 皆 dts: false，components.d.ts 未被改動）：1024 寬連線正常 / 重新連線中 / 載入中 / 載入失敗 / 唯讀 / 靜音六種狀態工具列都是單列、高 64，三個按鈕 44、連線膠囊 92×32，最緊（可操作 + 兩位數 + 重新連線中 / 靜音）spacer 仍餘 35px；頁面高 712 剛好填滿內容區、外框不捲動；800 寬換成兩列；無 page error。just web-lint 10 檔乾淨；just web-typecheck exit 0。殘留（不擋）：transient 的 event 過濾（只處理 pickup.arrived）與「今天日期每分鐘重算」沒有測試（拿掉都照綠；目前 transient 只有 pickup.arrived 一種）；PlaceholderView.vue 現在只剩測試引用；185 / 188 / 190 的部分改寫同步改了已 done task 的 description 與 red_cases（反映最終規格，status 維持 done）。"
       }
     },
     {
