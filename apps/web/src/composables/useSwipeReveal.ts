@@ -1,6 +1,8 @@
 // FRONTEND-186：左滑露出動作按鈕的手勢（Pointer Events 一套涵蓋滑鼠與觸控）。
 // 移植 ivy FE:src/composables/useSwipeReveal.ts::useSwipeReveal：鬆手只切換開合，
 // 業務動作（例如取消接送）由呼叫端在露出按鈕的 click handler 觸發，避免誤觸。
+// FRONTEND-297：水平拖曳確立（位移第一次超過 SCROLL_SLOP_PX）才 setPointerCapture。按下就 capture 時，滑鼠的 pointerup
+// 會改送到卡片本體，click 落在卡片本體而不是卡內按鈕（桌機用滑鼠點佇列卡按鈕沒有反應）；沒有水平拖曳的點擊完全不 capture。
 //
 // 用法（卡片元件內）：
 //   const { dragX, isOpen, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, close } =
@@ -59,6 +61,8 @@ export function useSwipeReveal(opts: SwipeRevealOptions = {}): {
   let baseOffset = 0
   let activePointerId: number | null = null
   let horizontalLocked = false
+  /** 本次手勢 capture 的元素（水平拖曳確立後才有）；結束時只 release 它 */
+  let captureTarget: HTMLElement | null = null
 
   function currentRevealWidth(): number {
     return typeof revealWidth === 'function' ? revealWidth() : revealWidth
@@ -72,9 +76,19 @@ export function useSwipeReveal(opts: SwipeRevealOptions = {}): {
     return dragging.value && e.pointerId === activePointerId
   }
 
-  function releaseCapture(e: PointerEvent): void {
+  /** 水平拖曳確立時才 capture，之後的 move / up 即使移出卡片也送回來 */
+  function capture(e: PointerEvent): void {
     const target = e.currentTarget
-    if (target instanceof HTMLElement) target.releasePointerCapture?.(e.pointerId)
+    if (!(target instanceof HTMLElement)) return
+    target.setPointerCapture?.(e.pointerId)
+    captureTarget = target
+  }
+
+  /** 只 release 本次手勢確實 capture 過的元素 */
+  function releaseCapture(e: PointerEvent): void {
+    const target = captureTarget
+    captureTarget = null
+    target?.releasePointerCapture?.(e.pointerId)
   }
 
   /** 結束本次手勢、不改變 isOpen，dragX 回到目前開合狀態的位置 */
@@ -96,10 +110,8 @@ export function useSwipeReveal(opts: SwipeRevealOptions = {}): {
     baseOffset = restingX()
     activePointerId = e.pointerId
     horizontalLocked = false
+    captureTarget = null
     reboundInstant.value = prefersReducedMotion()
-
-    const target = e.currentTarget
-    if (target instanceof HTMLElement) target.setPointerCapture?.(e.pointerId)
   }
 
   function onPointerMove(e: PointerEvent): void {
@@ -115,7 +127,10 @@ export function useSwipeReveal(opts: SwipeRevealOptions = {}): {
         abandon(e)
         return
       }
-      if (Math.abs(dx) > SCROLL_SLOP_PX) horizontalLocked = true
+      if (Math.abs(dx) > SCROLL_SLOP_PX) {
+        horizontalLocked = true
+        capture(e)
+      }
     }
     dragX.value = Math.min(0, Math.max(-currentRevealWidth(), baseOffset + dx))
   }
