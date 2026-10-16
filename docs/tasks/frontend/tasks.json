@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 241,
-  "last_updated": "2026-10-16T13:13:21Z",
+  "version": 242,
+  "last_updated": "2026-10-16T13:15:39Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5163,7 +5163,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ExamsView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5176,7 +5176,7 @@
         "FRONTEND-041"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f4 打回】日期區間清除（不限日期）的狀態無法經網址還原：usePagedList 的 cleanFilters 會把空字串從 query 拿掉，清除後網址只剩 /exams?page=1，與預設狀態無法區分；從網址重建時（進考試頁再按上一頁、重新整理、分享連結）date_from / date_to 又回到預設的近 90 天到未來 30 天。違反稿 decision 1「篩選與頁碼同步到網址」與 decision 2「可清除，清除 = 不限日期」。真實 Chromium 重現：清除日期（請求不帶日期、網址 /exams?page=1）→ 點一列進 /exams/e1 → 上一頁 → 請求帶回 date_from=2026-07-18、date_to=2026-11-15，日期框也回到預設，90 天前的考試消失。驗收：清除後的網址要能還原成不限日期（例如以一個不會送到 API 的標記值表示「不限」）；補一條測試：清除日期區間後取 router 的 fullPath，用該網址重新掛載，第一次 GET /admin/exams 不帶 date_from / date_to、日期框為空，且預設篩選的空清單判斷不受影響。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/ExamsView.spec.ts",
@@ -5195,9 +5195,9 @@
         "notes": "每個案例都掛整頁（PageHeader + AdminListToolbar + el-table，部分再開 dialog / 下拉 / 確認框），在共用 CPU 下單一案例可能超過 vitest 預設 5 秒，整個 describe 設 20 秒 timeout。年級篩選在 filters 以字串存（usePagedList 依初始值型別還原網址 query），傳給工具列下拉與 API 時轉成數字。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f4",
+        "notes": "打回（1 項，見 risk_notes）。其餘通過：tdd.run 實跑 8/8 綠（6 條 red_case + 載入失敗重試 + viewLoaders 接線），名稱一一對應；測試 d21c16a 早於實作 ed9e508，ed9e508 與 b52caa7 對 spec 只調整 timeout，沒有改斷言。路由 /exams 以 exams:read 守衛（routes.spec 既有），viewLoaders 已接線。api 用法對照 api/exams.ts listExams / deleteExam 與 BACKEND-467 / 471 一致。突變 15 處，11 處轉紅：預設 89 天、對象順序、不加年份、列不可點、建立後不帶 tab、已發布也有 ⋮、唯讀也有 ⋮ 欄、空清單不分預設、科目 0 不顯示未設定、刪除後不重載、刪除文案；不轉紅 4 處：⋮ 外層不 stopPropagation、名稱連結不 stopPropagation、操作欄改回 ellipsis、年級不轉數字（前三者 Chromium 實測行為正確，第四者送出結果相同）。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（chromium-1243，今天 10/16）實測：預設區間 2026-07-18～2026-11-15 並以 YYYY/MM/DD 顯示；列高 ≥ 48、操作欄 72px、⋮ 44×44 在格內、該欄 text-overflow clip、沒有多出「···」、「建立考試」44px；欄位文字（10/15（四）、低年級A班・二年級、未設定、非今年加「2025」、已發布下一行 2026/10/16 10:00）；點 ⋮ 只開選單不導頁；點列導到 /exams/e1；名稱連結 href /exams/e1、聚焦後 Enter 進入；快捷「預設區間」「本學年度」「上學年度」，上學年度送 2025-08-01～2026-07-31、本學年度送 2026-08-01～2027-07-31；刪除確認文案正確、409 顯示後端訊息；預設篩選空清單文案與建立鈕；只有 exams:read 時沒有建立鈕與 ⋮ 欄、仍可點進考試頁。page-exams.html decisions 第 1~7 條：1 版面 / 分頁 / 改篩選回第 1 頁一致，但「篩選同步到網址」在清除日期時不成立（打回項）；2 篩選項與預設區間、快捷一致，「清除 = 不限日期」只在當次有效（打回項）；3~7 一致。web-lint 乾淨；web-typecheck 全專案 0 錯誤。殘留（不擋）：「點 ⋮ 不觸發整列導頁」與操作欄不套 ellipsis 沒有單元測試保護；網址只帶 date_from 或 date_to 其中一個時，日期框顯示為空但請求仍帶該值（只有手改網址才會發生）。"
       }
     },
     {
@@ -6149,13 +6149,13 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreCell.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-236"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r10-f4 打回】再點同一格圖示關閉編輯框、且這次確定讓備註由無變有或由有變無時，圖示 ChatSquare / ChatLineSquare 在 pointerdown 與 click 之間換形，按下時的 svg 被移除，Chromium 不派發這次 click，swallowClick 殘留為 true，下一次點該格圖示被吞掉、編輯框不開（要點兩次）。真實 Chromium 重現：無備註格點圖示 → 輸入「病假」→ 再點圖示（送出並關閉，正確）→ 再點圖示：不開，第四次才開；有備註格清空後再點圖示關閉也一樣；點按鈕邊緣（不在 svg 上）、內容不變或備註改成另一段文字（圖示不換形）時正常。pointerdown 落在圖示上卻沒有 click（按下後拖離）也會留下同樣的殘留旗標。核可稿 component-exams.html 的示範程式有同樣問題，但 decisions 文字（再點圖示視同點外面、不會關閉後又立刻打開）不受影響，修正不需重新核可。驗收：吞掉只限緊接在那次 pointerdown 之後的 click，不得影響之後的點擊；補一條測試：在圖示上 pointerdown 讓編輯框確定並關閉、之後不派發 click，接著再點圖示要能開啟編輯框。",
+      "risk_notes": "再點同一格圖示時，「吞掉 click」以啟動它的 pointerdown 事件物件比對（先經 document capture、再到圖示鈕的 @pointerdown），新的 pointerdown 一律先清掉舊旗標；內容超過 200 字時點外面另以 blockNextClick 擋下緊接的 click，每次 pointerdown 都會重設。兩者都以「click 之前有 pointerdown」為前提：沒有 pointerdown 的 click（鍵盤觸發、程式派發）不在同手勢判斷內。缺考格以點圖示開啟後的還焦、pointerdown 重設 blockNextClick 兩處沒有單元測試保護（真實 Chromium 驗證過）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/exams/ScoreCell.spec.ts",
@@ -6177,9 +6177,9 @@
         "notes": "el-tooltip 會以 cloneVNode 把自己的 aria-* 蓋到直接子節點，且對可聚焦的子節點移除 aria-expanded / aria-haspopup，所以分數輸入框與圖示鈕外各包一層 span（.score-cell__wrap）。關閉後的聚焦在 nextTick 之後執行，避開 popover focus trap 釋放時的還焦；超過 200 字時 focus trap 會因滑鼠 focusout 釋放，以 document focusin 守衛把焦點拉回文字框。happy-dom 不會在 pointerdown 後移動焦點，焦點相關行為另以 Playwright 在真實 Chromium 驗證過（確定 / Esc 回到分數輸入框並全選、點外面焦點留在點的位置、超過 200 字焦點拉回、再點圖示不重開、缺考格回「缺」）。 打回修正：吞掉 click 的旗標綁定啟動它的 pointerdown 事件物件（document capture 先經過、再到圖示鈕的 @pointerdown），新的手勢一律先清掉舊旗標；超過 200 字時點外面另設 blockNextClick，由 document capture 的 click 監聽擋下緊接的那次 click，避免另一格編輯框同時開啟。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r10-f4",
-        "notes": "打回（1 項，見 risk_notes）。其餘通過：tdd.run 實跑 16/16 綠（既有 9 條 + 7 條 red_case，名稱一一對應）；commit 先測試 c807a87 後實作 c989be5、ee6b968。既有 9 條 ScoreCell 測試的改動逐行核對：只有 8 處期望 payload 加上 note: null 與掛載預設 props 加 note: null，沒有刪除或放寬任何斷言。突變 17 處：不 trim、空字串不轉 null、不變也 emit、字數用 UTF-16 長度、分數 / 缺考變更不帶或清掉 note、點外面只關閉、超過 200 字點外面也關閉、拿掉 focusin 守衛、拿掉 swallowClick、拿掉 Shift+F2、組字中 Enter 也確定、拿掉 aria-describedby、確定鈕超過不停用、清空鈕永遠出現 —— 皆轉紅；取消不還焦、缺考格改還焦到分數框兩處不轉紅（以 Shift+F2 開啟時 Element Plus popover 的 focus trap 本來就把焦點還給開啟前的元素），實際行為改以 Chromium 驗證正確。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（/opt/pw-browsers/chromium-1243）實測通過：點圖示開啟焦點在文字框；點外面的 input 送出 trim 後備註、關閉、焦點留在該 input；點空白處同樣送出；201 字點 input / 點空白都不關閉、不 emit、焦點回文字框，連按 Tab 焦點仍在編輯框內，改回 200 字點外面才送出；再點同一格圖示送出並關閉且不重開；Shift+F2 從分數框開啟游標在結尾，Esc 不 emit、焦點回分數框並全選；以滑鼠開啟後 Esc / 取消 / 確定都回分數框全選；Shift+Enter 換行、Enter 確定並還焦；缺考格從「缺」Shift+F2 開啟、Enter 不變不 emit、焦點回「缺」，滑鼠開啟後 Esc 也回「缺」；開啟時已打的合法分數先 emit、之後確定帶最新分數；不合法輸入在編輯備註期間保留紅框；a 格開著合法內容時點 b 格圖示：a 送出、只剩 b 的編輯框；tooltip 0.25 秒後才出現、readonly 圖示聚焦顯示全文、Tab 走格子不彈 tooltip 且圖示不在 Tab 順序；圖示 18×32、與「缺」間距 4px、編輯框寬 300、popper role=dialog。component-exams.html（approved）decisions 逐條：1~6 屬 FRONTEND-236 既有行為（既有測試全綠）；7~9 屬 238 / 235；10 入口位置與尺寸 一致（整格實測 121px，稿 120px，差在字型）；11 有無備註兩種圖示、平板常駐 一致；12 tooltip 全文 / 新增備註、aria-label、aria-describedby、鍵盤移動不彈 一致；13 開啟方式、popover 寬 300 teleport、游標結尾、開啟時分數先 emit 一致；14 編輯框內容、清空、平板 44px 與隱藏鍵盤提示（CSS 核對）一致；15 code point 計數、超過 200 的紅框紅字停用 一致；16 確定 / 取消規則與還焦、組字中 Enter 一致；17 清空 emit null 一致；18 分數與缺考變更帶原 note 一致；19 tabindex -1、Enter / Esc stopPropagation（textarea 內的 Enter 與 Esc；同稿）一致；20 缺考格 一致；21 readonly 一致；22 淡化由 ScoreGrid 負責；23 點外面視同確定 一致，但「再點圖示」之後的點擊有上述打回問題。web-lint 乾淨；web-typecheck 本 task 檔案無錯（錯誤在他人進行中的檔案）。殘留（不擋）：a 格超過 200 字時點 b 格圖示，b 的編輯框也會開啟（兩個編輯框同時開、焦點被守衛留在 a），修正上一項時可一併讓這次點擊不開 b；red_case 7 的 Esc 與缺考格還焦以 Shift+F2 開啟，focus trap 本身就會還焦，驗不出 focusCell 的有無，建議補「以點圖示開啟後 Esc / Enter」的焦點斷言；Shift+Enter 與按鈕上的 Enter 沒有 stopPropagation（編輯框 teleport 到 body，觀測不到差別，與稿相同）。"
+        "notes": "複審通過（只核對 review-r10-f4 的打回項：再點圖示關閉且圖示換形時，下一次點圖示被吞掉）。紅燈 b97368d 早於修正 cf7bf76；red_cases 補第 8、9 條並擴充第 7 條（點圖示開啟後 Esc / Enter 還焦）。tdd.run 實跑 18/18 綠。修法：吞掉旗標綁定啟動它的 pointerdown 事件物件，圖示鈕自己的 pointerdown 若不是該事件就清掉舊旗標；超過 200 字時點外面以 document capture 的 click 監聽擋下緊接的那次 click，另一格的編輯框不會同時開啟。突變 10 處：整檔換回打回前 ee6b968（第 8、9 條轉紅，證明新測試有效）、圖示 pointerdown 不清舊旗標、拿掉 @pointerdown 綁定、capture click 不擋、超過 200 字不設 blockNextClick、同手勢也清旗標、取消不還焦（第 7 條擴充後轉紅）、確定不還焦 —— 皆轉紅；缺考格改還焦到分數框、pointerdown 不重設 blockNextClick 兩處不轉紅（列入 risk_notes）。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（chromium-1243）重驗：無→有、有→無（圖示換形）再點圖示關閉後下一次一點就開；按下拖離後一點就開；圖示不換形時同手勢的 click 仍被吞、不重開；a 格超過 200 字點 b 格圖示只剩 a、焦點在 a、無 emit，改回合法再點 b 則 a 送出、只剩 b 且焦點在 b；超過 200 字點 b 的「缺」不觸發 b；之後點編輯框內「清空」、外面拖曳後點「取消」都正常。上一輪的 Chromium 回歸腳本全部重跑通過（點外面確定、201 字焦點拉回、Shift+F2、Esc / 取消 / 確定 / Enter 還焦、缺考格、tooltip、Tab 順序、尺寸）。web-lint 乾淨；web-typecheck 全專案 0 錯誤。"
       }
     }
   ]
