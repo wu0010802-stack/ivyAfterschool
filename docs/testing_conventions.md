@@ -34,6 +34,15 @@
 - vitest 對 `*.css?raw` 回傳空字串（`.vue?raw` 正常），斷言 CSS 檔內容要用 `readFileSync` 搭配上面的 `resolve(dirname(fileURLToPath(import.meta.url)), ...)` 讀真實檔案。
 - happy-dom 不實作「在欄位按 Enter 隱式送出表單」，在測試裡按 Enter 驗不出任何東西。瀏覽器的隱式送出是對預設送出鈕派發 click，所以測試改用對送出鈕呼叫 `element.click()` 模擬這條路徑。
 - 要靠點送出鈕觸發 `submit` 的測試，`<form>` 必須掛在 `document` 上（`mount(..., { attachTo: document.body })`），否則 happy-dom 不會送出；Element Plus 的 popover / tooltip 以 `setTimeout` 開關，斷言前要推進 fake timers。
+- Vue 會略過 `timeStamp` 不晚於 handler 綁定時間的事件：用凍結的假時鐘時，直接派發的 click 一律被吃掉，「不會 emit」的斷言因此恆真。派發前先把假時鐘推進 1ms，並用「該 emit 的情境確實 emit」反證。
+- happy-dom 的 `localStorage` 方法綁在實例上，`vi.spyOn(Storage.prototype, ...)` 不生效；模擬 storage 拋錯要 `vi.spyOn(localStorage, ...)`。
+- happy-dom 不把 `<fieldset disabled>` 傳到子欄位（`matches(':disabled')` 為 false）：斷言欄位在 disabled 的 fieldset 內，真實停用效果以 Chromium 實測。
+- happy-dom 卸載有焦點的輸入框時不觸發 `blur`（Chromium 會）：依賴「卸載時的 blur 不得送出」的行為，要在測試裡補派一次 blur 才驗得到。
+- Element Plus 的 `el-select` / `el-time-select` placeholder 畫在 `.el-select__placeholder`，input 上沒有 placeholder 屬性；`el-date-picker` 的 class 落在不帶 scoped 屬性的內層，scoped 樣式（寬、高）套不到，要用 `:deep()` 從父層設定（FRONTEND-127 / 151），並以 Chromium 量測。
+- Element Plus 的 overlay（dialog / drawer 遮罩）以 useSameTarget 判斷點擊：mousedown、mouseup、click 都要打在遮罩上才算數。
+- 多個 dropdown / select 的選單會同時預先渲染在 body：找選單一律從觸發元素的 `aria-controls` 找對應清單，不要取 DOM 中第一個或最後一個。
+- 重的頁面 spec（多個 el-select、el-date-picker、卡片）單條要數秒，同時跑超過約 8 個 vitest 行程時會逾時（CPU 飽和，不是競爭）：describe 設明確 timeout（20~60 秒），協調者控制同時跑測試的 agent 數。
+- 自己起 vite / Playwright harness 時，Components 與 AutoImport 外掛一律設 `dts: false`（或用不掛 unplugin 的獨立設定），否則會依「這次用到的元件」重寫共用的 `apps/web/src/components.d.ts`、刪掉其他頁面需要的型別。
 
 ## 3. 測試分層
 

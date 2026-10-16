@@ -14,18 +14,17 @@
 
 ## 目前狀態
 
-- 共 745 個 task（INFRA 54、DB 42、BACKEND 408、FRONTEND 154、PARENT 87），NFC 相關 27 個 `blocked`；superseded 8 個（BACKEND-544、DB-001、DB-034、DB-039、INFRA-003、INFRA-007、INFRA-037、INFRA-038）。
+- 共 755 個 task（INFRA 54、DB 42、BACKEND 411、FRONTEND 156、PARENT 92），NFC 相關 27 個 `blocked`；superseded 8 個（BACKEND-544、DB-001、DB-034、DB-039、INFRA-003、INFRA-007、INFRA-037、INFRA-038）。
 - 架構：DB 為 PostgreSQL（雲端 Railway Postgres、本機 `compose.yaml` 的 Postgres 17.11 + SeaweedFS 模擬 R2），migration 用 Alembic（forward-only、revision id = task id；已部署的 revision 不再修改，未部署的可直接修正），檔案存 Cloudflare R2，後端以最小權限角色 `app_backend` 連線、不使用 RLS。web → api 只走 IPv6（nginx resolver `ipv4=off`，INFRA-053）。細節見 `docs/architecture_decisions.md` §2~§5、§10、§11；部署流程與上線前驗證清單見 `docs/deployment.md`。
-- 已 done（604）：
-  - INFRA（49）：001、002、004~006、008~036、039~053。未完成：INFRA-054（committing_db_session 的 cleanup_tables 不得 cascade 到 seed 表）。
-  - DB（37）：002~031、035~038、040~042。目前 head = db040（鏈尾 … → db038 → db025 → db028 → db040）。`apps/api/tests/integration/db/test_schema_conventions.py` 動態檢查每張表的慣例，之後新增的表由它把關。
-  - BACKEND（386，其餘為 NFC blocked 與 pending 的 449、559）：001~024、030~066、070~098、100~125、130~185、200~227、300~323、340~358、370~391、400~448、450~480、490~492、520~543、545~558。
-    - 認證與權限、角色 / 員工帳號（含 activate、options）、參考資料、班級、學生（含照片、封存、PATCH、purge、close-out、匯入範本 / 預覽 / 執行（不受信任 xlsx 的深度防護，見下方慣例）、學年升級預覽 / 執行）、監護人與綁定碼、家長綁定 / refresh / logout、通知（enqueue、已讀、偏好、ws admin / parent）、出勤（建列、到班 / 離班 / 批次到班、改判、每日 / 月報 / 匯出、背景初始化）、請假（建立 / 取消 / 附件 / 套用與還原出勤 / 通知，後台與家長端 endpoint）、作業（看板、進度重算、ETA、手動完成、項目 CRUD 與整班批次新增的 service 與 endpoint、整體進度 endpoint、家長端）、接送（請求建立 / 回覆 / 確認 / 到達 / 取消 / 完成與後台 reply / complete endpoint、代理授權建立 / 重產碼 / 取消 / 核銷 / 目視核對 / 強制完成的 service 與後台 verify / confirm-visual-match / override-complete endpoint、佇列 / POS、自動過期）、成績（考試 CRUD、科目、登分、發布 / 取消發布、摘要、家長端）、儀表板、家長今日狀態已完成。家長端寫入守衛：非 active 學生（退班、暫停）一律 409 `student_not_active`（BACKEND-557；讀取不受影響）。尚未做：449（家長取消代理授權 endpoint）、559（`get_exam_summary` 各科統計只計目前應考名單）。
-  - FRONTEND（78）：001~009、020~026、030、031、033~057、059~062、066~070、072、073、080、082~084、091~093、098、120、121、123、155~157、180、186、196、230、236、238、240、260、294、295。api client（auth / notifications / referenceData / dashboard / roles / classes / guardians / settings / staffUsers / attendance / leaves / pickupRequests / exams）、stores（auth / lookups / adminWs / notifications）、`useAdminWsTopic`、router（hash router + authGuard + 頁面標題；`landingPath` 導回邏輯）、殼層元件（側欄、通知鈴）、登入 / 強制改密碼 / 錯誤頁、設定頁元件與表單 dialog（設定卡、參考資料四張表、角色權限表單）、學生詳情元件（監護人管理、歷次成績）、作業項目 dialog 已完成。
-  - PARENT（54）：001~008、010、011、014~023、025~029、032、035、050、051、070、072、090、091、094~096、098~101、130、131、133、150~152、170、171、175、176、178、191~193。家長端 http（401 自動 refresh、409 視為已輪替）、LIFF、api client（config / homework / notifications / notificationPreferences / auth / children / pickupRequests / pickupPersons / attendance / leaves / exams；路徑 id 一律 `encodeURIComponent`）、children store、ChildContextHeader、接送回覆 / 進度 / 常用接送人列元件、出勤日曆、考試列與分數表元件、通知設定頁已完成。家長端共用疊層堆疊在 `apps/web/src/parent/utils/overlayStack.ts`；事件圖示對照在 `parent/utils/notificationEventIcon.ts`；圖示字型子集在 `parent/styles/icons.css`（PARENT-193 已把子集補到 75 個圖示並加掃描 spec（新增圖示時必須同步更新 `icons.css` 檔頭清單並重取子集））。
-- 設計稿（`docs/mockups/`）：60 張 approved（第 9 輪新出的 13 張稿使用者已全部核可，稿內 7 題待裁定照推薦選項），沒有 draft。`index.html` 分「待核可 / 已核可」兩區。元件稿是元件外觀的權威，頁面稿只負責版面並引用元件稿。家長端 warning 色使用 `m3-tokens.css` 的 `--m3-warning-container` / `--m3-on-warning-container`；家長端層級 z-index：頂部列 5、sheet 10、dialog 15、snackbar 20；家長端頁面自帶左右 16px、底部 24px 內距，ParentLayout 不再加。
-- 收工時尚未走完的 task：無（以 `--in-review` 與 tasks.json 為準）。本機 compose 服務（Postgres、SeaweedFS）已於收工時 `just db-stop`（volume 保留）；下一輪先 `just db-start`，並用 owner 唯讀確認 `alembic_version` 為 db040、`system_settings` 有 11 列（DB-038 種子；第 9 輪曾被不明指令整表清空過，見「協調者要注意的事」）。新 session 先 `git status` / `git diff` 確認沒有被中斷的 agent 留下突變殘留（reviewer 突變驗證會暫時改壞原始檔，正常在同一個 flock 內還原；有殘留一律 `git diff` 檢視後交 reviewer 或實作者處理，不要直接 commit）。
-- 遠端：`origin = git@github.com:samjp6jp69898/ivy-afterschool.git`（main 追蹤 origin/main）。
+- 已 done（715）：
+  - INFRA（49）：未完成只剩 INFRA-054（committing_db_session 的 cleanup_tables 不得 cascade 到 seed 表；使用者指示之後再做）。
+  - DB（37）：除 NFC（DB-032 / 033 blocked）外全部完成。目前 head = db040（鏈尾 … → db038 → db025 → db028 → db040）。`apps/api/tests/integration/db/test_schema_conventions.py` 動態檢查每張表的慣例。
+  - BACKEND（391）：除 NFC（BACKEND-500~518 blocked）外全部完成。第 10 輪新增並完成：560（學生匯入預覽判退班 + 未來入學日為錯誤）、561（家長出勤月曆：未來請假不顯示、計入統計卻沒有紀錄的日子為「未登記」）、562（verify_code 錯碼累計與鎖定後推播 `pickup.authorization_updated`）。
+  - FRONTEND（146）：除 e2e（290 支援工具、291~293 三條流程）與 NFC（270~275 blocked）外全部完成；所有後台頁面都已接上真正的 view（`router/viewLoaders.ts` 已沒有指向 PlaceholderView 的頁，`router/PlaceholderView.vue` 目前只剩測試引用）。第 10 輪新增並完成：296（考試每格備註輸入）、297（useSwipeReveal 水平拖曳確立後才 setPointerCapture，修正桌機滑鼠點佇列卡按鈕沒反應）。
+  - PARENT（92）：全部完成，含 PARENT-190 家長端 Playwright e2e（全部 API / LIFF / WebSocket 以替身攔截）。第 10 輪新增並完成：194（出勤月曆依 BACKEND-561）、195（router scrollBehavior）、196（`/login?logged_out=1` 不探測 session）、197（LIFF `withLoginOnExternalBrowser: false`：外部瀏覽器未登入停在「使用 LINE 登入」，與核可稿一致，也讓外部瀏覽器登出不被 init 轉去再登入）、198（ConfirmDialog 間距對齊元件稿）。
+- 設計稿（`docs/mockups/`）：68 張 approved，沒有 draft。`index.html` 分「待核可 / 已核可」兩區。元件稿是元件外觀的權威，頁面稿只負責版面並引用元件稿。家長端 warning 色使用 `m3-tokens.css` 的 `--m3-warning-container` / `--m3-on-warning-container`；家長端層級 z-index：頂部列 5、sheet 10、dialog 15、snackbar 20；家長端頁面自帶左右 16px、底部 24px 內距，ParentLayout 不再加。
+- 收工時尚未走完的 task：無（以 `--in-review` 與 tasks.json 為準）。本機 compose 服務（Postgres、SeaweedFS）已於收工時 `just db-stop`（volume 保留）；下一輪先 `just db-start`，並用 owner 唯讀確認 `alembic_version` 為 db040、`system_settings` 有 11 列、`roles` 4、`subjects` 5、`exam_types` 3。新 session 先 `git status` / `git diff` 確認沒有被中斷的 agent 留下突變殘留（reviewer 突變驗證會暫時改壞原始檔；有殘留一律 `git diff` 檢視後交 reviewer 或實作者處理，不要直接 commit）。
+- 遠端：`origin = git@github.com:samjp6jp69898/ivy-afterschool.git`（main 追蹤 origin/main）。第 10 輪在雲端容器的分支 `claude/vigilant-franklin-85andq` 進行，push 一直被 GitHub 以 403 拒絕（該 session 沒有這個 repo 的權限），收工時尚未 push、也還沒開 draft PR；下一輪若在新容器開工，先確認這個分支的 commit 是否已到 GitHub，沒有的話第 10 輪的成果不在遠端。
 - 工具版本基準：Python 3.13（uv）、TypeScript 鎖 `~6.0`、vite 8（rolldown）、vitest 5、pinia 4、vue-router 5、eslint 10、@playwright/test 1.63（本機已裝 chromium）；Postgres 映像 `postgres:17.11`、SeaweedFS `chrislusf/seaweedfs:4.48`；alembic 1.20、boto3 1.43、SQLAlchemy 2.1（`Select` 是 variadic generic）、FastAPI 0.142（`include_router` 是 lazy，`app.routes` 不攤平子路由，掃路由用 `fastapi.routing.iter_route_contexts(app.routes)` 或 `app.openapi()['paths']`）；starlette TestClient 回傳 `httpx2.Response`（測試型別標註用 httpx2），per-request `cookies=` 已棄用，改用 `headers={"Cookie": ...}` 或 `client.cookies`；TestClient 預設來源位址是 'testclient'（不是 IP），要驗 audit ip 用 `TestClient(app, client=("203.0.113.5", 50000))`；本機沒有 `psql`，DB 驗證用 `docker compose exec db psql -U postgres` 或 psycopg。
 - 實作慣例（踩過的坑）：
   - ruff 禁 `datetime.now`（TID251），測試與 factory 一律用固定時間或注入的 clock；`app/models/base.py` 的 `Base.type_annotation_map` 有 `str → Text`，inet 用 `InetText`；非 naming convention 的約束名稱要在 model 明確指定；scheduled job 只 flush、由 runner commit（BACKEND-018 的 advisory lock 是交易級）；SQLSTATE 反例要設計成只違反一條約束，reviewer 會 drop 約束自證。
@@ -40,31 +39,47 @@
   - **稽核遮罩**：`audit_service` 以子字串遮罩 password / token / secret / code_hash / id_number / health_note，`must_change_password`、`token_version` 在精確比對白名單內照實記錄（BACKEND-547）；敏感欄位異動的 after 記欄位名清單（`{"set": [...]}`）。
   - **不受信任的上傳檔**：xlsx 匯入（BACKEND-155）在交給 openpyxl 前，以 expat 掃描器對 zip 內每個 entry 套大小 / 元素數 / 深度 / 單值長度上限，並限制 entry 數、同名、壓縮法、加密；openpyxl 載入與迭代的例外一律 422。之後處理任何上傳檔比照此深度防護。
   - Python 測試檔也要過 `just typecheck <檔>`；mypy 會沿 import 檢查到其他 agent 尚未提交的檔案，多 agent 並行時 typecheck 失敗要先確認錯誤是否在自己的檔案。
-  - 前端：Element Plus 元件型別由 unplugin 自動補進 `apps/web/src/components.d.ts`（vite 設定 `dirs: []`，檔內只有 element-plus 型別行，夾帶他人尚未提交的行無妨），與用到新 `el-*` 元件的 task 一起 commit，commit 前 `git diff` 確認該檔只有 Element Plus 型別行；el-form-item 錯誤訊息有 100ms debounce，spec 斷言前要等過；多個 el-select 的選單同時留在 DOM，以 input 的 aria-controls 找對應選單。後台 http 層把網路錯誤也正規化成 `ApiError(0, 'network_error')`。家長端 refresh 409 視為另一分頁已輪替（PARENT-004）。
+  - 前端：Element Plus 元件型別由 unplugin 自動補進 `apps/web/src/components.d.ts`（vite 設定 `dirs: []`，檔內只有 element-plus 型別行，夾帶他人尚未提交的行無妨），與用到新 `el-*` 元件的 task 一起 commit，commit 前 `git diff` 確認該檔只有 Element Plus 型別行；自己起的 vite / Playwright harness 一律 `dts: false`（第 10 輪有 harness 重寫該檔、刪掉 7 個元件型別，由協調者還原）；el-form-item 錯誤訊息有 100ms debounce，spec 斷言前要等過；多個 el-select 的選單同時留在 DOM，以 input 的 aria-controls 找對應選單。後台 http 層把網路錯誤也正規化成 `ApiError(0, 'network_error')`。家長端 refresh 409 視為另一分頁已輪替（PARENT-004）。
   - **鎖（補充）**：`with_for_update()` + `populate_existing` 的查詢必須真的取出列（`scalar_one` / `scalars` / `unique`）；只呼叫 `session.execute(...)` 不消費結果時，列鎖有取到、`populate_existing` 卻不生效（BACKEND-550 在 521 發現並修正，全專案 25 處盤點僅此一處）。並發測試：外部鎖用 `FOR KEY SHARE` 才分得出實作「有沒有先鎖列」；驗 `populate_existing` 要事先載入並持有 ORM 參照；兩個 session 都碰同一列的案例單靠列鎖就序列化，拿掉學生列鎖不會轉紅。
   - **稽核殘列**：`app_backend` 對 `audit_logs` 沒有 DELETE（append-only）；探針與突變留下的 audit 殘列要以 owner 依 id 精準清除並複查全為 0。
-  - **前端型別 / 上傳**：`just web-typecheck` 約 5 秒，批次改 `in_review` 前與審查前端批次時各跑一次（CLAUDE.md 寫「只在 PR 前跑一次」，建議放寬，見待決）；`el-table-column` 的 `#default="{ row }: { row: X }"` 需在每欄前加 `<!-- @vue-generic {X} -->`（FRONTEND-295）。axios 在預設 JSON 標頭下會把 FormData 序列化成 JSON 字串而遺失檔案，`createHttpClient` 對 FormData 請求只移除預設的 `application/json` 標頭（值含該子字串才刪；明確指定的 multipart 保留，FRONTEND-294）。
+  - **前端型別 / 上傳**：`just web-typecheck` 約 5 秒（高負載時 1~2 分鐘，timeout 給 300 秒），每批前端 task 改 `in_review` 前、reviewer 審查前端批次時、送 PR 前各跑一次（CLAUDE.md）；錯誤不在自己的檔案就回報、不要改；`el-table-column` 的 `#default="{ row }: { row: X }"` 需在每欄前加 `<!-- @vue-generic {X} -->`（FRONTEND-295）。axios 在預設 JSON 標頭下會把 FormData 序列化成 JSON 字串而遺失檔案，`createHttpClient` 對 FormData 請求只移除預設的 `application/json` 標頭（值含該子字串才刪；明確指定的 multipart 保留，FRONTEND-294）。
   - **驗證輸出判讀**：`validate_tasks.py` 成功訊息「OK: 無 ERROR」本身含 ERROR 字樣，判斷通過用 exit code 與整行 `^OK: 無 ERROR`，不要 `grep ERROR`（第 9 輪有兩位 agent 因此中止在 staged 狀態）。
 - async 測試用 anyio 內建 pytest plugin，`apps/api/tests/conftest.py` 已統一提供 session 級 `anyio_backend = "asyncio"`。
 - 專案 `.claude/settings.json`（權限 allowlist）由使用者要求建立，尚未 commit；`.claude/pending_decisions.json`（NFC 打卡待決事項）是使用者自己的未追蹤文件。兩者都不要動、不要 commit，agent 回報 `git status` 時看到它們屬正常。
 
 ## 下一輪建議順序
 
-依賴都已寫進 `depends_on`，一律用 `python3 scripts/validate_tasks.py . --ready [AREA]` 查。**先確認上一輪收尾**：`--in-review` 與 `in_progress` 的 task 以 tasks.json 為準（收工時：無）；`just db-start` 後先用 owner 唯讀確認 `system_settings` 有 11 列。
+依賴都已寫進 `depends_on`，一律用 `python3 scripts/validate_tasks.py . --ready [AREA]` 查。**先確認上一輪收尾**：`--in-review` 與 `in_progress` 的 task 以 tasks.json 為準（收工時：無）；`just db-start` 後先用 owner 唯讀確認種子筆數（system_settings 11、roles 4、subjects 5、exam_types 3）。
 
-0. **先問使用者**（見「已知待驗證 / 待決」第 9 輪項目：未來請假日是否顯示於家長出勤月曆、「無紀錄 / 未登記」用詞、155 preview 缺口、CLAUDE.md typecheck 規則放寬、考試每格備註功能）。答案寫回 `docs/domain_spec.md` 與對應 task（PARENT-132、BACKEND-155 的後續、CLAUDE.md）。
-1. **第三波（設計稿皆 approved、依賴皆 done；收工時 `--ready` 快照：BACKEND 449、559；FRONTEND 032、058、063、065、071、081、099、124、125、126、128、131、132、150、181、182、183、184、187、232、233、237、239、262、290；INFRA 054；PARENT 009、132、134、135、136、153、154、173）**，第 9 輪規劃的分批：
-   - BACKEND：449（家長取消代理授權；守衛決定已寫進 description）、559（`get_exam_summary` 只計目前應考名單；`docs/domain_spec.md` M8 已定義「未填」與統計範圍）。各一位。
-   - FRONTEND：設定頁 058 / 063 / 071（組裝已完成的元件）；殼層 032 AdminHeader、065 StaffUserFormDialog、099 ClassStaffDialog；api 與純邏輯 081（students api）、150（homework api）、181（pickupAuthorizations api）、182 / 183 / 184 / 187（POS composables）；出勤 124 / 125 / 126 / 128；請假與儀表板 131 / 132 / 262；考試 232 / 233 / 237（原樣帶回每格 note）/ 239。以上 24 個，建議 6~7 位實作者（每位 3~5 個；api client 與 POS composables 可分兩位）。
-   - PARENT：stores 009（parentAuth）、173（parentWs）；views 132 / 153 / 154；請假元件 134 / 135 / 136。建議 3 位實作者。
-   - 暫不做：FRONTEND-290（e2e 支援工具，要起 API + Web，等頁面到位後再做）。
-   - 第三波落地後才會 ready：188 usePickupBoard → 189~202 POS 與代理核驗頁；127 / 129 / 130 / 261 頁面；231 / 234 / 235；PARENT 054 / 097 / 137 / 138 等。UI task 動手前，依「協調者要注意的事」的方式查證稿的 preview-tasks 含該 task 且 preview-status 為 approved。
-2. **先開的 chore**（review 殘留，尚未建 task）：
-   - BACKEND：homework_service 公開 `progress_out`（390 現在自組，382 / 377~380 也可共用）；374 / 404 before_commit 去重推播共用 helper；388 / 389 補『window 外項目可修改 / 刪除』的測試（目前拿掉不會轉紅）；553 案例 2 補 `grade_level == 4` 斷言（取得不依賴 0.5 秒時間窗的判別）；`test_pickup_transitions.py::test_transition_request_concurrent` 與 `test_class_service.py` 的 `_committed_staff` 改 `role_code='tutor'`；`get_owned_student_for_write` 的 docstring 補 suspended；BACKEND-106 description 的 homework.window 文字改「新增」；165 handler 的 `assert` 改明確 422。
-   - FRONTEND：api 路徑 id 編碼 helper 拒絕 `.` / `..`（`encodeURIComponent` 不編碼 `.`，id 為 `..` 仍改變路徑結構，只影響 GET、不越權；後台與家長端 api client 都要）；四張參考資料表（059~062，約 4×120 行重複）抽共用 composable；069 / 070 的 cannot_grant 組字抽共用；091 補『先切換學生再開表單』測試；FakeWebSocket 抽到 `src/test/`；FRONTEND-025 的 `/login/` 大小寫；`docs/mockups/page-settings-system.html` 範例文字；058 若會重新抓設定，SettingCard 要用 `:key` 重建（057 不監看 setting prop）。
-   - PARENT：ArrivalTimePicker（096）列距改 12px（接送頁稿已用 12px，先改元件稿再開 chore）；133 的 depends_on 補 FRONTEND-006（用到 `buildFormData`）；131 月曆在 360 寬時格寬 39.7px 低於 44px 觸控目標（需改稿）；151 實測列高 76px、稿寫 72px（153 的骨架以實測為準）；152 分數後端可到兩位小數、前端依規格四捨五入到一位（59.95 顯示 60，規格層問題）。
-   - 文件：FRONTEND-040、PARENT-017 / 018 / 023 / 027 / 028 的 `risk_notes` 仍是第 3 輪 review-r3 的打回原文（這些 task 已 done 且沒有待決問題），順手改寫成目前仍成立的風險；domain_spec 不需再補。
-3. **INFRA / DB**：INFRA-054（committing_db_session 的 cleanup_tables 不得 cascade 到 seed 表；第 9 輪 system_settings 種子被清空的根因修補，小 task；使用者指示排在之後再做，完成前遵守「協調者要注意的事」的規則）。DB 沒有 `--ready` 的 task。可考慮 INFRA task：每位 agent 獨立的測試 DB（共用 DB 鎖仍是整合測試與 reviewer 的瓶頸）。
+0. **先處理遠端**：第 10 輪的 commit 在分支 `claude/vigilant-franklin-85andq`，push 被 403 擋下。GitHub 權限修好後先 push 並開 draft PR，再開始新一輪。
+1. **e2e（頁面都已到位，使用者先前指示「等頁面到位再做」的條件已成立）**：FRONTEND-290（admin 登入、API 種子資料與清理；要起 API + Web 與本機 DB）→ 291（今日出勤到班 / 離班）、292（接送請求 → 回覆 → 確認 → 完成）、293（建立考試 → 成績輸入 → 發布）。動手前先跟使用者確認要不要現在做。e2e 的 Chromium 用預裝的 `/opt/pw-browsers`，不要 `playwright install`；PARENT-190 的替身做法（`page.route` / `routeWebSocket` / `page.clock`）可參考，但 290~293 是接真實後端。
+2. **INFRA-054**（cleanup_tables 不得 cascade 到 seed 表；使用者指示之後再做，完成前遵守「協調者要注意的事」的規則）。
+3. **review 殘留的 chore（尚未建 task；依區域分批開票）**：
+   - 規格 / 需使用者確認：
+     - 員工代建（FRONTEND-199）與回覆（197）的時間選項到 21:00（稿的設定），後端對員工代建同樣套用 `pickup.window` 的 latest_expected_arrival（預設 19:00），超過會 422 並顯示後端訊息；要讓選項跟著設定走，需要後台讀得到該設定（目前沒有 admin 可讀的端點）。
+     - 首頁卡片（PARENT-054）在「我到了」遇到 invalid_pickup_status / pickup_request_not_found 時不重抓（description 與稿 decision 6 規定卡片不變），snackbar 卻說「狀態已更新」；建議改成呼叫今日狀態 `refresh()`（要改稿 decision 與 description）。
+     - page-homework-board 稿 decision 2 文字寫日期「（週）」，稿實際渲染與實作都是 `YYYY/MM/DD`；擇一：改稿文字，或在 bootstrap 載入 dayjs zh-tw 並顯示星期（篩選列在 928px 只剩 27px 餘裕，要重量）。
+     - 桌機 1024 寬且使用傳統捲軸時，接送 POS 中欄一列只有 2 張（平板覆蓋式捲軸與 1280 桌機不受影響，協調者裁定維持稿）。
+   - FRONTEND：
+     - 153 卡片在「可寫、非今天、整體依項目推導為 done」時 ⋮ 是空選單 → 沒有選項時隱藏 ⋮。
+     - LeavesView（129）從網址還原學生篩選時，StudentSelect 只顯示 id 直到列表載入到該生紀錄 → StudentSelect 依 id 補標籤（需要依 id 查學生的方式）；操作欄寬 84 → 88（「整筆取消」溢出 2px，稿同）；「今天」只在建立時計算。
+     - ExamDetailView（234）：取消發布前「flush → 確認放棄 → 重建成績格」只有 Chromium 驗證，補 red_case；scoredCounts 的 summary 請求補序號防護；放棄確認文案「確定要關閉嗎？」（FRONTEND-046）用在離開頁面不貼切。
+     - FormDialog（040）footer 按鈕 32px，平板 dialog 觸控目標不足 44px。
+     - 後台登入頁以 adminHttp 打 `/parent/config`，401 時會多打一次 `/admin/auth/refresh`（FRONTEND-021 範圍）。
+     - 合併語意：126 / 152 / 188 的整包重抓晚到會覆蓋較新的狀態 → 以 updated_at 比較。
+     - `router/PlaceholderView.vue` 已無 loader 使用：決定刪除或保留給 NFC 頁（blocked）。
+     - 沿用前一輪：api 路徑 id 編碼 helper 拒絕 `.` / `..`（後台與家長端）；四張參考資料表（059~062）抽共用 composable；069 / 070 的 cannot_grant 組字抽共用；091 補『先切換學生再開表單』測試；FakeWebSocket 抽到 `src/test/`；FRONTEND-025 的 `/login/` 大小寫；`docs/mockups/page-settings-system.html` 範例文字；239 description 的「得分率 {n}%」用詞；page-students 稿 decision 17 的 480 → 560。
+   - PARENT：
+     - 登出（033）`replace('/login?logged_out=1')` 完成前若有在途請求 401（refresh 也 401），PARENT-013 的 handler 會改導 `/login?redirect=…` 而取消 logged_out，LINE 內會自動再登入（機率低）→ handler 在登出進行中略過。
+     - PARENT-172 本地未讀增減不參與取號，較早發出的 refreshUnread 晚到會短暫把未讀數蓋回舊值 → store 層修正。
+     - PARENT-073 老師說明開頭多一個空白（pre-wrap + 模板縮排，左側偏 4px）→ 比照 053 用 span 包文字並以 textContent 斷言；parent-page-homework 稿的 `.m3-card p` margin 覆寫讓縮排與上距看不出來。
+     - PARENT-197 外部瀏覽器測試用真實 100ms 計時器判斷 init 卡住，高負載可能誤紅 → 改成直接等 `initLiff()` 並以 vitest 逾時保護。
+     - 請假狀態膠囊規則在 136 LeaveListItem 與 137 LeaveDetailSheet 重複 → 抽 util。
+     - PARENT-104 有 6 個實作正確但沒有測試的行為（review.notes 有清單）。
+     - 沿用前一輪：ArrivalTimePicker（096）列距改 12px（先改元件稿）；133 的 depends_on 補 FRONTEND-006；131 月曆 360 寬時格寬 39.7px（需改稿）；151 實測列高 76px、稿寫 72px；152 分數四捨五入到一位（59.95 顯示 60）。
+   - BACKEND（沿用前一輪）：homework_service 公開 `progress_out`；374 / 404 before_commit 去重推播共用 helper；388 / 389 補『window 外項目可修改 / 刪除』的測試；553 案例 2 補 `grade_level == 4` 斷言；`test_pickup_transitions.py::test_transition_request_concurrent` 與 `test_class_service.py` 的 `_committed_staff` 改 `role_code='tutor'`；`get_owned_student_for_write` 的 docstring 補 suspended；BACKEND-106 description 的 homework.window 文字改「新增」；165 handler 的 `assert` 改明確 422；BACKEND-437 endpoint 層補「錯碼 400 / 鎖定 409 時確實推播」的測試。
+   - 文件：FRONTEND-040、PARENT-017 / 018 / 023 / 027 / 028 的 `risk_notes` 仍是第 3 輪打回原文，改寫成目前仍成立的風險。
+4. **上線前**：`docs/deployment.md` 的上線前驗證清單（見「已知待驗證 / 待決」的部署項目）；LINE App 與外部瀏覽器實機確認 LIFF 轉址會原樣帶回 hash 內的 query（PARENT-030 / 033 / 197）。
 
 ## 派工方式（每一輪都照做）
 
@@ -165,12 +180,16 @@ INFRA-047 收尾時會改 `apps/api/app/models/base.py` 的 docstring（跨區�
 - **harness 的『像指令』標記**：agent 回報若提到 `.claude/settings.json` 之類檔名，harness 可能標記 instruction-shaped，屬誤報；內容沒有指令時照一般回報處理。
 - **agent 的 Co-Authored-By**：agent 的 commit 結尾可能寫自己的實際模型（例如 Fable 5.1），不必要求改成協調者的署名。
 
+- **雲端容器環境**：容器會無預警重啟（第 10 輪三次），重啟後 dockerd 不會自己起來：`nohup dockerd > /tmp/dockerd.log 2>&1 &`，等 `docker info` 成功後 `flock /tmp/afterschool_db.lock timeout 300 just db-start`，再確認種子筆數。背景 agent 重啟後要用 `SendMessage` 以 agent id 喚回（會從 transcript 接續），並告知容器重啟、請它先 `git status` 確認自己的未提交檔案。用量上限中斷後同樣以 SendMessage 喚回。
+- **同時跑測試的 agent 數**：容器只有 4 顆 CPU；超過約 8 個 vitest 行程同時跑時，重的頁面 spec 會逾時（load 20~35），`just web-typecheck` 也會超過 2 分鐘。派工時控制同時在跑測試的 agent 數，並請 agent 給 typecheck `timeout 300`。
+- **共用產生檔**：`apps/web/src/components.d.ts` 會被任何未設 `dts: false` 的 vite 重寫；看到它被改而沒有人新增元件時，由協調者 `git checkout -- apps/web/src/components.d.ts` 只還原這一檔。
+- **部分改寫已 done 的 task**：實作時常需要小幅改已 done 的元件或 composable（第 10 輪：045 usePagedList、185 / 188 / 190 本機代建不響、195 busy、186 capture 時機）。依 README：產物仍在、只被新 task 部分改寫時保留 done，由新 task 的 description 寫明改寫範圍並同步被改 task 的 description / red_cases；請 reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。範圍較大的（例如 186 的 capture 時機）另開 task。
+- **核可稿已定案的事不必再問使用者**：規格與核可稿矛盾時（例如 LIFF 外部瀏覽器自動登入 vs 稿的 choice 狀態），以使用者已核可的稿為準直接定案，回報時說明依據。稿本身的 CSS 瑕疵（不改設計意圖）由設計 agent 修稿、preview-status 維持 approved。
+
 ## 已知待驗證 / 待決（不要當成新發現）
 
-- **第 9 輪待使用者裁定**（其餘第 9 輪的裁定已落地：作業日期窗只限制新增、暫停學生家長端寫入一律 409、13 張新稿全部核可、cannot_grant 採頂端 alert）：
-  - 業務 / 規格：①未來的請假日要不要顯示在家長出勤月曆（BACKEND-342 只套用今天、303 當天才建 leave 列；推薦：不顯示，請假頁看；要顯示需新 BACKEND task 並調整 PARENT-132 稿）；②沒有出勤列的過去營業日，月曆顯示「無紀錄」、統計卻算進「未登記」（推薦：月曆也寫「未登記」；記在 PARENT-132 的 risk_notes）；③BACKEND-155 preview 對「退班 + 入學日晚於今天」判 valid、execute 才 409 import_conflict（範本沒有退班日欄；推薦：preview 補檢查判 invalid，與 execute 一致）；④考試每格備註後台要不要提供輸入（現況：後端支援、家長端顯示，後台 FRONTEND-237 原樣帶回、不編輯；要輸入需新 task 並調整 ScoreCell 與 page-exam-detail 稿）。
-  - 規則：CLAUDE.md「just web-typecheck 只在 PR 前跑一次」讓 9 個既有 vue-tsc 錯誤累積到第 9 輪才發現（約 5 秒就跑完）；建議放寬為批次 in_review 前與審查前端批次時各跑一次（需使用者同意才改 CLAUDE.md）。
-- **設計稿**：全部 approved。尚未做真實瀏覽器 live 驗證的版面：page-leaves 展開附件列的 sticky、page-pickup-authorizations 搜尋框 280 寬（手算）、parent-page-leaves 申請 sheet 底部 sticky 按鈕；實作這些 task 時以真實瀏覽器確認。其他缺口：儀表板近期請假沒有假別代碼（BACKEND-490 的 RecentLeaveOut 加欄位才能上色）；SKILL 模板 `references/preview-template.html` 鎖 element-plus 2.14.5 / vue 3.5.42，package.json 與稿是 2.14.7 / 3.5.43。
+- **待使用者決定的事**：見「下一輪建議順序」第 3 點「規格 / 需使用者確認」（員工代建時間上限與 pickup.window、首頁卡片在接送錯誤時重抓、作業看板日期是否顯示星期、桌機 1024 寬 POS 中欄 2 張）與第 1 點 e2e 是否現在做。
+- **設計稿**：全部 approved。第 10 輪的頁面都已在真實 Chromium 量測過版面（page-leaves 展開附件列、page-pickup-authorizations、parent-page-pickup-proxy 的 sheet 底部按鈕列皆已實測）。其他缺口：儀表板近期請假沒有假別代碼（BACKEND-490 的 RecentLeaveOut 加欄位才能上色）；SKILL 模板 `references/preview-template.html` 鎖 element-plus 2.14.5 / vue 3.5.42，package.json 與稿是 2.14.7 / 3.5.43。
 
 - **NFC 打卡**：27 個 task blocked（DB-032/033、BACKEND-500~518、FRONTEND-270~275），機型、通訊方式、刷卡判斷規則、離線佇列、一生一卡等待機器到貨後決定。`python3 scripts/validate_tasks.py . --blocked` 列出全部問題。解除時 Alembic revision id 用 `db032` / `db033`，`down_revision` 指向當下的 head，`nfc:manage` 權限由 BACKEND-510 加入。
 - **部署時實測**（清單同步在 `docs/deployment.md` 上線前驗證一節）：web → api 已由 nginx resolver `ipv4=off` 固定走 IPv6（INFRA-053），Railway healthcheck 是否也經 IPv6 連到 api（`--host ::` 只監聽 IPv6）仍待實測（INFRA-031 待決問題 (3)）；Railway edge 的來源 IP 範圍與標頭（INFRA-031 / 033，決定 `TRUSTED_EDGE_CIDRS` 與 `FORWARDED_ALLOW_IPS`，實測前寧窄勿寬）；`docs/architecture_decisions.md` §11 的四項（Railway Postgres 主版本是否為 17、`postgres` 是否為 superuser、pre-deploy 能否經 private network 連 DB 且失敗時中止部署、R2 presigned URL 在 LINE in-app browser 能否載入）。另外：雲端是否可用 `btree_gist` 且裝在 `extensions` schema（DB-018 的 exclusion constraint 寫死 `extensions.gist_uuid_ops`，裝在別的 schema 會讓 migration 失敗）；家長端 ParentBottomSheet / ConfirmDialog 的 body `overflow:hidden` 在舊版 iOS / LINE WebView 是否擋得住觸控捲動，疊層焦點還原在真實瀏覽器（含 leave 動畫期間）是否正確（目前只在 happy-dom 驗證）。
