@@ -6,6 +6,7 @@
 //   做單向守衛：終態一旦套用不會被較晚到的 open 訊息蓋回去，較舊的 open 狀態也不會倒退。
 // - mutation：成功以回傳值 applyRequest；404 pickup_request_not_found / 409 invalid_pickup_status 提示並 reload、
 //   resolve null（呼叫端關 dialog 即可）；其他錯誤 rethrow 給 dialog 顯示。
+// - 本機 create 進行中，該生的新 pending（含 ws 比 HTTP 回應先到的推播）不觸發 onNewRequest：新請求提示音只給其他人建立的請求。
 // - withRoster 另訂閱 attendance / homework 就地更新名單；topic 被拒時改為每 60 秒重抓名單。
 // - 授權事件（pickup.authorization_updated）只帶家長端形狀（BACKEND-420 PickupAuthorizationOut），沒有學生摘要、照片、
 //   錯誤次數與鎖定：收到當天的事件就重抓 B436 清單（序號防護），不就地合併；沒載入授權清單時不寫入，改重抓名單。
@@ -150,6 +151,8 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
 
   const arrivedListeners = new Set<RequestListener>()
   const newRequestListeners = new Set<RequestListener>()
+  /** 本機 create 進行中的 student_id（引用計數） */
+  const localCreates = new Map<string, number>()
 
   let date: ISODate = todayTaipei()
   // 每種資料各自的序號：只採用最新一次請求的回應（reloadRoster 不影響 queue / authorizations）
@@ -251,7 +254,9 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     syncRosterRequest(req)
 
     if (req.status === 'arrived' && previous?.status !== 'arrived') runListeners(arrivedListeners, req)
-    else if (!previous && req.status === 'pending') runListeners(newRequestListeners, req)
+    else if (!previous && req.status === 'pending' && !localCreates.has(req.student.id)) {
+      runListeners(newRequestListeners, req)
+    }
   }
 
   /** 以目前的授權清單重算名單上每位學生的 active 授權數（只換掉數字有變的學生） */
@@ -348,6 +353,19 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     }
   }
 
+  /** create 進行中（直到 mutate 套用回應或失敗）把該生記為本機建立 */
+  async function createLocally(body: PickupRequestCreate): Promise<PickupRequest | null> {
+    const studentId = body.student_id
+    localCreates.set(studentId, (localCreates.get(studentId) ?? 0) + 1)
+    try {
+      return await mutate(() => createPickupRequest(body))
+    } finally {
+      const left = (localCreates.get(studentId) ?? 1) - 1
+      if (left > 0) localCreates.set(studentId, left)
+      else localCreates.delete(studentId)
+    }
+  }
+
   const pickupWs = useAdminWsTopic(
     'pickup',
     {
@@ -418,7 +436,7 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     reply: (id, body) => mutate(() => replyPickupRequest(id, body)),
     acknowledge: (id) => mutate(() => acknowledgePickupRequest(id)),
     complete: (id, body) => mutate(() => completePickupRequest(id, body)),
-    create: (body) => mutate(() => createPickupRequest(body)),
+    create: createLocally,
     applyRequest,
     applyAuthorization,
     onArrived: (fn) => {
