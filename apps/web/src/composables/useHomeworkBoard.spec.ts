@@ -486,4 +486,86 @@ describe('useHomeworkBoard', () => {
     expect(board.board.value).toBeNull()
     expect(board.loading.value).toBe(false)
   })
+
+  it('useHomeworkBoard keeps student updated by ws during reload', async () => {
+    const S2 = makeStudent({ student_id: 's2', student_no: 'S11302', name: '陳小美' })
+    const gate = deferred<void>()
+    mock
+      .onGet(BOARD_URL)
+      .replyOnce(200, boardOf([S1, S2]))
+      .onGet(BOARD_URL)
+      .reply(async () => {
+        await gate.promise
+        // 伺服器在 ws 事件之前產生的快照：s1 仍 in_progress；s2 改了預計時間
+        return [200, boardOf([S1, { ...S2, progress: makeProgress({ student_id: 's2', ready_eta: '17:30' }) }])]
+      })
+    const board = await mountBoard()
+
+    const reloading = board.reload()
+    await settle()
+    const doneItems = [makeItem({ id: 'h1', status: 'done', sort_order: 1 }), { ...H2 }]
+    socket().serverMessage('homework.progress_updated', {
+      student_id: 's1',
+      service_date: DATE,
+      items: doneItems,
+      progress: makeProgress({ overall_status: 'done' }),
+    })
+    await settle()
+    expect(studentOf(board)?.progress.overall_status).toBe('done')
+
+    gate.resolve()
+    await reloading
+    await settle()
+    expect(studentOf(board)?.progress.overall_status).toBe('done')
+    expect(itemOf(board, 'h1')?.status).toBe('done')
+    // 沒被動過的 s2 取回應值
+    expect(studentOf(board, 's2')?.progress.ready_eta).toBe('17:30')
+    expect(board.summary.value).toEqual({ total: 2, done: 1, in_progress: 0, not_started: 1 })
+  })
+
+  it('useHomeworkBoard keeps student updated by ws during reload: mutation result applied during reload', async () => {
+    const gate = deferred<void>()
+    mock
+      .onGet(BOARD_URL)
+      .replyOnce(200, boardOf([S1]))
+      .onGet(BOARD_URL)
+      .reply(async () => {
+        await gate.promise
+        return [200, boardOf([S1])]
+      })
+    mock.onPut('/admin/homework/progress/s1').reply(200, makeProgress({ overall_status: 'in_progress', ready_eta: '18:10' }))
+    const board = await mountBoard()
+
+    const reloading = board.reload()
+    await settle()
+    await board.setProgress('s1', { ready_eta: '18:10' })
+    gate.resolve()
+    await reloading
+    await settle()
+    expect(studentOf(board)?.progress.ready_eta).toBe('18:10')
+  })
+
+  it('useHomeworkBoard applies reload students untouched since request', async () => {
+    const S2 = makeStudent({ student_id: 's2', student_no: 'S11302', name: '陳小美', items: [makeItem({ id: 'h5', student_id: 's2' })] })
+    const S2Next = {
+      ...S2,
+      items: [makeItem({ id: 'h5', student_id: 's2' }), makeItem({ id: 'h6', student_id: 's2', title: '英語單字', sort_order: 2 })],
+    }
+    mock.onGet(BOARD_URL).replyOnce(200, boardOf([S1, S2])).onGet(BOARD_URL).reply(200, boardOf([S1, S2Next]))
+    const board = await mountBoard()
+
+    // reload 之前 ws 改過 s2；reload 發出後沒有新事件 → 回應整列取代
+    socket().serverMessage('homework.progress_updated', {
+      student_id: 's2',
+      service_date: DATE,
+      items: [makeItem({ id: 'h5', student_id: 's2', status: 'doing' })],
+      progress: makeProgress({ student_id: 's2', overall_status: 'in_progress' }),
+    })
+    await settle()
+    await board.reload()
+    await settle()
+    expect(studentOf(board, 's2')?.items).toHaveLength(S2Next.items.length)
+    expect(studentOf(board, 's2')?.items.map((i) => i.status)).toEqual(['todo', 'todo'])
+    expect(studentOf(board, 's2')?.progress.overall_status).toBe('not_started')
+  })
 })
