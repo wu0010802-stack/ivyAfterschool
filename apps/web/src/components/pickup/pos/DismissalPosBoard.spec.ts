@@ -225,7 +225,7 @@ async function clickMessageBoxButton(text: string): Promise<void> {
 
 /** QueuePanel 收到的佇列項目（直接 emit 時用） */
 function queueItemOf(panel: VueWrapper, id: string): unknown {
-  const item = (panel.props('items') as Array<{ id: string }>).find((i) => i.id === id)
+  const item = (panel.props() as { items: Array<{ id: string }> }).items.find((i) => i.id === id)
   if (!item) throw new Error(`佇列沒有 ${id}`)
   return item
 }
