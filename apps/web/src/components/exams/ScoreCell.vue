@@ -313,6 +313,7 @@ onBeforeUnmount(() => {
     </el-checkbox>
     <el-popover
       :visible="editing"
+      role="dialog"
       placement="bottom"
       :width="300"
       popper-class="score-note-pop"
