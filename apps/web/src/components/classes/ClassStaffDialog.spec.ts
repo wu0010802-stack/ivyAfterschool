@@ -126,21 +126,27 @@ describe('ClassStaffDialog', () => {
 
   it('ClassStaffDialog saves full staff list', async () => {
     mock.onGet(OPTIONS_URL).reply(200, STAFF_OPTIONS)
-    const saved = klass([CHEN_LEAD, { staff_user_id: 'u4', display_name: '林老師', role: 'assistant' }])
+    const saved = klass([
+      { staff_user_id: 'u3', display_name: '陳老師', role: 'assistant' },
+      { staff_user_id: 'u4', display_name: '林老師', role: 'lead' },
+    ])
     mock.onPut(PUT_URL).reply(200, saved)
     const wrapper = await mountDialog(klass([CHEN_LEAD]))
 
     expect(dialog().find('.el-dialog__title').text()).toBe('指派老師：低年級A班')
     await addRow()
     await choose(staffSelect(row(1)), '林老師')
-    await choose(roleSelect(row(1)), '協助老師')
+    // 新列預設「協助老師」（已有負責老師），兩列都改成非預設值，驗證角色下拉有寫回
+    expect(roleSelect(row(1)).text()).toContain('協助老師')
+    await choose(roleSelect(row(1)), '負責老師')
+    await choose(roleSelect(row(0)), '協助老師')
     await submit()
 
     expect(putBodies()).toEqual([
       {
         items: [
-          { staff_user_id: 'u3', role: 'lead' },
-          { staff_user_id: 'u4', role: 'assistant' },
+          { staff_user_id: 'u3', role: 'assistant' },
+          { staff_user_id: 'u4', role: 'lead' },
         ],
       },
     ])
