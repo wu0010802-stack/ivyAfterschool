@@ -28,12 +28,14 @@ let handlers: AdminHttpHandlers = { ...DEFAULT_HANDLERS }
 export const adminHttp: AxiosInstance = createHttpClient({
   baseURL: '/api',
   // refresh 端點必須列在這裡：它自己的 401 不可再觸發 refresh（FRONTEND-001 的主要防線）；
-  // 改密碼的 401 代表舊密碼流程問題，不應 refresh
+  // 改密碼的 401 代表舊密碼流程問題，不應 refresh；
+  // /parent/config 是登入頁讀的公開設定（FRONTEND-021），401 只會是異常，直接往上拋
   noRefreshPaths: [
     '/admin/auth/login',
     '/admin/auth/refresh',
     '/admin/auth/logout',
     '/admin/auth/change-password',
+    '/parent/config',
   ],
   refresh: () => handlers.refresh(),
   onAuthFailure: () => handlers.authFailure(),
