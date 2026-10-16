@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 170,
-  "last_updated": "2026-10-16T14:15:18Z",
+  "version": 171,
+  "last_updated": "2026-10-16T14:17:24Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2502,7 +2502,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/parent/composables/useArriveNow.ts",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::performArriveNow",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-011",
