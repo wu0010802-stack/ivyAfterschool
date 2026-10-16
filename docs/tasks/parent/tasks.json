@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 152,
-  "last_updated": "2026-10-16T06:13:02Z",
+  "version": 153,
+  "last_updated": "2026-10-16T06:13:50Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -431,7 +431,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/router.ts",
       "source_ref": "FE:src/parent/router.ts::router",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-003",
@@ -460,9 +460,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。8 條 red_case 都有同名測試；tdd.run 12/12 綠（首次實跑），名稱清單含全部 8 條。commit 順序 c754a4f（測試，當時 router.ts 不存在）→ 07406c1（實作；spec 只補一條 redirect=/bind 斷言，來自突變自檢）。守衛核對：/login 已登入導向 resolveSafeRedirect；/bind 先看 bindPending、不探測，再 ensureSession，兩者皆無才導 /login 且不帶 redirect；其他頁未登入導 /login?redirect=fullPath；afterEach 設定標題。首綁重驗：用真實 parentRoutes + installParentGuards，加上依 PARENT-013 規格寫的 unauthenticated handler（parentAuth.clear / children.clear / parentWs.disconnect / 非 public 時 replace /login）。LoginView needs_binding → markBindPending → replace /bind?redirect=/leaves 與帶 sessionStorage bindPending 重新整理 /bind 兩種情境都停在 /bind，bindPending 保留，/parent/me 0 次。redirect 安全：已登入時 //evil.com、/bind、/BIND/、/login、https://evil.com、/\\evil.com、/\\t/evil.com、javascript:、重複的 redirect 參數（陣列）一律回 /；/exams/e1?x=1 正常導回。佔位 view：新建 10 個（Login / Bind / ChildHub / Homework / Pickup / PickupProxy / More / Attendance / Leaves / Notifications）；已存在的 ExamsView / ExamDetailView / NotificationPrefsView 沒有覆蓋；AttendanceView 之後由 PARENT-132（d8090f4）正常覆寫。lazy routes 13 個都 resolve。RouteMeta 的 declare module 與後台 routes.ts 合併：同名的 title: string、public?: boolean 型別相同，web-typecheck 對本 task 檔案沒有錯誤（全專案剩餘 2 個錯誤都在他人未提交的 useTodayStatus.ts / ClassesView.vue）。突變 10 個有效殺 10（另 1 個 hash base 突變是我寫錯，以 createMemoryHistory 重做後轉紅）：bind 順序對調、redirect 不經 safeRedirect、未登入不帶 redirect、不設標題、bind 失敗帶 redirect、public 不看登入、拿掉 catch-all、bind 無 bindPending 也放行、通知設定沒有 showBack、memory history。web-lint 乾淨。殘留（不擋）：(1) 【建議優先】『lazy routes resolve placeholder views』會載入真實 view，耗時 1.1～2.8 秒；本輪機器負載約 20（4 CPU）時，我在未改動的程式上連續兩次超過 vitest 預設 5 秒逾時而轉紅。佔位 view 陸續換成正式 view 後只會更慢，建議給這條測試明確的 timeout（例如 30_000）。(2) 跨 task（PARENT-012 / 013 / 030 / 033）：登出後導向 /login?logged_out=1 時，/login 守衛的 ensureSession 會探測 → 401 → refresh 401 → PARENT-013 handler 看到目前路由 /more 非 public 而 replace('/login?redirect=/more')，取消原本的導頁，logged_out=1 遺失（scratch 重現：最後網址 /login?redirect=/more）。PARENT-030 在 LINE 內沒有 logged_out 會自動再登入，等於登出無效。本 task 照規格實作，修法交協調者決定（例如 /login 守衛在帶 logged_out 時不探測，或登出後讓探測快取為失敗）。(3) /login 已登入時以字串 return 導回（push 語意）而非 replace；規格未要求。"
       }
     },
     {
@@ -3183,7 +3183,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/notifications.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-170",
@@ -3191,7 +3191,7 @@
         "INFRA-013"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "review-r10-p1 打回項（三條一起修）：(1) refreshUnread 沒有序號 / 世代檢查：家長 A 的 refreshUnread 在途時 clear()（PARENT-013 的 401 handler 或 PARENT-033 登出），晚到的回應會把 A 的 unread_count 寫回。反例已重現：refreshUnread() 在途 → clear() → 回應 unread_count 5 → unreadCount 為 5，應為 0。下一位家長登入後，「更多」分頁徽章會先顯示上一位的數字；若該家長自己的 refreshUnread 失敗，就一直停在上一位的數字。另外 refreshUnread 早於 load 發出、晚於 load 回來時，會用較舊的未讀數蓋掉 load 的結果，應一併丟棄。(2) markAllRead 的 await 之後沒有檢查 clear()：A 的 markAllRead 在途 → clear() → B 的 load 回 b1、b2 未讀、unread_count 2 → A 的回應到達後，B 的 b1、b2 在本地被標成已讀，unreadCount 變 0（已重現）。建議做法：clear() 遞增一個世代計數器，refreshUnread / markRead / markAllRead / load / loadMore 在 await 前記下、之後不同就不寫 state；refreshUnread 另比對 load 序號。(3) 補測試：clear() 之後，在途的 load、loadMore、refreshUnread、markAllRead 晚到回應都不改 items / total / unreadCount / loaded；refreshUnread 早於 load 發出、晚於 load 回來時不蓋掉 load 的 unread_count。拿掉守衛時這些測試必須轉紅。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/stores/notifications.spec.ts",
@@ -3209,9 +3209,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-p1",
+        "notes": "打回（review-r10-p1）。5 條 red_case 都有同名測試、tdd.run 14/14 綠、commit 順序 af0fb08 → e040fe7 正確；load / loadMore 以序號丟棄過期回應，clear() 會讓它們的晚到回應失效。但 clear() 沒有讓 refreshUnread 與 markAllRead 的在途請求失效，能構造出換人登入後殘留上一位家長狀態的反例（見 risk_notes 的打回項），而且沒有任何測試釘住『clear 讓在途請求失效』（突變 clear 不遞增 seq 存活）。其他部分正確：突變 11 個殺 10，包括過期回應、去重、markRead 只在原本未讀才減、ws 去重、ws 加 total、poller、refreshUnread 不動 items、markAllRead 歸零、unreadOnly 移出、失敗保留 items。web-lint 乾淨；web-typecheck 對本 task 檔案沒有錯誤。殘留（不擋）：markRead 的 id 不在目前 items 時不知道原本是否未讀，unreadCount 不變，要等下一次 refreshUnread 才更正。"
       }
     },
     {
@@ -3262,7 +3262,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/ConnectionBanner.vue",
       "source_ref": "FE:src/parent/components/ConnectionBanner.vue::wsBannerDelayMs",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10c",
       "depends_on": [
         "PARENT-001",
@@ -3287,9 +3287,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p1",
+        "notes": "通過（review-r10-p1）。4 條 red_case 都有同名測試；tdd.run 12/12 綠，名稱清單含全部 4 條。commit 順序 7378384（測試，當時元件不存在）→ f2b9393（實作；spec 只補 closed 案例）。設計稿 parent-component-connection-banner.html（approved，preview-tasks PARENT-174）的 decisions 逐條對照一致：離線 warning-container + wifi_off、沒有按鈕、離線優先；ws 斷線 secondary-container + sync_problem，enabled 且 reconnecting / closed 超過 delayMs 才顯示，open 立即隱藏，網路恢復重新計時，enabled=false 不顯示；「立即更新」呼叫 pollNow、不 loading、不隱藏；role=status；300ms 展開淡入，reduced-motion 關閉。closed 分支的評估：真實 parentWs 的 closed 只發生在 4401 / 4403，createWsClient 在同一個呼叫堆疊內 teardown('closed') 後就呼叫 onAuthClose 把 enabled 設 false，所以真實 store 不會出現 enabled 且 closed；用 testing pinia 覆寫 getter 驗證規格條件可以接受（拿掉 closed 的突變會被這條殺掉），真實流程的 enabled=false 不顯示另有測試。真實瀏覽器（Playwright Chromium，390×844、DPR 2、isMobile）以 scratch Vite harness 掛真實元件與 parentWs：斷線 2.5 秒時不顯示、約 3.3 秒時顯示；橫幅寬 390、高 48，緊接頂部列下方並把內容往下推；底色 / 文字色等於 --m3-secondary-container / --m3-warning-container 的 token 值；圖示字型為 Material Symbols Rounded、寬 20px；按鈕視覺高 40px、::after 點擊區 48px、粗體；tap「立即更新」poller +1 且橫幅仍在；socket open 後隱藏；context.setOffline(true) 時 navigator.onLine 為 false，立即顯示離線橫幅、沒有按鈕，恢復後隱藏；沒有水平溢出、沒有 console 錯誤。reducedMotion=reduce 時出現當下就是完整高度、opacity 1，且沒有 enter-active class；no-preference 時有 enter-active 過渡。截圖在 reviewer scratchpad。突變 13 個殺 12；存活 1 個為等價突變（variant 先判 ws 或先判離線：wsDown 已含 online，離線時 wsDownLong 必為 false）。web-lint 乾淨；web-typecheck 對本 task 檔案沒有錯誤。殘留（不擋）：家長端字級是 px，放大根字級不影響橫幅（規格未要求）；位置與 sticky 由 PARENT-024 負責，實際頁面整合時再確認。"
       }
     },
     {
