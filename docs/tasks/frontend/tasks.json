@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 181,
-  "last_updated": "2026-10-16T04:59:00Z",
+  "version": 182,
+  "last_updated": "2026-10-16T04:59:57Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -682,7 +682,7 @@
     {
       "id": "FRONTEND-029",
       "title": "實作 layouts/AdminLayout.vue：側欄 + 頂欄 + 內容區、啟動 ws 與通知、斷線提示",
-      "description": "建立 `apps/web/src/layouts/AdminLayout.vue`。移植 ivy `FE:src/layouts/AdminLayout.vue` 的版面骨架與手機抽屜；**去掉** high-risk audit count、portal context 判斷、tenant、輪詢 summary。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：桌機（側欄展開 / 收合）、平板 1024×768（`meta.tablet` 頁面側欄預設收合成 icon）、手機（側欄改抽屜）、斷線橫幅、通知面板展開。\n\n**行為**\n- 版面：左 `AdminSidebar`（FRONTEND-031）、上 `AdminHeader`（FRONTEND-032）、中 `<slot />`。側欄收合狀態存 `localStorage['admin.sidebarCollapsed']`（try/catch，讀不到用預設）；`route.meta.tablet` 頁面初次進入時預設收合；視窗寬 < 768 改為 el-drawer（寬 240，內放 `<AdminSidebar drawer>`：不顯示收合按鈕，FRONTEND-031），點選選單（`navigate`）後關閉。\n- onMounted：`useAdminWsStore().start()`（FRONTEND-037）、`useNotificationsStore().fetch()` 並綁定 ws（FRONTEND-034）；onUnmounted：`adminWs.stop()`。\n- `adminWs.status` 為 `reconnecting` 超過 5 秒 → 頂欄下方顯示 warning 橫幅「即時連線中斷，畫面每 15 秒自動更新」；回到 `open` 時橫幅消失。\n\n**驗收標準**\n- 掛載後建立 `/api/ws/admin` 連線並取得通知清單。\n- 斷線 5 秒後出現橫幅、恢復後消失。\n- 收合狀態可切換且被記住；平板頁預設收合。",
+      "description": "建立 `apps/web/src/layouts/AdminLayout.vue`。移植 ivy `FE:src/layouts/AdminLayout.vue` 的版面骨架與手機抽屜；**去掉** high-risk audit count、portal context 判斷、tenant、輪詢 summary。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-admin-shell.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：桌機（側欄展開 / 收合）、平板 1024×768（`meta.tablet` 頁面側欄預設收合成 icon）、手機（側欄改抽屜）、斷線橫幅、通知面板展開。\n\n**行為**\n- 版面：左 `AdminSidebar`（FRONTEND-031）、上 `AdminHeader`（FRONTEND-032）、中 `<slot />`。側欄收合狀態存 `localStorage['admin.sidebarCollapsed']`（try/catch，讀不到用預設）；`route.meta.tablet` 頁面初次進入時預設收合；視窗寬 < 768 改為 el-drawer（寬 240，內放 `<AdminSidebar drawer>`：不顯示收合按鈕，FRONTEND-031），點選選單（`navigate`）後關閉。\n- 頂欄接線：`<AdminHeader :collapsed :mobile @toggle-sidebar>`（FRONTEND-032）——`collapsed` 傳桌機側欄目前的收合狀態、`mobile` 傳視窗寬 < 768；`toggle-sidebar` 在桌機切換收合（並寫入 localStorage），在手機開關抽屜。\n- onMounted：`useAdminWsStore().start()`（FRONTEND-037）、`useNotificationsStore().fetch()` 並綁定 ws（FRONTEND-034）；onUnmounted：`adminWs.stop()`。\n- `adminWs.status` 為 `reconnecting` 超過 5 秒 → 頂欄下方顯示 warning 橫幅「即時連線中斷，畫面每 15 秒自動更新」；回到 `open` 時橫幅消失。\n\n**驗收標準**\n- 掛載後建立 `/api/ws/admin` 連線並取得通知清單。\n- 斷線 5 秒後出現橫幅、恢復後消失。\n- 收合狀態可切換且被記住；平板頁預設收合。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/layouts/AdminLayout.vue",
       "source_ref": "FE:src/layouts/AdminLayout.vue::default",
@@ -695,7 +695,7 @@
         "FRONTEND-037"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "登出後的清理依賴本元件卸載：AdminHeader（FRONTEND-032）登出只呼叫 auth store 並導向 /login，不會停 adminWs、不清通知 store；/login 是 blank layout，AdminLayout 因此卸載並在 onUnmounted 停掉 ws，重新登入時 onMounted 重新抓通知。App.vue（FRONTEND-027）必須讓 blank layout 路由真的卸載 AdminLayout（不得用 v-show / keep-alive 包住）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/layouts/AdminLayout.spec.ts",
@@ -707,7 +707,8 @@
           "AdminLayout shows reconnect banner after 5 seconds：fake timers；ws 以 1006 關閉 → 4 秒時 wrapper.text() 不含 '即時連線中斷'，6 秒時含 '即時連線中斷，畫面每 15 秒自動更新'；重連 open 後不含",
           "AdminLayout toggles and remembers sidebar collapse：點 header 的收合按鈕 → [data-test=admin-sidebar] 有 class is-collapsed，localStorage['admin.sidebarCollapsed'] === 'true'；重新 mount 仍為收合",
           "AdminLayout collapses sidebar on tablet routes：initialRoute '/pickup'（meta.tablet）且 localStorage 無值 → 側欄為收合；initialRoute '/students' → 展開",
-          "AdminLayout stops ws on unmount：unmount 後 60 秒內 FakeWebSocket.instances.length 不增加，且最後一個 socket.readyState === CLOSED"
+          "AdminLayout stops ws on unmount：unmount 後 60 秒內 FakeWebSocket.instances.length 不增加，且最後一個 socket.readyState === CLOSED",
+          "AdminLayout wires header collapse and mobile props：桌機寬 1280 → AdminHeader 的 props collapsed false、mobile false；點 header 切換鈕 → collapsed 變 true。視窗寬改 390（觸發 resize）→ mobile true；再點切換鈕 → el-drawer 開啟（[data-test=admin-sidebar-drawer] 或 drawer 內出現 AdminSidebar），collapsed 與 localStorage 不變"
         ],
         "run": "just web-test src/layouts/AdminLayout.spec.ts -t \"AdminLayout\"",
         "notes": ""
