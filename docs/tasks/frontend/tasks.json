@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 195,
-  "last_updated": "2026-10-16T05:24:17Z",
+  "version": 196,
+  "last_updated": "2026-10-16T05:24:50Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3898,11 +3898,11 @@
     {
       "id": "FRONTEND-152",
       "title": "實作 composables/useHomeworkBoard.ts：看板資料、樂觀更新、ws 即時合併",
-      "description": "建立 `apps/web/src/composables/useHomeworkBoard.ts`，作業看板（FRONTEND-151）資料擁有者。\n\n**介面**\n```ts\nexport function useHomeworkBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  board: Ref<HomeworkBoard | null>; loading; error\n  summary: ComputedRef<{ total; done; in_progress; not_started }>   // 由 students 的 progress 重算；只計 attendance_status 不是 leave / absent 的學生（與 BACKEND-383 一致）\n  reload(): Promise<void>\n  addItem(studentId, body: { subject_id?: string | null; title: string }): Promise<void>\n  setItemStatus(item: HomeworkItem, status): Promise<void>          // 樂觀更新\n  renameItem(item, body: { title?: string; subject_id?: string | null }): Promise<void>\n  removeItem(item): Promise<void>\n  setProgress(studentId, body: { overall?: 'done' | 'auto'; ready_eta?: string | null; note?: string | null }): Promise<void>   // 呼叫 PUT /admin/homework/progress/{student_id}，body 為 {service_date: date.value, ...body}（只含給定的鍵）\n  batchAdd(body: { subject_id?: string | null; title: string; student_ids?: string[] }): Promise<number>   // 回傳 created；成功後 reload\n  pendingItemIds: Ref<ReadonlySet<string>>\n  wsStatus; wsDenied\n}\n```\n- date / classId 變更 → reload（序號防護）。\n- `setItemStatus`：先在本地改 item.status 並依 domain_spec M6 規則重算 overall（無 item 或全部 todo → not_started；全部 done → done；其餘 in_progress；若 progress 原本為手動 done 則保持 done）；呼叫 API 成功後以回傳 `{item, progress}` 取代；失敗還原並 `ElMessage.error`。同一 item 進行中再呼叫：以最後一次為準（前一次完成後再送最後的值），不並行送同一 item。\n- 其他 mutation 成功後以回傳的 item / progress 更新對應學生；service_date 一律帶 `date.value`。\n- ws：`useAdminWsTopic('homework', { 'homework.progress_updated': d => ... }, { resync: reload })`：`d.service_date === date` 且學生在目前 board 中 → 以 `d.items` 與 `d.progress` 取代該生（若該生有 pending 的本地樂觀變更則延後到 pending 結束後再套用最新一筆）；不在 board 中的學生忽略。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/useHomeworkBoard.ts`，作業看板（FRONTEND-151）資料擁有者。\n\n**介面**\n```ts\nexport function useHomeworkBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  board: Readonly<Ref<HomeworkBoard | null>>; loading; error   // 伺服器資料疊上本地樂觀變更\n  summary: ComputedRef<{ total; done; in_progress; not_started }>   // 由 students 的 progress 重算；只計 attendance_status 不是 leave / absent 的學生（與 BACKEND-383 一致）\n  reload(): Promise<void>\n  addItem(studentId, body: { subject_id?: string | null; title: string }): Promise<void>\n  setItemStatus(item: HomeworkItem, status): Promise<void>          // 樂觀更新\n  renameItem(item, body: { title?: string; subject_id?: string | null }): Promise<void>\n  removeItem(item): Promise<void>\n  setProgress(studentId, body: { overall?: 'done' | 'auto'; ready_eta?: string | null; note?: string | null }): Promise<void>   // 呼叫 PUT /admin/homework/progress/{student_id}，body 為 {service_date: date.value, ...body}（只含給定的鍵）\n  batchAdd(body: { subject_id?: string | null; title: string; student_ids?: string[] }): Promise<number>   // 回傳 created；成功後 reload\n  pendingItemIds: Ref<ReadonlySet<string>>\n  wsStatus; wsDenied\n}\n```\n- 掛載時與 date / classId 變更 → reload（序號防護）；classId 為 null 或空字串時不帶 class_id。載入失敗：`error = errorMessage(err, '無法載入作業看板')`，成功時清為 null；同一篩選的重抓失敗保留舊資料，換日期 / 班級後的載入失敗則 board 為 null。\n- `setItemStatus`：先在本地改 item.status 並依 domain_spec M6 規則重算 overall（無 item 或全部 todo → not_started；全部 done → done；其餘 in_progress；項目異動一律覆蓋先前的手動 done，與後端 BACKEND-375 `recompute_progress` 一致，伺服器回應也不會保留手動 done）；呼叫 API 成功後以回傳 `{item, progress}` 取代；失敗還原為伺服器確認過的狀態（含手動 done）並 `ElMessage.error(errorMessage(err, '更新作業狀態失敗'))`，不 reject。同一 item 進行中再呼叫：以最後一次為準（前一次完成後再送最後的值），不並行送同一 item。\n- 其他 mutation 成功後以回傳的 item / progress 更新對應學生（只更新與看板同日、且在看板中的學生）；service_date 一律帶 `date.value`；addItem / batchAdd 的 subject_id 為 null 時不送；失敗時 reject 原錯誤、不顯示訊息（呼叫端依情境：dialog 的 error 或 ElMessage）。batchAdd 需先選班級（classId 為 null 時 throw）。\n- 匯出 `deriveOverallStatus(items)`（M6 推導規則），供 HomeworkStudentCard（FRONTEND-153）判斷「手動標記」。\n- ws：`useAdminWsTopic('homework', { 'homework.progress_updated': d => ... }, { resync: reload })`：`d.service_date === date` 且學生在目前 board 中 → 以 `d.items` 與 `d.progress` 取代該生（若該生有 pending 的本地樂觀變更則延後到 pending 結束後再套用最新一筆）；不在 board 中的學生忽略。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-150",
@@ -3918,12 +3918,17 @@
           "vitest"
         ],
         "red_cases": [
-          "useHomeworkBoard optimistic status change recomputes overall：s1 兩項（todo、done），PATCH 延遲 200ms → 呼叫 setItemStatus(h1,'done') 後立即 board 中 h1.status === 'done' 且 s1.progress.overall_status === 'done'；PATCH 回傳後以回傳值為準",
+          "useHomeworkBoard optimistic status change recomputes overall：s1 兩項（todo、done），PATCH 延遲 200ms → 呼叫 setItemStatus(h1,'done') 後立即 board 中 h1.status === 'done' 且 s1.progress.overall_status === 'done'；PATCH 回傳後以回傳值為準（測試以手動放行的回應模擬延遲，不依賴真實計時）",
           "useHomeworkBoard reverts on failure：PATCH /admin/homework/items/h1 回 500 → h1.status 回到 'todo'、overall 回到 'in_progress'，body 含錯誤訊息",
           "useHomeworkBoard serializes rapid taps on same item：快速呼叫 setItemStatus(h1,'doing')、(h1,'correcting')、(h1,'done') → 同時間最多 1 個進行中的 PATCH，最後一個送出的 body.status === 'done'，總 PATCH 數 ≤ 2",
           "useHomeworkBoard applies ws progress for current date only：ws homework.progress_updated {student_id:'s1',service_date:'2026-10-02',items:[...3 項],progress:{overall_status:'in_progress',ready_eta:'18:00'}} → s1.items.length === 3、ready_eta '18:00'；service_date '2026-10-01' → 不變",
           "useHomeworkBoard summary recomputed from students：students progress [done, in_progress, not_started, done]（attendance_status 皆 present），另有 attendance_status 'leave'（done）與 'absent'（not_started）各一位 → summary 深等於 {total:4,done:2,in_progress:1,not_started:1}",
-          "useHomeworkBoard batchAdd reloads board and returns created：POST /admin/homework/items/batch 回 {created:12,items:[...]} → 回傳 12，GET board 請求數 +1，body 帶 class_id 與 service_date"
+          "useHomeworkBoard batchAdd reloads board and returns created：POST /admin/homework/items/batch 回 {created:12,items:[...]} → 回傳 12，GET board 請求數 +1，body 帶 class_id 與 service_date",
+          "useHomeworkBoard reverts to manual done when status change fails：s1 手動 done（h1 todo、h2 done）→ setItemStatus(h1,'doing') 後 overall 立即為 'in_progress'；PATCH 回 500 → h1 回到 'todo'、overall 回到 'done'",
+          "useHomeworkBoard defers ws snapshot while item pending：h1 的 PATCH 進行中收到 s1 的 ws 快照（多了 h3、ready_eta 18:30）→ items 仍為 ['h1','h2']；PATCH 完成後套用 → items ['h1','h2','h3']、ready_eta '18:30'",
+          "useHomeworkBoard mutations update student from response：addItem → POST body 深等於 {student_id:'s1',service_date:'2026-10-02',subject_id:'sub-en',title:'英語單字'} 且 items 依 sort_order 加入；renameItem → PATCH body 只含 title；removeItem → DELETE 後移除項目並以回傳 progress 取代；setProgress → PUT body 深等於 {service_date:'2026-10-02',ready_eta:'17:30',note:null}；subject_id null 時 POST body 不含 subject_id，422 時 reject {code:'invalid_service_date'} 且 items 不變",
+          "useHomeworkBoard uses latest response when filters change：classId 改 c1 再改 c2，c1 回應較晚到 → board 為 c2 的結果、loading false",
+          "useHomeworkBoard keeps data only for the same filters when load fails：首次載入後 GET 改回 500 → reload() 後 error '伺服器忙碌中' 且 students 仍 1 位；classId 改 c1 → board 為 null、loading false"
         ],
         "run": "just web-test src/composables/useHomeworkBoard.spec.ts -t \"useHomeworkBoard\"",
         "notes": ""
@@ -3976,11 +3981,11 @@
     {
       "id": "FRONTEND-154",
       "title": "實作 components/homework/HomeworkItemRow.vue：作業項目列（四段狀態切換、編輯、刪除）",
-      "description": "建立 `apps/web/src/components/homework/HomeworkItemRow.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-homework-board.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級 / 日期篩選與整體狀態摘要、逐生卡片（無作業 / 進行中 / 全部完成 / 手動標記完成 / 請假或缺席淡化）、作業項目四種狀態切換、新增單項與整班批次新增 dialog、預計可接送時間與家長說明 dialog（含上次設定者）、非今天日期的限制、即時連線中斷提示、只有 homework:read 時的唯讀樣式、空清單、載入中。\n\n**props / emits**：`item: HomeworkItem`、`canWrite: boolean`、`pending: boolean`；emits `set-status(status)`、`edit()`、`remove()`。\n- 左：科目 tag（subject_name，無科目不顯示）+ title（過長省略 + tooltip）。\n- 右：四段 segmented（未開始 / 進行中 / 訂正中 / 完成，顏色依 HOMEWORK_ITEM_STATUS_META），每段觸控寬 ≥ 44px；點選與目前相同的段不 emit；`pending` 時顯示小 spinner 但仍可再點（由 composable 序列化）。\n- `canWrite` false：segmented disabled。\n- 長按（≥ 600ms）或 ⋮ → 「編輯」「刪除」（canWrite 時）。\n\n**驗收標準**\n- 點不同段 emit 新狀態、相同段不 emit；readonly disabled；編輯 / 刪除 emit。",
+      "description": "建立 `apps/web/src/components/homework/HomeworkItemRow.vue`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-homework-board.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。以 1024×768 平板為主要尺寸、觸控目標 ≥ 44px。稿需呈現：班級 / 日期篩選與整體狀態摘要、逐生卡片（無作業 / 進行中 / 全部完成 / 手動標記完成 / 請假或缺席淡化）、作業項目四種狀態切換、新增單項與整班批次新增 dialog、預計可接送時間與家長說明 dialog（含上次設定者）、非今天日期的限制、即時連線中斷提示、只有 homework:read 時的唯讀樣式、空清單、載入中。\n\n**props / emits**：`item: HomeworkItem`、`canWrite: boolean`、`pending: boolean`；emits `set-status(status)`、`edit()`、`remove()`。\n- 左：科目 tag（subject_name，無科目不顯示）+ title（過長省略 + tooltip）。\n- 右：四段 segmented（未開始 / 進行中 / 訂正中 / 完成，顏色依 HOMEWORK_ITEM_STATUS_META；role=radiogroup / radio），每段 ≥ 48×44px（稿），目前段以狀態色實心填滿、白字；點選與目前相同的段不 emit；`pending` 時標題旁顯示小 spinner（aria-label「儲存中」）但仍可再點（由 composable 序列化）。\n- `canWrite` false：segmented disabled（目前段仍以色塊顯示、降透明度），沒有 ⋮、長按無作用。\n- 長按整列（≥ 600ms）或 ⋮（44×44）→ 「編輯」「刪除」（canWrite 時）；長按放開後的那次 click 不切換狀態，放開 / 移出 / pointercancel 取消長按。\n\n**驗收標準**\n- 點不同段 emit 新狀態、相同段不 emit；readonly disabled；編輯 / 刪除 emit。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkItemRow.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-005",
@@ -3995,10 +4000,14 @@
           "vitest"
         ],
         "red_cases": [
-          "HomeworkItemRow renders subject title and status：item {subject_name:'數學',title:'數學習作 p.12-13',status:'correcting'} → 文字含 '數學' 與 '數學習作 p.12-13'，'訂正中' 段為 active",
+          "HomeworkItemRow renders subject title and status：item {subject_name:'數學',title:'數學習作 p.12-13',status:'correcting'} → 文字含 '數學' 與 '數學習作 p.12-13'，'訂正中' 段為 active；無科目時沒有科目 tag",
           "HomeworkItemRow emits only on status change：status 'todo' 時點 '完成' → emitted('set-status')[0] 深等於 ['done']；點 '未開始' → 無新增 emit",
           "HomeworkItemRow readonly disables segments：canWrite false → 四個段落 button 皆 disabled，沒有 ⋮",
-          "HomeworkItemRow edit and remove via menu：canWrite → 點 ⋮ '刪除' → emitted('remove') 長度 1；'編輯' → emitted('edit') 長度 1"
+          "HomeworkItemRow edit and remove via menu：canWrite → 點 ⋮ '刪除' → emitted('remove') 長度 1；'編輯' → emitted('edit') 長度 1",
+          "HomeworkItemRow pending shows spinner and stays clickable：pending true → [aria-label=儲存中] 存在，點 '完成' → emitted('set-status')[0] 深等於 ['done']；pending false → 沒有 spinner",
+          "HomeworkItemRow long press opens menu：短按 300ms 不開選單；在 '完成' 段上按住 599ms 未開、600ms 開啟，放開後的 click 不 emit；下一次點 '完成' 照常 emit ['done']",
+          "HomeworkItemRow long press does nothing when readonly：canWrite false 按住 800ms → 沒有選單、不 emit edit",
+          "HomeworkItemRow keeps touch targets at least 44px：happy-dom 不計算版面，以 `?raw` 原始碼斷言 `.hw-seg__btn` 的 `min-width: 48px; height: 44px` 與 `.hw-item__menu` 的 `width: 44px; height: 44px`（另以 Chromium 1024×768 實測）"
         ],
         "run": "just web-test src/components/homework/HomeworkItemRow.spec.ts -t \"HomeworkItemRow\"",
         "notes": ""
