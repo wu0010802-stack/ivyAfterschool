@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 209,
-  "last_updated": "2026-10-16T05:46:37Z",
+  "version": 210,
+  "last_updated": "2026-10-16T05:46:59Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6101,13 +6101,13 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreCell.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-236"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f4 打回】再點同一格圖示關閉編輯框、且這次確定讓備註由無變有或由有變無時，圖示 ChatSquare / ChatLineSquare 在 pointerdown 與 click 之間換形，按下時的 svg 被移除，Chromium 不派發這次 click，swallowClick 殘留為 true，下一次點該格圖示被吞掉、編輯框不開（要點兩次）。真實 Chromium 重現：無備註格點圖示 → 輸入「病假」→ 再點圖示（送出並關閉，正確）→ 再點圖示：不開，第四次才開；有備註格清空後再點圖示關閉也一樣；點按鈕邊緣（不在 svg 上）、內容不變或備註改成另一段文字（圖示不換形）時正常。pointerdown 落在圖示上卻沒有 click（按下後拖離）也會留下同樣的殘留旗標。核可稿 component-exams.html 的示範程式有同樣問題，但 decisions 文字（再點圖示視同點外面、不會關閉後又立刻打開）不受影響，修正不需重新核可。驗收：吞掉只限緊接在那次 pointerdown 之後的 click，不得影響之後的點擊；補一條測試：在圖示上 pointerdown 讓編輯框確定並關閉、之後不派發 click，接著再點圖示要能開啟編輯框。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/exams/ScoreCell.spec.ts",
@@ -6127,9 +6127,9 @@
         "notes": "el-tooltip 會以 cloneVNode 把自己的 aria-* 蓋到直接子節點，且對可聚焦的子節點移除 aria-expanded / aria-haspopup，所以分數輸入框與圖示鈕外各包一層 span（.score-cell__wrap）。關閉後的聚焦在 nextTick 之後執行，避開 popover focus trap 釋放時的還焦；超過 200 字時 focus trap 會因滑鼠 focusout 釋放，以 document focusin 守衛把焦點拉回文字框。happy-dom 不會在 pointerdown 後移動焦點，焦點相關行為另以 Playwright 在真實 Chromium 驗證過（確定 / Esc 回到分數輸入框並全選、點外面焦點留在點的位置、超過 200 字焦點拉回、再點圖示不重開、缺考格回「缺」）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f4",
+        "notes": "打回（1 項，見 risk_notes）。其餘通過：tdd.run 實跑 16/16 綠（既有 9 條 + 7 條 red_case，名稱一一對應）；commit 先測試 c807a87 後實作 c989be5、ee6b968。既有 9 條 ScoreCell 測試的改動逐行核對：只有 8 處期望 payload 加上 note: null 與掛載預設 props 加 note: null，沒有刪除或放寬任何斷言。突變 17 處：不 trim、空字串不轉 null、不變也 emit、字數用 UTF-16 長度、分數 / 缺考變更不帶或清掉 note、點外面只關閉、超過 200 字點外面也關閉、拿掉 focusin 守衛、拿掉 swallowClick、拿掉 Shift+F2、組字中 Enter 也確定、拿掉 aria-describedby、確定鈕超過不停用、清空鈕永遠出現 —— 皆轉紅；取消不還焦、缺考格改還焦到分數框兩處不轉紅（以 Shift+F2 開啟時 Element Plus popover 的 focus trap 本來就把焦點還給開啟前的元素），實際行為改以 Chromium 驗證正確。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（/opt/pw-browsers/chromium-1243）實測通過：點圖示開啟焦點在文字框；點外面的 input 送出 trim 後備註、關閉、焦點留在該 input；點空白處同樣送出；201 字點 input / 點空白都不關閉、不 emit、焦點回文字框，連按 Tab 焦點仍在編輯框內，改回 200 字點外面才送出；再點同一格圖示送出並關閉且不重開；Shift+F2 從分數框開啟游標在結尾，Esc 不 emit、焦點回分數框並全選；以滑鼠開啟後 Esc / 取消 / 確定都回分數框全選；Shift+Enter 換行、Enter 確定並還焦；缺考格從「缺」Shift+F2 開啟、Enter 不變不 emit、焦點回「缺」，滑鼠開啟後 Esc 也回「缺」；開啟時已打的合法分數先 emit、之後確定帶最新分數；不合法輸入在編輯備註期間保留紅框；a 格開著合法內容時點 b 格圖示：a 送出、只剩 b 的編輯框；tooltip 0.25 秒後才出現、readonly 圖示聚焦顯示全文、Tab 走格子不彈 tooltip 且圖示不在 Tab 順序；圖示 18×32、與「缺」間距 4px、編輯框寬 300、popper role=dialog。component-exams.html（approved）decisions 逐條：1~6 屬 FRONTEND-236 既有行為（既有測試全綠）；7~9 屬 238 / 235；10 入口位置與尺寸 一致（整格實測 121px，稿 120px，差在字型）；11 有無備註兩種圖示、平板常駐 一致；12 tooltip 全文 / 新增備註、aria-label、aria-describedby、鍵盤移動不彈 一致；13 開啟方式、popover 寬 300 teleport、游標結尾、開啟時分數先 emit 一致；14 編輯框內容、清空、平板 44px 與隱藏鍵盤提示（CSS 核對）一致；15 code point 計數、超過 200 的紅框紅字停用 一致；16 確定 / 取消規則與還焦、組字中 Enter 一致；17 清空 emit null 一致；18 分數與缺考變更帶原 note 一致；19 tabindex -1、Enter / Esc stopPropagation（textarea 內的 Enter 與 Esc；同稿）一致；20 缺考格 一致；21 readonly 一致；22 淡化由 ScoreGrid 負責；23 點外面視同確定 一致，但「再點圖示」之後的點擊有上述打回問題。web-lint 乾淨；web-typecheck 本 task 檔案無錯（錯誤在他人進行中的檔案）。殘留（不擋）：a 格超過 200 字時點 b 格圖示，b 的編輯框也會開啟（兩個編輯框同時開、焦點被守衛留在 a），修正上一項時可一併讓這次點擊不開 b；red_case 7 的 Esc 與缺考格還焦以 Shift+F2 開啟，focus trap 本身就會還焦，驗不出 focusCell 的有無，建議補「以點圖示開啟後 Esc / Enter」的焦點斷言；Shift+Enter 與按鈕上的 Enter 沒有 stopPropagation（編輯框 teleport 到 body，觀測不到差別，與稿相同）。"
       }
     }
   ]
