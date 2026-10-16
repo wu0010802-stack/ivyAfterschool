@@ -54,7 +54,7 @@ code { font-size: 13px; }
   <h1>設計稿總覽</h1>
   <p class="lead">後台與家長端每張設計稿的狀態，待核可的稿集中在最上方。出稿、核可、改稿時同步更新（待核可與已核可分兩區，各自依檔名排序）（流程見 <code>.claude/skills/ui-design-preview/SKILL.md</code>）。</p>
 
-  <h2>待核可（0）</h2>
+  <h2>待核可（4）</h2>
   <p class="lead">這一區的稿需要你核可後才會進入實作。點稿名打開，右上「設計說明 / 待裁定」可看設計決策與待裁定題；稿已照推薦選項畫。</p>
   <div class="card">
     <table>
@@ -69,7 +69,38 @@ code { font-size: 13px; }
         </tr>
       </thead>
       <tbody>
-        <tr class="empty"><td colspan="6">目前沒有待核可的稿</td></tr>
+        <tr>
+          <td><a href="parent-component-layout.html">parent-component-layout.html</a></td>
+          <td class="tasks">PARENT-024</td>
+          <td class="route"><code>component:parent/layouts/ParentLayout.vue</code></td>
+          <td class="note">無待裁定</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
+        <tr>
+          <td><a href="parent-page-bind.html">parent-page-bind.html</a></td>
+          <td class="tasks">PARENT-031</td>
+          <td class="route"><code>/bind</code></td>
+          <td class="note">1 題：加綁模式送出時 access token 剛好過期（後端 401、bind 不走自動續期）怎麼處理（推薦 A：先 refresh 再自動重送一次，失敗才導回登入。B：直接視同登入失效導回登入）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
+        <tr>
+          <td><a href="parent-page-login.html">parent-page-login.html</a></td>
+          <td class="tasks">PARENT-030</td>
+          <td class="route"><code>/login</code></td>
+          <td class="note">1 題：帳號停用 / 安親班尚未設定 LINE 登入的錯誤態要不要加「聯絡安親班」撥號鈕（推薦 A：加，org_phone 有值才顯示。B：不加，只有「重試」）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
+        <tr>
+          <td><a href="parent-page-more.html">parent-page-more.html</a></td>
+          <td class="tasks">PARENT-034</td>
+          <td class="route"><code>/more</code></td>
+          <td class="note">無待裁定</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
       </tbody>
     </table>
   </div>
