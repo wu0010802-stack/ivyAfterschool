@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 313,
-  "last_updated": "2026-10-16T19:18:50Z",
+  "version": 314,
+  "last_updated": "2026-10-16T19:23:48Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5363,7 +5363,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ExamDetailView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5377,7 +5377,7 @@
         "FRONTEND-044"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "發布確認的未填格數（各科 missing_count 加總）依賴 BACKEND-559：未填只計目前應考名單內沒有分數也沒標缺考的格子；559 完成前，清空過的格子與名單外學生的成績列會讓未填數偏少。",
+      "risk_notes": "取消發布前的「成績格 flush → 仍未儲存就確認放棄」與放棄後以 key 重建成績格只有 Chromium 驗證，沒有單元測試保護；發布確認的未填格數取自 summary 的 missing_count（BACKEND-559 的名單內統計）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/ExamDetailView.spec.ts",
@@ -5403,9 +5403,9 @@
         "notes": "成績分頁容器的確定高度以 Chromium 實測（臨時 harness 重建 AdminLayout 外框：側欄 220、頂欄 56、main 內距 16；vite dts: false）：1024×768 頁面（main）不捲動、面板底緣對齊內容區底緣、表格高 401px（本體可視 346px）、捲動表格本體時表頭位置不變、切到各科平均再切回成績格不卸載且捲動位置保留；1280×800 表格高 459px，其餘同。測試以 RouterView 掛載本頁（元件內 onBeforeRouteLeave / onBeforeRouteUpdate 才會註冊），ScoreGrid 以 vi.mock 的 stub 取代，flush 後的 hasUnsaved / failedCount 由測試控制；整組 timeout 上限 60 秒（共用 CPU 高負載）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f4",
+        "notes": "通過。tdd.run 實跑 16/16 綠，13 條 red_case 都有對應（第 13 條併在「reloads after editing info」）；紅燈 ff2beb6 早於實作 f82e4dd，f82e4dd 對 spec 只把「讓目前的 stub 進入仍有未儲存」由改 stub.vm 換成改 stub 暴露的 ref（測試基礎設施，斷言不變）。viewLoaders 一行接線正確。api 用法對照 api/exams.ts（getExam / publishExam / unpublishExam / deleteExam / fetchExamSummary）與 BACKEND-469 / 475 / 476 / 471 / 477 的錯誤碼一致；路由 /exams/:id 以 exams:read 守衛、props: true。突變 16 處，15 處轉紅：發布前不 flush、未填句子永遠出現、無科目不切分頁、唯讀不顯示提示、離開不保護、換 id 不保護、換分頁也保護、放棄時只 reload、刪除後仍走離開保護、衝突不重新載入、切到各科平均不刷新、編輯後不重載成績格、已發布仍顯示刪除、404 當一般錯誤、flush 後未儲存仍直接放行；取消發布前不先處理成績格不轉紅（現有案例的成績格都沒有未儲存格子），該路徑改以 Chromium 驗證。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（以 createAdminApp 起完整後台：AdminLayout 外框、hash 路由、authGuard，API 以 Playwright 攔截；獨立 vite 設定、沒有 unplugin，未動 components.d.ts）：1024×768 與 1280×800 頁面（main）都不捲、面板底緣貼齊內容區、捲動表格本體時表頭位置不變；切到各科平均網址帶 tab=summary，切回成績格不卸載且捲動位置保留；已發布考試等待通知選擇的格子按「考試列表」跳放棄確認、選「繼續編輯」留在本頁；同情境按「取消發布」→ 確認 → 放棄變更 → 取消發布成功、成績格重建，沒有任何 PUT、格子為空、狀態為草稿（驗證偏離 (1) 的必要性）。實作者的偏離 / 補述判斷：(1) 放棄變更以 key 重建成績格——必要，ScoreGrid 的 reload 會保留未儲存格，取消發布後會被當草稿送出，突變「只 reload」轉紅；(2) 刪除成功略過離開保護——合理，考試已刪除不該再送出或詢問；(3) 科目設定的已輸入筆數取自 summary 的 scored_count——與 FRONTEND-233 介面與 BACKEND-559 一致；(4) 分頁改為本頁狀態並與網址雙向同步——避免各科平均多抓一次，Chromium 與單元測試皆驗證；(5) 面板最小高 360、不足時內容區捲動——合理的保底。核可稿 page-exam-detail.html decisions：1 返回連結 / 標題 / 副標 / 狀態列 / 備註省略與 title / 三個分頁 lazy 且切走不卸載 一致；2 動作依權限隱藏、刪除紅框、發布主色、只有檢視權限的鎖頭提示 一致；3 發布先 flush、失敗格擋下、summary 未填數、確認文案、成功訊息、422 切科目設定、409 重新載入 一致；4 取消發布確認文案與「返回」、409 重新載入、刪除文案與導回、編輯資訊後重新載入 一致；15 科目設定 conflict 後重新載入 一致；16 離開 / 換考試 / 重新載入前 flush 再確認 一致；17 找不到考試 一致；18 header 按鈕與分頁 44px 一致。web-lint 乾淨；web-typecheck 的錯誤全在他人進行中的檔案（DismissalPosBoard）。殘留（不擋）：取消發布前「flush → 仍未儲存就確認」沒有單元測試（建議補 red_case）；scoredCounts 的 summary 請求沒有序號防護，快速換考試時可能短暫顯示前一場的筆數；放棄確認沿用 FRONTEND-046 的文案「確定要關閉嗎？」，用在離開頁面時語意略偏。"
       }
     },
     {
