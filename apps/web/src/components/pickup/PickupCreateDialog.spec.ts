@@ -158,7 +158,7 @@ describe('PickupCreateDialog', () => {
     expect(options[0]).toBe('16:00')
     expect(options[1]).toBe('16:05')
     expect(options.at(-1)).toBe('21:00')
-    expect(formItem('家長預計抵達時間').find('input').attributes('placeholder')).toBe('不指定')
+    expect(formItem('家長預計抵達時間').find('.el-select__placeholder').text()).toBe('不指定')
   })
 
   it('PickupCreateDialog requires student when not preset', async () => {
