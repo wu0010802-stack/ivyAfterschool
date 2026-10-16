@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 311,
-  "last_updated": "2026-10-16T19:15:10Z",
+  "version": 312,
+  "last_updated": "2026-10-16T19:16:25Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -521,7 +521,7 @@
           "admin routes every route has exactly one access mode：遍歷 routes（含 children）→ 每筆 [meta.public, meta.authOnly, meta.permission != null] 恰有一個為 true",
           "admin routes permission table matches domain_spec：ROUTE_PERMISSIONS 深等於 {'/':'dashboard:read','/students':'students:read','/classes':'classes:read','/attendance':'attendance:read','/attendance/monthly':'attendance:read','/leaves':'leaves:read','/homework':'homework:read','/pickup':'pickup:read','/pickup/authorizations':'pickup:read','/exams':'exams:read','/exams/:id':'exams:read','/settings/system':'settings:read','/settings/reference':'settings:read','/settings/accounts':'staff:read','/settings/roles':'roles:read','/settings/audit':'audit:read'}",
           "admin routes permissions are valid codes and names unique：所有 meta.permission 通過 isPermissionCode；route name 無重複；/attendance、/homework、/pickup、/pickup/authorizations 的 meta.tablet === true",
-          "admin routes use placeholder loaders by default：不 mock 時 await VIEW_LOADERS.StudentWorkbenchView() 取得的元件，以 mountWithApp 掛在 meta.title '學生工作台' 的路由下 → 文字含 '此頁面尚未實作：學生工作台'"
+          "admin routes use placeholder loaders by default：不 mock 時 await VIEW_LOADERS.PickupPosView()（仍未實作的 view）取得的元件，以 mountWithApp 掛在 meta.title '接送' 的路由下 → 文字含 '此頁面尚未實作：接送'"
         ],
         "run": "just web-test src/router/routes.spec.ts -t \"admin routes\"",
         "notes": ""
@@ -1291,7 +1291,7 @@
     {
       "id": "FRONTEND-045",
       "title": "實作 composables/usePagedList.ts：分頁列表狀態、篩選、過期回應防護、URL query 同步",
-      "description": "建立 `apps/web/src/composables/usePagedList.ts`，學生、請假、考試、員工、稽核等分頁列表共用。移植 ivy `FE:src/composables/useTableFilters.ts::useTableFilters` 的 page / filters 與序號防護；改用 `Page<T>`（FRONTEND-002）。搜尋框輸入的 debounce 不在本 composable（介面沒有對應參數），由使用端 debounce 後呼叫 `setFilters`。\n\n**介面**\n```ts\nexport function usePagedList<T, F extends Record<string, unknown>>(opts: {\n  fetch: (params: F & { page: number; page_size: number }) => Promise<Page<T>>\n  initialFilters: F\n  pageSize?: number            // 預設 20\n  syncQuery?: boolean          // true：page 與 filters 雙向同步到 route.query（預設 false）\n  immediate?: boolean          // 預設 true\n}): { items: Ref<T[]>; total: Ref<number>; page: Ref<number>; pageSize: Ref<number>; filters: F (reactive); loading: Ref<boolean>; error: Ref<string | null>; reload(): Promise<void>; setPage(n: number): void; setFilters(patch: Partial<F>): void }\n```\n- `setFilters` 合併後 page 回 1 並重抓；`setPage` 重抓。\n- 送出參數時移除 `undefined` / `''` / `null` 的篩選值。\n- 每次 fetch 帶遞增序號，只採用最後一次請求的結果（舊回應丟棄）。\n- 失敗：`error = errorMessage(err, '載入失敗')`、items 保留上一次結果。\n- `loading` 與 `error` 只反映最新一次請求：過期請求的成功或失敗都不改 items / total / error / loading；最新請求成功時 `error` 清為 null。\n- `reload()` 回傳的 promise 在該次請求結束（含被丟棄的過期請求）時 resolve，不 reject。`immediate: false` 時建立後不抓資料，直到 `reload` / `setPage` / `setFilters`。\n- `syncQuery`：初始化時從 `route.query` 讀回 page 與 filters（只讀 initialFilters 有的 key；initialFilters 值為 number 的欄位以 `Number()` 轉換，非有限數字則保留初始值；boolean 欄位接受 `'true'` / `'false'`；其他視為字串；重複 key 取第一個；page 非正整數視為 1）；`setPage` / `setFilters` 時 `router.replace({ query })`，query 為清理後的 filters（值轉字串）加上 `page`（字串，含 1），不含 `page_size`。只在初始化讀回，之後不監聽外部 query 變化。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/usePagedList.ts`，學生、請假、考試、員工、稽核等分頁列表共用。移植 ivy `FE:src/composables/useTableFilters.ts::useTableFilters` 的 page / filters 與序號防護；改用 `Page<T>`（FRONTEND-002）。搜尋框輸入的 debounce 不在本 composable（介面沒有對應參數），由使用端 debounce 後呼叫 `setFilters`。\n\n**介面**\n```ts\nexport function usePagedList<T, F extends Record<string, unknown>>(opts: {\n  fetch: (params: F & { page: number; page_size: number }) => Promise<Page<T>>\n  initialFilters: F\n  pageSize?: number            // 預設 20\n  syncQuery?: boolean          // true：page 與 filters 雙向同步到 route.query（預設 false）\n  immediate?: boolean          // 預設 true\n}): { items: Ref<T[]>; total: Ref<number>; page: Ref<number>; pageSize: Ref<number>; filters: F (reactive); loading: Ref<boolean>; error: Ref<string | null>; reload(): Promise<void>; setPage(n: number): void; setFilters(patch: Partial<F>): void }\n```\n- `setFilters` 合併後 page 回 1 並重抓；`setPage` 重抓。\n- 送出參數時移除 `undefined` / `''` / `null` 的篩選值。\n- 每次 fetch 帶遞增序號，只採用最後一次請求的結果（舊回應丟棄）。\n- 失敗：`error = errorMessage(err, '載入失敗')`、items 保留上一次結果。\n- `loading` 與 `error` 只反映最新一次請求：過期請求的成功或失敗都不改 items / total / error / loading；最新請求成功時 `error` 清為 null。\n- `reload()` 回傳的 promise 在該次請求結束（含被丟棄的過期請求）時 resolve，不 reject。`immediate: false` 時建立後不抓資料，直到 `reload` / `setPage` / `setFilters`。\n- `syncQuery`：初始化時從 `route.query` 讀回 page 與 filters（只讀 initialFilters 有的 key；initialFilters 值為 number 的欄位以 `Number()` 轉換，非有限數字則保留初始值；boolean 欄位接受 `'true'` / `'false'`；其他視為字串；重複 key 取第一個；page 非正整數視為 1）；`setPage` / `setFilters` 時 `router.replace({ query })`，query 為清理後的 filters（值轉字串）加上 `page`（字串，含 1），不含 `page_size`；寫回當下網址中不屬於列表的參數（不是 initialFilters / filters 的 key，也不是 `page`、`page_size`，例如學生工作台的 `student`、`tab`）原樣保留，只保留字串（或字串陣列）值（vue-router 解析 `__proto__` 時會把 Array 建構子放進 `constructor`，不可寫回網址）。只在初始化讀回，之後不監聽外部 query 變化。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePagedList.ts",
       "source_ref": "FE:src/composables/useTableFilters.ts::useTableFilters",
@@ -1319,7 +1319,9 @@
           "usePagedList stale results never touch loading or error：第一次（慢）reject、第二次（快）resolve [{id:'new'}] → items[0].id === 'new'、error null；第二次未回前 loading 為 true，回來後 false",
           "usePagedList clears error after a later success：先失敗 error '伺服器錯誤'，reload 成功後 error === null",
           "usePagedList waits for reload when immediate is false：immediate false → 建立後 fetch 0 次；await reload() → 1 次且 items 已更新",
-          "usePagedList converts query values by initialFilters type：initialFilters {status:'active',academic_year:115,archived:false}、initialRoute '/s?academic_year=114&archived=true&page=x&unknown=1' → 第一次參數 academic_year 114（number）、archived true、page 1、不含 unknown；academic_year=abc → 115；setPage(2) 後 query 深等於 {status:'active',academic_year:'114',archived:'true',page:'2'}"
+          "usePagedList converts query values by initialFilters type：initialFilters {status:'active',academic_year:115,archived:false}、initialRoute '/s?academic_year=114&archived=true&page=x&unknown=1' → 第一次參數 academic_year 114（number）、archived true、page 1、不含 unknown；academic_year=abc → 115；setPage(2) 後 query 深等於 {status:'active',academic_year:'114',archived:'true',page:'2',unknown:'1'}（unknown 不讀進 filters，但寫回時保留）",
+          "usePagedList keeps unrelated query params：initialFilters {status:'active',q:''}、initialRoute '/students?student=s1&page=1&q=王&page_size=50' → 第一次參數 {status:'active',q:'王',page:1,page_size:20}；setFilters({status:'suspended',q:''}) 後 query 深等於 {student:'s1',status:'suspended',page:'1'}；router.replace 加上 student 's2'、tab 'guardians' 後 setPage(3) → path '/students'、query 深等於 {student:'s2',tab:'guardians',status:'suspended',page:'3'}",
+          "usePagedList keeps only string values of unrelated params：initialRoute '/students?student=s1&__proto__=x&constructor=y'、setPage(2) → query.student 's1'、page '2'，fullPath 不含 'function' 與 '__proto__'"
         ],
         "run": "just web-test src/composables/usePagedList.spec.ts -t \"usePagedList\"",
         "notes": ""
@@ -2663,11 +2665,11 @@
     {
       "id": "FRONTEND-085",
       "title": "實作 views/StudentWorkbenchView.vue：學生工作台（列表 + 詳情面板）",
-      "description": "建立 `apps/web/src/views/StudentWorkbenchView.vue`（路由 `/students`，`students:read`）。移植 ivy `FE:src/views/StudentWorkbenchView.vue` 的左右兩欄與 query 驅動選取；**去掉** TodayTasksPanel、招生 / 在籍統計連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n- 左：`StudentListPanel`（FRONTEND-086）；右：`StudentDetailPanel`（FRONTEND-087），以 `route.query.student` 決定選中的學生（點列 → `router.replace` 帶入）。\n- 視窗寬 ≥ 1440：左右雙欄（詳情固定寬 520）；< 1440：詳情改為右側 el-drawer（寬 640）；關閉 drawer 清掉 query.student。\n- 詳情中編輯 / 封存 / 照片更新後，通知列表重新載入目前頁（列表 expose `reload`）。\n- 沒選學生時右側顯示「從左側選擇學生以檢視詳情」。\n- 部分改寫 FRONTEND-045 `usePagedList`：開啟網址同步時，寫回 query 要保留不屬於列表篩選 / 頁碼的參數（例如本頁的 `student`），否則選中學生後改篩選、換頁或清除篩選會清掉 `query.student`、詳情跟著關閉（review-r10-f1 審 086 時發現）。ExamsView、AuditLogView 沒有其他參數，行為不變。在 `apps/web/src/composables/usePagedList.spec.ts` 補測試「usePagedList keeps unrelated query params」：網址為 `?student=s1&page=1`，改篩選與換頁後 `query.student` 仍為 's1'。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/StudentWorkbenchView.vue')`。\n\n**驗收標準**\n- 點列表列後 query 與詳情同步；直接以 query 進入時開啟該學生。\n- 視窗寬 1440 為雙欄、1439 改為 drawer。\n- 詳情變更後列表重新載入。\n- 選中學生後改篩選、換頁，選中狀態與詳情保留。",
+      "description": "建立 `apps/web/src/views/StudentWorkbenchView.vue`（路由 `/students`，`students:read`）。移植 ivy `FE:src/views/StudentWorkbenchView.vue` 的左右兩欄與 query 驅動選取；**去掉** TodayTasksPanel、招生 / 在籍統計連動。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n- 左：`StudentListPanel`（FRONTEND-086）；右：`StudentDetailPanel`（FRONTEND-087），以 `route.query.student` 決定選中的學生（點列 → `router.replace` 帶入，保留其他 query，含詳情分頁 `tab`）。\n- 視窗寬 ≥ 1440：左右雙欄（詳情固定寬 520，黏在內容區頂端，比可視區高時自己捲動）；< 1440：詳情改為右側 el-drawer（寬 640，48px 頂列只有「關閉」鈕，aria-label 關閉）；關閉 drawer（關閉鈕、遮罩、Esc）清掉 query.student 與 query.tab，列表篩選與頁碼保留。\n- 詳情只有一個實例：雙欄與 drawer 之間切換（跨 1440）不卸載重掛、不重抓（GuardianManager 內只顯示一次的綁定碼 dialog 不會消失，見 FRONTEND-087 risk_notes）；drawer 關閉動畫結束（closed）才卸載詳情，動畫期間不留白。\n- 詳情 emit changed（編輯 / 封存 / 照片更新 / 永久刪除）後，通知列表以相同篩選與頁碼重新載入目前頁（列表 expose `reload`）。\n- 沒選學生時右側顯示「從左側選擇學生以檢視詳情」。\n- 部分改寫 FRONTEND-045 `usePagedList`：開啟網址同步時，寫回 query 要保留不屬於列表的參數（不是篩選 key、`page`、`page_size`，例如本頁的 `student`、`tab`；以寫回當下的網址為準，只保留字串值），否則選中學生後改篩選、換頁或清除篩選會清掉 `query.student`、詳情跟著關閉（review-r10-f1 審 086 時發現）。ExamsView、AuditLogView 沒有其他參數，行為不變。在 `apps/web/src/composables/usePagedList.spec.ts` 補測試「usePagedList keeps unrelated query params」：網址為 `?student=s1&page=1`，改篩選與換頁後 `query.student` 仍為 's1'；並改寫 FRONTEND-045 的 description 與 red_case「converts query values by initialFilters type」（`unknown=1` 寫回時保留）。\n- 路由接線：完成時把 `apps/web/src/router/viewLoaders.ts`（FRONTEND-024）中本頁的 loader 由 PlaceholderView 改為 `() => import('@/views/StudentWorkbenchView.vue')`；FRONTEND-024 的 placeholder 測試範例改用仍未實作的 PickupPosView。\n\n**驗收標準**\n- 點列表列後 query 與詳情同步；直接以 query 進入時開啟該學生。\n- 視窗寬 1440 為雙欄、1439 改為 drawer。\n- 詳情變更後列表重新載入。\n- 選中學生後改篩選、換頁，選中狀態與詳情保留。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/StudentWorkbenchView.vue",
       "source_ref": "FE:src/views/StudentWorkbenchView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-086",
@@ -2683,15 +2685,16 @@
           "vitest"
         ],
         "red_cases": [
-          "StudentWorkbenchView selects student via list click：GET /admin/students 回 [王小明 s1] → 點 '王小明' 列 → router query.student === 's1'，GET /admin/students/s1 被呼叫，詳情顯示 '王小明'",
-          "StudentWorkbenchView opens student from query：initialRoute '/students?student=s2' → GET /admin/students/s2 被呼叫，詳情顯示該學生",
-          "StudentWorkbenchView reloads list after detail change：詳情 emit 'changed' → GET /admin/students（列表）請求數增加 1",
-          "StudentWorkbenchView placeholder without selection：無 query.student → 文字含 '從左側選擇學生以檢視詳情'",
-          "StudentWorkbenchView switches to drawer below 1440：window.innerWidth 1439、query.student 's1' → 詳情渲染在 .el-drawer 內，關閉 drawer → query.student 不存在；innerWidth 1440 → 詳情不在 .el-drawer 內（雙欄）",
-          "StudentWorkbenchView keeps selection across list query changes：initialRoute '/students?student=s1' → 在列表改狀態篩選、再換到第 2 頁 → router query.student 仍為 's1'，詳情仍顯示 '王小明'"
+          "StudentWorkbenchView selects student via list click：寬 1600、GET /admin/students 回 [王小明 s1, 陳小美 s2] → 點 '王小明' 列 → router query.student === 's1'，GET /admin/students/s1 一次，詳情（雙欄內）顯示 '王小明'、選中列為王小明；之後 query 加上 tab 'guardians' 再點 '陳小美' → query 含 {student:'s2',tab:'guardians'}、作用中分頁為 '監護人（0）'",
+          "StudentWorkbenchView opens student from query：initialRoute '/students?student=s2' → GET /admin/students/s2 一次、s1 零次，詳情顯示 '陳小美'，選中列為陳小美",
+          "StudentWorkbenchView reloads list after detail change：initialRoute '/students?student=s1&page=2'，詳情「封存」確認成功（emit changed）→ GET /admin/students 增加 1 次且參數與第一次相同（page 2）；再 emit changed 一次 → 再增加 1 次",
+          "StudentWorkbenchView placeholder without selection：寬 1600、無 query.student → 詳情欄文字含 '從左側選擇學生以檢視詳情'，沒有 GET 學生詳情，drawer 未顯示",
+          "StudentWorkbenchView switches to drawer below 1440：window.innerWidth 1439、initialRoute '/students?student=s1&tab=guardians&status=all&page=2' → drawer 顯示、詳情渲染在 .el-drawer 內、雙欄詳情欄隱藏；點 drawer 的「關閉」→ query 深等於 {status:'all',page:'2'}、drawer 隱藏，closed 之前詳情仍顯示、closed 後卸載；窄版點 '陳小美' 列 → drawer 顯示陳小美；innerWidth 1440 → 詳情不在 .el-drawer 內（雙欄）、drawer 未顯示",
+          "StudentWorkbenchView keeps selection across list query changes：initialRoute '/students?student=s1' → 在列表把狀態改為 '暫停'（query 含 student 's1'、status 'suspended'、page '1'）、再換到第 2 頁（列表參數 page 2）→ router query.student 仍為 's1'，詳情仍顯示 '王小明'，GET /admin/students/s1 仍只有 1 次",
+          "StudentWorkbenchView keeps detail mounted when crossing 1440：寬 1600、initialRoute '/students?student=s1&tab=guardians'（詳情在雙欄、GuardianManager 掛載 1 次）→ resize 1200 → 詳情在 .el-drawer 內；→ resize 1600 → 回到雙欄、drawer 隱藏；全程 GuardianManager 掛載次數維持 1、GET /admin/students/s1 只有 1 次"
         ],
         "run": "just web-test src/views/StudentWorkbenchView.spec.ts -t \"StudentWorkbenchView\"",
-        "notes": "另跑 `just web-test src/composables/usePagedList.spec.ts -t \"usePagedList\"`（改寫 045 的測試）。"
+        "notes": "另跑 `just web-test src/composables/usePagedList.spec.ts -t \"usePagedList\"`（改寫 045 的測試）與 `just web-test src/router/routes.spec.ts`（024 的 placeholder 範例改用 PickupPosView）。列表與詳情用真實元件；底下的 dialog、照片、監護人、成績紀錄以 vi.mock 替身（各自已有完整測試，也避免多個 el-select 拖慢 happy-dom），替身記錄掛載次數以驗證跨斷點不重掛。happy-dom 的 Transition 由 test-utils 替身處理，不會觸發 el-drawer 的 closed，測試以 ElDrawer emit closed 模擬動畫結束；真實瀏覽器已用 Playwright 驗證 closed 後卸載。"
       },
       "review": {
         "status": "pending",
