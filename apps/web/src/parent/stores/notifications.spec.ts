@@ -301,6 +301,144 @@ describe('notificationsStore', () => {
     expect(store.items).toHaveLength(2)
   })
 
+  /** 可手動決定何時回應的 reply */
+  function deferredReply() {
+    let resolve!: (value: [number, unknown]) => void
+    const promise = new Promise<[number, unknown]>((r) => {
+      resolve = r
+    })
+    return { reply: () => promise, resolve }
+  }
+
+  it('notificationsStore clear invalidates an in-flight load', async () => {
+    const late = deferredReply()
+    mock.onGet('/parent/notifications').replyOnce(late.reply)
+    const store = useNotificationsStore()
+    const p = store.load()
+    await flushPromises()
+
+    store.clear()
+    late.resolve([200, { items: [N1, N2], total: 2, unread_count: 1 }])
+    await p
+    await flushPromises()
+
+    expect(store.items).toEqual([])
+    expect(store.total).toBe(0)
+    expect(store.unreadCount).toBe(0)
+    expect(store.loaded).toBe(false)
+    expect(store.loading).toBe(false)
+    expect(store.error).toBeNull()
+  })
+
+  it('notificationsStore clear invalidates an in-flight loadMore', async () => {
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [N1], total: 2, unread_count: 2 })
+    const store = useNotificationsStore()
+    await store.load()
+    const late = deferredReply()
+    mock.onGet('/parent/notifications').replyOnce(late.reply)
+    const p = store.loadMore()
+    await flushPromises()
+
+    store.clear()
+    late.resolve([200, { items: [notification('n5')], total: 2, unread_count: 2 }])
+    await p
+    await flushPromises()
+
+    expect(store.items).toEqual([])
+    expect(store.total).toBe(0)
+    expect(store.unreadCount).toBe(0)
+    expect(store.page).toBe(1)
+    expect(store.loading).toBe(false)
+  })
+
+  it('notificationsStore clear invalidates an in-flight refreshUnread', async () => {
+    const late = deferredReply()
+    mock.onGet('/parent/notifications').replyOnce(late.reply)
+    const store = useNotificationsStore()
+    const p = store.refreshUnread()
+    await flushPromises()
+
+    store.clear() // 家長 A 登出
+    late.resolve([200, { items: [notification('a1')], total: 9, unread_count: 5 }])
+    await p
+    await flushPromises()
+
+    expect(store.unreadCount).toBe(0)
+
+    // clear 之後新的 refreshUnread 照常更新（守衛不擋後來的請求）
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [], total: 3, unread_count: 3 })
+    await store.refreshUnread()
+    expect(store.unreadCount).toBe(3)
+  })
+
+  it('notificationsStore refreshUnread does not overwrite a newer load result', async () => {
+    const late = deferredReply()
+    mock.onGet('/parent/notifications').replyOnce(late.reply).onGet('/parent/notifications').replyOnce(200, { items: [N1, N2], total: 2, unread_count: 1 })
+    const store = useNotificationsStore()
+
+    // refreshUnread 先發出（page_size 1），load 後發出但先回來
+    const refresh = store.refreshUnread()
+    await flushPromises()
+    await store.load()
+    expect(store.unreadCount).toBe(1)
+    expect(listRequests()).toEqual([
+      { page: 1, page_size: 1 },
+      { page: 1, page_size: 20 },
+    ])
+
+    late.resolve([200, { items: [notification('n9')], total: 7, unread_count: 5 }])
+    await refresh
+    await flushPromises()
+
+    // 較舊的未讀數不得蓋掉 load 的結果
+    expect(store.unreadCount).toBe(1)
+    expect(store.items.map((n) => n.id)).toEqual(['n1', 'n2'])
+  })
+
+  it('notificationsStore clear invalidates an in-flight markAllRead', async () => {
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [notification('a1')], total: 1, unread_count: 1 })
+    const store = useNotificationsStore()
+    await store.load()
+    const late = deferredReply()
+    mock.onPost('/parent/notifications/read-all').replyOnce(late.reply)
+    const p = store.markAllRead()
+    await flushPromises()
+
+    store.clear() // A 登出
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [notification('b1'), notification('b2')], total: 2, unread_count: 2 })
+    await store.load() // B 登入後載入
+    late.resolve([200, { updated: 1 }])
+    await expect(p).resolves.toBeUndefined()
+    await flushPromises()
+
+    // A 的回應不得把 B 的通知標成已讀
+    expect(store.items.map((n) => n.read_at)).toEqual([null, null])
+    expect(store.unreadCount).toBe(2)
+    expect(store.total).toBe(2)
+  })
+
+  it('notificationsStore clear invalidates an in-flight markRead', async () => {
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [notification('a1')], total: 1, unread_count: 1 })
+    const store = useNotificationsStore()
+    await store.load()
+    const late = deferredReply()
+    mock.onPost('/parent/notifications/a1/read').replyOnce(late.reply)
+    const p = store.markRead('a1')
+    await flushPromises()
+
+    store.clear()
+    // 下一位家長的清單裡剛好也有 a1（id 相同時守衛仍不得寫回上一位的結果）
+    mock.onGet('/parent/notifications').replyOnce(200, { items: [notification('a1'), notification('b1')], total: 2, unread_count: 2 })
+    await store.load()
+    late.resolve([200, notification('a1', { read_at: '2026-10-02T09:00:00Z' })])
+    await expect(p).resolves.toBeUndefined()
+    await flushPromises()
+
+    expect(store.items.map((n) => n.read_at)).toEqual([null, null])
+    expect(store.unreadCount).toBe(2)
+    expect(store.total).toBe(2)
+  })
+
   it('notificationsStore clear resets everything', async () => {
     const store = await loadedStore()
 
