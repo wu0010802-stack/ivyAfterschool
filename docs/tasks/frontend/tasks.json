@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 206,
-  "last_updated": "2026-10-16T05:43:18Z",
+  "version": 207,
+  "last_updated": "2026-10-16T05:45:47Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2997,11 +2997,11 @@
     {
       "id": "FRONTEND-094",
       "title": "實作 components/student/StudentImportDialog.vue：Excel 匯入（上傳 → 預覽 → 執行）",
-      "description": "建立 `apps/web/src/components/student/StudentImportDialog.vue`（BACKEND-155 / 156：預覽不寫入、執行全有或全無）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`；emits `update:modelValue`、`imported(result: ImportResult)`。\n**步驟**（el-steps）\n1. 選擇：學年度（academicYearOptions，預設 currentAcademicYear，決定「安親班班級」欄比對哪一學年度）+ 檔案（拖曳或選擇 .xlsx，`checkUpload(file, XLSX_RULE)`）。提供「下載範本」按鈕：`downloadImportTemplate()`（FRONTEND-081）→ `saveBlobResponse(res, '學生匯入範本.xlsx')`（FRONTEND-007），下載中 loading、失敗以 `errorMessage` 提示；說明「只支援以範本建立的檔案」。說明欄位：必填「學號、姓名、年級」，其餘「性別、生日、就讀國小、學校班級、安親班班級、狀態、入學日、備註」，以及「身分證字號、健康備註」（需敏感資料權限，無 `students:sensitive` 時提示「你沒有敏感資料權限，含這兩欄資料的列會被標為錯誤」）；最多 500 列。按「預覽」→ `previewImport`。\n2. 預覽：摘要「共 {total} 列，正確 {valid} 列，錯誤 {invalid} 列」；表格顯示列號、學號、姓名、年級、班級（取 `display`）、錯誤（紅字，多則換行）；「只顯示錯誤列」切換。`invalid > 0` 時「匯入」disabled 並提示「請修正 Excel 中的錯誤後重新上傳（匯入為全部成功或全部不寫入）」，提供「重新上傳」。\n3. 執行：確認「將建立 {valid} 位學生，確定匯入嗎？」→ `executeImport` → 成功顯示「已建立 {created} 位學生」並 emit imported；409 `import_has_errors` / `import_conflict`（預覽後資料有變）→ 顯示後端 message 並回到步驟 1。\n- 422 `import_invalid_header`：details 固定為 `{missing: string[], unexpected: string[]}`（兩個 key 一定存在，可能為空陣列）→ `missing` 非空時顯示「缺少欄位：學號*、姓名*」，`unexpected` 非空時顯示「無法辨識的欄位：電話、地址」（提示「請確認標題列使用範本欄名」），空陣列的那一行不顯示；`import_too_many_rows` / `import_empty` 顯示後端 message。\n- 關閉時重設所有狀態。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/student/StudentImportDialog.vue`（BACKEND-155 / 156：預覽不寫入、執行全有或全無）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`；emits `update:modelValue`、`imported(result: ImportResult)`。\n**步驟**（FormDialog lg「匯入學生（Excel）」+ el-steps simple：選擇檔案 / 預覽 / 完成；送出鈕依步驟為「預覽」「匯入」「完成」，完成步驟的取消鈕為「關閉」）\n1. 選擇：學年度（academicYearOptions，預設 currentAcademicYear，決定「安親班班級」欄比對哪一學年度）+ 檔案（拖曳或選擇 .xlsx，`checkUpload(file, XLSX_RULE)`；不通過時在上傳區下方紅字顯示 message（例如「只接受 Excel（.xlsx）」），不保留檔案、「預覽」停用；已選檔案顯示檔名）。提供「下載範本」按鈕：`downloadImportTemplate()`（FRONTEND-081）→ `saveBlobResponse(res, '學生匯入範本.xlsx')`（FRONTEND-007），下載中 loading、失敗以 `errorMessage` 提示；說明「只支援以範本建立的檔案」。說明欄位：必填「學號、姓名、年級」，其餘「性別、生日、就讀國小、學校班級、安親班班級、狀態、入學日、備註」，以及「身分證字號、健康備註」（需敏感資料權限，無 `students:sensitive` 時提示「你沒有敏感資料權限，含這兩欄資料的列會被標為錯誤」）；最多 500 列。按「預覽」→ `previewImport`；其他預覽錯誤在此步驟以 error alert 顯示 `errorMessage(err, '預覽失敗，請稍後再試')`。\n2. 預覽：摘要「共 {total} 列，正確 {valid} 列，錯誤 {invalid} 列」；表格顯示列號、學號、姓名、年級、安親班班級（取 `display` 的範本欄名 `學號*` / `姓名*` / `年級*` / `安親班班級`，空值顯示「—」）、錯誤（紅字，多則換行；沒有錯誤顯示綠色勾）；「只顯示錯誤列」切換。`invalid > 0` 時「匯入」disabled 並提示「請修正 Excel 中的錯誤後重新上傳（匯入為全部成功或全部不寫入）」，提供「重新上傳」。\n3. 執行：確認「將建立 {valid} 位學生，確定匯入嗎？」→ `executeImport` （確認框取消不送出）→ 成功顯示「已建立 {created} 位學生」（el-result）並 emit imported，「完成」關閉；409 `import_has_errors` / `import_conflict`（預覽後資料有變）→ 顯示後端 message 並回到步驟 1（保留已選檔案，可直接重新預覽）；其他錯誤 `ElMessage.error(errorMessage(err, '匯入失敗，請稍後再試'))` 並停在預覽步驟。\n- 422 `import_invalid_header`：details 固定為 `{missing: string[], unexpected: string[]}`（兩個 key 一定存在，可能為空陣列）→ `missing` 非空時顯示「缺少欄位：學號*、姓名*」，`unexpected` 非空時顯示「無法辨識的欄位：電話、地址」（提示「請確認標題列使用範本欄名」），空陣列的那一行不顯示；`import_too_many_rows` / `import_empty` 顯示後端 message。\n- 關閉（closed）與重新開啟時重設所有狀態（步驟、學年度、檔案、預覽、錯誤）。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentImportDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-081",
@@ -3020,11 +3020,14 @@
         ],
         "red_cases": [
           "StudentImportDialog previews uploaded file：學年度 115、選擇 students.xlsx → 點 '預覽' → POST /admin/students/import FormData academic_year '115'、dry_run 'true'；回 {rows:[{row_number:2,display:{'學號*':'S2001','姓名*':'陳小安'},errors:[]},{row_number:3,display:{'學號*':'S1001'},errors:['學號已存在：S1001']}],total:2,valid:1,invalid:1} → 文字含 '共 2 列，正確 1 列，錯誤 1 列' 與 '學號已存在：S1001'",
-          "StudentImportDialog blocks import when any row invalid：上例 → '匯入' 按鈕 disabled，文字含 '請修正 Excel 中的錯誤後重新上傳'",
-          "StudentImportDialog executes when all rows valid：預覽回 valid 2、invalid 0 → 點 '匯入' 並確認 → POST FormData dry_run 'false'；回 {created:2,student_ids:['a','b']} → 文字含 '已建立 2 位學生'、emitted('imported')[0][0].created === 2",
-          "StudentImportDialog shows header problems from details：預覽回 422 {error:{code:'import_invalid_header',message:'標題列不正確',details:{missing:['學號*','姓名*'],unexpected:['電話']}}} → 文字含 '缺少欄位：學號*、姓名*' 與 '無法辨識的欄位：電話'；另一案 details {missing:[],unexpected:['地址']} → 文字含 '無法辨識的欄位：地址' 且不含 '缺少欄位'",
+          "StudentImportDialog blocks import when any row invalid：上例 → '匯入' 按鈕 disabled，文字含 '請修正 Excel 中的錯誤後重新上傳'；「只顯示錯誤列」打開後只剩 1 列；「重新上傳」回到步驟 1 且「預覽」停用",
+          "StudentImportDialog executes when all rows valid：預覽回 valid 2、invalid 0 → 點 '匯入' 並確認 → POST FormData dry_run 'false'；回 {created:2,student_ids:['a','b']} → 文字含 '已建立 2 位學生'、emitted('imported')[0][0].created === 2；確認框按「取消」不送出，確認前也不送出（POST 數維持 1）",
+          "StudentImportDialog shows header problems from details：預覽回 422 {error:{code:'import_invalid_header',message:'標題列不正確',details:{missing:['學號*','姓名*'],unexpected:['電話']}}} → 文字含 '缺少欄位：學號*、姓名*' 與 '無法辨識的欄位：電話'；另一案 details {missing:[],unexpected:['地址']} → 文字含 '無法辨識的欄位：地址' 且不含 '缺少欄位'；再一案 422 import_too_many_rows → 文字含後端 message 且不含 '無法辨識的欄位'",
           "StudentImportDialog rejects non xlsx file client side：選擇 students.csv（text/csv）→ 文字含 '只接受' 且 mock.history.post.length === 0",
-          "StudentImportDialog downloads template：點 '下載範本' → GET /admin/students/import-template responseType 'blob'；攔截 anchor click 的 download 為 Content-Disposition 中的檔名（無 header 時為 '學生匯入範本.xlsx'）"
+          "StudentImportDialog downloads template：點 '下載範本' → GET /admin/students/import-template responseType 'blob'；攔截 anchor click 的 download 為 Content-Disposition 中的檔名（無 header 時為 '學生匯入範本.xlsx'）",
+          "StudentImportDialog returns to file step on import conflict：預覽全對後匯入回 409 import_has_errors {message:'匯入資料有錯誤，請修正後重新預覽'} → 文字含該訊息、回到選檔步驟（有 '預覽' 鈕與檔案輸入），不 emit imported",
+          "StudentImportDialog warns about sensitive columns without permission：無 students:sensitive → 文字含 '你沒有敏感資料權限，含這兩欄資料的列會被標為錯誤'；有權限 → 不含",
+          "StudentImportDialog resets state when reopened：預覽後 modelValue 改 false 再改 true → 不含 '共 2 列'、'預覽' disabled"
         ],
         "run": "just web-test src/components/student/StudentImportDialog.spec.ts -t \"StudentImportDialog\"",
         "notes": ""
@@ -3038,11 +3041,11 @@
     {
       "id": "FRONTEND-095",
       "title": "實作 components/student/GradePromotionDialog.vue：學年升級（預覽 → 執行）",
-      "description": "建立 `apps/web/src/components/student/GradePromotionDialog.vue`（BACKEND-157 / 158：一到五年級 +1、六年級轉退班；班級不變）。參考 ivy `FE:src/api/students.ts::bulkGraduateStudents` 的批次轉態用途。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`；emits `update:modelValue`、`promoted(result: PromotionResult)`。\n**流程**\n- 「升級來源學年度」（academicYearOptions，預設 `currentAcademicYear() - 1`，因為通常在 8 月新學年開始後執行）→ 自動 `previewPromotion(year)`。\n- 預覽：摘要「{from} → {to} 學年度：升級 {promote.length} 位、六年級轉退班 {graduate.length} 位」；兩個分頁表格（學號、姓名、年級 grade_from → grade_to / 退班、目前班級）。提示「升級不會變更安親班班級，請於升級後到學生工作台調整」。\n- `already_promoted` → el-alert error「此學年度已執行過升級」，「執行升級」disabled。\n- 退班日（date，預設 todayTaipei）。\n- 執行：確認框需輸入「確認升級」四字才可按確定（不可復原的批次操作）→ `executePromotion({from_academic_year, expected_total: preview.total, withdrawn_on})` → 成功「已升級 {promoted} 位、退班 {graduated} 位」並 emit promoted。\n- 409 `preview_stale` → 「名單在預覽後有變動，已重新預覽，請再次確認」並自動重新預覽；409 `already_promoted` → 顯示 message 並重新預覽。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/student/GradePromotionDialog.vue`（BACKEND-157 / 158：一到五年級 +1、六年級轉退班；班級不變）。參考 ivy `FE:src/api/students.ts::bulkGraduateStudents` 的批次轉態用途。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-students.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：學生列表（篩選、分頁、封存學生）、詳情面板（基本資料 / 監護人 / 成績紀錄分頁）、敏感欄位三種狀態（有權限遮罩 / 顯示、無權限已填寫、未填寫）、編輯 dialog（有 / 無 students:sensitive）、照片上傳、監護人管理與綁定碼 dialog、Excel 匯入三步驟、學年升級預覽與執行、只有 students:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`；emits `update:modelValue`、`promoted(result: PromotionResult)`。\n**流程**（FormDialog lg「學年升級」，送出鈕「執行升級」）\n- 「升級來源學年度」（academicYearOptions，預設 `currentAcademicYear() - 1`，因為通常在 8 月新學年開始後執行）→ 開啟時自動 `previewPromotion(year)`；選項為本學年度到前三年（新到舊），切換即重新預覽（序號防護，只採用最新回應）。預覽失敗以 error alert 顯示 `errorMessage(err, '無法載入升級預覽，請稍後再試')`，「執行升級」disabled（預覽載入中也 disabled）。\n- 預覽：摘要「{from} → {to} 學年度：升級 {promote.length} 位、六年級轉退班 {graduate.length} 位」；兩個分頁表格「升級（N）」/「六年級轉退班（M）」（學號、姓名、年級 gradeLabel(grade_from) → gradeLabel(grade_to) / 退班、目前班級，null 顯示「—」）。提示「升級不會變更安親班班級，請於升級後到學生工作台調整」。\n- `already_promoted` → el-alert error「此學年度已執行過升級」，「執行升級」disabled。\n- 退班日（date，預設 todayTaipei）。\n- 執行：確認框（el-dialog「確認執行學年升級」420px，說明「將升級 N 位、六年級轉退班 M 位，此操作無法復原。請輸入「確認升級」以執行。」）需輸入「確認升級」四字（忽略前後空白）才可按確定，取消不送出（不可復原的批次操作）→ `executePromotion({from_academic_year, expected_total: preview.total, withdrawn_on})` → 成功 ElMessage「已升級 {promoted} 位、退班 {graduated} 位」、emit promoted 並關閉（emit update:modelValue false）。from_academic_year 取預覽回應的值。\n- 409 `preview_stale` → 「名單在預覽後有變動，已重新預覽，請再次確認」並自動重新預覽；409 `already_promoted` → ElMessage.error 顯示後端 message 並重新預覽；其他錯誤 `ElMessage.error(errorMessage(err, '升級失敗，請稍後再試'))`。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/GradePromotionDialog.vue",
       "source_ref": "FE:src/api/students.ts::bulkGraduateStudents",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10c",
       "depends_on": [
         "FRONTEND-081",
@@ -3061,7 +3064,11 @@
           "GradePromotionDialog previews default year：fake now 2026-08-15（currentAcademicYear 115）→ POST /admin/students/promote-grade body 深等於 {from_academic_year:114,dry_run:true}；回 promote 80 筆、graduate 16 筆、total 96 → 文字含 '114 → 115 學年度：升級 80 位、六年級轉退班 16 位'",
           "GradePromotionDialog requires typed confirmation and sends expected total：點 '執行升級' → 確認框輸入 '確認' 時確定 disabled；輸入 '確認升級' 後按確定 → POST body 深等於 {from_academic_year:114,dry_run:false,expected_total:96,withdrawn_on:'2026-08-15'}；回 {promoted:80,graduated:16} → 文字含 '已升級 80 位、退班 16 位'",
           "GradePromotionDialog disables execute when already promoted：預覽回 already_promoted true → 文字含 '此學年度已執行過升級' 且 '執行升級' disabled",
-          "GradePromotionDialog re-previews on stale preview：執行回 409 preview_stale → 文字含 '名單在預覽後有變動，已重新預覽，請再次確認'，且再送出一次 dry_run true 的請求"
+          "GradePromotionDialog re-previews on stale preview：執行回 409 preview_stale → 文字含 '名單在預覽後有變動，已重新預覽，請再次確認'，且再送出一次 dry_run true 的請求",
+          "GradePromotionDialog cancel confirmation sends nothing：輸入 '確認升級' 後按 '取消' → POST 數仍為 1（只有預覽）",
+          "GradePromotionDialog re-previews when already promoted on execute：執行回 409 already_promoted {message:'114 學年度已執行過升級'} → body 含該訊息、第 3 個請求深等於 {from_academic_year:114,dry_run:true}，重新預覽回 already_promoted true 後 '執行升級' disabled",
+          "GradePromotionDialog re-previews when year changes：選 '113 學年度' → 最後一個請求深等於 {from_academic_year:113,dry_run:true}，文字含 '113 → 114 學年度'",
+          "GradePromotionDialog shows preview failure：預覽回 500 {message:'伺服器忙碌中'} → 文字含 '伺服器忙碌中'，'執行升級' disabled"
         ],
         "run": "just web-test src/components/student/GradePromotionDialog.spec.ts -t \"GradePromotionDialog\"",
         "notes": ""
