@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 290,
-  "last_updated": "2026-10-16T15:28:08Z",
+  "version": 291,
+  "last_updated": "2026-10-16T15:31:13Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -2054,7 +2054,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/settings/StaffAccountsView.vue",
       "source_ref": "FE:src/components/settings/SettingsAccountsTab.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-052",
@@ -2096,9 +2096,9 @@
         "notes": "每列都有 el-dropdown / el-tooltip，新增 / 編輯用真實 StaffUserFormDialog：happy-dom 下單一測試約 2~8 秒，spec 的 describe 逾時設 20 秒。el-dropdown 的選單每列預先渲染在 body（v-show），spec 只取顯示中的那一份；dropdown / tooltip 以 setTimeout 開關，用 fake timers 推進。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f1",
+        "notes": "通過（review-r10-f1）。tdd.run 16 passed（16 條 red_case 逐條對應同名測試）；f592923（測試，當時 StaffAccountsView.vue 不存在）先於 33050aa（實作含 viewLoaders 接線），199a5ad 在實作後補的是加嚴斷言（父層 tempPassword 清空）。e40d04a 不是放寬：選單改取「顯示中」的那份（原本取 DOM 最後一份會拿到別列預先渲染的選單，反而不準）；重新啟用改點已開的選單（原本再點「更多」會把選單關掉）；「點了打不開」由「DOM 沒有任何選單項」改為「沒有顯示中的選單項」——別列的選單本來就預先渲染在 body，原寫法不可能成立，新寫法仍能驗出打開；describe 逾時 20 秒只是執行時間上限，斷言未變。b5715c8 的 red_case 改寫依已核可稿 page-settings-accounts.html 的操作欄 decision（「編輯」+「更多 ▾」），自己那列只有「編輯」、權限較大的列「編輯」「更多」皆停用，保護強度不變並新增 9 條；description 補述逐條出自稿的 decisions #1~#10。介面：StaffUserFormDialog（user / roles / catalog、created / updated）、TempPasswordDialog（關閉時父層清空密碼）、AdminListToolbar、usePagedList 用法正確。Chromium 實測（內容寬 1180）：七欄、操作欄固定右側、表格無水平捲動；自己那列「你」tag 且只有「編輯」；停用列灰字；權限較大的列「編輯」「更多」disabled、強制點擊也不開選單、hover 提示「無法管理權限比你大的帳號」；一般列「更多」為「重設密碼」與紅字「停用」；個別調整 hover 顯示中文標籤。突變 17 種中 15 種轉紅；未轉紅：拿掉下拉本身的 disabled（內層按鈕仍 disabled，等價的雙重防護）、角色與權限目錄載入完成前「新增員工」可按（見殘留）。還原後乾淨。web-lint exit 0；web-typecheck exit 0。殘留（不擋）：description 寫明「角色與權限目錄載入完成前『新增員工』停用」但沒有測試（拿掉仍綠；影響只是目錄未到時打開的表單暫時沒有角色可選）。"
       }
     },
     {
@@ -2758,7 +2758,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/student/StudentDetailPanel.vue",
       "source_ref": "FE:src/components/student/StudentDetailPanel.vue::default",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-081",
@@ -2771,7 +2771,7 @@
         "FRONTEND-042"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r10-f1 打回】「靜默重抓、不顯示骨架」沒有被測試驗到（斷言放在重抓完成之後，恆真）。反例（突變）：onGuardiansChanged 改成 load()（非靜默）→ 18 條仍全綠；實際後果是「產生綁定碼」後 GuardianManager 被卸載，只顯示一次的綁定碼 dialog 消失。onPurged 改成 load() 也仍全綠。驗收：1) passes guardians and refreshes count after change：第二次 GET 改用可控 Promise，在回應前斷言沒有 .el-skeleton、GuardianManager 替身仍是同一個實例（例如替身記錄 mounted 次數，期間維持 1），放行後再斷言 GET 2 次與「監護人（2）」；2) reloads and emits changed after purge：重抓回應前斷言沒有 .el-skeleton 且 header 仍在。以上兩個突變都要轉紅。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/student/StudentDetailPanel.spec.ts",
@@ -2802,9 +2802,9 @@
         "notes": "StudentPhotoUploader / GuardianManager / StudentExamHistoryTab / StudentFormDialog 以 vi.mock 替身驗證傳入的 props 與完成事件（各自已有完整測試；避免它們各自發請求與多個 el-select 拖慢 happy-dom）；StudentSensitiveFields 與 StudentPurgeDialog 用真實元件。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f1",
+        "notes": "打回（review-r10-f1）。tdd.run 18 passed（18 條 red_case 逐條對應）；55bbbfa（測試，當時 StudentDetailPanel.vue 不存在）先於 8262266（實作）；0c5ddda 的測試修正是加嚴（meta 依 <br> 拆兩行比對、基本資料只取自己的 descriptions），不是放寬。9d01b5b：拿掉 close() 合理——已核可稿的詳情內沒有關閉鈕，抽屜關閉鈕與清 query.student 屬 085（085 description / red_case 也只依賴抽屜自己的關閉）；description 補述（20px 姓名、兩行 meta 與「未分班」「未填就讀國小」、照片可編輯條件、封存確認框、監護人人數、成績紀錄 lazy、?tab= 值與 fallback）出自稿的詳情程式。介面：StudentPhotoUploader / GuardianManager / StudentExamHistoryTab / StudentPurgeDialog / StudentSensitiveFields 的 props 與事件用法正確。Chromium 實測：面板寬 520 / 640 照片 96×96、姓名 20px / 600、meta 兩行、右側「編輯」「封存」放得下無溢出；已封存退班學生橘字「已封存（2026/09/01）」、⋮ 選單只有「永久刪除」。突變 18 種中 16 種轉紅；未轉紅的兩種即打回項。web-lint exit 0；web-typecheck exit 0。打回項：red_case「passes guardians and refreshes count after change」與 description 都要求監護人異動後「靜默重抓、不顯示骨架」，但測試只在重抓完成後才斷言沒有骨架（恆真）：改成一般重抓（顯示骨架）仍全綠。這不是外觀問題：GuardianManager 在「產生綁定碼」成功後才 emit change，綁定碼 dialog 在 GuardianManager 內；一般重抓會清空 detail、卸載 GuardianManager，只顯示一次的綁定碼 dialog 會在使用者抄下前消失。永久刪除後的重抓也有同樣的恆真斷言。"
       }
     },
     {
