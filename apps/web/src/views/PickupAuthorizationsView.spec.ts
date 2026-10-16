@@ -647,6 +647,34 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     expect(authGets()).toHaveLength(gets)
   })
 
+  it('PickupAuthorizationsView follows today across midnight: hides yesterday while the new day loads', async () => {
+    vi.useRealTimers()
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    vi.setSystemTime(new Date('2026-10-06T15:59:30Z'))
+    const next = makeAuthorization({ id: 'pn1', service_date: '2026-10-07', proxy_name: '何阿姨', code_last4: '9999' })
+    let releaseNext: (() => void) | null = null
+    mock.onGet(AUTH_URL).reply((config: AxiosRequestConfig) => {
+      if ((config.params as { date?: string } | undefined)?.date !== '2026-10-07') return [200, [CHEN]]
+      return new Promise((resolve) => {
+        releaseNext = () => resolve([200, [next]])
+      })
+    })
+    const { wrapper } = await mountView()
+    expect(cardNames(wrapper)).toEqual(['陳阿姨'])
+
+    vi.advanceTimersByTime(60_000)
+    await settle()
+
+    // 新的一天還沒抓回來：前一天的授權不可當成今天顯示、也不可核驗
+    expect(cardNames(wrapper)).toEqual([])
+    expect(verifyButtons(wrapper)).toHaveLength(0)
+
+    expect(releaseNext).not.toBeNull()
+    releaseNext!()
+    await settle()
+    expect(cardNames(wrapper)).toEqual(['何阿姨'])
+  })
+
   it('PickupAuthorizationsView shows load error and retries', async () => {
     mock.onGet(AUTH_URL).replyOnce(500, { error: { code: 'internal_error', message: '伺服器暫時無法回應' } })
     mockAuthorizations({ [TODAY]: [CHEN] })
