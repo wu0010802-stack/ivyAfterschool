@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 283,
-  "last_updated": "2026-10-16T15:19:21Z",
+  "version": 284,
+  "last_updated": "2026-10-16T15:22:27Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3432,7 +3432,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/AttendanceTodayView.vue",
       "source_ref": "FE:src/views/StudentAttendanceView.vue::default",
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-126",
@@ -3457,7 +3457,13 @@
           "AttendanceTodayView batch check-in reports skipped students：attendance:operate → 點 '批次到班'、'全選未到'（2 位）、'確認到班' → POST /admin/attendance/batch-check-in body.student_ids 長度 2；回 succeeded 1、skipped [{student_id:'s2',message:'學生今日請假'}] → body 含 '已到班 1 位' 與 '林小華：學生今日請假'",
           "AttendanceTodayView past date is amend-only：選日期 2026-10-01 → 文字含 '檢視 2026-10-01，僅可改判'，沒有 '批次到班'，卡片沒有 '到班' 按鈕",
           "AttendanceTodayView non service day empty state：回 is_service_day false、items [] → 文字含 '2026-10-04 不是營業日'",
-          "AttendanceTodayView readonly without operate permission：permissions ['attendance:read'] → 沒有 '批次到班'，卡片沒有 '到班' / '離班' / '缺席' 按鈕"
+          "AttendanceTodayView readonly without operate permission：permissions ['attendance:read'] → 沒有 '批次到班'，卡片沒有 '到班' / '離班' / '缺席' 按鈕",
+          "AttendanceTodayView loads today with class filter from query: loading skeleton：GET /admin/attendance/daily 尚未回應 → 8 張 .acard-skeleton、摘要 chip 為載入中（stat-skeleton）、沒有學生卡；回應後骨架消失並顯示學生卡",
+          "AttendanceTodayView refresh failure keeps current data：先載入 [王小明, 林小華]，再讓 daily 回 500 {message:'出勤資料暫時無法讀取'} 並點 '重新整理' → body 含 '出勤資料暫時無法讀取'，卡片仍是兩位，沒有 '無法載入出勤資料'",
+          "AttendanceTodayView amend opens dialog and applies returned row：attendance:amend、列 李承恩（present，id a4）→ 點 ⋮ → '改判' → dialog 標題 '改判出勤：李承恩'；選 '缺席'、填原因、儲存，PATCH /admin/attendance/a4 回 status absent → 該卡片 tag 為 '缺席'",
+          "AttendanceTodayView past date is amend-only: future dates are not selectable：fake now 2026-10-02 → 日期元件 disabled-date 對 2026-10-03 回 true、2026-10-02 回 false；日期元件送出 '2026-10-03' → 不重新請求 daily、沒有 '僅可改判'、仍有 '批次到班'",
+          "AttendanceTodayView batch check-in reports skipped students: select all only visible：搜尋 '林' 後進入批次 → '全選未到（1）' → '確認到班' → POST body 深等於 {student_ids:['s2']}",
+          "AttendanceTodayView batch check-in reports skipped students: leaving on class or date change：選取模式選 1 位後把 query.class_id 改為 c1 → 批次列消失，再按 '批次到班' 為 '已選 0 位'；再選 1 位後日期改為 2026-10-01 → 出現 '檢視 2026-10-01，僅可改判'，批次列與說明列都消失"
         ],
         "run": "just web-test src/views/AttendanceTodayView.spec.ts -t \"AttendanceTodayView\"",
         "notes": "頁面含日期元件、兩個下拉與多張帶 el-dropdown 的卡片，happy-dom 下單一案例約 3~6 秒，describe 逾時放寬為 20 秒。"
