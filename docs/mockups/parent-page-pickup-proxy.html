@@ -1,0 +1,2502 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+
+<!-- ============================================================
+     設計稿中繼資料（gate 用，四個都必填，值不可猜）
+     preview-status : draft | approved | superseded
+     preview-tasks  : 這張稿涵蓋的 PARENT task id，逗號分隔
+     preview-route  : 對應的家長端路由 path；元件稿寫 component:<相對路徑>
+     preview-updated: 最後更新日期 YYYY-MM-DD
+     ============================================================ -->
+<meta name="preview-status" content="draft">
+<meta name="preview-tasks" content="PARENT-104">
+<meta name="preview-route" content="/pickup/proxy">
+<meta name="preview-updated" content="2026-10-16">
+
+<title>設計稿：家長端 代理接送（PickupProxyView）</title>
+<script src="https://unpkg.com/vue@3.5.43/dist/vue.global.prod.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+
+<style>
+/* ===== 以下 token、框架、M3 元件與 ParentBottomSheet 樣式複製自 parent-component-bottom-sheet.html（改那兩張稿時一起同步） ===== */
+/* ============================================================
+   色票：複本，權威為 apps/web/src/parent/styles/m3-tokens.css（含 dark）。
+   --preview-* 只給稿件框架用。手機框內一律用 --m3-*。
+   ============================================================ */
+:root {
+  --m3-primary: #006d3d;
+  --m3-on-primary: #ffffff;
+  --m3-primary-container: #89f9b1;
+  --m3-on-primary-container: #00210f;
+  --m3-secondary: #4f6353;
+  --m3-on-secondary: #ffffff;
+  --m3-secondary-container: #d2e8d4;
+  --m3-on-secondary-container: #0d1f13;
+  --m3-tertiary: #3a646f;
+  --m3-on-tertiary: #ffffff;
+  --m3-tertiary-container: #beeaf7;
+  --m3-on-tertiary-container: #001f26;
+  --m3-error: #ba1a1a;
+  --m3-on-error: #ffffff;
+  --m3-error-container: #ffdad6;
+  --m3-on-error-container: #410002;
+  --m3-background: #fbfdf8;
+  --m3-on-background: #191c19;
+  --m3-surface: #fbfdf8;
+  --m3-on-surface: #191c19;
+  --m3-surface-variant: #dce5db;
+  --m3-on-surface-variant: #414942;
+  --m3-outline: #717971;
+  --m3-outline-variant: #c0c9bf;
+  --m3-shadow: #000000;
+  --m3-scrim: #000000;
+  --m3-inverse-surface: #2e312e;
+  --m3-inverse-on-surface: #f0f1ec;
+  --m3-inverse-primary: #6ddc97;
+  --m3-surface-container-lowest: #ffffff;
+  --m3-surface-container-low: #f3f4ef;
+  --m3-surface-container: #edeee9;
+  --m3-surface-container-high: #e7e9e4;
+  --m3-surface-container-highest: #e1e3de;
+}
+:root[data-theme='dark'] {
+  --m3-primary: #6ddc97;
+  --m3-on-primary: #00391d;
+  --m3-primary-container: #00522c;
+  --m3-on-primary-container: #89f9b1;
+  --m3-secondary: #b6ccb9;
+  --m3-on-secondary: #223527;
+  --m3-secondary-container: #384b3d;
+  --m3-on-secondary-container: #d2e8d4;
+  --m3-tertiary: #a2cdda;
+  --m3-on-tertiary: #023640;
+  --m3-tertiary-container: #214c57;
+  --m3-on-tertiary-container: #beeaf7;
+  --m3-error: #ffb4ab;
+  --m3-on-error: #690005;
+  --m3-error-container: #93000a;
+  --m3-on-error-container: #ffb4ab;
+  --m3-background: #191c19;
+  --m3-on-background: #e1e3de;
+  --m3-surface: #191c19;
+  --m3-on-surface: #e1e3de;
+  --m3-surface-variant: #414942;
+  --m3-on-surface-variant: #c0c9bf;
+  --m3-outline: #8b938a;
+  --m3-outline-variant: #414942;
+  --m3-shadow: #000000;
+  --m3-scrim: #000000;
+  --m3-inverse-surface: #e1e3de;
+  --m3-inverse-on-surface: #2e312e;
+  --m3-inverse-primary: #006d3d;
+  --m3-surface-container-lowest: #0c0f0c;
+  --m3-surface-container-low: #191c19;
+  --m3-surface-container: #1d201d;
+  --m3-surface-container-high: #282b28;
+  --m3-surface-container-highest: #333532;
+}
+:root {
+  --m3-state-hover: 0.08;
+  --m3-state-focus: 0.12;
+  --m3-state-pressed: 0.12;
+  --m3-state-dragged: 0.16;
+  --m3-shape-extra-small: 4px;
+  --m3-shape-small: 8px;
+  --m3-shape-medium: 12px;
+  --m3-shape-large: 16px;
+  --m3-shape-extra-large: 28px;
+  --m3-shape-full: 9999px;
+  --m3-elev-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --m3-elev-2: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --m3-elev-3: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --m3-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --m3-easing-standard-accel: cubic-bezier(0.3, 0, 1, 1);
+  --m3-easing-standard-decel: cubic-bezier(0, 0, 0, 1);
+  --m3-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --m3-easing-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --m3-easing-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --m3-dur-short-1: 50ms;
+  --m3-dur-short-2: 100ms;
+  --m3-dur-short-3: 150ms;
+  --m3-dur-short-4: 200ms;
+  --m3-dur-medium-1: 250ms;
+  --m3-dur-medium-2: 300ms;
+  --m3-dur-medium-3: 350ms;
+  --m3-dur-medium-4: 400ms;
+  --m3-font: 'Roboto', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Helvetica Neue', sans-serif;
+
+  /* 稿件框架專用 */
+  --preview-page-bg: #f2f3f5;
+  --preview-panel-bg: #ffffff;
+  --preview-bar-bg: #f4f4f5;
+  --preview-bar-text: #73767a;
+  --preview-border: #dcdfe6;
+  --preview-text: #303133;
+  --preview-text-secondary: #909399;
+  --preview-primary: #409eff;
+  --preview-on-primary: #ffffff;
+  --preview-warning: #e6a23c;
+  --preview-warning-bg: #fdf6ec;
+  --preview-warning-border: #f3d19e;
+  --preview-success: #67c23a;
+  --preview-device: #1f1f1f;
+  --preview-hit: #f56c6c;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font-family: var(--m3-font); background: var(--preview-page-bg); color: var(--preview-text); }
+#app { display: flex; flex-direction: column; min-height: 100%; }
+button { font: inherit; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---- 稿件框架 ---- */
+.preview-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 16px; font-size: 12px; color: var(--preview-bar-text); background: var(--preview-bar-bg); border-bottom: 1px dashed var(--preview-border); }
+.preview-bar__spacer { flex: 1; }
+.preview-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 4px; font-size: 12px; color: var(--preview-on-primary); background: var(--preview-warning); }
+.preview-tag.is-approved { background: var(--preview-success); }
+.stage { flex: 1; display: flex; align-items: flex-start; justify-content: center; gap: 32px; flex-wrap: wrap; padding: 32px 16px; }
+.device { flex: none; width: 390px; height: 844px; border-radius: 44px; overflow: hidden; outline: 10px solid var(--preview-device); box-shadow: var(--m3-elev-3); margin: 10px; }
+.screen { position: relative; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--m3-surface); color: var(--m3-on-surface); }
+.screen__content { flex: 1; overflow-y: auto; padding: 0 16px 24px; }
+.notes { flex: 0 1 420px; min-width: 300px; max-width: 100%; padding: 20px; border-radius: 8px; background: var(--preview-panel-bg); border: 1px solid var(--preview-border); font-size: 14px; line-height: 1.6; }
+.notes h3 { margin: 0 0 12px; font-size: 16px; }
+.notes h4 { margin: 20px 0 8px; font-size: 14px; }
+.notes ol { margin: 0; padding-left: 20px; }
+.notes__alert { padding: 8px 12px; margin-bottom: 16px; border-radius: 4px; font-size: 13px; color: var(--preview-warning); background: var(--preview-warning-bg); border: 1px solid var(--preview-warning-border); }
+.notes__option { color: var(--preview-text-secondary); font-size: 13px; }
+.notes__group { margin: 12px 0 4px; font-weight: 600; font-size: 13px; }
+.notes__row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; }
+.state-switch { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--preview-border); border-radius: 4px; overflow: hidden; }
+.state-switch button { padding: 4px 10px; font-size: 12px; border: none; cursor: pointer; background: var(--preview-panel-bg); color: var(--preview-text); border-right: 1px solid var(--preview-border); }
+.state-switch button:last-child { border-right: none; }
+.state-switch button.is-active { background: var(--preview-primary); color: var(--preview-on-primary); }
+.state-switch--wrap { display: flex; border: none; gap: 4px; }
+.state-switch--wrap button { border: 1px solid var(--preview-border); border-radius: 4px; }
+.state-switch--wrap button:last-child { border-right: 1px solid var(--preview-border); }
+
+/* ---- 稿內示範排版（只存在於稿，不是元件） ---- */
+.kit-head { padding: 8px 0 4px; }
+.kit-head__task { color: var(--m3-on-surface-variant); }
+.demo__caption { margin: 20px 0 8px; color: var(--m3-on-surface-variant); }
+.demo-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.demo-col { display: flex; flex-direction: column; gap: 12px; }
+.demo-code { margin-top: 6px; padding: 6px 8px; border-radius: var(--m3-shape-extra-small); background: var(--m3-surface-container); color: var(--m3-on-surface-variant); font: 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.demo-legend { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 64px; color: var(--m3-on-surface-variant); }
+.bleed { margin-left: -16px; margin-right: -16px; }
+.bleed + .bleed { margin-top: 8px; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.show-hit .hit-target::after,
+.show-hit .m3-chip::after,
+.show-hit .m3-icon-button,
+.show-hit .m3-switch,
+.show-hit .m3-snackbar__action { outline: 1px dashed var(--preview-hit); }
+
+/* ============================================================
+   M3 元件樣式
+   ============================================================ */
+/* Typography（同 m3-tokens.css） */
+.m3-title-large { font-size: 22px; line-height: 28px; font-weight: 400; }
+.m3-title-medium { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
+.m3-title-small { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.m3-body-large { font-size: 16px; line-height: 24px; letter-spacing: 0.5px; }
+.m3-body-medium { font-size: 14px; line-height: 20px; letter-spacing: 0.25px; }
+.m3-body-small { font-size: 12px; line-height: 16px; letter-spacing: 0.4px; }
+.m3-label-large { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.m3-label-medium { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+.m3-label-small { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+
+/* M3Icon（PARENT-014）：1em 夾盒，字型未就緒時 ligature 原文被裁在盒內 */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal;
+  line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap;
+  direction: ltr; font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1em; height: 1em; overflow: hidden; flex-shrink: 0; vertical-align: middle; user-select: none;
+}
+.icon-fallback-demo { font-family: 'NoSuchFont-preview', sans-serif !important; }
+.icon-fallback-demo--unclamped { width: auto !important; overflow: visible !important; }
+.icon-frame { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px dashed var(--m3-outline-variant); border-radius: var(--m3-shape-extra-small); }
+
+/* State layer：hover 0.08 / focus 0.12 / pressed 0.12，顏色取 currentColor */
+.m3-state { position: relative; }
+.m3-state::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; background: currentColor;
+  opacity: 0; pointer-events: none; transition: opacity var(--m3-dur-short-2) var(--m3-easing-standard);
+}
+.m3-state:hover::before, .m3-state.force-hover::before { opacity: var(--m3-state-hover); }
+.m3-state:focus-visible::before, .m3-state.force-focus::before { opacity: var(--m3-state-focus); }
+.m3-state:active::before, .m3-state.force-pressed::before { opacity: var(--m3-state-pressed); }
+.m3-state:disabled::before, .m3-state[aria-disabled='true']::before { opacity: 0 !important; }
+
+/* 轉圈（Button loading / Switch busy 共用） */
+.m3-spinner { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: m3-spin 0.8s linear infinite; }
+@keyframes m3-spin { to { transform: rotate(360deg); } }
+
+/* M3Button（PARENT-015） */
+.m3-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 48px; min-width: 48px; padding: 0 24px; border: none; border-radius: var(--m3-shape-full);
+  cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+}
+.m3-button.has-icon { padding-left: 16px; }
+.m3-button--filled { background: var(--m3-primary); color: var(--m3-on-primary); }
+.m3-button--tonal { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.m3-button--outlined { background: transparent; color: var(--m3-primary); box-shadow: inset 0 0 0 1px var(--m3-outline); }
+.m3-button--text { background: transparent; color: var(--m3-primary); padding: 0 12px; }
+.m3-button--text.has-icon { padding-left: 12px; }
+.m3-button.is-block { display: flex; width: 100%; }
+.m3-button:disabled { opacity: 0.38; cursor: not-allowed; }
+.m3-button.is-loading { cursor: progress; }
+.m3-button:focus-visible, .m3-button.force-focus { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+
+/* M3IconButton（PARENT-016）：48 點擊區、40 視覺 */
+.m3-icon-button {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 48px; height: 48px; padding: 0; border: none; border-radius: var(--m3-shape-full);
+  background: transparent; color: var(--m3-on-surface-variant); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.m3-icon-button__container { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--m3-shape-full); }
+.m3-icon-button__container::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0; pointer-events: none; transition: opacity var(--m3-dur-short-2) var(--m3-easing-standard); }
+.m3-icon-button:hover .m3-icon-button__container::before, .m3-icon-button.force-hover .m3-icon-button__container::before { opacity: var(--m3-state-hover); }
+.m3-icon-button:focus-visible .m3-icon-button__container::before, .m3-icon-button.force-focus .m3-icon-button__container::before { opacity: var(--m3-state-focus); }
+.m3-icon-button:active .m3-icon-button__container::before, .m3-icon-button.force-pressed .m3-icon-button__container::before { opacity: var(--m3-state-pressed); }
+.m3-icon-button--filled .m3-icon-button__container { background: var(--m3-primary); color: var(--m3-on-primary); }
+.m3-icon-button--tonal .m3-icon-button__container { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.m3-icon-button:focus-visible, .m3-icon-button.force-focus { outline: 2px solid var(--m3-primary); outline-offset: -2px; }
+.m3-icon-button:disabled { opacity: 0.38; cursor: not-allowed; }
+.m3-icon-button:disabled .m3-icon-button__container::before { opacity: 0; }
+
+/* M3Card（PARENT-017）：底色照 M3 / ivy */
+.m3-card { position: relative; display: block; border-radius: var(--m3-shape-medium); color: var(--m3-on-surface); }
+.m3-card--pad-none { padding: 0; }
+.m3-card--pad-sm { padding: 12px; }
+.m3-card--pad-md { padding: 16px; }
+.m3-card--filled { background: var(--m3-surface-container-highest); }
+.m3-card--elevated { background: var(--m3-surface-container-low); box-shadow: var(--m3-elev-1); }
+.m3-card--outlined { background: var(--m3-surface); border: 1px solid var(--m3-outline-variant); }
+.m3-card.is-clickable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.m3-card.is-clickable::before { background: var(--m3-on-surface); }
+.m3-card.is-clickable:focus-visible, .m3-card.force-focus { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+.m3-card__header { margin-bottom: 8px; }
+.m3-card__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.m3-card p { margin: 0; }
+
+/* M3TextField（PARENT-018）：outlined、fieldset/legend 挖缺口 */
+.m3-tf { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.m3-tf__control { position: relative; display: flex; align-items: center; min-height: 56px; }
+.m3-tf__input {
+  position: relative; z-index: 1; width: 100%; height: 56px; margin: 0; padding: 0 16px;
+  border: none; outline: none; background: transparent; color: var(--m3-on-surface);
+  font: 400 16px/24px var(--m3-font); letter-spacing: 0.5px; caret-color: var(--m3-primary);
+  -webkit-appearance: none; appearance: none;
+}
+.m3-tf.has-trailing .m3-tf__input { padding-right: 48px; }
+.m3-tf.is-textarea .m3-tf__control { align-items: stretch; }
+textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: none; }
+.m3-tf__input::placeholder { color: var(--m3-on-surface-variant); opacity: 0; }
+.m3-tf.is-focused .m3-tf__input::placeholder { opacity: 1; }
+.m3-tf.is-error .m3-tf__input { caret-color: var(--m3-error); }
+.m3-tf__label {
+  position: absolute; z-index: 2; left: 16px; top: 28px; transform: translateY(-50%);
+  max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--m3-on-surface-variant); font: 400 16px/24px var(--m3-font); pointer-events: none;
+  transition: top var(--m3-dur-short-3) var(--m3-easing-standard), font-size var(--m3-dur-short-3) var(--m3-easing-standard), line-height var(--m3-dur-short-3) var(--m3-easing-standard);
+}
+.m3-tf.is-floating .m3-tf__label { top: 0; font-size: 12px; line-height: 16px; }
+.m3-tf.is-focused .m3-tf__label { color: var(--m3-primary); }
+.m3-tf.is-error .m3-tf__label { color: var(--m3-error); }
+.m3-tf__outline {
+  position: absolute; inset: -5px 0 0; z-index: 0; margin: 0; padding: 0 12px; min-width: 0;
+  border: 1px solid var(--m3-outline); border-radius: var(--m3-shape-extra-small); pointer-events: none; text-align: left;
+}
+.m3-tf__outline legend { display: block; float: none; width: auto; max-width: 0.01px; height: 11px; padding: 0; font-size: 12px; visibility: hidden; white-space: nowrap; overflow: hidden; }
+.m3-tf__outline legend span { display: inline-block; padding: 0 4px; opacity: 0; }
+.m3-tf.is-floating .m3-tf__outline legend { max-width: 100%; }
+.m3-tf__control:hover .m3-tf__outline { border-color: var(--m3-on-surface); }
+.m3-tf.is-focused .m3-tf__outline { border-width: 2px; border-color: var(--m3-primary); padding: 0 11px; }
+.m3-tf.is-error .m3-tf__outline { border-color: var(--m3-error); }
+.m3-tf__trailing { position: absolute; z-index: 1; right: 12px; top: 16px; color: var(--m3-error); }
+.m3-tf__supporting { display: flex; gap: 16px; padding: 0 16px; color: var(--m3-on-surface-variant); }
+.m3-tf__supporting-text { flex: 1; }
+.m3-tf.is-error .m3-tf__supporting-text { color: var(--m3-error); }
+.m3-tf__counter { margin-left: auto; flex: none; }
+.m3-tf.is-disabled { opacity: 0.38; }
+.m3-tf.is-disabled .m3-tf__control { pointer-events: none; }
+
+/* M3Chip（PARENT-019）：32 視覺、透明延伸到 48 點擊高 */
+.m3-chip {
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 16px;
+  border: 1px solid var(--m3-outline); border-radius: var(--m3-shape-small);
+  background: transparent; color: var(--m3-on-surface-variant); cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.m3-chip--assist { color: var(--m3-on-surface); }
+.m3-chip--assist .m3-chip__icon { color: var(--m3-primary); }
+.m3-chip.has-icon { padding-left: 8px; }
+.m3-chip.is-selected { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); border-color: transparent; }
+.m3-chip::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 48px; transform: translateY(-50%); }
+.m3-chip:focus-visible, .m3-chip.force-focus { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+.m3-chip:disabled { opacity: 0.38; cursor: not-allowed; }
+
+/* M3ListItem（PARENT-020） */
+.m3-list { list-style: none; margin: 0; padding: 0; }
+.m3-list-item { list-style: none; }
+.m3-list-item__inner {
+  position: relative; display: flex; align-items: center; gap: 16px; min-height: 56px; padding: 8px 16px;
+  color: inherit; text-decoration: none; outline: none; -webkit-tap-highlight-color: transparent;
+}
+.m3-list-item.is-two-line .m3-list-item__inner { min-height: 72px; }
+.m3-list-item__inner.is-interactive { cursor: pointer; }
+.m3-list-item__inner.is-interactive::before { background: var(--m3-on-surface); }
+.m3-list-item__inner.is-interactive:focus-visible, .force-focus > .m3-list-item__inner { outline: 2px solid var(--m3-primary); outline-offset: -2px; }
+.force-hover > .m3-list-item__inner::before { opacity: var(--m3-state-hover); }
+.force-pressed > .m3-list-item__inner::before { opacity: var(--m3-state-pressed); }
+.force-focus > .m3-list-item__inner::before { opacity: var(--m3-state-focus); }
+.m3-list-item__leading { display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--m3-on-surface-variant); }
+.m3-list-item__leading.is-icon { width: 40px; height: 40px; border-radius: var(--m3-shape-full); background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.m3-list-item__content { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.m3-list-item__headline { color: var(--m3-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3-list-item__supporting { color: var(--m3-on-surface-variant); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m3-list-item__trailing { display: inline-flex; align-items: center; flex: none; color: var(--m3-on-surface-variant); }
+.m3-list-item.is-disabled { opacity: 0.38; }
+.m3-list-item.is-disabled .m3-list-item__inner { cursor: not-allowed; }
+.m3-list-item.is-disabled .m3-list-item__inner::before { opacity: 0 !important; }
+
+/* M3TopAppBar（PARENT-021）：small，標題靠左 */
+.m3-top-app-bar {
+  position: sticky; top: 0; z-index: 5; flex: none;
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 4px;
+  min-height: 64px; padding: 0 4px; background: var(--m3-surface); color: var(--m3-on-surface);
+  transition: background-color var(--m3-dur-short-3) var(--m3-easing-standard);
+}
+.m3-top-app-bar.is-scrolled { background: var(--m3-surface-container); }
+.m3-top-app-bar__leading { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; }
+.m3-top-app-bar__title { margin: 0; padding-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3-top-app-bar__actions { display: inline-flex; align-items: center; }
+.logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: var(--m3-shape-full); background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+
+/* M3NavigationBar（PARENT-022） */
+.m3-navigation-bar { display: flex; flex: none; height: 80px; background: var(--m3-surface-container); color: var(--m3-on-surface-variant); }
+.m3-nav-tab {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 12px 0 16px; border: none; background: transparent; color: inherit; cursor: pointer; outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.m3-nav-tab__icon { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 32px; border-radius: var(--m3-shape-full); transition: background-color var(--m3-dur-short-3) var(--m3-easing-standard); }
+.m3-nav-tab__icon::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0; pointer-events: none; }
+.m3-nav-tab:hover .m3-nav-tab__icon::before { opacity: var(--m3-state-hover); }
+.m3-nav-tab:active .m3-nav-tab__icon::before { opacity: var(--m3-state-pressed); }
+.m3-nav-tab:focus-visible .m3-nav-tab__icon { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+.m3-nav-tab.is-active .m3-nav-tab__icon { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.m3-nav-tab.is-active .m3-nav-tab__label { color: var(--m3-on-surface); font-weight: 700; }
+.m3-nav-tab__badge {
+  position: absolute; top: -2px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: var(--m3-shape-full);
+  font-size: 11px; line-height: 16px; font-weight: 500; background: var(--m3-error); color: var(--m3-on-error);
+}
+
+/* M3Snackbar（PARENT-023） */
+.m3-snackbar {
+  position: absolute; z-index: 20; left: 16px; right: 16px; bottom: 96px;
+  display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 8px 4px 16px;
+  border-radius: var(--m3-shape-extra-small); background: var(--m3-inverse-surface); color: var(--m3-inverse-on-surface);
+  box-shadow: var(--m3-elev-3);
+}
+.m3-snackbar.is-inline { position: relative; left: auto; right: auto; bottom: auto; z-index: auto; }
+.m3-snackbar__icon { color: var(--m3-error-container); }
+.m3-snackbar__message { flex: 1; min-width: 0; padding: 10px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.m3-snackbar__action { flex: none; min-height: 44px; padding: 0 12px; border: none; border-radius: var(--m3-shape-full); background: transparent; color: var(--m3-inverse-primary); cursor: pointer; }
+.m3-snackbar__action:focus-visible { outline: 2px solid var(--m3-inverse-primary); outline-offset: 0; }
+.m3-snackbar-enter-active { transition: opacity var(--m3-dur-medium-1) var(--m3-easing-emphasized-decel), transform var(--m3-dur-medium-1) var(--m3-easing-emphasized-decel); }
+.m3-snackbar-leave-active { transition: opacity var(--m3-dur-short-3) var(--m3-easing-emphasized-accel); }
+.m3-snackbar-enter-from { opacity: 0; transform: translateY(16px); }
+.m3-snackbar-leave-to { opacity: 0; }
+
+/* M3SegmentedButton（PARENT-098） */
+.m3-segmented { display: grid; width: 100%; height: 48px; border: 1px solid var(--m3-outline); border-radius: var(--m3-shape-full); overflow: hidden; }
+.m3-segment {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding: 0 12px;
+  border: none; border-left: 1px solid var(--m3-outline); background: transparent; color: var(--m3-on-surface);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.m3-segment:first-child { border-left: none; }
+.m3-segment.is-checked { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.m3-segment__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m3-segment:focus-visible { outline: 2px solid var(--m3-primary); outline-offset: -4px; border-radius: var(--m3-shape-full); }
+.m3-segment:disabled { cursor: not-allowed; }
+.m3-segment:disabled > * { opacity: 0.38; }
+
+/* M3Switch（PARENT-175）：52×32 軌道、52×48 點擊區 */
+.m3-switch { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 52px; height: 48px; padding: 0; border: none; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.m3-switch__track { position: relative; width: 52px; height: 32px; border-radius: var(--m3-shape-full); border: 2px solid var(--m3-outline); background: var(--m3-surface-container-highest); transition: background-color var(--m3-dur-short-3) var(--m3-easing-standard), border-color var(--m3-dur-short-3) var(--m3-easing-standard); }
+.m3-switch__thumb {
+  position: absolute; left: 14px; top: 14px; width: 16px; height: 16px; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: var(--m3-outline); color: var(--m3-on-primary-container);
+  transition: left var(--m3-dur-medium-1) var(--m3-easing-standard), width var(--m3-dur-short-2) var(--m3-easing-standard), height var(--m3-dur-short-2) var(--m3-easing-standard);
+}
+.m3-switch__thumb::before { content: ''; position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: var(--m3-on-surface); opacity: 0; pointer-events: none; }
+.m3-switch:hover .m3-switch__thumb::before { opacity: var(--m3-state-hover); }
+.m3-switch:active .m3-switch__thumb::before { opacity: var(--m3-state-pressed); }
+.m3-switch.is-on .m3-switch__track { background: var(--m3-primary); border-color: var(--m3-primary); }
+.m3-switch.is-on .m3-switch__thumb { left: 34px; width: 24px; height: 24px; background: var(--m3-on-primary); }
+.m3-switch.is-on .m3-switch__thumb::before { background: var(--m3-primary); }
+.m3-switch:active:not(:disabled):not(.is-busy) .m3-switch__thumb { width: 28px; height: 28px; }
+.m3-switch.is-busy { cursor: progress; }
+.m3-switch.is-busy .m3-switch__thumb { width: 24px; height: 24px; }
+.m3-switch.is-busy .m3-switch__thumb::before { opacity: 0; }
+.m3-switch__spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--m3-surface-container-highest); border-right-color: transparent; animation: m3-spin 0.8s linear infinite; }
+.m3-switch.is-on .m3-switch__spinner { border-color: var(--m3-primary); border-right-color: transparent; }
+.m3-switch:focus-visible { outline: none; }
+.m3-switch:focus-visible .m3-switch__track { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+.m3-switch:disabled { opacity: 0.38; cursor: not-allowed; }
+.m3-switch:disabled .m3-switch__thumb::before { opacity: 0; }
+.pref-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 0 0 16px; }
+.pref-row__label { flex: 1; min-width: 0; }
+
+/* ============================================================
+   ParentBottomSheet（PARENT-025）
+   稿內畫在手機框 .screen 裡（absolute）；實作 Teleport 到 body（fixed，高度以 100dvh 計）。
+   ============================================================ */
+.sheet-layer { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; justify-content: flex-end; }
+.sheet-scrim { position: absolute; inset: 0; background: var(--m3-scrim); opacity: 0.32; }
+.sheet {
+  position: relative; display: flex; flex-direction: column; width: 100%; max-height: calc(100% - 56px);
+  border-radius: var(--m3-shape-extra-large) var(--m3-shape-extra-large) 0 0;
+  background: var(--m3-surface-container-low); color: var(--m3-on-surface); box-shadow: var(--m3-elev-1); outline: none;
+  transition: transform var(--m3-dur-short-4) var(--m3-easing-standard);
+}
+.sheet.is-full { height: calc(100% - 56px); }
+.sheet.is-dragging { transition: none; }
+.sheet__drag { flex: none; touch-action: none; cursor: grab; user-select: none; }
+.sheet.is-dragging .sheet__drag { cursor: grabbing; }
+.sheet__handle { width: 32px; height: 4px; margin: 16px auto 8px; border-radius: var(--m3-shape-full); background: var(--m3-on-surface-variant); opacity: 0.4; }
+.sheet__header { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 24px 8px; }
+.sheet__header.has-close { padding-right: 12px; }
+.sheet__title { flex: 1; min-width: 0; margin: 0; }
+.sheet__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 24px 24px; }
+.sheet__footer { flex: none; display: flex; gap: 8px; padding: 16px 24px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--m3-outline-variant); }
+.sheet__footer > * { flex: 1 1 0; }
+.sheet-enter-active .sheet { transition: transform var(--m3-dur-medium-4) var(--m3-easing-emphasized-decel); }
+.sheet-enter-active .sheet-scrim { transition: opacity var(--m3-dur-medium-4) linear; }
+.sheet-leave-active .sheet { transition: transform var(--m3-dur-short-4) var(--m3-easing-emphasized-accel) !important; }
+.sheet-leave-active .sheet-scrim { transition: opacity var(--m3-dur-short-4) linear; }
+.sheet-enter-from .sheet, .sheet-leave-to .sheet { transform: translateY(100%) !important; }
+.sheet-enter-from .sheet-scrim, .sheet-leave-to .sheet-scrim { opacity: 0; }
+/* warning token（PARENT-051 寫入 m3-tokens.css） */
+:root { --m3-warning-container: #ffddb0; --m3-on-warning-container: #2b1700; }
+:root[data-theme='dark'] { --m3-warning-container: #5b3a00; --m3-on-warning-container: #ffddb0; }
+
+/* ---- 稿件框架補充 ---- */
+.notes__rec { color: var(--preview-success); font-weight: 600; }
+.notes__q { margin-bottom: 12px; }
+.notes__hint { margin: 4px 0 0; color: var(--preview-text-secondary); font-size: 12px; }
+.muted { color: var(--m3-on-surface-variant); }
+.screen__content.is-locked { overflow: hidden; }
+.m3-snackbar:not(.is-inline) { z-index: 60; }
+
+/* ===== StatusPill 樣式複製自 parent-component-status-pill.html ===== */
+/* StatusPill（PARENT-051）：28px 高資訊膠囊，不可互動、不拿焦點 */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 28px; padding: 0 12px;
+  border-radius: var(--m3-shape-full); white-space: nowrap; vertical-align: middle;
+}
+.status-pill.has-icon { padding-left: 8px; }
+.status-pill__label { overflow: hidden; text-overflow: ellipsis; }
+.status-pill--success { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+.status-pill--warning { background: var(--m3-warning-container); color: var(--m3-on-warning-container); }
+.status-pill--danger { background: var(--m3-error-container); color: var(--m3-on-error-container); }
+.status-pill--info { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.status-pill--neutral { background: var(--m3-surface-container-high); color: var(--m3-on-surface); }
+
+/* ===== SkeletonBlock 樣式複製自 parent-component-skeleton.html ===== */
+.skeleton { display: block; }
+.sk { display: block; height: 14px; width: 100%; border-radius: var(--m3-shape-extra-small); background: var(--m3-surface-container-high); animation: sk-pulse 1.2s ease-in-out infinite; }
+@keyframes sk-pulse { 50% { opacity: 0.5; } }
+.sk--circle { flex: none; width: 40px; height: 40px; border-radius: var(--m3-shape-full); }
+.skeleton-line + .skeleton-line { margin-top: 8px; }
+.skeleton-card { padding: 16px; border-radius: var(--m3-shape-medium); background: var(--m3-surface-container-low); }
+.skeleton-card + .skeleton-card { margin-top: 12px; }
+.skeleton-card .sk + .sk { margin-top: 8px; }
+.skeleton-card .sk:first-child { margin-bottom: 12px; }
+.skeleton-row { display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 8px 16px; }
+.skeleton-row__lines { flex: 1; min-width: 0; }
+.skeleton-row__lines .sk + .sk { margin-top: 8px; }
+
+/* ===== ParentEmptyState 樣式複製自 parent-component-empty-state.html ===== */
+/* ParentEmptyState（PARENT-029） */
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; text-align: center; }
+.empty-state__icon { display: inline-flex; align-items: center; justify-content: center; color: var(--m3-outline); }
+.empty-state--error .empty-state__icon { color: var(--m3-error); }
+.empty-state__title { margin: 0; max-width: 320px; color: var(--m3-on-surface); overflow-wrap: anywhere; }
+.empty-state__desc { margin: 0; max-width: 280px; color: var(--m3-on-surface-variant); overflow-wrap: anywhere; }
+.empty-state__action { margin-top: 8px; }
+
+/* ---- 稿件框架補充（design-parent-r6 共用） ---- */
+.notes__h5 { margin: 12px 0 4px; font-size: 13px; font-weight: 600; }
+.cap { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 8px; color: var(--m3-on-surface-variant); }
+.cap:first-child { margin-top: 8px; }
+.cap__tag { flex: none; padding: 0 6px; border-radius: var(--m3-shape-extra-small); border: 1px dashed var(--m3-outline); font: 11px/16px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.not-rendered { padding: 16px; border: 1px dashed var(--m3-outline-variant); border-radius: var(--m3-shape-medium); color: var(--m3-on-surface-variant); text-align: center; }
+.m3-headline-small { font-size: 24px; line-height: 32px; font-weight: 400; }
+
+/* ===== ChildContextHeader 樣式複製自 parent-component-child-context-header.html ===== */
+/* ChildContextHeader（PARENT-050）：小孩身分卡；多位小孩時整張可點 */
+.cch {
+  position: relative; display: flex; align-items: center; gap: 16px; width: 100%; min-height: 80px; margin: 0;
+  padding: 12px 16px; border: none; border-radius: var(--m3-shape-large);
+  background: var(--m3-surface-container-low); color: var(--m3-on-surface); text-align: left; font: inherit;
+}
+.cch.is-interactive { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cch.is-interactive:focus-visible { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+.cch__avatar, .cch-option__avatar {
+  display: inline-flex; align-items: center; justify-content: center; flex: none; overflow: hidden;
+  border-radius: var(--m3-shape-full); background: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container);
+}
+.cch__avatar { width: 48px; height: 48px; }
+.cch__avatar img, .cch-option__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.cch__text, .cch-option__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.cch__name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cch__name, .cch__sub, .cch__school, .cch-option__name, .cch-option__sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cch__sub, .cch__school { color: var(--m3-on-surface-variant); }
+.cch__chevron { flex: none; color: var(--m3-on-surface-variant); }
+
+/* 「選擇小孩」sheet 內清單 */
+.cch-list { list-style: none; margin: 0 -12px; padding: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
+.cch-option {
+  position: relative; display: flex; align-items: center; gap: 16px; width: 100%; min-height: 64px; padding: 8px 16px;
+  border: none; border-radius: var(--m3-shape-large); background: transparent; color: var(--m3-on-surface);
+  text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.cch-option:focus-visible { outline: 2px solid var(--m3-primary); outline-offset: -2px; }
+.cch-option.is-selected { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.cch-option__avatar { width: 40px; height: 40px; }
+.cch-option__sub { color: var(--m3-on-surface-variant); }
+.cch-option.is-selected .cch-option__sub { color: var(--m3-on-secondary-container); }
+.cch-option__check { flex: none; color: var(--m3-primary); }
+.cch-option.is-selected .cch-option__check { color: var(--m3-on-secondary-container); }
+
+/* ===== ConfirmDialog 樣式複製自 parent-component-confirm-dialog.html ===== */
+/* ConfirmDialog（PARENT-026）：M3 basic dialog。稿內畫在 .screen 裡（absolute）；實作 Teleport 到 body（fixed）。 */
+.dialog-layer { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.dialog-scrim { position: absolute; inset: 0; background: var(--m3-scrim); opacity: 0.32; }
+.dialog {
+  position: relative; display: flex; flex-direction: column; gap: 16px;
+  width: 100%; min-width: 280px; max-width: 400px; max-height: calc(100% - 48px); overflow-y: auto;
+  padding: 24px; border-radius: var(--m3-shape-extra-large);
+  background: var(--m3-surface-container-high); color: var(--m3-on-surface); box-shadow: var(--m3-elev-3); outline: none;
+}
+.dialog__title { margin: 0; overflow-wrap: anywhere; }
+.dialog__message { margin: 0; color: var(--m3-on-surface-variant); overflow-wrap: anywhere; white-space: pre-line; }
+.dialog__extra { margin: -4px 0; }
+.dialog__actions { display: flex; flex-wrap: wrap-reverse; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.dialog__actions .m3-button { max-width: 100%; }
+.dialog__actions .m3-button > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.m3-button--filled.is-destructive { background: var(--m3-error); color: var(--m3-on-error); }
+.dialog-enter-active { transition: opacity var(--m3-dur-short-4) var(--m3-easing-emphasized-decel); }
+.dialog-enter-active .dialog { transition: transform var(--m3-dur-short-4) var(--m3-easing-emphasized-decel); }
+.dialog-leave-active { transition: opacity var(--m3-dur-short-3) var(--m3-easing-emphasized-accel); }
+.dialog-enter-from, .dialog-leave-to { opacity: 0; }
+.dialog-enter-from .dialog { transform: scale(0.92); }
+
+/* 「下次不再提醒」勾選（slot 內容由呼叫端提供；這是建議樣式） */
+.check-row { display: flex; align-items: center; gap: 12px; min-height: 48px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.check-row input { width: 18px; height: 18px; margin: 0 3px; accent-color: var(--m3-primary); cursor: pointer; flex: none; }
+.check-row input:focus-visible { outline: 2px solid var(--m3-primary); outline-offset: 4px; }
+
+/* ===== PullToRefresh 樣式複製自 parent-component-pull-to-refresh.html ===== */
+/* ============================================================
+   PullToRefresh（PARENT-027）
+   ============================================================ */
+.ptr { position: relative; }
+.ptr.is-tracking { user-select: none; }
+.ptr__indicator {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 1;
+  display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; pointer-events: none;
+  color: var(--m3-on-surface-variant);
+}
+.ptr__content { will-change: transform; }
+.ptr:not(.is-tracking) .ptr__indicator { transition: height var(--m3-dur-short-4) var(--m3-easing-standard), opacity var(--m3-dur-short-4) var(--m3-easing-standard); }
+.ptr:not(.is-tracking) .ptr__content { transition: transform var(--m3-dur-short-4) var(--m3-easing-standard); }
+.ptr__badge {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
+  width: 36px; height: 36px; border-radius: var(--m3-shape-full);
+  background: var(--m3-surface-container-high); color: var(--m3-primary); box-shadow: var(--m3-elev-1);
+}
+.ptr__ring { position: absolute; inset: 4px; width: 28px; height: 28px; transform: rotate(-90deg); }
+.ptr__ring circle { fill: none; stroke: var(--m3-primary); stroke-width: 2.5; stroke-linecap: round; }
+.ptr__ring.is-spinning { animation: ptr-spin 0.9s linear infinite; }
+@keyframes ptr-spin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+.ptr__arrow { transition: transform var(--m3-dur-short-3) var(--m3-easing-standard); }
+.ptr__arrow.is-armed { transform: rotate(180deg); }
+.ptr__text { white-space: nowrap; }
+
+/* ===== PickupPersonForm 樣式複製自 parent-component-pickup-person-form.html ===== */
+/* PickupPersonForm（PARENT-099） */
+.person-form { display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+.field-label { margin: 0 0 4px; color: var(--m3-on-surface); }
+.field-help { margin: 0; color: var(--m3-on-surface-variant); }
+.field-error { display: flex; align-items: center; gap: 4px; margin: 4px 0 0; color: var(--m3-error); }
+.relation-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 0; }
+
+
+/* 照片 */
+.photo { display: flex; gap: 16px; align-items: center; margin-top: 8px; }
+.photo-tile {
+  position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: none;
+  width: 96px; height: 96px; border-radius: var(--m3-shape-medium); overflow: hidden;
+  border: 1px dashed var(--m3-outline); background: var(--m3-surface-container-low); color: var(--m3-on-surface-variant); cursor: pointer;
+}
+.photo-tile:focus-within { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+.photo-tile.is-filled { border-style: solid; border-color: var(--m3-outline-variant); cursor: default; }
+.photo-tile img { width: 100%; height: 100%; object-fit: cover; }
+.photo-tile input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.photo-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; }
+.photo-meta__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--m3-on-surface-variant); }
+label.m3-button { box-sizing: border-box; }
+label.m3-button:focus-within { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+label.m3-button input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.m3-button--danger-text { color: var(--m3-error); }
+.form-actions { display: flex; gap: 8px; margin-top: 8px; }
+.form-actions > * { flex: 1 1 0; }
+.form-disabled { opacity: 0.38; pointer-events: none; }
+
+/* ===== PickupPersonListItem 樣式複製自 parent-component-pickup-person-list-item.html ===== */
+/* PickupPersonListItem（PARENT-100） */
+.ppl-list { list-style: none; margin: 0; padding: 0; }
+.ppl { display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 8px 4px 8px 16px; }
+.ppl + .ppl { border-top: 1px solid var(--m3-outline-variant); }
+.ppl__avatar {
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; overflow: hidden;
+  border-radius: var(--m3-shape-full); background: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container);
+}
+.ppl__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ppl__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.ppl__name, .ppl__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppl__name { color: var(--m3-on-surface); }
+.ppl__meta { color: var(--m3-on-surface-variant); font-variant-numeric: tabular-nums; }
+
+/* ===== PickupCodeCard 樣式複製自 parent-component-pickup-code-card.html ===== */
+/* PickupCodeCard（PARENT-101） */
+.code-card { display: flex; flex-direction: column; gap: 16px; }
+.code-box { padding: 20px 16px; border-radius: var(--m3-shape-large); background: var(--m3-primary-container); color: var(--m3-on-primary-container); text-align: center; }
+.code-box__code { display: flex; justify-content: center; font-size: 44px; line-height: 52px; font-weight: 500; letter-spacing: 6px; font-variant-numeric: tabular-nums; }
+.code-box__code span:nth-child(4) { margin-left: 14px; }
+.code-box__meta { margin-top: 4px; overflow-wrap: anywhere; }
+.code-warn { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: var(--m3-shape-medium); background: var(--m3-error-container); color: var(--m3-on-error-container); }
+.code-warn p { margin: 0; }
+.code-card .m3-button.is-copied .m3-icon { color: inherit; }
+
+/* ===== AuthorizationListItem 樣式複製自 parent-component-authorization-list-item.html ===== */
+/* AuthorizationListItem（PARENT-103） */
+.auth-list { list-style: none; margin: 0; padding: 0; }
+.auth { padding: 16px 16px 12px; }
+.auth + .auth { border-top: 1px solid var(--m3-outline-variant); }
+.auth__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.auth__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--m3-on-surface); }
+.auth__pill { flex: none; }
+.auth__meta { margin: 2px 0 0; color: var(--m3-on-surface-variant); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth__line { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; color: var(--m3-on-surface-variant); }
+.auth__line .material-symbols-rounded { color: var(--m3-on-surface-variant); }
+.auth__code { color: var(--m3-on-surface); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.auth__verified { color: var(--m3-on-surface); }
+.auth__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0 4px; margin: 4px -12px 0 0; }
+.m3-button--danger-text { color: var(--m3-error); }
+.auth:not(.is-active) .auth__name { color: var(--m3-on-surface-variant); }
+
+/* ===== AuthorizationForm（PARENT-102）：parent-component-authorization-form.html 是權威，parent-page-pickup-proxy.html 原樣複製 ===== */
+.af { display: flex; flex-direction: column; gap: 20px; }
+.af fieldset.af-lock { display: contents; }
+.af-group { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: none; min-width: 0; }
+.af-label { margin: 0; color: var(--m3-on-surface); }
+.af-persons { display: flex; flex-direction: column; border: 1px solid var(--m3-outline-variant); border-radius: var(--m3-shape-medium); overflow: hidden; }
+.af-persons.is-error { border-color: var(--m3-error); }
+.af-person {
+  position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 8px 16px 8px 12px;
+  border: none; background: transparent; color: var(--m3-on-surface); text-align: left; font: inherit; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.af-person + .af-person { border-top: 1px solid var(--m3-outline-variant); }
+.af-person::before { background: var(--m3-on-surface); }
+.af-person:focus-visible { outline: 2px solid var(--m3-primary); outline-offset: -2px; }
+.af-person.is-checked { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.af-person__radio { color: var(--m3-on-surface-variant); }
+.af-person.is-checked .af-person__radio { color: var(--m3-primary); }
+.af-person__avatar {
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; overflow: hidden;
+  border-radius: var(--m3-shape-full); background: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container);
+}
+.af-person__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.af-person__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.af-person__name, .af-person__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-person__meta { color: var(--m3-on-surface-variant); font-variant-numeric: tabular-nums; }
+.af-person.is-checked .af-person__meta { color: var(--m3-on-secondary-container); }
+.af-error { display: flex; align-items: center; gap: 4px; margin: 0; padding: 0 4px; color: var(--m3-error); }
+.af-help { margin: 0; padding: 0 4px; color: var(--m3-on-surface-variant); }
+.af-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 12px 16px; border-radius: var(--m3-shape-medium); background: var(--m3-surface-container); color: var(--m3-on-surface-variant); }
+.af-note .material-symbols-rounded { margin-top: 1px; }
+.af-actions { display: flex; gap: 8px; padding-top: 4px; }
+.af-actions > * { flex: 1 1 0; }
+
+/* ============================================================
+   本稿頁面：PickupProxyView（PARENT-104）
+   ============================================================ */
+/* 家長端層級（實作值）：頂部列 5、底部導覽 5、sheet 10、dialog 15、snackbar 20 */
+.m3-navigation-bar { position: relative; z-index: 5; }
+.sheet-layer { z-index: 10; }
+.dialog-layer { z-index: 15; }
+.m3-snackbar:not(.is-inline) { z-index: 20; }
+/* 頁面自帶左右 16px、上 8px、底部 24px；放在 PullToRefresh 內層 */
+.px { display: flex; flex-direction: column; gap: 12px; padding: 8px 16px 24px; }
+.px-section { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 12px 4px -4px; }
+.px-section__title { margin: 0; color: var(--m3-on-surface); }
+.px-section__aside { color: var(--m3-on-surface-variant); font-variant-numeric: tabular-nums; }
+.px-card { overflow: hidden; }
+.px-cch-skeleton { border-radius: var(--m3-shape-large); background: var(--m3-surface-container-low); overflow: hidden; }
+/* 「過去的授權」展開列：整列 48px 文字按鈕，右側 expand_more 展開時旋轉 */
+.px-expander {
+  position: relative; display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 0 12px 0 4px;
+  border: none; border-radius: var(--m3-shape-small); background: transparent; color: var(--m3-on-surface-variant); font: inherit; text-align: left; cursor: pointer;
+}
+.px-expander::before { background: var(--m3-on-surface); }
+.px-expander:focus-visible { outline: 2px solid var(--m3-primary); outline-offset: 2px; }
+.px-expander__label { flex: 1; min-width: 0; }
+.px-expander__icon { transition: transform var(--m3-dur-short-4) var(--m3-easing-standard); }
+.px-expander[aria-expanded='true'] .px-expander__icon { transform: rotate(180deg); }
+.px-limit { margin: -4px 4px 0; color: var(--m3-on-surface-variant); text-align: center; }
+/* sheet 上方「為 {小孩} …」一列（同請假頁） */
+.px-form-for { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 8px 12px; border-radius: var(--m3-shape-medium); background: var(--m3-surface-container); color: var(--m3-on-surface); }
+.px-form-for__avatar { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; border-radius: var(--m3-shape-full); background: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container); }
+/* 兩個表單 sheet 的按鈕列固定在 sheet 可視區底部（同請假頁 LeaveForm 的做法，實作以頁面包住表單的元素 + scoped :deep()，不改元件介面） */
+.sheet:has(.px-form-wrap) .sheet__body { padding-bottom: 0; }
+.px-form-wrap .af-actions, .px-form-wrap .form-actions {
+  position: sticky; bottom: 0; z-index: 3; margin: 8px -24px 0; padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--m3-outline-variant); background: var(--m3-surface-container-low);
+}
+/* 確認對話框說明下方的目標列（同請假頁） */
+.px-confirm-target { margin: 0; padding: 8px 12px; border-radius: var(--m3-shape-small); background: var(--m3-surface-container-highest); color: var(--m3-on-surface); }
+/* 稿件示意：導頁結果（實作是真的換頁） */
+.nav-result { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: var(--m3-surface); color: var(--m3-on-surface-variant); }
+.nav-result p { margin: 0; max-width: 300px; }
+/* 稿件示範限制（同首頁稿）：PullToRefresh 內的「選擇小孩」sheet 以手機框為定位基準；實作 Teleport 到 body，這三行不要搬進 src/ */
+.screen { transform: translateZ(0); }
+.ptr__content { will-change: auto; }
+.ptr .sheet-layer { position: fixed; }
+/* ---- 稿件框架補充（本稿） ---- */
+.notes__log { margin: 0; padding: 8px 10px; min-height: 40px; border-radius: 4px; background: var(--preview-bar-bg); color: var(--preview-text); font: 12px/18px ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+.notes__sub { margin: 14px 0 6px; font-weight: 600; font-size: 13px; }
+</style>
+</head>
+
+<body>
+<div id="app">
+
+  <div class="preview-bar">
+    <span class="preview-tag" :class="{ 'is-approved': meta.status === 'approved' }">
+      {{ meta.status === 'approved' ? '已核可' : '待核可' }}
+    </span>
+    <span>{{ meta.tasks }}</span>
+    <span><code>{{ meta.route }}</code></span>
+    <span class="preview-bar__spacer"></span>
+    <span>更新 {{ meta.updated }}</span>
+    <span>設計說明 / 待裁定（{{ openQuestions.length }}）在手機框右側</span>
+  </div>
+
+  <div class="stage">
+    <div class="device">
+      <div class="screen">
+        <m3-top-app-bar title="代理接送" :show-back="true" :scrolled="scrolled" @back="tryLeave('返回上一頁（接送）')"></m3-top-app-bar>
+        <main class="screen__content" style="padding: 0" :class="{ 'is-locked': overlayOpen }" @scroll="scrolled = $event.target.scrollTop > 0">
+          <pull-to-refresh :on-refresh="refreshAll" :disabled="authState === 'loading' || !!code">
+            <div class="px">
+              <skeleton-block v-if="kidsLoading" variant="row" height="80px" class="px-cch-skeleton"></skeleton-block>
+              <div v-else @mousedown.stop @touchstart.passive.stop>
+                <child-context-header :children="kids" :selected-id="childId" @select="selectChild"></child-context-header>
+              </div>
+              <m3-button icon="add" :block="true" @click="openAuthForm">新增代理接送</m3-button>
+
+              <!-- 代理接送授權 -->
+              <div class="px-section">
+                <h2 class="px-section__title m3-title-small">代理接送授權</h2>
+                <span v-if="authState === 'ready' && activeAuths.length" class="px-section__aside m3-body-small">有效 {{ activeAuths.length }} 筆</span>
+              </div>
+              <m3-card variant="outlined" padding="none" class="px-card">
+                <skeleton-block v-if="authState === 'loading'" variant="row" :count="2" height="120px"></skeleton-block>
+                <parent-empty-state v-else-if="authState === 'error'" variant="error" title="代理接送授權載入失敗" description="請檢查網路連線後再試一次" @action="loadAuths()"></parent-empty-state>
+                <ul v-else-if="activeAuths.length" class="auth-list" role="list" aria-label="有效的代理接送授權">
+                  <authorization-list-item v-for="a in activeAuths" :key="a.id" :authorization="a" @regenerate="askRegenerate" @cancel="askCancel"></authorization-list-item>
+                </ul>
+                <parent-empty-state v-else icon="badge" title="目前沒有代理接送授權" description="由親友代接時，按「新增代理接送」取得接送碼"></parent-empty-state>
+              </m3-card>
+              <template v-if="authState === 'ready' && pastAuths.length">
+                <button type="button" class="px-expander m3-state m3-label-large" :aria-expanded="pastOpen ? 'true' : 'false'" aria-controls="px-past" @click="pastOpen = !pastOpen">
+                  <span class="px-expander__label">過去的授權（{{ pastAuths.length }}）</span>
+                  <m3-icon class="px-expander__icon" name="expand_more"></m3-icon>
+                </button>
+                <m3-card v-if="pastOpen" id="px-past" variant="outlined" padding="none" class="px-card">
+                  <ul class="auth-list" role="list" aria-label="過去的代理接送授權">
+                    <authorization-list-item v-for="a in pastAuths" :key="a.id" :authorization="a"></authorization-list-item>
+                  </ul>
+                </m3-card>
+              </template>
+
+              <!-- 常用接送人 -->
+              <div class="px-section">
+                <h2 class="px-section__title m3-title-small">常用接送人</h2>
+                <span v-if="personState === 'ready'" class="px-section__aside m3-body-small">{{ persons.length }}/{{ limits.persons_max }}</span>
+              </div>
+              <m3-card variant="outlined" padding="none" class="px-card">
+                <skeleton-block v-if="personState === 'loading'" variant="row" :count="2"></skeleton-block>
+                <parent-empty-state v-else-if="personState === 'error'" variant="error" title="常用接送人載入失敗" description="請檢查網路連線後再試一次" @action="loadPersons()"></parent-empty-state>
+                <ul v-else-if="persons.length" class="ppl-list" role="list" aria-label="常用接送人">
+                  <pickup-person-list-item v-for="p in persons" :key="p.id" :person="p" @delete="askDelete"></pickup-person-list-item>
+                </ul>
+                <parent-empty-state v-else icon="group" title="尚未新增常用接送人" description="新增後可快速建立代理接送"></parent-empty-state>
+              </m3-card>
+              <m3-button variant="tonal" icon="person_add" :block="true" :disabled="personState !== 'ready' || atLimit" @click="openPersonForm">新增接送人</m3-button>
+              <p v-if="personState === 'ready' && atLimit" class="px-limit m3-body-small">最多 {{ limits.persons_max }} 位</p>
+            </div>
+          </pull-to-refresh>
+        </main>
+        <m3-snackbar :item="snack.items[0] || null" @dismiss="snack.dismiss"></m3-snackbar>
+        <m3-navigation-bar :items="navItems" current-key="pickup" @select="(k) => tryLeave('切到底部導覽 ' + k)"></m3-navigation-bar>
+
+        <!-- 新增代理接送 -->
+        <parent-bottom-sheet v-model="authForm.open" title="新增代理接送" :dismissible="!authForm.submitting">
+          <div class="px-form-for"><span class="px-form-for__avatar m3-label-large" aria-hidden="true">{{ currentKid.name.slice(0, 1) }}</span><span class="m3-body-medium">為 {{ currentKid.name }} 建立代理接送</span></div>
+          <div class="px-form-wrap">
+            <authorization-form ref="authFormRef" :key="authForm.key" :persons="persons" :submitting="authForm.submitting" :today="TODAY" :max-days-ahead="limits.authorization_max_days_ahead" @submit="submitAuth" @cancel="authForm.open = false"></authorization-form>
+          </div>
+        </parent-bottom-sheet>
+
+        <!-- 新增接送人 -->
+        <parent-bottom-sheet v-model="personForm.open" title="新增接送人" :dismissible="!personForm.submitting">
+          <div class="px-form-for"><span class="px-form-for__avatar m3-label-large" aria-hidden="true">{{ currentKid.name.slice(0, 1) }}</span><span class="m3-body-medium">為 {{ currentKid.name }} 新增常用接送人</span></div>
+          <div class="px-form-wrap">
+            <pickup-person-form ref="personFormRef" :key="personForm.key" :submitting="personForm.submitting" @submit="submitPerson" @cancel="personForm.open = false"></pickup-person-form>
+          </div>
+        </parent-bottom-sheet>
+
+        <!-- 接送碼：不可關閉（dismissible=false），只能按「我已記下」 -->
+        <parent-bottom-sheet v-model="codeOpen" title="接送碼" :dismissible="false">
+          <pickup-code-card v-if="code" :key="code.value" :code="code.value" :proxy-name="code.proxyName" :service-date="code.serviceDate" @done="onCodeDone"></pickup-code-card>
+        </parent-bottom-sheet>
+
+        <confirm-dialog :open="dlg.kind === 'delete'" :title="'刪除 ' + (dlg.target ? dlg.target.name : '') + '？'" message="已建立的代理接送授權不受影響" confirm-label="刪除" :destructive="true" :loading="dlg.busy" @confirm="confirmDlg" @cancel="closeDlg"></confirm-dialog>
+        <confirm-dialog :open="dlg.kind === 'regenerate'" title="重新產生接送碼？" message="舊的接送碼會立即失效，請把新碼重新傳給接送人" confirm-label="重新產生" :loading="dlg.busy" @confirm="confirmDlg" @cancel="closeDlg">
+          <p v-if="dlg.target" class="px-confirm-target m3-body-medium">{{ dlg.target.proxy_name }} · {{ fmtDateWithWeekday(dlg.target.service_date) }}</p>
+        </confirm-dialog>
+        <confirm-dialog :open="dlg.kind === 'cancel'" title="取消這筆代理接送？" message="接送碼會立即失效，代理人無法再用它接送" confirm-label="確定取消" cancel-label="先不要" :destructive="true" :loading="dlg.busy" @confirm="confirmDlg" @cancel="closeDlg">
+          <p v-if="dlg.target" class="px-confirm-target m3-body-medium">{{ dlg.target.proxy_name }} · {{ fmtDateWithWeekday(dlg.target.service_date) }}</p>
+        </confirm-dialog>
+        <confirm-dialog :open="dlg.kind === 'leave'" title="確定已記下接送碼？" message="離開後就無法再查看這組接送碼，遺失時只能重新產生" confirm-label="已記下，離開" cancel-label="留在這裡" @confirm="confirmDlg" @cancel="closeDlg"></confirm-dialog>
+
+        <div v-if="navResult" class="nav-result">
+          <m3-icon name="open_in_new" :size="48"></m3-icon>
+          <p class="m3-title-medium">（示意）{{ navResult }}</p>
+          <p class="m3-body-small">接送碼已從畫面與記憶體清除。</p>
+          <m3-button variant="outlined" icon="refresh" @click="resetAll">回到代理接送頁（重設示範）</m3-button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="notes">
+      <h3>設計說明 / 待裁定</h3>
+      <div class="notes__alert" v-if="openQuestions.length">以下項目需要你裁定，未回覆前這張稿不會進入實作（稿已照推薦選項畫）</div>
+
+      <h4>頁面狀態</h4>
+      <div class="state-switch state-switch--wrap" role="group" aria-label="頁面狀態">
+        <button v-for="p in pageStates" :key="p.key" type="button" :class="{ 'is-active': pageKey === p.key }" @click="applyPage(p.key)">{{ p.label }}</button>
+      </div>
+      <p class="notes__hint">稿內今天是 2026-10-07（三）。手機框內都能直接操作：新增代理接送 / 新增接送人 / 刪除 / 重新產生接送碼 / 取消授權 / 過去的授權展開、切換小孩（王小華兩區皆空）、在最上方下拉重新整理。接送碼卡開著時按頂部列返回或底部導覽，會先問「確定已記下接送碼？」。</p>
+
+      <h4>開啟疊層</h4>
+      <div class="state-switch state-switch--wrap" role="group" aria-label="開啟疊層">
+        <button v-for="o in overlays" :key="o.key" type="button" @click="openOverlay(o.key)">{{ o.label }}</button>
+      </div>
+
+      <h4>下一次送出結果</h4>
+      <div class="notes__sub">新增代理接送（POST /parent/children/{id}/pickup-authorizations）</div>
+      <div class="state-switch state-switch--wrap" role="group" aria-label="新增代理接送結果">
+        <button v-for="r in authResults" :key="r.key" type="button" :class="{ 'is-active': sim.auth === r.key }" @click="sim.auth = r.key">{{ r.label }}</button>
+      </div>
+      <div class="notes__sub">重新產生接送碼 / 取消授權</div>
+      <div class="state-switch state-switch--wrap" role="group" aria-label="授權操作結果">
+        <button v-for="r in opResults" :key="r.key" type="button" :class="{ 'is-active': sim.op === r.key }" @click="sim.op = r.key">{{ r.label }}</button>
+      </div>
+      <div class="notes__sub">新增接送人（POST multipart）/ 刪除接送人</div>
+      <div class="state-switch state-switch--wrap" role="group" aria-label="接送人操作結果">
+        <button v-for="r in personResults" :key="r.key" type="button" :class="{ 'is-active': sim.person === r.key }" @click="sim.person = r.key">{{ r.label }}</button>
+      </div>
+      <div class="notes__row" style="margin-top: 8px">接送人上限（limits.persons_max）
+        <span class="state-switch"><button type="button" :class="{ 'is-active': limits.persons_max === 10 }" @click="limits.persons_max = 10">10</button><button type="button" :class="{ 'is-active': limits.persons_max === 3 }" @click="limits.persons_max = 3">3</button></span>
+      </div>
+      <pre class="notes__log">{{ log.join('\n') }}</pre>
+
+      <h4>預覽選項</h4>
+      <div class="notes__row">主題
+        <span class="state-switch"><button type="button" :class="{ 'is-active': theme === 'light' }" @click="theme = 'light'">淺色</button><button type="button" :class="{ 'is-active': theme === 'dark' }" @click="theme = 'dark'">深色</button></span>
+      </div>
+
+      <h4>設計決策</h4>
+      <ol><li v-for="(d, i) in decisions" :key="i">{{ d }}</li></ol>
+
+      <h4 v-if="openQuestions.length">待裁定</h4>
+      <ol>
+        <li v-for="(q, i) in openQuestions" :key="i" class="notes__q">
+          <div>{{ q.question }}</div>
+          <div class="notes__option" v-for="(o, j) in q.options" :key="j">{{ 'ABCD'[j] }}. {{ o.text }}<span v-if="o.recommended" class="notes__rec">（推薦，稿已照此畫）</span></div>
+        </li>
+      </ol>
+    </aside>
+  </div>
+</div>
+<script>
+const { createApp, ref, reactive, computed, watch, nextTick, onBeforeUnmount } = Vue
+
+/* ===== 以下元件複製自 parent-component-m3-kit.html / parent-component-bottom-sheet.html ===== */
+/** PARENT-014 M3Icon：label 有值 → role=img + aria-label；無 → aria-hidden */
+const M3Icon = {
+  props: {
+    name: { type: String, required: true },
+    size: { type: [Number, String], default: 24 },
+    filled: { type: Boolean, default: false },
+    label: { type: String, default: '' },
+  },
+  computed: {
+    iconStyle() {
+      const fontSize = typeof this.size === 'number' ? `${this.size}px` : this.size
+      return { fontSize, fontVariationSettings: `'FILL' ${this.filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24` }
+    },
+  },
+  template: `<span class="material-symbols-rounded m3-icon" :style="iconStyle" :role="label ? 'img' : null" :aria-label="label || null" :aria-hidden="label ? null : 'true'">{{ name }}</span>`,
+}
+
+/** PARENT-015 M3Button：loading 用 aria-disabled 擋點擊並保留焦點；disabled 用原生屬性 */
+const M3Button = {
+  props: {
+    variant: { type: String, default: 'filled' },
+    type: { type: String, default: 'button' },
+    disabled: { type: Boolean, default: false },
+    loading: { type: Boolean, default: false },
+    block: { type: Boolean, default: false },
+    icon: { type: String, default: '' },
+  },
+  emits: ['click'],
+  methods: {
+    onClick(e) { if (this.disabled || this.loading) return; this.$emit('click', e) },
+  },
+  template: `<button :type="type" class="m3-button m3-state m3-label-large"
+    :class="['m3-button--' + variant, { 'is-block': block, 'has-icon': !!icon || loading, 'is-loading': loading }]"
+    :disabled="disabled" :aria-disabled="loading ? 'true' : null" :aria-busy="loading ? 'true' : null" @click="onClick">
+    <span v-if="loading" class="m3-spinner" aria-hidden="true"></span>
+    <m3-icon v-else-if="icon" :name="icon" :size="18"></m3-icon>
+    <span><slot></slot></span>
+  </button>`,
+}
+
+/** PARENT-016 M3IconButton：label 必填 */
+const M3IconButton = {
+  props: {
+    icon: { type: String, required: true },
+    label: { type: String, required: true },
+    variant: { type: String, default: 'standard' },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ['click'],
+  template: `<button type="button" class="m3-icon-button" :class="'m3-icon-button--' + variant" :aria-label="label" :disabled="disabled"
+    @click="!disabled && $emit('click', $event)"><span class="m3-icon-button__container"><m3-icon :name="icon"></m3-icon></span></button>`,
+}
+
+/** PARENT-017 M3Card */
+const M3Card = {
+  props: {
+    variant: { type: String, default: 'filled' },
+    clickable: { type: Boolean, default: false },
+    padding: { type: String, default: 'md' },
+  },
+  emits: ['click'],
+  methods: {
+    onClick(e) { if (this.clickable) this.$emit('click', e) },
+    onKeydown(e) {
+      if (!this.clickable || (e.key !== 'Enter' && e.key !== ' ')) return
+      e.preventDefault()
+      this.$emit('click', e)
+    },
+  },
+  template: `<div class="m3-card" :class="['m3-card--' + variant, 'm3-card--pad-' + padding, { 'is-clickable m3-state': clickable }]"
+    :role="clickable ? 'button' : null" :tabindex="clickable ? 0 : null" @click="onClick" @keydown="onKeydown">
+    <div v-if="$slots.header" class="m3-card__header"><slot name="header"></slot></div>
+    <slot></slot>
+    <div v-if="$slots.actions" class="m3-card__actions"><slot name="actions"></slot></div>
+  </div>`,
+}
+
+/** PARENT-018 M3TextField（forceFocus 只為稿件示範，實作沒有這個 prop） */
+let tfUid = 0
+const M3TextField = {
+  props: {
+    modelValue: { type: String, default: '' },
+    label: { type: String, required: true },
+    type: { type: String, default: 'text' },
+    placeholder: { type: String, default: '' },
+    supportingText: { type: String, default: '' },
+    errorText: { type: String, default: '' },
+    disabled: { type: Boolean, default: false },
+    maxlength: { type: Number, default: undefined },
+    inputmode: { type: String, default: undefined },
+    autocomplete: { type: String, default: undefined },
+    id: { type: String, default: undefined },
+    forceFocus: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue', 'enter'],
+  data() { return { focused: false, uid: ++tfUid } },
+  computed: {
+    inputId() { return this.id || `m3-tf-${this.uid}` },
+    descId() { return `${this.inputId}-desc` },
+    hasError() { return !!this.errorText },
+    isFocused() { return this.focused || this.forceFocus },
+    floating() { return this.isFocused || !!this.modelValue || this.type === 'date' || this.type === 'time' },
+    supportText() { return this.errorText || this.supportingText },
+  },
+  methods: {
+    onInput(e) { this.$emit('update:modelValue', e.target.value) },
+    onKeydown(e) {
+      if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return
+      this.$emit('enter')
+    },
+  },
+  template: `<div class="m3-tf" :class="{ 'is-focused': isFocused, 'is-floating': floating, 'is-error': hasError, 'is-disabled': disabled, 'is-textarea': type === 'textarea', 'has-trailing': hasError }">
+    <div class="m3-tf__control">
+      <textarea v-if="type === 'textarea'" :id="inputId" class="m3-tf__input" rows="4" :value="modelValue" :placeholder="placeholder"
+        :disabled="disabled" :maxlength="maxlength" :aria-invalid="hasError ? 'true' : 'false'" :aria-describedby="supportText ? descId : null"
+        @input="onInput" @focus="focused = true" @blur="focused = false"></textarea>
+      <input v-else :id="inputId" class="m3-tf__input" :type="type" :value="modelValue" :placeholder="placeholder" :disabled="disabled"
+        :maxlength="maxlength" :inputmode="inputmode" :autocomplete="autocomplete" :aria-invalid="hasError ? 'true' : 'false'"
+        :aria-describedby="supportText ? descId : null" @input="onInput" @keydown="onKeydown" @focus="focused = true" @blur="focused = false">
+      <label class="m3-tf__label" :for="inputId">{{ label }}</label>
+      <fieldset class="m3-tf__outline" aria-hidden="true"><legend><span>{{ label }}</span></legend></fieldset>
+      <m3-icon v-if="hasError" class="m3-tf__trailing" name="error" :filled="true"></m3-icon>
+    </div>
+    <div v-if="supportText || maxlength" class="m3-tf__supporting m3-body-small">
+      <span v-if="supportText" :id="descId" class="m3-tf__supporting-text">{{ supportText }}</span>
+      <span v-if="maxlength" class="m3-tf__counter">{{ (modelValue || '').length }}/{{ maxlength }}</span>
+    </div>
+  </div>`,
+}
+
+/** PARENT-019 M3Chip */
+const M3Chip = {
+  props: {
+    label: { type: String, required: true },
+    variant: { type: String, default: 'assist' },
+    selected: { type: Boolean, default: false },
+    icon: { type: String, default: '' },
+    disabled: { type: Boolean, default: false },
+  },
+  emits: ['click'],
+  computed: {
+    isSelected() { return this.variant === 'filter' && this.selected },
+    leading() { return this.isSelected ? 'check' : this.icon },
+  },
+  template: `<button type="button" class="m3-chip m3-state" :class="['m3-chip--' + variant, { 'is-selected': isSelected, 'has-icon': !!leading }]"
+    :aria-pressed="variant === 'filter' ? String(selected) : null" :disabled="disabled" @click="!disabled && $emit('click', $event)">
+    <m3-icon v-if="leading" class="m3-chip__icon" :name="leading" :size="18"></m3-icon><span class="m3-label-large">{{ label }}</span>
+  </button>`,
+}
+
+/** PARENT-020 M3ListItem：li 保持 listitem 語意，互動元素是 li 內的 a（to）或 div[role=button]（clickable） */
+const M3ListItem = {
+  props: {
+    headline: { type: String, required: true },
+    supportingText: { type: String, default: '' },
+    leadingIcon: { type: String, default: '' },
+    trailingIcon: { type: String, default: '' },
+    clickable: { type: Boolean, default: false },
+    disabled: { type: Boolean, default: false },
+    to: { type: String, default: '' },
+  },
+  emits: ['click'],
+  computed: {
+    interactive() { return this.clickable || !!this.to },
+    tag() { return this.to ? 'a' : 'div' },
+  },
+  methods: {
+    onClick(e) {
+      if (this.to) e.preventDefault() // 稿內沒有 router；實作用 RouterLink
+      if (this.disabled || !this.interactive) return
+      this.$emit('click', e)
+    },
+    onKeydown(e) {
+      if (this.to || !this.clickable || (e.key !== 'Enter' && e.key !== ' ')) return
+      e.preventDefault()
+      this.onClick(e)
+    },
+  },
+  template: `<li class="m3-list-item" :class="{ 'is-two-line': !!supportingText, 'is-disabled': disabled }">
+    <component :is="tag" class="m3-list-item__inner" :class="{ 'is-interactive m3-state': interactive }"
+      :href="to ? '#' + to : null" :role="interactive && !to ? 'button' : null"
+      :tabindex="interactive && !to ? (disabled ? -1 : 0) : null" :aria-disabled="interactive && disabled ? 'true' : null"
+      @click="onClick" @keydown="onKeydown">
+      <span v-if="$slots.leading || leadingIcon" class="m3-list-item__leading" :class="{ 'is-icon': !$slots.leading }"><slot name="leading"><m3-icon v-if="leadingIcon" :name="leadingIcon"></m3-icon></slot></span>
+      <span class="m3-list-item__content">
+        <span class="m3-list-item__headline m3-body-large">{{ headline }}</span>
+        <span v-if="supportingText" class="m3-list-item__supporting m3-body-medium">{{ supportingText }}</span>
+      </span>
+      <span v-if="$slots.trailing || trailingIcon" class="m3-list-item__trailing"><slot name="trailing"><m3-icon v-if="trailingIcon" :name="trailingIcon"></m3-icon></slot></span>
+    </component>
+  </li>`,
+}
+
+/** PARENT-021 M3TopAppBar（scrolled 只為稿件示範；實作自行偵測捲動） */
+const M3TopAppBar = {
+  props: {
+    title: { type: String, required: true },
+    showBack: { type: Boolean, default: false },
+    scrolled: { type: Boolean, default: false },
+  },
+  emits: ['back'],
+  template: `<header class="m3-top-app-bar" :class="{ 'is-scrolled': scrolled }">
+    <div class="m3-top-app-bar__leading">
+      <m3-icon-button v-if="showBack" icon="arrow_back" label="返回" @click="$emit('back')"></m3-icon-button>
+      <slot v-else name="leading"></slot>
+    </div>
+    <h1 class="m3-top-app-bar__title m3-title-large">{{ title }}</h1>
+    <div class="m3-top-app-bar__actions"><slot name="actions"></slot></div>
+  </header>`,
+}
+
+/** PARENT-022 M3NavigationBar */
+const M3NavigationBar = {
+  props: {
+    items: { type: Array, required: true },
+    currentKey: { type: String, required: true },
+  },
+  emits: ['select'],
+  methods: {
+    badgeText(b) { if (!b || b < 1) return null; return b > 99 ? '99+' : String(b) },
+  },
+  template: `<nav class="m3-navigation-bar" aria-label="主要功能">
+    <button v-for="item in items" :key="item.key" type="button" class="m3-nav-tab" :class="{ 'is-active': item.key === currentKey }"
+      :aria-current="item.key === currentKey ? 'page' : null" @click="$emit('select', item.key, item)">
+      <span class="m3-nav-tab__icon">
+        <m3-icon :name="item.icon" :filled="item.key === currentKey"></m3-icon>
+        <span v-if="badgeText(item.badge)" class="m3-nav-tab__badge" aria-hidden="true">{{ badgeText(item.badge) }}</span>
+      </span>
+      <span class="m3-nav-tab__label m3-label-medium">{{ item.label }}</span>
+      <span v-if="badgeText(item.badge)" class="visually-hidden">，{{ item.badge }} 則未讀</span>
+    </button>
+  </nav>`,
+}
+
+/** PARENT-023 M3Snackbar（inline 只為稿件靜態示範） */
+const M3Snackbar = {
+  props: {
+    item: { type: Object, default: null },
+    inline: { type: Boolean, default: false },
+  },
+  emits: ['dismiss'],
+  methods: {
+    onAction() { this.item.action.onClick(); this.$emit('dismiss', this.item.id) },
+  },
+  template: `<transition name="m3-snackbar" mode="out-in">
+    <div v-if="item" :key="item.id" class="m3-snackbar" :class="['m3-snackbar--' + item.tone, { 'is-inline': inline }]"
+      :role="item.tone === 'error' ? 'alert' : 'status'" :aria-live="item.tone === 'error' ? null : 'polite'">
+      <m3-icon v-if="item.tone === 'error'" class="m3-snackbar__icon" name="error" :filled="true"></m3-icon>
+      <span class="m3-snackbar__message m3-body-medium">{{ item.message }}</span>
+      <button v-if="item.action" type="button" class="m3-snackbar__action m3-state m3-label-large" @click="onAction">{{ item.action.label }}</button>
+    </div>
+  </transition>`,
+}
+
+/** PARENT-098 M3SegmentedButton：radiogroup、roving tabindex、方向鍵略過 disabled 並循環 */
+const M3SegmentedButton = {
+  props: {
+    modelValue: { type: String, required: true },
+    items: { type: Array, required: true },
+    ariaLabel: { type: String, required: true },
+  },
+  emits: ['update:modelValue'],
+  computed: {
+    focusIndex() {
+      const i = this.items.findIndex((x) => x.value === this.modelValue)
+      return i >= 0 ? i : this.items.findIndex((x) => !x.disabled)
+    },
+  },
+  methods: {
+    select(item) { if (!item.disabled) this.$emit('update:modelValue', item.value) },
+    onKeydown(e, idx) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+      e.preventDefault()
+      const dir = e.key === 'ArrowRight' ? 1 : -1
+      const n = this.items.length
+      let i = idx
+      for (let k = 0; k < n; k++) {
+        i = (i + dir + n) % n
+        if (!this.items[i].disabled) break
+      }
+      if (i === idx || this.items[i].disabled) return
+      this.$emit('update:modelValue', this.items[i].value)
+      nextTick(() => this.$refs.seg[i].focus())
+    },
+  },
+  template: `<div class="m3-segmented" role="radiogroup" :aria-label="ariaLabel" :style="{ gridTemplateColumns: 'repeat(' + items.length + ', minmax(0, 1fr))' }">
+    <button v-for="(item, idx) in items" :key="item.value" ref="seg" type="button" role="radio" class="m3-segment m3-state m3-label-large"
+      :class="{ 'is-checked': item.value === modelValue }" :aria-checked="String(item.value === modelValue)" :disabled="item.disabled"
+      :tabindex="idx === focusIndex ? 0 : -1" @click="select(item)" @keydown="onKeydown($event, idx)">
+      <m3-icon v-if="item.value === modelValue" name="check" :size="18"></m3-icon>
+      <m3-icon v-else-if="item.icon" :name="item.icon" :size="18"></m3-icon>
+      <span class="m3-segment__label">{{ item.label }}</span>
+    </button>
+  </div>`,
+}
+
+/** PARENT-175 M3Switch：disabled 或 busy 時不 emit */
+const M3Switch = {
+  props: {
+    modelValue: { type: Boolean, required: true },
+    disabled: { type: Boolean, default: false },
+    label: { type: String, required: true },
+    busy: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue'],
+  methods: {
+    toggle() { if (this.disabled || this.busy) return; this.$emit('update:modelValue', !this.modelValue) },
+  },
+  template: `<button type="button" role="switch" class="m3-switch" :class="{ 'is-on': modelValue, 'is-busy': busy }"
+    :aria-checked="String(modelValue)" :aria-label="label" :aria-busy="busy ? 'true' : null" :disabled="disabled" @click="toggle">
+    <span class="m3-switch__track"><span class="m3-switch__thumb">
+      <span v-if="busy" class="m3-switch__spinner" aria-hidden="true"></span>
+      <m3-icon v-else-if="modelValue" name="check" :size="16"></m3-icon>
+    </span></span>
+  </button>`,
+}
+
+/* ============================================================
+   PARENT-025 ParentBottomSheet
+   ============================================================ */
+const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+const DISMISS_DISTANCE = 80
+const LOCKED_MAX_OFFSET = 24
+let sheetUid = 0
+
+const ParentBottomSheet = {
+  props: {
+    modelValue: { type: Boolean, required: true },
+    title: { type: String, default: '' },
+    dismissible: { type: Boolean, default: true },
+    fullHeight: { type: Boolean, default: false },
+  },
+  emits: ['update:modelValue'],
+  data() {
+    return { titleId: `sheet-title-${++sheetUid}`, offset: 0, dragging: false, startY: 0, prevFocus: null }
+  },
+  computed: {
+    sheetStyle() { return this.offset ? { transform: `translateY(${this.offset}px)` } : null },
+  },
+  watch: {
+    modelValue: {
+      handler(open) {
+        if (open) {
+          this.prevFocus = document.activeElement
+          document.addEventListener('keydown', this.onDocKeydown)
+          nextTick(() => {
+            const dialog = this.$refs.dialog
+            if (!dialog) return
+            const first = dialog.querySelector(FOCUSABLE)
+            ;(first || dialog).focus({ preventScroll: true })
+          })
+        } else {
+          document.removeEventListener('keydown', this.onDocKeydown)
+          this.offset = 0
+          this.dragging = false
+          if (this.prevFocus && typeof this.prevFocus.focus === 'function') this.prevFocus.focus({ preventScroll: true })
+        }
+      },
+    },
+  },
+  beforeUnmount() { document.removeEventListener('keydown', this.onDocKeydown) },
+  methods: {
+    requestClose() { if (this.dismissible) this.$emit('update:modelValue', false) },
+    onDocKeydown(e) { if (e.key === 'Escape') { e.stopPropagation(); this.requestClose() } },
+    onKeydown(e) {
+      if (e.key !== 'Tab') return
+      const list = Array.from(this.$refs.dialog.querySelectorAll(FOCUSABLE))
+      if (!list.length) { e.preventDefault(); return }
+      const first = list[0]
+      const last = list[list.length - 1]
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === this.$refs.dialog)) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    },
+    startDrag(e) {
+      this.dragging = true
+      this.startY = e.clientY
+      window.addEventListener('pointermove', this.onPointerMove)
+      window.addEventListener('pointerup', this.onPointerUp)
+      window.addEventListener('pointercancel', this.onPointerUp)
+    },
+    onHandleDown(e) { if (e.button === 0 || e.pointerType !== 'mouse') this.startDrag(e) },
+    onPointerMove(e) {
+      if (!this.dragging) return
+      const dy = Math.max(0, e.clientY - this.startY)
+      this.offset = this.dismissible ? dy : Math.min(LOCKED_MAX_OFFSET, dy / 4)
+    },
+    onPointerUp() {
+      window.removeEventListener('pointermove', this.onPointerMove)
+      window.removeEventListener('pointerup', this.onPointerUp)
+      window.removeEventListener('pointercancel', this.onPointerUp)
+      if (!this.dragging) return
+      this.dragging = false
+      if (this.dismissible && this.offset > DISMISS_DISTANCE) {
+        this.$emit('update:modelValue', false)
+      } else {
+        this.offset = 0
+      }
+    },
+  },
+  template: `<transition name="sheet" :duration="{ enter: 400, leave: 200 }">
+    <div v-if="modelValue" class="sheet-layer">
+      <div class="sheet-scrim" @click="requestClose"></div>
+      <div ref="dialog" class="sheet" :class="{ 'is-full': fullHeight, 'is-dragging': dragging }" :style="sheetStyle"
+        role="dialog" aria-modal="true" :aria-labelledby="titleId" tabindex="-1" @keydown="onKeydown">
+        <div class="sheet__drag" @pointerdown="onHandleDown">
+          <div class="sheet__handle" aria-hidden="true"></div>
+          <div class="sheet__header" :class="{ 'has-close': dismissible }">
+            <h2 :id="titleId" class="sheet__title m3-title-large">{{ title }}</h2>
+            <m3-icon-button v-if="dismissible" icon="close" label="關閉" @pointerdown.stop @click="requestClose"></m3-icon-button>
+          </div>
+        </div>
+        <div class="sheet__body"><slot></slot></div>
+        <div v-if="$slots.footer" class="sheet__footer"><slot name="footer"></slot></div>
+      </div>
+    </div>
+  </transition>`,
+}
+/* ===== 稿件共用：snackbar 佇列（照 PARENT-011）與底部導覽 ===== */
+function createSnack() {
+  let nextId = 1
+  let headTimer = null
+  const snack = reactive({
+    items: [],
+    show(message, opts = {}) {
+      const item = { id: nextId++, message, tone: opts.tone || 'info', duration: opts.duration ?? 4000, action: opts.action }
+      snack.items.push(item)
+      if (snack.items.length > 3) snack.items.splice(1, 1)
+      if (snack.items.length === 1) startHeadTimer()
+      return item.id
+    },
+    dismiss(id) {
+      const i = snack.items.findIndex((x) => x.id === id)
+      if (i < 0) return
+      snack.items.splice(i, 1)
+      if (i === 0) startHeadTimer()
+    },
+    clear() { snack.items.splice(0); clearTimeout(headTimer) },
+  })
+  function startHeadTimer() {
+    clearTimeout(headTimer)
+    const head = snack.items[0]
+    if (head && head.duration > 0) headTimer = setTimeout(() => snack.dismiss(head.id), head.duration)
+  }
+  return snack
+}
+
+const NAV_ITEMS = [
+  { key: 'home', label: '首頁', icon: 'home', path: '/' },
+  { key: 'homework', label: '作業', icon: 'assignment', path: '/homework' },
+  { key: 'pickup', label: '接送', icon: 'directions_walk', path: '/pickup' },
+  { key: 'exams', label: '成績', icon: 'grading', path: '/exams' },
+  { key: 'more', label: '更多', icon: 'menu', path: '/more' },
+]
+
+/* ===== 以下元件複製自 parent-component-status-pill.html ===== */
+/** PARENT-051 StatusPill：純展示，不可互動、不拿焦點；tone 預設 neutral */
+const StatusPill = {
+  props: {
+    label: { type: String, required: true },
+    tone: { type: String, default: 'neutral' },
+    icon: { type: String, default: '' },
+  },
+  template: `<span class="status-pill m3-label-large" :class="['status-pill--' + tone, { 'has-icon': !!icon }]">
+    <m3-icon v-if="icon" :name="icon" :size="18"></m3-icon><span class="status-pill__label">{{ label }}</span>
+  </span>`,
+}
+
+/* ===== 以下元件複製自 parent-component-skeleton.html ===== */
+/** PARENT-028 SkeletonBlock */
+const SkeletonBlock = {
+  props: {
+    variant: { type: String, default: 'line' },
+    count: { type: Number, default: 1 },
+    width: { type: String, default: '' },
+    height: { type: String, default: '' },
+  },
+  computed: {
+    n() { return Math.max(1, this.count) },
+    custom() {
+      const s = {}
+      if (this.width) s.width = this.width
+      if (this.height) s.height = this.height
+      return s
+    },
+  },
+  methods: {
+    lineStyle(i) {
+      if (this.width || this.height) return this.custom
+      return this.n > 1 && i === this.n ? { width: '60%' } : null
+    },
+  },
+  template: `<div class="skeleton" :class="'skeleton--' + variant" aria-busy="true">
+    <span class="visually-hidden">載入中</span>
+    <template v-if="variant === 'card'">
+      <div v-for="i in n" :key="i" class="skeleton-card" :style="custom" aria-hidden="true">
+        <span class="sk" style="width: 40%; height: 16px"></span>
+        <span class="sk"></span>
+        <span class="sk" style="width: 70%"></span>
+      </div>
+    </template>
+    <template v-else-if="variant === 'row'">
+      <div v-for="i in n" :key="i" class="skeleton-row" :style="custom" aria-hidden="true">
+        <span class="sk sk--circle"></span>
+        <span class="skeleton-row__lines"><span class="sk" style="width: 30%"></span><span class="sk" style="width: 70%; height: 12px"></span></span>
+      </div>
+    </template>
+    <template v-else>
+      <span v-for="i in n" :key="i" class="sk skeleton-line" :style="lineStyle(i)" aria-hidden="true"></span>
+    </template>
+  </div>`,
+}
+
+/* ===== 以下元件複製自 parent-component-empty-state.html ===== */
+/** PARENT-029 ParentEmptyState */
+const ParentEmptyState = {
+  props: {
+    variant: { type: String, default: 'empty' },
+    icon: { type: String, default: '' },
+    title: { type: String, required: true },
+    description: { type: String, default: '' },
+    actionLabel: { type: String, default: '' },
+  },
+  emits: ['action'],
+  computed: {
+    isError() { return this.variant === 'error' },
+    resolvedIcon() { return this.icon || (this.isError ? 'error' : 'inbox') },
+    label() { return this.actionLabel || (this.isError ? '重試' : '') },
+  },
+  template: `<div class="empty-state" :class="'empty-state--' + variant" :role="isError ? 'alert' : null">
+    <span class="empty-state__icon"><m3-icon :name="resolvedIcon" :size="48"></m3-icon></span>
+    <p class="empty-state__title m3-title-medium">{{ title }}</p>
+    <p v-if="description" class="empty-state__desc m3-body-medium">{{ description }}</p>
+    <div v-if="label" class="empty-state__action">
+      <m3-button variant="tonal" :icon="isError ? 'refresh' : ''" @click="$emit('action')">{{ label }}</m3-button>
+    </div>
+  </div>`,
+}
+
+/* ===== 以下元件複製自 parent-component-child-context-header.html ===== */
+/** 稿件用：以 canvas 產生示範人像（data URL，不連外） */
+function makePhotoUrl(bgToken, fgToken) {
+  const c = document.createElement('canvas')
+  c.width = 160; c.height = 160
+  const ctx = c.getContext('2d')
+  const css = getComputedStyle(document.documentElement)
+  ctx.fillStyle = css.getPropertyValue(bgToken).trim() || 'gray'
+  ctx.fillRect(0, 0, 160, 160)
+  ctx.fillStyle = css.getPropertyValue(fgToken).trim() || 'black'
+  ctx.beginPath(); ctx.arc(80, 64, 32, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.ellipse(80, 160, 62, 54, 0, Math.PI, 0); ctx.fill()
+  return c.toDataURL('image/jpeg', 0.8)
+}
+/** PARENT-050 ChildContextHeader（openSignal 只為稿件「開啟 sheet」按鈕，實作沒有這個 prop） */
+const ChildContextHeader = {
+  props: {
+    children: { type: Array, required: true },
+    selectedId: { type: String, default: null },
+    openSignal: { type: Number, default: 0 },
+  },
+  emits: ['select'],
+  data() { return { open: false, failed: {} } },
+  computed: {
+    current() { return this.children.find((c) => c.id === this.selectedId) || this.children[0] || null },
+    multi() { return this.children.length > 1 },
+  },
+  watch: {
+    openSignal() { if (this.multi) this.open = true },
+  },
+  methods: {
+    sub(c) { return [`${c.grade_level} 年級`, c.class_name].filter(Boolean).join(' · ') },
+    showPhoto(c) { return !!c.photo_url && !this.failed[c.id] },
+    pick(id) {
+      if (id !== this.current.id) this.$emit('select', id)
+      this.open = false
+    },
+  },
+  template: `<template v-if="current">
+    <component :is="multi ? 'button' : 'div'" :type="multi ? 'button' : null" class="cch" :class="{ 'is-interactive m3-state': multi }"
+      :aria-haspopup="multi ? 'dialog' : null" @click="multi && (open = true)">
+      <span class="cch__avatar m3-title-medium" aria-hidden="true">
+        <img v-if="showPhoto(current)" :src="current.photo_url" alt="" @error="failed[current.id] = true">
+        <template v-else>{{ current.name.slice(0, 1) }}</template>
+      </span>
+      <span class="cch__text">
+        <span class="cch__name-row">
+          <span class="cch__name m3-title-medium">{{ current.name }}</span>
+          <status-pill v-if="current.status === 'suspended'" label="暫停" tone="warning"></status-pill>
+        </span>
+        <span class="cch__sub m3-body-medium">{{ sub(current) }}</span>
+        <span v-if="current.school_name" class="cch__school m3-body-small">{{ current.school_name }}</span>
+      </span>
+      <template v-if="multi">
+        <span class="visually-hidden">，切換小孩</span>
+        <m3-icon class="cch__chevron" name="expand_more"></m3-icon>
+      </template>
+    </component>
+    <parent-bottom-sheet v-if="multi" v-model="open" title="選擇小孩">
+      <ul class="cch-list">
+        <li v-for="c in children" :key="c.id">
+          <button type="button" class="cch-option m3-state" :class="{ 'is-selected': c.id === current.id }"
+            :aria-current="c.id === current.id ? 'true' : null" @click="pick(c.id)">
+            <span class="cch-option__avatar m3-title-small" aria-hidden="true">
+              <img v-if="showPhoto(c)" :src="c.photo_url" alt="" @error="failed[c.id] = true">
+              <template v-else>{{ c.name.slice(0, 1) }}</template>
+            </span>
+            <span class="cch-option__text">
+              <span class="cch__name-row">
+                <span class="cch-option__name m3-body-large">{{ c.name }}</span>
+                <status-pill v-if="c.status === 'suspended'" label="暫停" tone="warning"></status-pill>
+              </span>
+              <span class="cch-option__sub m3-body-medium">{{ sub(c) }}</span>
+            </span>
+            <m3-icon v-if="c.id === current.id" class="cch-option__check" name="check"></m3-icon>
+          </button>
+        </li>
+      </ul>
+    </parent-bottom-sheet>
+  </template>`,
+}
+
+/* ===== 以下元件複製自 parent-component-confirm-dialog.html ===== */
+/** PARENT-026 ConfirmDialog（forceFocus 只為稿件示範鍵盤焦點，實作沒有這個 prop） */
+const DIALOG_FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+let dialogUid = 0
+const ConfirmDialog = {
+  props: {
+    open: { type: Boolean, required: true },
+    title: { type: String, required: true },
+    message: { type: String, default: '' },
+    confirmLabel: { type: String, default: '確定' },
+    cancelLabel: { type: String, default: '取消' },
+    destructive: { type: Boolean, default: false },
+    loading: { type: Boolean, default: false },
+    forceFocus: { type: Boolean, default: false },
+  },
+  emits: ['confirm', 'cancel'],
+  data() { const id = ++dialogUid; return { titleId: `confirm-title-${id}`, msgId: `confirm-msg-${id}`, prevFocus: null } },
+  watch: {
+    open: {
+      immediate: true,
+      handler(v) {
+        if (v) {
+          this.prevFocus = document.activeElement
+          document.addEventListener('keydown', this.onDocKeydown)
+          nextTick(() => { const b = this.$refs.cancelBtn; if (b) b.$el.focus({ preventScroll: true }) })
+        } else {
+          document.removeEventListener('keydown', this.onDocKeydown)
+          if (this.prevFocus && typeof this.prevFocus.focus === 'function') this.prevFocus.focus({ preventScroll: true })
+        }
+      },
+    },
+  },
+  beforeUnmount() { document.removeEventListener('keydown', this.onDocKeydown) },
+  methods: {
+    requestCancel() { if (!this.loading) this.$emit('cancel') },
+    onConfirm() { if (!this.loading) this.$emit('confirm') },
+    onDocKeydown(e) { if (e.key === 'Escape') { e.stopPropagation(); this.requestCancel() } },
+    onKeydown(e) {
+      if (e.key !== 'Tab') return
+      const list = Array.from(this.$refs.dialog.querySelectorAll(DIALOG_FOCUSABLE))
+      if (!list.length) { e.preventDefault(); return }
+      const first = list[0]
+      const last = list[list.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    },
+  },
+  template: `<transition name="dialog" :duration="{ enter: 200, leave: 150 }">
+    <div v-if="open" class="dialog-layer">
+      <div class="dialog-scrim" @click="requestCancel"></div>
+      <div ref="dialog" class="dialog" role="alertdialog" aria-modal="true" :aria-labelledby="titleId"
+        :aria-describedby="message ? msgId : null" tabindex="-1" @keydown="onKeydown">
+        <h2 :id="titleId" class="dialog__title m3-headline-small">{{ title }}</h2>
+        <p v-if="message" :id="msgId" class="dialog__message m3-body-medium">{{ message }}</p>
+        <div v-if="$slots.default" class="dialog__extra"><slot></slot></div>
+        <div class="dialog__actions">
+          <m3-button ref="cancelBtn" variant="text" :disabled="loading" :class="{ 'force-focus': forceFocus }" @click="requestCancel">{{ cancelLabel }}</m3-button>
+          <m3-button :class="{ 'is-destructive': destructive }" :loading="loading" @click="onConfirm">{{ confirmLabel }}</m3-button>
+        </div>
+      </div>
+    </div>
+  </transition>`,
+}
+
+/* ===== 以下元件複製自 parent-component-pull-to-refresh.html ===== */
+/* ============================================================
+   PARENT-027 PullToRefresh
+   preview 只為稿件的靜態狀態切換；稿額外聽 mouse 事件方便桌機預覽，實作只聽 touch。
+   ============================================================ */
+const DAMPING = 0.5
+const HOLD_HEIGHT = 56
+const RING_LENGTH = 2 * Math.PI * 12
+const PREVIEW_STATES = {
+  idle: { pull: 0, refreshing: false },
+  short: { pull: 40, refreshing: false },
+  armed: { pull: 96, refreshing: false },
+  refreshing: { pull: HOLD_HEIGHT, refreshing: true },
+}
+
+const PullToRefresh = {
+  props: {
+    onRefresh: { type: Function, required: true },
+    threshold: { type: Number, default: 64 },
+    disabled: { type: Boolean, default: false },
+    preview: { type: String, default: 'live' },
+  },
+  data() { return { pull: 0, refreshing: false, tracking: false, pulling: false, startY: 0 } },
+  computed: {
+    forced() { return PREVIEW_STATES[this.preview] || null },
+    shownPull() { return this.forced ? this.forced.pull : this.pull },
+    isRefreshing() { return this.forced ? this.forced.refreshing : this.refreshing },
+    armed() { return !this.isRefreshing && this.shownPull >= this.threshold },
+    progress() { return this.isRefreshing ? 0.7 : Math.min(1, this.shownPull / this.threshold) },
+    label() {
+      if (this.isRefreshing) return '重新整理中…'
+      return this.armed ? '放開即可重新整理' : '下拉重新整理'
+    },
+    ringDash() { return `${RING_LENGTH * this.progress} ${RING_LENGTH}` },
+  },
+  mounted() {
+    const el = this.$el
+    el.addEventListener('touchstart', this.onTouchStart, { passive: true })
+    el.addEventListener('touchmove', this.onTouchMove, { passive: false })
+    el.addEventListener('touchend', this.onEnd, { passive: true })
+    el.addEventListener('touchcancel', this.onCancel, { passive: true })
+    el.addEventListener('mousedown', this.onMouseDown)
+  },
+  beforeUnmount() {
+    window.removeEventListener('mousemove', this.onMouseMove)
+    window.removeEventListener('mouseup', this.onMouseUp)
+  },
+  methods: {
+    scrollTop() {
+      const scroller = this.$el.closest('.screen__content')
+      return scroller ? scroller.scrollTop : (document.scrollingElement?.scrollTop ?? 0)
+    },
+    begin(y) {
+      if (this.forced || this.disabled || this.refreshing || this.scrollTop() > 0) return false
+      this.tracking = true
+      this.pulling = false
+      this.startY = y
+      return true
+    },
+    move(y, e) {
+      if (!this.tracking) return
+      const dy = y - this.startY
+      if (dy <= 0) { if (this.pulling) { this.pulling = false; this.pull = 0 } return }
+      if (this.scrollTop() > 0) { this.onCancel(); return }
+      this.pulling = true
+      if (e.cancelable) e.preventDefault()
+      this.pull = Math.min(this.threshold * 2, dy * DAMPING)
+    },
+    onEnd() {
+      if (!this.tracking) return
+      this.tracking = false
+      if (!this.pulling) { this.pull = 0; return }
+      this.pulling = false
+      if (this.pull >= this.threshold) this.trigger()
+      else this.pull = 0
+    },
+    onCancel() { this.tracking = false; this.pulling = false; this.pull = 0 },
+    async trigger() {
+      if (this.refreshing) return
+      this.refreshing = true
+      this.pull = HOLD_HEIGHT
+      try { await this.onRefresh() } catch (err) { /* 失敗提示由呼叫端負責 */ } finally {
+        this.refreshing = false
+        this.pull = 0
+      }
+    },
+    onTouchStart(e) { if (e.touches.length === 1) this.begin(e.touches[0].clientY) },
+    onTouchMove(e) { if (e.touches.length === 1) this.move(e.touches[0].clientY, e) },
+    onMouseDown(e) {
+      if (e.button !== 0 || e.target.closest('button, input, a')) return
+      if (!this.begin(e.clientY)) return
+      window.addEventListener('mousemove', this.onMouseMove)
+      window.addEventListener('mouseup', this.onMouseUp)
+    },
+    onMouseMove(e) { this.move(e.clientY, e) },
+    onMouseUp() {
+      window.removeEventListener('mousemove', this.onMouseMove)
+      window.removeEventListener('mouseup', this.onMouseUp)
+      this.onEnd()
+    },
+  },
+  template: `<div class="ptr" :class="{ 'is-tracking': tracking }">
+    <div class="ptr__indicator" role="status" :aria-label="isRefreshing ? '重新整理中' : null"
+      :style="{ height: shownPull + 'px', opacity: isRefreshing ? 1 : Math.min(1, shownPull / threshold) }">
+      <span class="ptr__badge" aria-hidden="true">
+        <svg class="ptr__ring" :class="{ 'is-spinning': isRefreshing }" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" :stroke-dasharray="ringDash"></circle></svg>
+        <m3-icon v-if="!isRefreshing" class="ptr__arrow" :class="{ 'is-armed': armed }" name="arrow_downward" :size="18"></m3-icon>
+      </span>
+      <span class="ptr__text m3-label-large" aria-hidden="true">{{ label }}</span>
+    </div>
+    <div class="ptr__content" :style="{ transform: shownPull ? 'translateY(' + shownPull + 'px)' : null }"><slot></slot></div>
+  </div>`,
+}
+
+/* ===== 以下元件複製自 parent-component-pickup-person-form.html ===== */
+const RELATION_OPTIONS = ['父親', '母親', '祖父', '祖母', '外公', '外婆', '親戚', '保母', '其他']
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024
+const PHONE_RE = /^0\d{8,9}$/
+const formatBytes = (n) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`)
+
+/** PARENT-099 PickupPersonForm */
+let formUid = 0
+const PickupPersonForm = {
+  props: {
+    submitting: { type: Boolean, default: false },
+  },
+  emits: ['submit', 'cancel'],
+  data() {
+    return { uid: ++formUid, name: '', relation: '', phone: '', phoneError: '', photo: null, previewUrl: '', previewFailed: false, photoError: '' }
+  },
+  computed: {
+    canSubmit() { return !!this.name.trim() && !!this.relation && !!this.phone.trim() && !this.submitting },
+    relationId() { return `relation-${this.uid}` },
+    photoLabelId() { return `photo-label-${this.uid}` },
+  },
+  watch: { phone() { this.phoneError = '' } },
+  beforeUnmount() { this.revoke() },
+  methods: {
+    revoke() { if (this.previewUrl) URL.revokeObjectURL(this.previewUrl); this.previewUrl = '' },
+    acceptFile(file) {
+      if (!file) return
+      if (file.size > PHOTO_MAX_BYTES) { this.photoError = '照片不可超過 5 MB'; return }
+      this.revoke()
+      this.photo = file
+      this.previewFailed = false
+      this.previewUrl = URL.createObjectURL(file)
+      this.photoError = ''
+    },
+    onFileChange(e) {
+      const input = e.target
+      const file = input.files && input.files[0]
+      input.value = '' // 清空，才能再次選同一個檔案
+      this.acceptFile(file)
+    },
+    removePhoto() { this.revoke(); this.photo = null; this.previewFailed = false; this.photoError = '' },
+    submit() {
+      if (!this.canSubmit) return
+      const phone = this.phone.replace(/[\s-]/g, '')
+      if (!PHONE_RE.test(phone)) { this.phoneError = '請輸入正確的電話號碼'; return }
+      this.$emit('submit', { name: this.name.trim(), relation: this.relation, phone, photo: this.photo })
+    },
+    /** 稿件專用：直接套用示範狀態 */
+    preset(p) {
+      this.removePhoto()
+      this.name = p.name ?? ''
+      this.relation = p.relation ?? ''
+      this.phone = p.phone ?? ''
+      nextTick(() => {
+        if (p.file) this.acceptFile(p.file)
+        if (p.photoError) this.photoError = p.photoError
+        if (p.submit) this.submit()
+      })
+    },
+  },
+  template: `<form class="person-form" novalidate @submit.prevent="submit">
+    <div :class="{ 'form-disabled': submitting }" style="display: flex; flex-direction: column; gap: 16px">
+      <m3-text-field v-model="name" label="姓名" :maxlength="50" autocomplete="off"></m3-text-field>
+
+      <div role="radiogroup" :aria-labelledby="relationId">
+        <p :id="relationId" class="field-label m3-title-small">關係</p>
+        <div class="relation-chips">
+          <button v-for="r in RELATION_OPTIONS" :key="r" type="button" role="radio" class="m3-chip m3-chip--filter m3-state"
+            :class="{ 'is-selected': relation === r, 'has-icon': relation === r }" :aria-checked="String(relation === r)" @click="relation = r">
+            <m3-icon v-if="relation === r" class="m3-chip__icon" name="check" :size="18"></m3-icon><span class="m3-label-large">{{ r }}</span>
+          </button>
+        </div>
+      </div>
+
+      <m3-text-field v-model="phone" label="電話" type="tel" inputmode="tel" autocomplete="off" :error-text="phoneError" supporting-text="手機或市話，例如 0912-000-123"></m3-text-field>
+
+      <div role="group" :aria-labelledby="photoLabelId">
+        <p :id="photoLabelId" class="field-label m3-title-small">照片（選填）</p>
+        <p class="field-help m3-body-small">照片可協助老師核對接送人，非必填</p>
+        <div class="photo">
+          <label v-if="!photo" class="photo-tile m3-state">
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" aria-label="新增照片" @change="onFileChange">
+            <m3-icon name="add_a_photo"></m3-icon><span class="m3-label-medium">新增照片</span>
+          </label>
+          <template v-else>
+            <span class="photo-tile is-filled">
+              <img v-if="!previewFailed" :src="previewUrl" alt="接送人照片預覽" @error="previewFailed = true">
+              <template v-else><m3-icon name="image"></m3-icon><span class="m3-label-medium">無法預覽</span></template>
+            </span>
+            <div class="photo-meta">
+              <span class="photo-meta__name m3-body-small">{{ photo.name }} · {{ formatBytes(photo.size) }}</span>
+              <label class="m3-button m3-button--text m3-state m3-label-large has-icon">
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" aria-label="更換照片" @change="onFileChange">
+                <m3-icon name="sync" :size="18"></m3-icon><span>更換照片</span>
+              </label>
+              <m3-button variant="text" class="m3-button--danger-text" icon="delete" @click="removePhoto">移除照片</m3-button>
+            </div>
+          </template>
+        </div>
+        <p v-if="photoError" class="field-error m3-body-small" role="alert"><m3-icon name="error" :filled="true" :size="16"></m3-icon>{{ photoError }}</p>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <m3-button variant="outlined" :disabled="submitting" @click="$emit('cancel')">取消</m3-button>
+      <m3-button type="submit" :disabled="!submitting && !canSubmit" :loading="submitting">儲存</m3-button>
+    </div>
+  </form>`,
+  setup() { return { RELATION_OPTIONS, formatBytes } },
+}
+
+/* ===== 以下元件複製自 parent-component-pickup-person-list-item.html ===== */
+/** 稿件用：瀏覽器無法解碼的圖片，觸發 img error（示範短效網址過期） */
+const BROKEN_PHOTO = 'data:image/jpeg;base64,AAAA'
+
+/** PARENT-100 PickupPersonListItem：根元素 li */
+const PickupPersonListItem = {
+  props: { person: { type: Object, required: true } },
+  emits: ['delete'],
+  data() { return { failed: false } },
+  watch: { 'person.photo_url'() { this.failed = false } },
+  template: `<li class="ppl">
+    <span class="ppl__avatar m3-title-medium" aria-hidden="true">
+      <img v-if="person.photo_url && !failed" :src="person.photo_url" alt="" loading="lazy" @error="failed = true">
+      <template v-else>{{ person.name.slice(0, 1) }}</template>
+    </span>
+    <span class="ppl__text">
+      <span class="ppl__name m3-body-large">{{ person.name }}</span>
+      <span class="ppl__meta m3-body-medium">{{ person.relation }} · {{ person.phone }}</span>
+    </span>
+    <m3-icon-button icon="delete" :label="'刪除 ' + person.name" @click="$emit('delete', person)"></m3-icon-button>
+  </li>`,
+}
+
+/* ===== 以下元件複製自 parent-component-pickup-code-card.html（稿內常數 WEEKDAYS 改名 CODE_WEEKDAYS 避免與 AuthorizationListItem 撞名） ===== */
+const CODE_WEEKDAYS = '日一二三四五六'
+/** FRONTEND-003 的 MM/DD（X）：以日期字串直接建本地日期，不經 toISOString */
+function formatServiceDate(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const w = new Date(y, m - 1, d).getDay()
+  return `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}（${CODE_WEEKDAYS[w]}）`
+}
+
+/** 稿件用：模擬 navigator.clipboard 的三種情況 */
+const clipboardMode = ref('ok')
+function fakeClipboard() {
+  if (clipboardMode.value === 'unsupported') return undefined
+  return { writeText: () => (clipboardMode.value === 'reject' ? Promise.reject(new Error('NotAllowedError')) : Promise.resolve()) }
+}
+
+/** PARENT-101 PickupCodeCard（forceFocus 只為稿件示範鍵盤焦點） */
+const PickupCodeCard = {
+  props: {
+    code: { type: String, required: true },
+    proxyName: { type: String, required: true },
+    serviceDate: { type: String, required: true },
+    forceFocus: { type: Boolean, default: false },
+  },
+  emits: ['done'],
+  setup() { return { snack: Vue.inject('snack') } },
+  data() { return { copied: false, timer: null } },
+  computed: {
+    digits() { return this.code.split('') },
+    meta() { return `${this.proxyName} · ${formatServiceDate(this.serviceDate)}` },
+  },
+  beforeUnmount() { clearTimeout(this.timer) },
+  methods: {
+    async copy() {
+      try {
+        const cb = fakeClipboard() // 實作：navigator.clipboard
+        if (!cb || !cb.writeText) throw new Error('unsupported')
+        await cb.writeText(this.code)
+        this.copied = true
+        this.snack.show('已複製接送碼')
+        clearTimeout(this.timer)
+        this.timer = setTimeout(() => { this.copied = false }, 2000)
+      } catch (e) {
+        this.snack.show('無法自動複製，請手動記下')
+      }
+    },
+  },
+  template: `<div class="code-card">
+    <div class="code-box">
+      <div class="code-box__code" role="status"><span v-for="(d, i) in digits" :key="i">{{ d }}</span></div>
+      <div class="code-box__meta m3-body-large">{{ meta }}</div>
+    </div>
+    <m3-button variant="tonal" :block="true" :icon="copied ? 'check' : 'content_copy'" :class="{ 'is-copied': copied, 'force-focus': forceFocus }" @click="copy">{{ copied ? '已複製' : '複製接送碼' }}</m3-button>
+    <div class="code-warn">
+      <m3-icon name="warning" :filled="true"></m3-icon>
+      <p class="m3-body-medium">接送碼只會顯示這一次，關閉後無法再查看。遺失時可以重新產生，舊的接送碼會立即失效。</p>
+    </div>
+    <m3-button :block="true" @click="$emit('done')">我已記下</m3-button>
+  </div>`,
+}
+
+/* ===== 以下元件複製自 parent-component-authorization-list-item.html ===== */
+/** FRONTEND-003 formatTime / formatDateWithWeekday 的稿件版（台北時區） */
+const fmtTime = (iso) => {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(d)
+}
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
+const fmtDateWithWeekday = (date) => {
+  const d = new Date(`${date}T00:00:00+08:00`)
+  const [, m, day] = date.split('-')
+  const wd = WEEKDAYS[new Date(d.getTime() + 8 * 3600 * 1000).getUTCDay()]
+  return `${m}/${day}（${wd}）`
+}
+/** FRONTEND-005 AUTHORIZATION_STATUS_META 的複本（稿件用；實作直接 import statusMeta） */
+const AUTHORIZATION_STATUS_META = {
+  active: { label: '有效', tone: 'success' },
+  completed: { label: '已接送', tone: 'info' },
+  cancelled: { label: '已取消', tone: 'info' },
+  expired: { label: '已過期', tone: 'info' },
+}
+
+/** PARENT-103 AuthorizationListItem：根元素 li */
+const AuthorizationListItem = {
+  props: { authorization: { type: Object, required: true } },
+  emits: ['cancel', 'regenerate'],
+  computed: {
+    a() { return this.authorization },
+    meta() { return AUTHORIZATION_STATUS_META[this.a.effective_status] || { label: this.a.effective_status || '—', tone: 'info' } },
+    active() { return this.a.effective_status === 'active' },
+    date() { return fmtDateWithWeekday(this.a.service_date) },
+    verified() { return this.a.verified_at ? fmtTime(this.a.verified_at) : '' },
+  },
+  template: `<li class="auth" :class="{ 'is-active': active }">
+    <div class="auth__head">
+      <span class="auth__name m3-title-medium">{{ a.proxy_name }}</span>
+      <status-pill class="auth__pill" :label="meta.label" :tone="meta.tone"></status-pill>
+    </div>
+    <p class="auth__meta m3-body-medium">{{ date }} · {{ a.proxy_phone }}</p>
+    <p class="auth__line m3-body-medium"><m3-icon name="pin" :size="18"></m3-icon><span>接送碼末四碼 <span class="auth__code">{{ a.code_last4 }}</span></span></p>
+    <p v-if="verified" class="auth__line m3-body-medium"><m3-icon name="how_to_reg" :size="18"></m3-icon><span class="auth__verified">{{ verified }} 已完成交接</span></p>
+    <div v-if="active" class="auth__actions">
+      <m3-button variant="text" icon="autorenew" @click="$emit('regenerate', a)">重新產生接送碼</m3-button>
+      <m3-button variant="text" class="m3-button--danger-text" icon="block" @click="$emit('cancel', a)">取消授權</m3-button>
+    </div>
+  </li>`,
+}
+
+/* ===== AuthorizationForm（PARENT-102）：parent-component-authorization-form.html 是權威，parent-page-pickup-proxy.html 原樣複製 ===== */
+/* M3TextField 的 min / max（PARENT-134 已加進元件）：稿內就地擴充共用元件的複本，同 LeaveForm 稿 */
+if (!M3TextField.props.min) {
+  M3TextField.props.min = { type: String, default: undefined }
+  M3TextField.props.max = { type: String, default: undefined }
+  M3TextField.template = M3TextField.template.replace(':maxlength="maxlength" :inputmode="inputmode"', ':maxlength="maxlength" :min="min" :max="max" :inputmode="inputmode"')
+}
+const afPad = (n) => String(n).padStart(2, '0')
+/** FRONTEND-003 日期加減的稿件版：純日期字串運算，不經 toISOString（避免時區位移） */
+function addDaysYmd(ymd, n) {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const t = new Date(Date.UTC(y, m - 1, d + n))
+  return `${t.getUTCFullYear()}-${afPad(t.getUTCMonth() + 1)}-${afPad(t.getUTCDate())}`
+}
+const afMonthDay = (ymd) => `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}`
+const AF_PHONE_RE = /^0\d{8,9}$/
+let afUid = 0
+
+/** PARENT-102 AuthorizationForm（preset 只為稿件示範，實作沒有這個方法） */
+const AuthorizationForm = {
+  props: {
+    persons: { type: Array, required: true },
+    submitting: { type: Boolean, default: false },
+    today: { type: String, required: true },
+    maxDaysAhead: { type: Number, required: true },
+  },
+  emits: ['submit', 'cancel'],
+  data() {
+    return {
+      uid: ++afUid, serviceDate: this.today, mode: this.persons.length ? 'saved' : 'manual', personId: '',
+      name: '', phone: '', dateError: '', personError: '', nameError: '', phoneError: '', photoFailed: {},
+    }
+  },
+  computed: {
+    maxDate() { return addDaysYmd(this.today, this.maxDaysAhead) },
+    rangeHint() { return `可選 ${afMonthDay(this.today)}～${afMonthDay(this.maxDate)}（今天起 ${this.maxDaysAhead} 天內）` },
+    modeItems() {
+      return [
+        { value: 'saved', label: '常用接送人', icon: 'group', disabled: this.persons.length === 0 },
+        { value: 'manual', label: '臨時填寫', icon: 'edit' },
+      ]
+    },
+    groupId() { return `af-person-label-${this.uid}` },
+  },
+  watch: {
+    serviceDate() { this.dateError = '' },
+    personId() { this.personError = '' },
+    name() { this.nameError = '' },
+    phone() { this.phoneError = '' },
+    mode() { this.personError = ''; this.nameError = ''; this.phoneError = '' },
+    /** 接送人清單變動（例如 pickup_person_not_found 後重抓）：已選的人不在清單就清掉；清單變空改臨時填寫 */
+    persons(list) {
+      if (!list.some((p) => p.id === this.personId)) this.personId = ''
+      if (list.length === 0) this.mode = 'manual'
+    },
+  },
+  methods: {
+    submit() {
+      if (this.submitting) return
+      const date = this.serviceDate
+      let ok = true
+      if (!date || date < this.today || date > this.maxDate) { this.dateError = `日期需在今天起 ${this.maxDaysAhead} 天內`; ok = false }
+      if (this.mode === 'saved') {
+        if (!this.personId) { this.personError = '請選擇接送人'; ok = false }
+        if (ok) this.$emit('submit', { service_date: date, pickup_person_id: this.personId })
+        return
+      }
+      const name = this.name.trim()
+      const phone = this.phone.replace(/[\s-]/g, '')
+      if (!name) { this.nameError = '請輸入姓名'; ok = false }
+      if (!AF_PHONE_RE.test(phone)) { this.phoneError = '請輸入正確的電話號碼'; ok = false }
+      if (ok) this.$emit('submit', { service_date: date, proxy_name: name, proxy_phone: phone })
+    },
+    preset(p) {
+      this.serviceDate = p.serviceDate ?? this.today
+      this.mode = p.mode ?? (this.persons.length ? 'saved' : 'manual')
+      this.personId = p.personId ?? ''
+      this.name = p.name ?? ''
+      this.phone = p.phone ?? ''
+      nextTick(() => {
+        this.dateError = ''; this.personError = ''; this.nameError = ''; this.phoneError = ''
+        if (p.submit) this.submit()
+      })
+    },
+  },
+  template: `<form class="af" novalidate @submit.prevent="submit">
+    <fieldset class="af-lock" :disabled="submitting">
+      <div class="af-group">
+        <m3-text-field v-model="serviceDate" label="接送日期" type="date" :min="today" :max="maxDate" :supporting-text="rangeHint" :error-text="dateError"></m3-text-field>
+      </div>
+      <div class="af-group">
+        <p :id="groupId" class="af-label m3-title-small">接送人</p>
+        <m3-segmented-button v-model="mode" :items="modeItems" aria-label="接送人來源"></m3-segmented-button>
+        <template v-if="mode === 'saved'">
+          <div class="af-persons" :class="{ 'is-error': !!personError }" role="radiogroup" :aria-labelledby="groupId">
+            <button v-for="p in persons" :key="p.id" type="button" role="radio" class="af-person m3-state"
+              :class="{ 'is-checked': personId === p.id }" :aria-checked="String(personId === p.id)" @click="personId = p.id">
+              <m3-icon class="af-person__radio" :name="personId === p.id ? 'radio_button_checked' : 'radio_button_unchecked'" :filled="personId === p.id"></m3-icon>
+              <span class="af-person__avatar m3-title-small" aria-hidden="true">
+                <img v-if="p.photo_url && !photoFailed[p.id]" :src="p.photo_url" alt="" @error="photoFailed[p.id] = true">
+                <template v-else>{{ p.name.slice(0, 1) }}</template>
+              </span>
+              <span class="af-person__text">
+                <span class="af-person__name m3-body-large">{{ p.name }}</span>
+                <span class="af-person__meta m3-body-medium">{{ p.relation }} · {{ p.phone }}</span>
+              </span>
+            </button>
+          </div>
+          <p v-if="personError" class="af-error m3-body-small" role="alert"><m3-icon name="error" :filled="true" :size="16"></m3-icon>{{ personError }}</p>
+        </template>
+        <template v-else>
+          <m3-text-field v-model="name" label="姓名" :maxlength="50" autocomplete="off" :error-text="nameError"></m3-text-field>
+          <m3-text-field v-model="phone" label="電話" type="tel" inputmode="tel" autocomplete="off" :error-text="phoneError" supporting-text="手機或市話，例如 0912-000-123"></m3-text-field>
+          <p v-if="persons.length === 0" class="af-help m3-body-small">還沒有常用接送人；在「常用接送人」新增後，下次可直接從清單選擇。</p>
+        </template>
+      </div>
+      <p class="af-note m3-body-medium"><m3-icon name="info" :size="18"></m3-icon><span>代理人到場時出示接送碼，或由老師核對身分後交付。</span></p>
+    </fieldset>
+    <div class="af-actions">
+      <m3-button variant="outlined" :disabled="submitting" @click="$emit('cancel')">取消</m3-button>
+      <m3-button type="submit" :loading="submitting">建立代理接送</m3-button>
+    </div>
+  </form>`,
+}
+
+/* ============================================================
+   本稿：PickupProxyView（PARENT-104）
+   ============================================================ */
+const PAGE_COMPONENTS = { StatusPill, SkeletonBlock, ParentEmptyState, ChildContextHeader, ConfirmDialog, PullToRefresh, PickupPersonForm, PickupPersonListItem, PickupCodeCard, AuthorizationListItem, AuthorizationForm }
+const TODAY = '2026-10-07'
+const clone = (o) => JSON.parse(JSON.stringify(o))
+const P = (o) => ({ student_id: 's1', photo_url: null, created_at: '2026-09-01T02:00:00Z', ...o })
+const A = (o) => ({ student_id: 's1', pickup_person_id: null, status: 'active', effective_status: 'active', verified_at: null, verification_method: null, created_at: '2026-10-01T02:00:00Z', ...o })
+
+function pageSetup({ snack }) {
+  Vue.provide('snack', snack)
+  const PHOTO = makePhotoUrl('--m3-tertiary-container', '--m3-tertiary')
+  const KID_PHOTO = makePhotoUrl('--m3-secondary-container', '--m3-secondary')
+  const ALL_KIDS = [
+    { id: 's1', name: '王小明', grade_level: 3, class_name: '中年級班', school_name: '某某國小', photo_url: null, status: 'active' },
+    { id: 's2', name: '王小華', grade_level: 1, class_name: '低年級 A 班', school_name: '某某國小', photo_url: KID_PHOTO, status: 'active' },
+  ]
+  const SEED = () => ({
+    s1: {
+      persons: [
+        P({ id: 'pp1', name: '李阿姨', relation: '保母', phone: '0912000123', photo_url: PHOTO }),
+        P({ id: 'pp2', name: '陳叔叔', relation: '親戚', phone: '0922000456' }),
+        P({ id: 'pp3', name: '王爺爺', relation: '祖父', phone: '0233000789' }),
+      ],
+      auths: [
+        A({ id: 'a2', service_date: '2026-10-09', pickup_person_id: 'pp2', proxy_name: '陳叔叔', proxy_phone: '0922000456', code_last4: '5521' }),
+        A({ id: 'a1', service_date: '2026-10-07', pickup_person_id: 'pp1', proxy_name: '李阿姨', proxy_phone: '0912000123', code_last4: '8213' }),
+        A({ id: 'a3', service_date: '2026-10-03', proxy_name: '陳叔叔', proxy_phone: '0922000456', code_last4: '1907', status: 'completed', effective_status: 'completed', verified_at: '2026-10-03T09:41:00Z', verification_method: 'code' }),
+        A({ id: 'a4', service_date: '2026-10-01', proxy_name: '李阿姨', proxy_phone: '0912000123', code_last4: '6630', status: 'cancelled', effective_status: 'cancelled' }),
+        A({ id: 'a5', service_date: '2026-09-29', proxy_name: '林小姐', proxy_phone: '0955000321', code_last4: '4402', effective_status: 'expired' }),
+      ],
+    },
+    s2: { persons: [], auths: [] },
+  })
+  let db = SEED()
+  const kids = ref(ALL_KIDS.slice())
+  const kidsLoading = ref(false)
+  const childId = ref('s1')
+  const currentKid = computed(() => kids.value.find((k) => k.id === childId.value) || kids.value[0])
+  const limits = reactive({ persons_max: 10, authorization_max_days_ahead: 14 })
+  const persons = ref([])
+  const auths = ref([])
+  const personState = ref('loading')
+  const authState = ref('loading')
+  const pastOpen = ref(false)
+  const scrolled = ref(false)
+  const navResult = ref('')
+  const log = ref([])
+  const addLog = (s) => { log.value = [s, ...log.value].slice(0, 8) }
+  const sim = reactive({ auth: 'ok', op: 'ok', person: 'ok', failLoad: '' })
+
+  const activeAuths = computed(() => auths.value.filter((a) => a.effective_status === 'active').sort((x, y) => (x.service_date < y.service_date ? -1 : x.service_date > y.service_date ? 1 : 0)))
+  const pastAuths = computed(() => auths.value.filter((a) => a.effective_status !== 'active'))
+  const atLimit = computed(() => persons.value.length >= limits.persons_max)
+
+  /* ---- 載入（兩區並行；切換小孩以序號丟棄舊回應） ---- */
+  let seq = 0
+  function loadPersons({ keep = false } = {}) {
+    const my = seq
+    if (!keep) personState.value = 'loading'
+    addLog(`GET /parent/children/${childId.value}/pickup-persons`)
+    return new Promise((r) => setTimeout(() => {
+      if (my !== seq) return r()
+      if (sim.failLoad === 'persons' || sim.failLoad === 'both') { if (!keep) personState.value = 'error'; else snack.show('更新失敗，請稍後再試', { tone: 'error' }); return r() }
+      persons.value = clone(db[childId.value].persons); personState.value = 'ready'; r()
+    }, 700))
+  }
+  function loadAuths({ keep = false } = {}) {
+    const my = seq
+    if (!keep) authState.value = 'loading'
+    addLog(`GET /parent/children/${childId.value}/pickup-authorizations`)
+    return new Promise((r) => setTimeout(() => {
+      if (my !== seq) return r()
+      if (sim.failLoad === 'auths' || sim.failLoad === 'both') { if (!keep) authState.value = 'error'; else snack.show('更新失敗，請稍後再試', { tone: 'error' }); return r() }
+      auths.value = clone(db[childId.value].auths); authState.value = 'ready'; r()
+    }, 800))
+  }
+  const loadBoth = (opts) => Promise.all([loadPersons(opts), loadAuths(opts)])
+  const refreshAll = () => loadBoth({ keep: true })
+  function selectChild(id) {
+    seq += 1
+    childId.value = id
+    pastOpen.value = false
+    addLog(`children.select('${id}') → 兩區顯示骨架並重抓（舊回應丟棄）`)
+    loadBoth()
+  }
+
+  /* ---- 接送碼（只存在本頁的區域 ref；不進 store、不寫 storage、不出現在 URL） ---- */
+  const code = ref(null)
+  const codeOpen = ref(false)
+  const genCode = () => String(Math.floor(Math.random() * 1000000)).padStart(6, '0')
+  function showCode(value, proxyName, serviceDate) {
+    code.value = { value, proxyName, serviceDate }
+    codeOpen.value = true
+  }
+  function onCodeDone() {
+    codeOpen.value = false
+    code.value = null
+    addLog('「我已記下」→ 關閉接送碼卡、code = null、重抓授權')
+    loadAuths({ keep: true })
+  }
+
+  /* ---- 新增代理接送 ---- */
+  const authForm = reactive({ open: false, submitting: false, key: 0 })
+  const authFormRef = ref(null)
+  function openAuthForm() { authForm.key += 1; authForm.submitting = false; authForm.open = true }
+  function submitAuth(input) {
+    authForm.submitting = true
+    addLog(`POST /parent/children/${childId.value}/pickup-authorizations ${JSON.stringify(input)}`)
+    setTimeout(() => {
+      authForm.submitting = false
+      const r = sim.auth
+      if (r === 'ok') {
+        const person = input.pickup_person_id ? db[childId.value].persons.find((p) => p.id === input.pickup_person_id) : null
+        const value = genCode()
+        const a = A({ id: `n${Date.now()}`, student_id: childId.value, service_date: input.service_date, pickup_person_id: person ? person.id : null, proxy_name: person ? person.name : input.proxy_name, proxy_phone: person ? person.phone : input.proxy_phone, code_last4: value.slice(-4) })
+        db[childId.value].auths.unshift(a)
+        authForm.open = false
+        setTimeout(() => showCode(value, a.proxy_name, a.service_date), 200)
+        return
+      }
+      const msg = {
+        authorization_limit_reached: '這一天的代理接送已達上限',
+        invalid_service_date: `日期需在今天起 ${limits.authorization_max_days_ahead} 天內`,
+        pickup_person_not_found: '接送人已不存在',
+        student_not_active: '此學生目前暫停，無法進行此操作',
+      }[r]
+      snack.show(msg, { tone: 'error' })
+      if (r === 'pickup_person_not_found') {
+        const pid = input.pickup_person_id || 'pp1'
+        db[childId.value].persons = db[childId.value].persons.filter((p) => p.id !== pid)
+        loadPersons({ keep: true })
+      }
+    }, 900)
+  }
+
+  /* ---- 新增接送人 ---- */
+  const personForm = reactive({ open: false, submitting: false, key: 0 })
+  const personFormRef = ref(null)
+  function openPersonForm() { if (atLimit.value) return; personForm.key += 1; personForm.submitting = false; personForm.open = true }
+  function submitPerson(input) {
+    personForm.submitting = true
+    addLog(`POST /parent/children/${childId.value}/pickup-persons（multipart${input.photo ? '，含照片' : ''}）`)
+    setTimeout(() => {
+      personForm.submitting = false
+      const r = sim.person
+      if (r === 'ok' || r === 'delete_404') {
+        db[childId.value].persons.push(P({ id: `pp${Date.now()}`, student_id: childId.value, name: input.name, relation: input.relation, phone: input.phone }))
+        personForm.open = false
+        snack.show('已新增接送人')
+        loadPersons({ keep: true })
+        return
+      }
+      const msg = {
+        pickup_person_limit_reached: `常用接送人最多 ${limits.persons_max} 位`,
+        too_large: '照片檔案過大',
+        unsupported: '照片格式不支援，請使用 JPG、PNG、WEBP 或 HEIC',
+        storage_unavailable: '照片上傳失敗，請稍後再試',
+      }[r]
+      snack.show(msg, { tone: 'error' })
+    }, 900)
+  }
+
+  /* ---- 確認對話框：刪除接送人 / 重新產生 / 取消授權 / 離開頁面 ---- */
+  const dlg = reactive({ kind: '', target: null, busy: false, leaveNote: '' })
+  const askDelete = (p) => { dlg.kind = 'delete'; dlg.target = p }
+  const askRegenerate = (a) => { dlg.kind = 'regenerate'; dlg.target = a }
+  const askCancel = (a) => { dlg.kind = 'cancel'; dlg.target = a }
+  const closeDlg = () => { if (!dlg.busy) { dlg.kind = ''; dlg.target = null } }
+  function markGone(id, status) {
+    const a = db[childId.value].auths.find((x) => x.id === id)
+    if (a) { a.status = status === 'expired' ? 'active' : status; a.effective_status = status }
+  }
+  function confirmDlg() {
+    const { kind, target } = dlg
+    if (kind === 'leave') {
+      dlg.kind = ''
+      codeOpen.value = false
+      code.value = null
+      navResult.value = dlg.leaveNote
+      addLog('離開頁面：接送碼清除')
+      return
+    }
+    dlg.busy = true
+    const path = kind === 'delete' ? `DELETE /parent/pickup-persons/${target.id}` : `POST /parent/pickup-authorizations/${target.id}/${kind === 'regenerate' ? 'regenerate-code' : 'cancel'}`
+    addLog(path)
+    setTimeout(() => {
+      dlg.busy = false
+      dlg.kind = ''
+      const ok = kind === 'delete' ? sim.person !== 'delete_404' : sim.op === 'ok'
+      if (kind === 'delete') {
+        db[childId.value].persons = db[childId.value].persons.filter((p) => p.id !== target.id)
+        snack.show(ok ? `已刪除 ${target.name}` : '接送人已不存在', ok ? {} : { tone: 'error' })
+        loadPersons({ keep: true })
+        return
+      }
+      if (!ok) {
+        if (sim.op === 'student_not_active') { snack.show('此學生目前暫停，無法進行此操作', { tone: 'error' }); return }
+        markGone(target.id, sim.op === 'authorization_expired' ? 'expired' : 'completed')
+        snack.show('這筆授權已失效', { tone: 'error' })
+        loadAuths({ keep: true })
+        return
+      }
+      if (kind === 'regenerate') {
+        const value = genCode()
+        const a = db[childId.value].auths.find((x) => x.id === target.id)
+        if (a) a.code_last4 = value.slice(-4)
+        showCode(value, target.proxy_name, target.service_date)
+        return
+      }
+      markGone(target.id, 'cancelled')
+      const row = auths.value.find((x) => x.id === target.id)
+      if (row) { row.status = 'cancelled'; row.effective_status = 'cancelled' }
+      snack.show('已取消代理接送')
+    }, 900)
+  }
+  /** onBeforeRouteLeave 的稿件版：接送碼卡開著時先確認 */
+  function tryLeave(note) {
+    if (code.value) { dlg.kind = 'leave'; dlg.leaveNote = note; addLog('onBeforeRouteLeave：接送碼卡開著 → 先確認'); return }
+    navResult.value = note
+  }
+
+  const overlayOpen = computed(() => authForm.open || personForm.open || codeOpen.value || !!dlg.kind)
+
+  /* ---- 稿件：頁面狀態與疊層預覽 ---- */
+  const pageStates = [
+    { key: 'data', label: '兩區皆有資料' },
+    { key: 'past', label: '過去的授權展開' },
+    { key: 'empty', label: '兩區皆空' },
+    { key: 'limit', label: '接送人已達上限（上限 3）' },
+    { key: 'loading', label: '首次載入' },
+    { key: 'error', label: '兩區載入失敗' },
+    { key: 'auth-error', label: '只有授權區失敗' },
+  ]
+  const pageKey = ref('data')
+  function applyPage(key) {
+    seq += 1
+    pageKey.value = key
+    db = SEED()
+    kids.value = ALL_KIDS.slice()
+    navResult.value = ''
+    authForm.open = false; personForm.open = false; codeOpen.value = false; code.value = null; dlg.kind = ''
+    limits.persons_max = key === 'limit' ? 3 : 10
+    childId.value = key === 'empty' ? 's2' : 's1'
+    pastOpen.value = key === 'past'
+    const id = childId.value
+    if (key === 'loading') { personState.value = 'loading'; authState.value = 'loading'; return }
+    personState.value = key === 'error' ? 'error' : 'ready'
+    authState.value = key === 'error' || key === 'auth-error' ? 'error' : 'ready'
+    persons.value = clone(db[id].persons)
+    auths.value = clone(db[id].auths)
+  }
+  const overlays = [
+    { key: 'person-form', label: '新增接送人 sheet' },
+    { key: 'person-error', label: '新增接送人錯誤（413）' },
+    { key: 'delete', label: '刪除確認' },
+    { key: 'auth-form', label: '新增代理接送 sheet' },
+    { key: 'code', label: '接送碼卡（不可滑動關閉）' },
+    { key: 'regenerate', label: '重新產生確認' },
+    { key: 'cancel', label: '取消確認' },
+    { key: 'leave', label: '離開頁面確認已記下' },
+  ]
+  function openOverlay(key) {
+    if (pageKey.value !== 'data' && pageKey.value !== 'past') applyPage('data')
+    authForm.open = false; personForm.open = false; dlg.kind = ''
+    if (key !== 'code' && key !== 'leave') { codeOpen.value = false; code.value = null }
+    if (key === 'person-form') openPersonForm()
+    if (key === 'person-error') {
+      sim.person = 'too_large'
+      openPersonForm()
+      nextTick(() => { if (personFormRef.value) personFormRef.value.preset({ name: '張阿姨', relation: '保母', phone: '0911-000-222', submit: true }) })
+    }
+    if (key === 'delete') askDelete(persons.value[0])
+    if (key === 'auth-form') { openAuthForm(); nextTick(() => { if (authFormRef.value) authFormRef.value.preset({ mode: 'saved', personId: 'pp1', serviceDate: '2026-10-08' }) }) }
+    if (key === 'code') showCode('048213', '李阿姨', '2026-10-08')
+    if (key === 'regenerate') askRegenerate(activeAuths.value[0])
+    if (key === 'cancel') askCancel(activeAuths.value[1] || activeAuths.value[0])
+    if (key === 'leave') { if (!code.value) showCode('048213', '李阿姨', '2026-10-08'); nextTick(() => tryLeave('返回上一頁（接送）')) }
+  }
+  function resetAll() { applyPage('data') }
+  const authResults = [
+    { key: 'ok', label: '成功（顯示接送碼）' },
+    { key: 'authorization_limit_reached', label: '409 當天已達上限' },
+    { key: 'invalid_service_date', label: '422 日期超出範圍' },
+    { key: 'pickup_person_not_found', label: '404 接送人已不存在' },
+    { key: 'student_not_active', label: '409 學生暫停' },
+  ]
+  const opResults = [
+    { key: 'ok', label: '成功' },
+    { key: 'authorization_expired', label: '409 已過期' },
+    { key: 'authorization_not_active', label: '409 已失效（已接送 / 已取消）' },
+    { key: 'student_not_active', label: '409 學生暫停' },
+  ]
+  const personResults = [
+    { key: 'ok', label: '成功' },
+    { key: 'pickup_person_limit_reached', label: '409 已達上限' },
+    { key: 'too_large', label: '413 照片過大' },
+    { key: 'unsupported', label: '415 格式不支援' },
+    { key: 'storage_unavailable', label: '502 上傳失敗' },
+    { key: 'delete_404', label: '刪除時 404' },
+  ]
+  applyPage('data')
+
+  const decisions = [
+    '版面（由上而下）：頂部列「代理接送」+ 返回鍵（底部導覽停在「接送」，由 ParentLayout 負責）→ ChildContextHeader →「新增代理接送」（filled、全寬、add 圖示，頁面主要動作）→ 小標「代理接送授權」+ 右側「有效 N 筆」→ 有效授權卡 →「過去的授權（N）」展開列 → 小標「常用接送人」+ 右側「{n}/{persons_max}」→ 接送人卡 →「新增接送人」（tonal、全寬、person_add）。授權區放前面：這頁的目的（接送頁入口文案）是「由親友代接時，先建立代理接送與接送碼」，常用接送人是輔助。整頁內容包在 PullToRefresh 內；頁面自帶左右 16px、上 8px、底部 24px 內距，區塊間距 12px；小標 title-small（同請假頁）。',
+    '授權區：有效授權（effective_status active）依 service_date 由近到遠，用 PARENT-103 AuthorizationListItem（外觀照元件稿）列在 outlined 卡內；其他狀態（已接送 / 已取消 / 已過期，API 只回近 30 天）收在「過去的授權（N）」：48px 文字列 + 右側 expand_more（展開時轉 180°、aria-expanded / aria-controls），預設收合、切換小孩時收合；沒有過去的授權時不顯示這列。皆無有效授權 → 卡內 ParentEmptyState（badge）「目前沒有代理接送授權」/「由親友代接時，按「新增代理接送」取得接送碼」。',
+    '接送人區：PARENT-100 PickupPersonListItem（外觀照元件稿）；空 → ParentEmptyState（group）「尚未新增常用接送人」/「新增後可快速建立代理接送」。n ≥ persons_max 時「新增接送人」原生 disabled，按鈕下方置中小字「最多 {persons_max} 位」。數字取自掛載時 getParentLimits()。',
+    '載入：兩區並行載入，各自 SkeletonBlock row × 2（授權列較高，骨架每列 120px）；各區失敗各自卡內 ParentEmptyState error「代理接送授權載入失敗」/「常用接送人載入失敗」+「重試」（只重抓該區），另一區照常顯示，「新增代理接送」照常可按。切換小孩：兩區回到骨架、以序號丟棄舊回應。下拉重新整理重抓兩區、保留現有內容，失敗以 error snackbar「更新失敗，請稍後再試」。接送碼卡開著時停用下拉。',
+    '新增代理接送：ParentBottomSheet「新增代理接送」；表單上方一列「為 {小孩姓名} 建立代理接送」（surface-container 底、首字圓，同請假頁，多孩家庭避免建錯人）＋ PARENT-102 AuthorizationForm（persons 帶入、today = 台北今日、maxDaysAhead = authorization_max_days_ahead）。送出中 sheet 不可關閉。成功 → 關閉表單 sheet，接著開啟接送碼 sheet。表單與接送人兩個 sheet 的按鈕列固定在 sheet 可視區底部（sticky，同請假頁 LeaveForm），由頁面包住表單的元素 + :deep() 樣式達成，不改元件介面。',
+    '接送碼：不可關閉的 ParentBottomSheet「接送碼」（dismissible=false：沒有 ✕、scrim / Esc / 下拖都不關）內放 PARENT-101 PickupCodeCard；只能按「我已記下」→ 關閉、暫存 code 設回 null、重抓授權清單（新授權只剩末四碼）。code 只存在本頁的區域 ref，不進 store、不寫 storage、不出現在 URL。接送碼卡開著時離開頁面（返回鍵、底部導覽、瀏覽器返回；onBeforeRouteLeave）→ ConfirmDialog「確定已記下接送碼？」/「離開後就無法再查看這組接送碼，遺失時只能重新產生」/「已記下，離開」/「留在這裡」，疊在接送碼 sheet 上（dialog 15 > sheet 10）。',
+    '重新產生：列上「重新產生接送碼」→ ConfirmDialog「重新產生接送碼？」/「舊的接送碼會立即失效，請把新碼重新傳給接送人」，說明下方一列目標「{proxy_name} · MM/DD（X）」，確認鈕「重新產生」（一般色，loading 防連點）→ 成功同樣以接送碼 sheet 顯示新碼。取消：「取消授權」→ ConfirmDialog destructive「取消這筆代理接送？」/「接送碼會立即失效，代理人無法再用它接送」+ 目標列，confirmLabel「確定取消」、cancelLabel「先不要」→ 成功以回應更新該列（移到「過去的授權」）並 snackbar「已取消代理接送」。',
+    '新增接送人：ParentBottomSheet「新增接送人」；上方「為 {小孩姓名} 新增常用接送人」+ PARENT-099 PickupPersonForm → createPickupPerson → 關閉、重抓清單、snackbar「已新增接送人」。刪除：列上刪除鈕 → ConfirmDialog destructive「刪除 {name}？」/「已建立的代理接送授權不受影響」/ 確認「刪除」→ deletePickupPerson → 重抓、snackbar「已刪除 {name}」。',
+    '錯誤一律以 error snackbar 顯示（疊在 sheet 之上），表單 sheet 保持開啟並保留輸入：接送人 pickup_person_limit_reached「常用接送人最多 {persons_max} 位」、413「照片檔案過大」、415「照片格式不支援，請使用 JPG、PNG、WEBP 或 HEIC」、storage_unavailable「照片上傳失敗，請稍後再試」；刪除 404「接送人已不存在」並重抓。授權 authorization_limit_reached 見待裁定 1、invalid_service_date「日期需在今天起 {authorization_max_days_ahead} 天內」、pickup_person_not_found「接送人已不存在」並重抓接送人（表單裡已選的人會被清掉）、authorization_not_active / authorization_expired「這筆授權已失效」並重抓授權。其他錯誤（例如 student_not_active）顯示後端 error.message，不自動重試。',
+    '觸控目標：身分卡 80px、「新增代理接送」「新增接送人」48px、授權列文字按鈕 48px、刪除鈕 48×48、展開列 48px、sheet / 對話框按鈕 48px。',
+    '移植 ivy PickupView 的 askRegenerate / doCancel / submitPerson 與 PickupCreateView 建立後顯示碼流程（合併為單頁 + bottom sheet）；去掉編輯接送人、跨小孩授權列表、一次多孩授權。各元件外觀與行為照已核可元件稿，本稿只決定版面與流程。',
+  ]
+  const openQuestions = [
+    {
+      question: '新增代理接送時後端回 authorization_limit_reached（同一學生同一天的有效授權已達上限）。task 寫的提示是「同一天最多 3 筆代理接送」，但上限是後台可調的設定（pickup.authorization.max_active_per_day，1～10），且不在公開設定裡，前端拿不到實際數字。提示要怎麼寫？',
+      options: [
+        { text: '不寫數字：「這一天的代理接送已達上限」（可另加「請先取消不需要的授權」）；後台改上限也不會出現錯的數字', recommended: true },
+        { text: '照 task 寫死「同一天最多 3 筆代理接送」；後台改上限時要記得同步改前端文案', recommended: false },
+      ],
+    },
+  ]
+
+  return {
+    TODAY, kids, kidsLoading, childId, currentKid, limits, persons, auths, personState, authState, pastOpen, scrolled, navResult, log, sim,
+    activeAuths, pastAuths, atLimit, loadPersons, loadAuths, refreshAll, selectChild,
+    code, codeOpen, onCodeDone, authForm, authFormRef, openAuthForm, submitAuth, personForm, personFormRef, openPersonForm, submitPerson,
+    dlg, askDelete, askRegenerate, askCancel, closeDlg, confirmDlg, tryLeave, overlayOpen, fmtDateWithWeekday,
+    pageStates, pageKey, applyPage, overlays, openOverlay, resetAll, authResults, opResults, personResults,
+    decisions, openQuestions,
+  }
+}
+
+const app = createApp({
+  setup() {
+    const readMeta = (name) => document.querySelector(`meta[name="${name}"]`)?.content ?? ''
+    const meta = { status: readMeta('preview-status'), tasks: readMeta('preview-tasks'), route: readMeta('preview-route'), updated: readMeta('preview-updated') }
+    const snack = createSnack()
+    const theme = ref('light')
+    watch(theme, (v) => {
+      if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark')
+      else document.documentElement.removeAttribute('data-theme')
+    })
+    return { meta, snack, theme, navItems: NAV_ITEMS, ...pageSetup({ snack }) }
+  },
+})
+
+app.component('M3Icon', M3Icon)
+app.component('M3Button', M3Button)
+app.component('M3IconButton', M3IconButton)
+app.component('M3Card', M3Card)
+app.component('M3TextField', M3TextField)
+app.component('M3Chip', M3Chip)
+app.component('M3ListItem', M3ListItem)
+app.component('M3TopAppBar', M3TopAppBar)
+app.component('M3NavigationBar', M3NavigationBar)
+app.component('M3Snackbar', M3Snackbar)
+app.component('M3SegmentedButton', M3SegmentedButton)
+app.component('M3Switch', M3Switch)
+app.component('ParentBottomSheet', ParentBottomSheet)
+Object.entries(PAGE_COMPONENTS).forEach(([name, def]) => app.component(name, def))
+app.mount('#app')
+</script>
+</body>
+</html>

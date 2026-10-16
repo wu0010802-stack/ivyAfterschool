@@ -54,7 +54,7 @@ code { font-size: 13px; }
   <h1>設計稿總覽</h1>
   <p class="lead">後台與家長端每張設計稿的狀態，待核可的稿集中在最上方。出稿、核可、改稿時同步更新（待核可與已核可分兩區，各自依檔名排序）（流程見 <code>.claude/skills/ui-design-preview/SKILL.md</code>）。</p>
 
-  <h2>待核可（0）</h2>
+  <h2>待核可（4）</h2>
   <p class="lead">這一區的稿需要你核可後才會進入實作。點稿名打開，右上「設計說明 / 待裁定」可看設計決策與待裁定題；稿已照推薦選項畫。</p>
   <div class="card">
     <table>
@@ -69,7 +69,38 @@ code { font-size: 13px; }
         </tr>
       </thead>
       <tbody>
-        <tr class="empty"><td colspan="6">目前沒有待核可的稿</td></tr>
+        <tr>
+          <td><a href="parent-component-authorization-form.html">parent-component-authorization-form.html</a></td>
+          <td class="tasks">PARENT-102</td>
+          <td class="route"><code>component:parent/components/pickup/AuthorizationForm.vue</code></td>
+          <td class="note">無待裁定</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
+        <tr>
+          <td><a href="parent-page-homework.html">parent-page-homework.html</a></td>
+          <td class="tasks">PARENT-073</td>
+          <td class="route"><code>/homework</code></td>
+          <td class="note">無待裁定</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
+        <tr>
+          <td><a href="parent-page-notifications.html">parent-page-notifications.html</a></td>
+          <td class="tasks">PARENT-177</td>
+          <td class="route"><code>/notifications</code></td>
+          <td class="note">無待裁定</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
+        <tr>
+          <td><a href="parent-page-pickup-proxy.html">parent-page-pickup-proxy.html</a></td>
+          <td class="tasks">PARENT-104</td>
+          <td class="route"><code>/pickup/proxy</code></td>
+          <td class="note">1 題：新增代理接送回 authorization_limit_reached 時的提示（上限是後台可調設定、前端拿不到數字）（推薦 A：不寫數字「這一天的代理接送已達上限」。B：照 task 寫死「同一天最多 3 筆代理接送」）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-16</td>
+        </tr>
       </tbody>
     </table>
   </div>
