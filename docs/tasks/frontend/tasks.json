@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 179,
-  "last_updated": "2026-10-16T04:53:21Z",
+  "version": 180,
+  "last_updated": "2026-10-16T04:58:01Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -799,7 +799,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/layout/AdminHeader.vue",
       "source_ref": "FE:src/components/layout/AdminHeader.vue::default",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r10a",
       "depends_on": [
         "FRONTEND-035",
@@ -828,9 +828,9 @@
         "notes": "happy-dom 不計算版面：頂欄 56px、切換鈕 44×44、標題 16px 粗體、圓點 8px 以 `?raw` 讀原始碼斷言（AdminHeader keeps header sizes from mockup）；el-dropdown / el-tooltip 以 setTimeout 開關，spec 用 fake timers 推進。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-f1",
+        "notes": "通過（review-r10-f1）。tdd.run 實跑 10 passed：8 條 red_case 逐條對應同名測試，另 2 條為通知鈴位於圓點與使用者選單之間、稿尺寸的 ?raw 斷言。歷史：1dd2482 只有 spec（AdminHeader.vue 尚不存在，全紅）→ 8b66093 實作 → 5828e80 只補 querySelectorAll 型別參數 → 2770a49 改 in_review。2770a49 補的 description（collapsed / mobile props、Expand / Fold、44×44、16px 粗體、右側順序、人像 + 姓名 + info tag + 箭頭、手機停用資訊列、登出中…停用、圓點 8px 三態 tooltip）逐條對照 page-admin-shell.html（approved，preview-tasks 含本 task，最後異動早於本 task）L361、L393-430 一致，不是遷就實作；手機觸發區 aria-label「帳號選單」是稿未寫的無障礙補充，不與稿衝突。介面用法依實際程式碼：auth.user.display_name / role.name、auth.logout()（不 reject、失敗也 reset）、adminWs.status（WsStatus 五值）、NotificationBell（無 props，aria-label 通知）、route.meta.title。設計稿 decisions 14 條：#5 #6 #8 屬本 task，皆符合；#2 #14 的頂欄部分（點擊 emit、icon 依 collapsed / mobile）符合，收合狀態與抽屜屬 FRONTEND-029；#7 斷線橫幅依 029 description 屬 AdminLayout，本元件未做（正確）；#9 通知鈴由 035 提供並嵌入；#1 #3 #4 屬 031、#10~#12 屬 034 / 036、#13 屬 029。Chromium 實測（自起 vite harness，用完關閉）：頂欄高 56、切換鈕 44×44、標題 16px / 600、圓點 8×8 灰色且 hover tooltip「即時連線未建立」、x 座標 圓點 < 鈴 < 使用者、使用者觸發區高 44；390 寬無水平溢出、觸發區無文字且 aria-label「帳號選單」、下拉首列「林行政（行政）」aria-disabled 且點擊不導頁；登出 API 延遲時再開下拉為「登出中…」aria-disabled=true、路由不動，回應後到 /login；鍵盤 Enter / Space 可開選單、Escape 關閉；console error 0。突變 14 種：拿掉 auth.logout、先導頁後登出、拿掉 :disabled、icon 不看 mobile、reconnecting tooltip 文字、connecting 判成 is-open、手機仍顯示姓名、手機拿掉 aria-label、修改密碼導錯路徑、拿掉 emit、標題不隨路由更新、手機資訊列不停用、拿掉通知鈴，皆轉紅；router.replace 改 push 仍綠（見殘留 1）。還原後 cmp 與 git diff 皆乾淨。web-lint 兩檔 exit 0；web-typecheck 本 task 檔案零錯誤。安全：登出先呼叫 API、清前端狀態後 replace 到 /login（authGuard 對 anonymous 放行 /login）；修改密碼導向 authOnly 的 /change-password；display_name 以文字插值，沒有 v-html；頂欄沒有依權限顯示的項目。殘留（不擋）：1) 測試分不出 router.replace 與 router.push（實作是 replace；改成 push 的影響只有登出後按上一頁會回到後台路徑，再被 authGuard 導回 /login），可補斷言 router.back() 後不回 /students。2) FRONTEND-029 的 description / red_cases 沒寫「傳 :collapsed、:mobile 給 AdminHeader 並處理 toggle-sidebar」；若 029 漏傳，整合後切換鈕 icon 與手機版使用者選單不會跟著變，建議協調者補進 029。3) 登出本身不停 adminWs、不清通知 store，依賴 /login 為 blank layout 讓 AdminLayout 卸載（029 onUnmounted stop）與 029 onMounted 重新 fetch，App.vue / 029 實作時要確認。4) 圓點綠 / 黃只以 class 與原始碼 CSS 規則對照（規則與稿相同），未在真實瀏覽器量 open / reconnecting 的顏色。5) web-typecheck 他人檔案的現存錯誤：FRONTEND-124 AttendanceStudentCard.vue(107) TS2322、PARENT-134 LeaveForm.vue(137) TS2345（皆為已 commit 的實作），以及實作尚未落地、找不到模組的紅燈 spec：FRONTEND-233 ExamSubjectsEditor、FRONTEND-132 LeaveAttachmentList、FRONTEND-126 useAttendanceBoard。"
       }
     },
     {
