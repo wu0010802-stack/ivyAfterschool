@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 292,
-  "last_updated": "2026-10-16T15:33:28Z",
+  "version": 293,
+  "last_updated": "2026-10-16T15:33:29Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3936,7 +3936,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/HomeworkBoardView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10f",
       "depends_on": [
         "FRONTEND-152",
@@ -3973,7 +3973,7 @@
           "HomeworkBoardView date range follows board window：fake now 2026-10-02、GET board 回 window {past_days:10, future_days:3} → 日期選擇器 2026-09-22 與 2026-10-05 可選，2026-09-21 與 2026-10-06 disabled"
         ],
         "run": "just web-test src/views/HomeworkBoardView.spec.ts -t \"HomeworkBoardView\"",
-        "notes": ""
+        "notes": "紅燈測試 5072396、實作 3023848（含 viewLoaders 的 HomeworkBoardView 改為實際頁面）。除 13 條 red_cases 外另有 7 條：全部班級依班級分組（組內學號）與換班級寫 query、搜尋姓名或學號、整班新增送出後 ElMessage 與重抓、ETA 儲存失敗 dialog 保持開啟並顯示錯誤、空清單 / 篩選後無卡片（清除篩選）/ 載入失敗重試、wsDenied 提示與重新整理、viewLoaders 接線。describe 逾時放寬為 30 秒（日期元件、兩個下拉、開關與多張帶 el-dropdown / 四段切換的卡片，happy-dom 單一案例數秒）。dialog 開合以 dialog 元件的 modelValue 判斷（happy-dom 不跑關閉動畫）；選單與下拉選項以觸發元素的 aria-controls 找對應清單。日期 picker 的 format 用 YYYY/MM/DD（與已核可稿實際渲染及其他頁一致）；稿 decisions 第 2 條文字寫「YYYY/MM/DD（週）」，要顯示星期需在 bootstrap 載入 dayjs 的 zh-tw 語系（目前只有 Element Plus 的 zh-tw），未在本 task 處理，已回報協調者。「隱藏請假 / 缺席 / 已離班」存 localStorage 'homework.hideAway'；「清除篩選」同稿：清搜尋、摘要回全部、關閉隱藏。突變自檢：隱藏不含已離班、偏好不寫入 localStorage、摘要篩選不生效、整班新增不看班級、編輯一律送全部欄位、日期範圍不用看板 window、範圍外日期也切換、刪除不確認、失敗也關閉 dialog、改回依項目判斷送 done、選了班級仍顯示分組標題、組內不依學號 各使對應測試轉紅。"
       },
       "review": {
         "status": "pending",
