@@ -172,6 +172,8 @@ describe('StudentSelect', () => {
 
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null])
     expect(wrapper.emitted('change')?.at(-1)).toEqual([null])
+    // initialOption 只有顯示用欄位，清除後移除，要重選須重新搜尋（change 才帶得出完整學生）
+    expect(optionTexts(wrapper)).toEqual([])
   })
 
   it('StudentSelect discards stale results', async () => {

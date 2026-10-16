@@ -108,6 +108,8 @@ function remoteMethod(raw: string): void {
 
 function onUpdate(value: string | null | undefined): void {
   const id = value || null
+  // 清除後拿掉 initialOption（沒有完整學生資料），避免重選時 change 帶不出學生
+  if (!id) options.value = options.value.filter((o) => o.item !== null)
   emit('update:modelValue', id)
   const picked = id ? options.value.find((o) => o.id === id) : undefined
   emit('change', picked?.item ?? null)
