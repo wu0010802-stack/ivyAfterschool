@@ -92,6 +92,13 @@ describe('TodayStatusCard', () => {
     expect(w.classes()).toContain('m3-card--elevated')
   })
 
+  it('TodayStatusCard keeps the teacher note exactly as written', () => {
+    const w = mountCard(today({ homework: { item_count: 3, done_count: 1, overall_status: 'in_progress', ready_eta: null, note: '數學訂正中\n國語圈詞' } }))
+
+    // 說明以 pre-wrap 保留換行：模板的縮排空白不能混進文字
+    expect(w.get('.tsc-note').element.textContent).toBe('老師說明：數學訂正中\n國語圈詞')
+  })
+
   it('TodayStatusCard homework done message', () => {
     const w = mountCard(today({ homework: HW_DONE }))
 
