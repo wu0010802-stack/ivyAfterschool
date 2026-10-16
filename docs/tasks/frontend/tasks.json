@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 285,
-  "last_updated": "2026-10-16T15:25:02Z",
+  "version": 286,
+  "last_updated": "2026-10-16T15:25:03Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5394,7 +5394,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": "FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav",
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r10e",
       "depends_on": [
         "FRONTEND-230",
@@ -5405,7 +5405,7 @@
         "FRONTEND-296"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "「缺」勾選沿用 component-exams.html 的 small checkbox（約 24px 高，低於 44px 觸控建議）；平板上可在輸入框輸入「缺」或「-」標記缺考，要放大需改元件稿與 FRONTEND-236。",
+      "risk_notes": "「缺」勾選沿用 component-exams.html 的 small checkbox（約 24px 高，低於 44px 觸控建議）；平板上可在輸入框輸入「缺」或「-」標記缺考，要放大需改元件稿與 FRONTEND-236。\n【review-r10-f4 打回】examId 變更時，前一場考試尚未送出 / 等待選擇 / 失敗的格子會以新的 examId 送出並顯示在新考試的成績格：ScoreGrid 監看 examId 重新載入，但 useScoreAutosave 的 dirty / error 格子在 initial 換掉時保留，送出時才讀 examId。反例（vitest 探針重現）：(1) 草稿 eA 王小明國語輸入 88 後 800ms 內把 examId 改成 eB → PUT /admin/exams/eB/scores 帶 s1/sub1=88，eB 的格子顯示 88；(2) 已發布 eA 尚未選擇通知時輸入 88、Esc 關掉 dialog（格子等待中），改 examId 為草稿 eB → notifyParents 變 false 立即 PUT /admin/exams/eB/scores 帶 eA 的 88。考試頁 /exams/:id 換參數時元件會沿用（RouterView 沒有 key），FRONTEND-234 的離開保護只寫了離開路由，參數變更不會觸發。驗收：examId 由 e1 改成 e2 後，不得有帶 e1 格子的 PUT /admin/exams/e2/scores，e2 的成績格只顯示 e2 的資料；e1 未送出的格子要嘛先以 e1 送出，要嘛由考試頁在參數變更前比照離開路由處理（flush → 仍未儲存則確認），不得靜默寫進 e2；補測試涵蓋上面兩個反例。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/exams/ScoreGrid.spec.ts",
@@ -5430,9 +5430,9 @@
         "notes": "表格 height 為 100%：ScoreGrid 根元素是高度 100% 的 flex 欄，由考試頁（FRONTEND-234）給定內容區剩餘高度，表頭固定、只捲表格本體。RenotifyChoiceDialog 以本元件自己的計時器（與 useScoreAutosave 同一個 DEFAULT_DEBOUNCE_MS）在格子變更後到期時檢查 awaitingNotifyChoice 開啟；換考試或發布狀態改變時重新決定 notifyParents（已發布 null、草稿 false），同一場已發布考試重新載入時維持本次選擇。重新載入（reload）保留畫面上的表格直到新資料回來，只有第一次載入顯示 skeleton。happy-dom 不會在卸載有焦點的輸入框時觸發 blur（Chromium 會），Esc 案例在 keydown 之後、重新渲染之前補派 blur 模擬，拿掉「忽略卸載時的 change」會轉紅。點格子空白處時缺考格聚焦「缺」勾選（與鍵盤導覽一致）；輸入法組字中的 Enter 不換格。整組 timeout 上限 30 秒（共用 CPU 高負載時避免假紅，不影響斷言）。真實 Chromium 驗證：高度填滿、表頭固定、列高 ≥ 48、科目欄 140、Tab 換列與被固定欄遮住的格子捲到可見、Esc 還原不送出、點備註圖示焦點在編輯框、點空白處聚焦該格。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r10-f4",
+        "notes": "打回（1 項，見 risk_notes）。其餘通過：tdd.run 實跑 12/12 綠，名稱與 12 條 red_case 一一對應；測試 87fa320 早於實作 175cec3，實作 commit 對 spec 的改動只加嚴（Enter 補組字中斷言、Esc 案例補派 blur 模擬 Chromium 卸載時的 blur、describe timeout 30 秒），未放寬斷言。突變 14 處，13 處轉紅：不忽略卸載 blur 的 change、Tab 不換列、→ 不看游標、缺考格不改聚焦「缺」、組字中 Enter 也換格、dialog 只開第一次、點備註圖示也聚焦分數框、不 emit dirty-change、Esc 不還焦、已發布也預設 false、重試不呼叫 retryFailed、Shift+Enter 改往下、邊界不停在原格；reload 一律顯示 skeleton 不轉紅（tdd.notes 的補充行為，沒有 red_case）。scroll-padding-left 以 Chromium 突變驗證：拿掉後 Tab 換列到第一科時該格被固定欄蓋住（cellLeft 77 < 固定欄右緣 323），還原後正常。還原後 cmp 與 git diff 皆乾淨。真實 Chromium（420px 高的父層、16 列 × 6 科）實測：高度填滿父層、表頭固定只捲表格本體、列高 ≥ 48、科目欄 140；已不在名單的固定欄底色不透明、只有 .cell 淡化 0.55；最後一科 Tab → 下一列第一科並捲到固定欄右邊、Tab 到最右科可見；Enter 到缺考格聚焦「缺」；Esc 還原為 95、2.5 秒內沒有 PUT、焦點留在同格全選；88 + Enter 只送一次、一格；連續 Tab 輸入合併送出；Shift+F2 開備註、Enter 確定後焦點回同格並送出分數與備註；點格子空白處聚焦分數框、缺考格聚焦「缺」；已發布第一次自動儲存跳 dialog 且不送出、Esc 後工具列「尚未選擇」「1 格尚未儲存」、在工具列選「關」立即送出 notify_parents false。核可稿 page-exam-detail.html decisions 5~11 逐條一致（表格 height 100% 改由考試頁給定高度，已寫進 FRONTEND-234；點缺考格空白處聚焦「缺」、組字中 Enter 不換格屬合理補充）；格子外觀與備註互動沿用已核可的 ScoreCell。web-lint 乾淨；web-typecheck 的錯誤全在他人進行中的檔案。殘留（不擋）：表格最後一格按 Tab 會先到該格的「缺」勾選，再按一次才離開表格（與稿的示範程式相同）；reload 保留舊表格與 scroll-padding 沒有單元測試保護。"
       }
     },
     {
