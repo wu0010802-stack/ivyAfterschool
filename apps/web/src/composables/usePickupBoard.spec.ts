@@ -442,6 +442,55 @@ describe('usePickupBoard', () => {
     expect(fa).toHaveBeenCalledTimes(2)
   })
 
+  it('usePickupBoard does not fire new request hook for local create', async () => {
+    mockAll(makeQueue([]))
+    const { board } = await mountBoard()
+    const fn = vi.fn()
+    board.onNewRequest(fn)
+    const r9 = makeRequest({ id: 'r9', studentId: 's9', studentName: '陳小美', source: 'staff', requested_by_type: 'staff' })
+
+    // ws 比 HTTP 回應先到：create 進行中收到該生的新 pending 也不當新請求
+    let release: () => void = () => undefined
+    mock.onPost('/admin/pickup/requests').replyOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve([201, r9])
+        }),
+    )
+    const creating = board.create({ student_id: 's9' })
+    await settle()
+    socket().serverMessage('pickup.request_updated', r9)
+    await settle()
+    release()
+    expect((await creating)?.id).toBe('r9')
+    await settle()
+    expect(openIds(board)).toEqual(['r9'])
+    expect(fn).not.toHaveBeenCalled()
+
+    // HTTP 先回、ws 後到：同一筆已在佇列，不當新請求
+    const r8 = makeRequest({ id: 'r8', studentId: 's8', studentName: '林小華', source: 'staff', requested_by_type: 'staff' })
+    mock.onPost('/admin/pickup/requests').replyOnce(201, r8)
+    await board.create({ student_id: 's8' })
+    socket().serverMessage('pickup.request_updated', r8)
+    await settle()
+    expect(fn).not.toHaveBeenCalled()
+
+    // create 結束後（成功或失敗）不再壓制：該生之後的新請求照常通知
+    socket().serverMessage('pickup.request_updated', { ...r9, status: 'cancelled', cancelled_at: '2026-10-02T09:05:00Z' })
+    await settle()
+    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r11', studentId: 's9', studentName: '陳小美' }))
+    await settle()
+    expect(fn.mock.calls.map((c) => (c[0] as PickupRequest).id)).toEqual(['r11'])
+
+    mock.onPost('/admin/pickup/requests').replyOnce(409, {
+      error: { code: 'pickup_request_exists', message: '今天已有進行中的接送請求', details: null },
+    })
+    await expect(board.create({ student_id: 's7' })).rejects.toMatchObject({ code: 'pickup_request_exists' })
+    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r12', studentId: 's7', studentName: '張語晴' }))
+    await settle()
+    expect(fn.mock.calls.map((c) => (c[0] as PickupRequest).id)).toEqual(['r11', 'r12'])
+  })
+
   it('usePickupBoard handles request created directly as arrived', async () => {
     const s5 = makeStudent({ student_id: 's5', student_no: 'S11305', name: '李承恩' })
     mockAll(makeQueue([makeRequest()]), makeRoster([makeStudent(), s5]))
