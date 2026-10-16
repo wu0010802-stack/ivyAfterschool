@@ -3,7 +3,8 @@
  * 月出勤日曆（純展示）：週日開頭的 7 欄格，表頭「日 一 二 三 四 五 六」，月初前補空格。
  * 每格是 <button>：日期數字 + 狀態以「底色 + 圖示」雙重表達，aria-label 如「10月2日 已到班」。
  * 請假格在月曆與圖例改用 tertiary-container，與已離班（secondary-container）區分；
- * 今天以前仍是 expected 的日子顯示為「未登記」；非營業日灰階、無紀錄無底色，兩者仍可點。
+ * 今天以前仍是 expected、或計入統計（in_stats）卻沒有出勤列的日子顯示為「未登記」（與統計一致）；
+ * 非營業日灰階、無紀錄（今天以後、入學日以前）無底色，兩者仍可點。
  * 日期與星期一律以 Date.UTC 計算，不受執行環境時區影響（不用 toISOString().slice）。
  * 月份切換、統計列、單日明細與載入 / 錯誤狀態屬於 AttendanceView，本元件沒有自己的空狀態。
  */
@@ -73,7 +74,10 @@ function leaveLabel(type: LeaveType | null): string {
 function describe(date: string, info: AttendanceDay | undefined, today: string): { kind: CellKind; text: string } {
   if (info?.is_service_day === false) return { kind: 'closed', text: CLOSED_LABEL }
   const status = info?.status ?? null
-  if (!info || !status) return { kind: 'none', text: NO_RECORD_LABEL }
+  if (!info || !status) {
+    // 計入統計卻沒有出勤列：統計已把它算成未登記，月曆同樣顯示；其餘（今天以後、入學日以前）為無紀錄
+    return info?.in_stats ? { kind: 'unrecorded', text: UNRECORDED_LABEL } : { kind: 'none', text: NO_RECORD_LABEL }
+  }
   // 今天以前仍是 expected：老師沒登記到班；今天與之後仍是預計到班
   if (status === 'expected' && date < today) return { kind: 'unrecorded', text: UNRECORDED_LABEL }
   if (status === 'leave') return { kind: 'leave', text: leaveLabel(info.leave_type) }

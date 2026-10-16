@@ -6,6 +6,8 @@ import { parentHttp } from './http'
 export interface AttendanceDay {
   date: ISODate
   is_service_day: boolean
+  /** 是否計入 stats（BACKEND-561）：營業日、不晚於今天、不早於入學日。true 且沒有出勤列時月曆顯示「未登記」 */
+  in_stats: boolean
   /** 該日沒有出勤列時為 null（非營業日、營業日尚未建列） */
   status: AttendanceStatus | null
   check_in_at: ISODateTime | null

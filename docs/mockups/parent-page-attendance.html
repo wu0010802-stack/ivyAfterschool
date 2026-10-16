@@ -15,7 +15,7 @@
 <meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="PARENT-132">
 <meta name="preview-route" content="/attendance">
-<meta name="preview-updated" content="2026-10-08">
+<meta name="preview-updated" content="2026-10-16">
 
 <title>設計稿：家長端 出勤紀錄（AttendanceView）</title>
 <script src="https://unpkg.com/vue@3.5.43/dist/vue.global.prod.js"></script>
@@ -1482,7 +1482,8 @@ function describeDay(date, info, today) {
   const prefix = `${d.getUTCMonth() + 1}月${d.getUTCDate()}日`
   if (info && info.is_service_day === false) return { kind: 'closed', label: `${prefix} 休息`, mark: '休' }
   const s = info ? info.status : null
-  if (!s) return { kind: 'none', label: `${prefix} 無紀錄` }
+  // 計入統計（in_stats：營業日、不晚於今天、不早於入學日）卻沒有出勤列：與統計一致顯示未登記；其餘沒有出勤列的日子為無紀錄
+  if (!s) return info && info.in_stats ? { kind: 'unrecorded', label: `${prefix} 未登記`, icon: CELL_ICONS.unrecorded } : { kind: 'none', label: `${prefix} 無紀錄` }
   if (s === 'expected' && date < today) return { kind: 'unrecorded', label: `${prefix} 未登記`, icon: CELL_ICONS.unrecorded }
   if (s === 'leave') {
     const t = info.leave_type
@@ -1701,6 +1702,8 @@ const CHILD_DATA = {
       '2026-10-06': { status: 'leave', leave_type: 'sick' },
       '2026-10-08': { status: 'absent' },
       '2026-10-13': { status: 'leave', leave_type: 'personal' },
+      // 10/14 計入統計卻沒有出勤列（in_stats true、status null）：月曆、明細與統計都是「未登記」
+      '2026-10-14': { status: null },
       '2026-10-15': { status: 'expected' },
       '2026-10-20': { status: 'leave', leave_type: 'other' },
     },
@@ -1726,7 +1729,7 @@ const CHILD_DATA = {
   },
 }
 
-/** 產生一個月的 days 與 stats；stats 規則同後端 BACKEND-312 / 314（只計入班後、不晚於今天的營業日；未登記 = expected + 無紀錄） */
+/** 產生一個月的 days 與 stats；stats 規則同後端 BACKEND-312 / 314 / 561（只計入班後、不晚於今天的營業日 = in_stats；未登記 = 計入統計卻仍是 expected 或沒有出勤列） */
 function buildMonth(childId, month, s1Today) {
   const c = CHILD_DATA[childId]
   const [y, m] = month.split('-').map(Number)
@@ -1738,7 +1741,7 @@ function buildMonth(childId, month, s1Today) {
     const wd = parseDate(date).getUTCDay()
     const service = wd !== 0 && wd !== 6 && !HOLIDAYS.has(date)
     const counted = service && date <= TODAY && date >= c.enrolled_on
-    let rec = { date, is_service_day: service, status: null, check_in_at: null, check_out_at: null, leave_type: null }
+    let rec = { date, is_service_day: service, in_stats: counted, status: null, check_in_at: null, check_out_at: null, leave_type: null }
     if (counted) {
       if (date === TODAY) {
         const st = childId === 's1' ? s1Today : c.today
@@ -1877,7 +1880,8 @@ function pageSetup({ snack }) {
     { label: '預計到班（今天還沒到）', date: TODAY, today: 'expected' },
     { label: '請假（10/05 病假）', date: '2026-10-05' },
     { label: '缺席（10/08）', date: '2026-10-08' },
-    { label: '未登記（10/15）', date: '2026-10-15' },
+    { label: '未登記（10/15 仍是 expected）', date: '2026-10-15' },
+    { label: '未登記（10/14 計入統計、沒有出勤列）', date: '2026-10-14' },
     { label: '休息（10/09 國慶）', date: '2026-10-09' },
     { label: '無紀錄（10/23 未來）', date: '2026-10-23' },
   ]
@@ -1896,8 +1900,8 @@ function pageSetup({ snack }) {
   const decisions = [
     '版面（由上而下）：ChildContextHeader → 月份列 → 統計卡 → 單日明細卡 → 月曆卡（AttendanceCalendar，含圖例）→「申請請假」。頁面自帶左右 16px、底部 24px 內距，區塊間距 12px；頂部列「出勤紀錄」+ 返回鍵（route meta showBack），底部導覽停在「更多」。整頁內容（含身分卡）包在 PullToRefresh 內。',
     '月份列：左側「‹」上個月（M3IconButton chevron_left）、「YYYY 年 M 月」（title-medium、固定最小寬度置中，切換 9 / 10 月時箭頭不跳動；aria-live polite 朗讀新月份）、「›」下個月；右側 text 按鈕「本月」（today 圖示）。顯示中的月份就是台北本月時，「›」與「本月」都 disabled（不可前往未來月份，「本月」停用而不隱藏，版面不跳）；往前沒有下限。',
-    '統計卡：outlined 卡內 5 欄等寬的 dl（dt 標籤 label-medium、dd 數字 title-large、tabular-nums、欄間 1px 分隔線），依序「上課日」service_days、「出席」attended、「請假」leave、「缺席」absent、「未登記」unrecorded，數字直接用後端 stats、前端不重算。下方小字：本月「統計到今天（10/22）為止」；今天還沒到班時接「；今天還沒到班，先算在「未登記」」（後端 BACKEND-312 / 314 把今天仍是 expected 或沒有出勤列也算進 unrecorded，月曆上今天卻是「預計到班」，以這句說明差異，不改後端）；service_days 為 0（例如入班前的月份）時改為「這個月沒有出勤紀錄」，作為這頁的空狀態文案（月曆照常顯示整月，每格都是無紀錄 / 休息）。',
-    '單日明細卡放在月曆「上方」、固定兩行高：第一行 日期「MM/DD（X）」（今天加 primary 細框「今天」標記）+ 右側 StatusPill（tone 照 FRONTEND-005；今天以前仍是 expected 的日子為「未登記」neutral，與月曆一致）；第二行依狀態——已到班 / 已離班 / 預計到班：「到班 HH:MM」「離班 HH:MM」（login / logout 圖示，null 顯示「—」）；請假：「假別 病假 / 事假 / 其他」；缺席：「這天沒有到班，也沒有請假紀錄」；未登記：「老師沒有登記這天的到班情形」；休息：「安親班休息」（無膠囊）；無紀錄：「這天沒有出勤紀錄」（無膠囊）。理由：390×844 一進頁就同時看得到今天明細與整個月曆格（放在月曆下方會落到第一屏之外）；固定高度讓點不同日子時月曆不會上下跳。卡片 aria-live polite。',
+    '統計卡：outlined 卡內 5 欄等寬的 dl（dt 標籤 label-medium、dd 數字 title-large、tabular-nums、欄間 1px 分隔線），依序「上課日」service_days、「出席」attended、「請假」leave、「缺席」absent、「未登記」unrecorded，數字直接用後端 stats、前端不重算。下方小字：本月「統計到今天（10/22）為止」；今天還沒到班時接「；今天還沒到班，先算在「未登記」」（後端 BACKEND-312 / 314 把今天仍是 expected 或沒有出勤列也算進 unrecorded，月曆上今天仍是 expected 的格子卻是「預計到班」，以這句說明差異，不改後端）。計入統計（後端每日資料的 in_stats：營業日、不晚於今天、不早於入學日）卻沒有出勤列的日子，月曆、單日明細與這裡的「未登記」數字一致，都算未登記；in_stats 為 false 的日子（今天以後、入學日以前）才是「無紀錄」；service_days 為 0（例如入班前的月份）時改為「這個月沒有出勤紀錄」，作為這頁的空狀態文案（月曆照常顯示整月，每格都是無紀錄 / 休息）。',
+    '單日明細卡放在月曆「上方」、固定兩行高：第一行 日期「MM/DD（X）」（今天加 primary 細框「今天」標記）+ 右側 StatusPill（tone 照 FRONTEND-005；今天以前仍是 expected、或計入統計（in_stats）卻沒有出勤列的日子為「未登記」neutral，與月曆一致）；第二行依狀態——已到班 / 已離班 / 預計到班：「到班 HH:MM」「離班 HH:MM」（login / logout 圖示，null 顯示「—」）；請假：「假別 病假 / 事假 / 其他」；缺席：「這天沒有到班，也沒有請假紀錄」；未登記：「老師沒有登記這天的到班情形」；休息：「安親班休息」（無膠囊）；無紀錄：「這天沒有出勤紀錄」（無膠囊）。理由：390×844 一進頁就同時看得到今天明細與整個月曆格（放在月曆下方會落到第一屏之外）；固定高度讓點不同日子時月曆不會上下跳。卡片 aria-live polite。',
     '選取規則：換月份時，顯示本月則預設選中今天，否則不選（明細卡顯示「未選擇日期」/「點月曆上的日期，查看當天的到班、離班時間」）；換小孩保留目前月份與選中日。點月曆任一格（含休息、無紀錄、未來日）都更新明細卡。',
     '載入：首次載入、換月份、換小孩時，統計 / 明細 / 月曆三塊改顯示 SkeletonBlock card（不留上一個月或上一位小孩的資料，以免誤讀），身分卡與月份列照常可操作；以請求序號丟棄過期回應。失敗 → 三塊換成 ParentEmptyState error「出勤紀錄載入失敗」+「重試」，重試期間回到骨架；月份列仍可換月。',
     'PullToRefresh：重抓目前小孩 + 月份，期間保留現有內容；失敗時保留內容並顯示 error snackbar「更新失敗，請稍後再試」（不切成錯誤頁）。載入中停用下拉。',
