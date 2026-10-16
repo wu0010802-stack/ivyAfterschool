@@ -146,6 +146,7 @@ function openLeaves(): void {
 }
 
 .rl__row {
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(150px, 1.3fr) 76px minmax(190px, 1.4fr) minmax(190px, 1.3fr);
   gap: 12px;
