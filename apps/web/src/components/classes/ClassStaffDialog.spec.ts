@@ -1,4 +1,4 @@
-import { DOMWrapper, flushPromises, type VueWrapper } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
@@ -279,14 +279,22 @@ describe('ClassStaffDialog', () => {
   })
 
   it('ClassStaffDialog limits rows to twenty', async () => {
-    const many = Array.from({ length: 20 }, (_, i) => ({ id: `m${i}`, display_name: `老師${i}` }))
-    mock.onGet(OPTIONS_URL).reply(200, many)
-    const staff = many.map<ClassStaff>((o, i) => ({
-      staff_user_id: o.id,
-      display_name: o.display_name,
-      role: i === 0 ? 'lead' : 'assistant',
+    // happy-dom 渲染 40 個 el-select 要十幾秒（與元件無關），上限只看列數，這裡把下拉換成 stub
+    mock.onGet(OPTIONS_URL).reply(200, STAFF_OPTIONS)
+    const staff = Array.from({ length: 19 }, (_, i) => ({
+      staff_user_id: `m${i}`,
+      display_name: `老師${i}`,
+      role: i === 0 ? ('lead' as const) : ('assistant' as const),
     }))
-    await mountDialog(klass(staff))
+    mount(ClassStaffDialog, {
+      props: { modelValue: true, klass: klass(staff) },
+      global: { stubs: { ElSelect: true, ElOption: true } },
+    })
+    await settle()
+
+    expect(dialog().find('.cs-foot__count').text()).toBe('19 / 20')
+    expect(addButton().element.disabled).toBe(false)
+    await addRow()
 
     expect(rows()).toHaveLength(20)
     expect(dialog().find('.cs-foot__count').text()).toBe('20 / 20')
