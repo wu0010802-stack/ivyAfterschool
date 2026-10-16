@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 183,
-  "last_updated": "2026-10-16T05:00:25Z",
+  "version": 184,
+  "last_updated": "2026-10-16T05:01:13Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3181,11 +3181,11 @@
     {
       "id": "FRONTEND-099",
       "title": "實作 components/classes/ClassStaffDialog.vue：指派班級負責老師（lead / assistant）",
-      "description": "建立 `apps/web/src/components/classes/ClassStaffDialog.vue`（`PUT /classes/{id}/staff` 整批取代，BACKEND-140；class_staff 只用於「我的班」篩選與通知收件人，domain_spec M3）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-classes.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：班級列表（學年度切換、含封存、只看我的班）、新增 / 編輯 dialog、指派負責老師 dialog、封存仍有學生時的錯誤、只有 classes:read 時唯讀、空清單。\n\n**props / emits**：`modelValue`、`klass: ClassItem`；emits `update:modelValue`、`saved(klass)`。\n- 員工選項：開啟時呼叫 `listStaffOptions()`（FRONTEND-052，`GET /admin/staff-users/options`，classes:write 或 staff:read 可用，只回啟用員工 `{id, display_name}`）；載入失敗顯示「無法載入員工清單」+「重試」，並停用新增。klass.staff 中已不在選項內的員工（已停用）仍顯示其 display_name 並標「已停用」，送出前需移除或更換。\n- 清單：每列員工（el-select，已選的員工不可重複選）+ 角色（負責老師 lead / 協助老師 assistant），可新增 / 移除列，最多 20 列；初始為 klass.staff。\n- 送出 `setClassStaff(klass.id, items)`（空清單 = 清除全部）；422 `invalid_staff` →「部分員工已停用或不存在，請重新選擇」並標出 details 中的 id 所在列。\n\n**驗收標準**\n- 送出 body 為整批清單；不可重複選同一員工；員工清單載入失敗與 invalid_staff 的提示；已停用員工的標示。",
+      "description": "建立 `apps/web/src/components/classes/ClassStaffDialog.vue`（`PUT /classes/{id}/staff` 整批取代，BACKEND-140；class_staff 只用於「我的班」篩選與通知收件人，domain_spec M3）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-classes.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：班級列表（學年度切換、含封存、只看我的班）、新增 / 編輯 dialog、指派負責老師 dialog、封存仍有學生時的錯誤、只有 classes:read 時唯讀、空清單。\n\n**props / emits**：`modelValue`、`klass: ClassItem`；emits `update:modelValue`、`saved(klass)`。\n- 員工選項：開啟時呼叫 `listStaffOptions()`（FRONTEND-052，`GET /admin/staff-users/options`，classes:write 或 staff:read 可用，只回啟用員工 `{id, display_name}`）；載入失敗顯示「無法載入員工清單」+「重試」，並停用新增。klass.staff 中已不在選項內的員工（已停用）仍顯示其 display_name 並標「已停用」，送出前需移除或更換。\n- 清單：每列員工（el-select，已選的員工不可重複選）+ 角色（負責老師 lead / 協助老師 assistant），可新增 / 移除列，最多 20 列；初始為 klass.staff。\n- 送出 `setClassStaff(klass.id, items)`（空清單 = 清除全部）→ ElMessage.success('已更新負責老師') → emit saved（回應的 ClassItem）→ 關閉；422 `invalid_staff` →「部分員工已停用或不存在，請重新選擇」並標出 details 中的 id 所在列；其他錯誤（例 409 `class_archived`）ElMessage.error(errorMessage(err, '儲存失敗，請稍後再試'))，dialog 保持開啟。\n\n**驗收標準**\n- 送出 body 為整批清單；不可重複選同一員工；員工清單載入失敗與 invalid_staff 的提示；已停用員工的標示。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/classes/ClassStaffDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-080",
@@ -3209,7 +3209,7 @@
           "ClassStaffDialog marks deactivated assigned staff：klass.staff 含 {staff_user_id:'u9',display_name:'王老師'} 但 options 不含 u9 → 該列文字含 '王老師' 與 '已停用'"
         ],
         "run": "just web-test src/components/classes/ClassStaffDialog.spec.ts -t \"ClassStaffDialog\"",
-        "notes": ""
+        "notes": "20 列上限的測試以 stub 取代 el-select（happy-dom 渲染 40 個 el-select 需十幾秒，與元件無關）。"
       },
       "review": {
         "status": "pending",
@@ -3717,11 +3717,11 @@
     {
       "id": "FRONTEND-131",
       "title": "實作 components/leaves/LeaveCancelDialog.vue：取消請假（剩餘日子 / 整筆）",
-      "description": "建立 `apps/web/src/components/leaves/LeaveCancelDialog.vue`（domain_spec M5、BACKEND-353：remaining 對未開始的請假 = 整筆取消、已開始 = end_date 改為昨天；all = 整筆取消，已登記到班 / 離班的出勤不動）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-leaves.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：請假列表（篩選：學生 / 班級 / 狀態 / 假別 / 建立者 / 日期區間）、代登記 dialog（含期間重疊錯誤）、取消 dialog（剩餘日子 / 整筆兩種範圍與說明）、附件檢視（圖片預覽 / PDF 另開）、只有 leaves:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`、`leave: Leave`、`today?: string`（預設 todayTaipei）；emits `update:modelValue`、`cancelled(leave: Leave)`、`failed(code: string)`、`closed`（轉發 FormDialog 關閉動畫結束的 closed）。外觀以設計稿 `docs/mockups/page-leaves.html` 的 decisions 為準。\n**內容**\n- `FormDialog` md：標題「取消請假」（已結束時「整筆取消請假」）；取消鈕「返回」；送出鈕「取消請假」（送出的 scope 為 all 時「整筆取消」）；不自動聚焦。\n- 上方灰底摘要：「{姓名}（{學號}・{班級名稱|未分班}）」+ 假別 tag + 期間。日期區間一律同一天只顯示一天。\n- 依日期判斷：\n  - 尚未開始或今天才開始（start_date ≥ today）：只顯示「將取消整筆請假」，沒有選項，送出 scope `remaining`（今天才開始的請假 remaining 與 all 結果相同）。\n  - 已開始（start_date < today ≤ end_date）：兩個帶框 radio——「取消今天起的請假（{today}~{end_date}）」（預設，scope remaining，說明「今天起的出勤會恢復為預計到班；{start_date}~{昨天} 保留為請假」）與「整筆取消（{start_date}~{end_date}）」（scope all，說明「已過去的日子也會改回，已登記到班或離班的紀錄不受影響」）。\n  - 已結束（end_date < today）：只顯示「已結束的請假只能整筆取消（事後更正）；期間內登記為請假的出勤會自動還原，已登記到班或離班的紀錄不受影響」，送出 scope `all`（不送 remaining，避免 409 leave_already_ended）。\n- 底部灰字（鈴鐺 icon）「取消後會通知班級負責老師」。\n- 送出 `cancelLeave(id, scope)` → ElMessage.success('已取消請假') → emit cancelled → 關閉。\n- 錯誤 `leave_not_active` / `leave_already_ended`：dialog 頂部 el-alert error 顯示後端 message，dialog 保持開啟，emit `failed(code)`（LeavesView 於 dialog 關閉後重新整理列表）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/leaves/LeaveCancelDialog.vue`（domain_spec M5、BACKEND-353：remaining 對未開始的請假 = 整筆取消、已開始 = end_date 改為昨天；all = 整筆取消，已登記到班 / 離班的出勤不動）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-leaves.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：請假列表（篩選：學生 / 班級 / 狀態 / 假別 / 建立者 / 日期區間）、代登記 dialog（含期間重疊錯誤）、取消 dialog（剩餘日子 / 整筆兩種範圍與說明）、附件檢視（圖片預覽 / PDF 另開）、只有 leaves:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue`、`leave: Leave`、`today?: string`（預設 todayTaipei）；emits `update:modelValue`、`cancelled(leave: Leave)`、`failed(code: string)`、`closed`（轉發 FormDialog 關閉動畫結束的 closed）。外觀以設計稿 `docs/mockups/page-leaves.html` 的 decisions 為準。\n**內容**\n- `FormDialog` md：標題「取消請假」（已結束時「整筆取消請假」）；取消鈕「返回」；送出鈕「取消請假」（送出的 scope 為 all 時「整筆取消」）；不自動聚焦。\n- 上方灰底摘要：「{姓名}（{學號}・{班級名稱|未分班}）」+ 假別 tag + 期間。日期區間一律同一天只顯示一天。\n- 依日期判斷：\n  - 尚未開始或今天才開始（start_date ≥ today）：只顯示「將取消整筆請假」，沒有選項，送出 scope `remaining`（今天才開始的請假 remaining 與 all 結果相同）。\n  - 已開始（start_date < today ≤ end_date）：兩個帶框 radio——「取消今天起的請假（{today}~{end_date}）」（預設，scope remaining，說明「今天起的出勤會恢復為預計到班；{start_date}~{昨天} 保留為請假」）與「整筆取消（{start_date}~{end_date}）」（scope all，說明「已過去的日子也會改回，已登記到班或離班的紀錄不受影響」）。\n  - 已結束（end_date < today）：只顯示「已結束的請假只能整筆取消（事後更正）；期間內登記為請假的出勤會自動還原，已登記到班或離班的紀錄不受影響」，送出 scope `all`（不送 remaining，避免 409 leave_already_ended）。\n- 底部灰字（鈴鐺 icon）「取消後會通知班級負責老師」。\n- 送出 `cancelLeave(id, scope)` → ElMessage.success('已取消請假') → emit cancelled → 關閉。\n- 錯誤 `leave_not_active` / `leave_already_ended`：dialog 頂部 el-alert error 顯示後端 message，dialog 保持開啟，emit `failed(code)`（LeavesView 於 dialog 關閉後重新整理列表）。其他錯誤同樣以頂部 alert 顯示（errorMessage(err, '取消失敗，請稍後再試')），不 emit failed。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveCancelDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121",
@@ -3761,7 +3761,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/leaves/LeaveAttachmentList.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-121"
@@ -5558,7 +5558,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/dashboard/RecentLeavesList.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r10d",
       "depends_on": [
         "FRONTEND-260",
