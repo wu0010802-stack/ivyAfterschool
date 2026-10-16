@@ -191,10 +191,11 @@ describe('useArriveNow', () => {
   })
 
   it('useArriveNow ignores an unavailable storage', async () => {
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    // happy-dom 的 localStorage 方法綁在實例上，spy 原型不會生效
+    const getItem = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new Error('blocked')
     })
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
       throw new Error('blocked')
     })
     mock.onPost(CREATE_URL).reply(201, request('r8'))
@@ -207,6 +208,9 @@ describe('useArriveNow', () => {
 
     expect(result?.id).toBe('r8')
     expect(snackbarItems()[0]).toEqual(['已通知老師您到了', 'info'])
+    // 確認讀寫都真的走到了拋錯的 storage
+    expect(getItem).toHaveBeenCalledWith('parent_pickup_arrive_skip_confirm')
+    expect(setItem).toHaveBeenCalledWith('parent_pickup_arrive_skip_confirm', '1')
   })
 
   it('useArriveNow dismiss sends nothing', async () => {
