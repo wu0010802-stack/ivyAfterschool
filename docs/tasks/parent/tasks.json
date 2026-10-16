@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 171,
-  "last_updated": "2026-10-16T14:17:24Z",
+  "version": 172,
+  "last_updated": "2026-10-16T14:25:39Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2502,7 +2502,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/parent/composables/useArriveNow.ts",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::performArriveNow",
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r10b",
       "depends_on": [
         "PARENT-011",
@@ -2530,9 +2530,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r10-p2",
+        "notes": "通過。7 條 red_case 皆有同名測試且斷言具體（confirmOpen 值、POST url 與 body 深等、lastResult.id、localStorage 值、snackbar 第一則 message + tone、POST 次數）；tdd.run 13 綠，-t 選到每條。b427699（測試）先於 314c4b6（實作），實作 commit 未改 spec。依賴用法：PARENT-093（done）的 markArrived(id) / arriveNow(childId)；409 pickup_request_exists 改對既有請求「我到了」由 store 處理（有測試：CREATE → r3/arrived）；store 對 pickup_request_not_found 先 load(true) 再 rethrow，所以「已重新整理」文案屬實（測試斷言 today 重抓 1 次）。切分判斷：105 description 本身就寫明 composable 只提供 confirmOpen / skipNextTime / busy，ConfirmDialog 由頁面以 PARENT-026 呈現；PARENT-054 與 PARENT-097 的 description 都已寫入同一組對話框規格（title「確認已抵達安親班？」、message「老師會收到通知並準備帶孩子出來」、confirmLabel「我到了」、default slot「下次不再提醒」綁 skipNextTime），也各有 red_case（054「arrive now from home card」、097「arrived with confirm and skip」「arrive now shortcut」）；parent-page-pickup.html 與 parent-page-child-hub.html 的稿內 useArriveNow 示範（確認 → 先關對話框 → 送出、busy 防連點、不再提醒、錯誤對照表）與實作一致。送出中的回饋：接送頁按鈕綁 busy（097 已寫），首頁卡片沒有 busy prop 已在 054 risk_notes 記為已知取捨。沒有需要補寫到 054 / 097 的缺口。突變（一律走捷徑、忽略已存的不再提醒、不寫入、重開不重設勾選、dismiss 不清目標、busy 時仍受理 request、固定錯誤文案拿掉、後端訊息碼拿掉、成功不提示、確認後不關對話框、busy 延後一個 tick 才設）共 11 處各有測試轉紅；run() 不清 target 不轉紅（busy 已擋重複確認，UI 上對話框關閉後無法再呼叫 confirm，屬等價）。還原後 git diff 乾淨。web-lint 乾淨；web-typecheck exit 2 的錯誤都在他人進行中的檔案（parent/views/HomeworkView.vue / .spec.ts、views/AttendanceMonthlyView.vue、views/AttendanceTodayView.spec.ts），本檔 0 錯。 殘留：測試「ignores an unavailable storage」以 vi.spyOn(Storage.prototype, ...) 模擬 storage 拋錯，但 happy-dom 的 localStorage 把方法綁在實例上，原型上的 spy 不生效——拿掉 writeSkipConfirm 的 try/catch 測試仍綠，該測試實際只驗到成功路徑；實作的 try/catch 本身正確（description 的「storage 不可用時忽略」不在 red_cases）。日後改用 vi.spyOn(localStorage, ...) 或覆寫 window.localStorage 才能真的驗到。"
       }
     },
     {
