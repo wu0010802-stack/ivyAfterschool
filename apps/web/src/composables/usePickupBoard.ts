@@ -8,6 +8,11 @@
 //   resolve null（呼叫端關 dialog 即可）；其他錯誤 rethrow 給 dialog 顯示。
 // - 本機 create 進行中，該生的新 pending（含 ws 比 HTTP 回應先到的推播）不觸發 onNewRequest：新請求提示音只給其他人建立的請求。
 // - withRoster 另訂閱 attendance / homework 就地更新名單；topic 被拒時改為每 60 秒重抓名單。
+// - reload 晚到不倒退（FRONTEND-306，規則同 FRONTEND-304）：以本機異動序號判斷、不依賴伺服器時間。
+//   套用請求記 touched[request_id] = ++touchClock、更新名單學生記 touchedStudent[student_id]；佇列 / 名單請求發出時記 startedAt。
+//   佇列回應到達時 startedAt 之後套用過的請求保留目前版本（含回應中沒有的），依其狀態重新分組（與 applyRequest 相同的
+//   upsert 位置規則），其餘取回應；名單回應到達時 startedAt 之後更新過的學生保留目前的列。授權清單整包取代；
+//   latest_expected_arrival 取回應值。跨日時清空異動紀錄。
 // - 授權事件（pickup.authorization_updated）只帶家長端形狀（BACKEND-420 PickupAuthorizationOut），沒有學生摘要、照片、
 //   錯誤次數與鎖定：收到當天的事件就重抓 B436 清單（序號防護），不就地合併；沒載入授權清單時不寫入，改重抓名單。
 import { ElMessage } from 'element-plus'
@@ -151,6 +156,10 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
 
   const arrivedListeners = new Set<RequestListener>()
   const newRequestListeners = new Set<RequestListener>()
+  /** 本機異動序號：request_id / student_id → 最後一次套用時的 touchClock（reload 晚到時保留較新的版本） */
+  let touchClock = 0
+  const touched = new Map<string, number>()
+  const touchedStudent = new Map<string, number>()
   /** 本機 create 進行中的 student_id（引用計數） */
   const localCreates = new Map<string, number>()
 
@@ -162,16 +171,48 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
 
   const counts = computed<PickupQueueCounts>(() => countOpen(queue.value?.open ?? []))
 
+  /** 回應為準，startedAt 之後套用過的請求保留目前版本並依狀態重新分組 */
+  function mergeQueue(res: PickupQueue, startedAt: number): PickupQueue {
+    const current = queue.value
+    if (!current || current.date !== res.date) return res
+    let open = res.open
+    let closed = res.closed
+    for (const req of [...current.open, ...current.closed]) {
+      if ((touched.get(req.id) ?? 0) <= startedAt) continue
+      if (isOpen(req.status)) {
+        open = upsert(open, req, 'keep')
+        closed = closed.filter((r) => r.id !== req.id)
+      } else {
+        open = open.filter((r) => r.id !== req.id)
+        closed = upsert(closed, req, 'front')
+      }
+    }
+    return { ...res, open, closed, counts: countOpen(open) }
+  }
+
+  /** 回應為準，startedAt 之後更新過的學生保留目前的列 */
+  function mergeRoster(res: PickupRoster, startedAt: number): PickupRoster {
+    const current = roster.value
+    if (!current) return res
+    const keep = (s: RosterStudent): RosterStudent => {
+      if ((touchedStudent.get(s.student_id) ?? 0) <= startedAt) return s
+      return findStudent(current, s.student_id) ?? s
+    }
+    return { ...res, classes: res.classes.map((c) => ({ ...c, students: c.students.map(keep) })) }
+  }
+
   async function loadQueue(): Promise<void> {
     const mySeq = ++queueSeq
+    const startedAt = touchClock
     const res = await fetchPickupQueue(date)
-    if (mySeq === queueSeq) queue.value = res
+    if (mySeq === queueSeq) queue.value = mergeQueue(res, startedAt)
   }
 
   async function loadRoster(): Promise<void> {
     const mySeq = ++rosterSeq
+    const startedAt = touchClock
     const res = await fetchPickupRoster({ date })
-    if (mySeq === rosterSeq) roster.value = res
+    if (mySeq === rosterSeq) roster.value = mergeRoster(res, startedAt)
   }
 
   /** 回傳這次的回應是否被採用（較新的請求已發出時晚到的回應丟棄） */
@@ -214,6 +255,7 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
 
   function patchStudent(studentId: string, patch: Partial<RosterStudent>): void {
     if (!roster.value) return
+    touchedStudent.set(studentId, ++touchClock)
     roster.value = patchRosterStudent(roster.value, studentId, patch)
   }
 
@@ -237,6 +279,7 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     const current = queue.value ?? { date, open: [], closed: [], counts: countOpen([]), latest_expected_arrival: null }
     const previous = current.open.find((r) => r.id === req.id) ?? current.closed.find((r) => r.id === req.id)
     if (previous && STATUS_RANK[req.status] < STATUS_RANK[previous.status]) return
+    touched.set(req.id, ++touchClock)
 
     if (isOpen(req.status)) {
       queue.value = {
@@ -419,6 +462,8 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     const today = todayTaipei()
     if (today === date) return
     date = today
+    touched.clear()
+    touchedStudent.clear()
     void reload()
   }, DAY_CHECK_INTERVAL_MS)
   onScopeDispose(() => clearInterval(dayTimer))
