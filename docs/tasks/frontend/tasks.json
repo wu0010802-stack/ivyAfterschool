@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 349,
-  "last_updated": "2026-10-17T04:28:03Z",
+  "version": 350,
+  "last_updated": "2026-10-17T04:28:35Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6395,7 +6395,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-153"
@@ -6417,9 +6417,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-f2",
-        "notes": "兩條 red_case 有同名測試且全綠，FRONTEND-153 tdd.run 全綠（11）；commit 40dd292 測試先於 624d2b1 實作；稿 decision 已補。打回：hasMenu 的「手動標記」分支沒有測試，突變（拿掉 isManualDone）全綠，見 risk_notes。"
+        "notes": "複審通過。新 red_case『keeps menu when an action applies: manual done on past day』（6d597ef）全綠，且對上次的突變（hasMenu 拿掉 isManualDone）轉紅；FRONTEND-153 tdd.run 全綠（12）；同步 153 red_cases。web-lint / web-typecheck 乾淨。"
       }
     },
     {
@@ -6429,7 +6429,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/LeavesView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-129"
@@ -6454,9 +6454,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-f2",
-        "notes": "5 條 red_case 有同名測試且全綠，FRONTEND-129 tdd.run 全綠（18）；aead51b 測試先於 5b64949 實作；稿操作欄 88。突變：拿掉 fetch 內 today 更新 → recomputes today 紅；拿掉 canReadStudents 判斷 / 拿掉『本頁已有該生』判斷 → skips lookup 紅。打回：重設與快捷鍵的 today 口徑沒有測試（突變全綠），見 risk_notes。"
+        "notes": "複審通過。新 red_case『recomputes today on reload: reset keeps initial range, shortcuts use new today』（2052e6a）全綠，突變 defaultFilters 改用 today.value、「今天起 30 天」改用 initialToday 皆轉紅；FRONTEND-129 tdd.run 全綠（19），已同步 129 red_cases。web-lint / web-typecheck 乾淨。"
       }
     },
     {
@@ -6571,7 +6571,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-126"
@@ -6595,9 +6595,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-f2",
-        "notes": "4 條 red_case 有同名測試且全綠，FRONTEND-126 tdd.run 全綠（16）；dfa9398 測試先於 45eacfa 實作。突變（>= startedAt、拿掉插入、拿掉 touched.set、summary 不重算）皆有測試轉紅。另構造的反例全部守住：較早發出較晚回來的 reload 被新 reload 取代、reload 前後各有一次 ws 取最新、batch_updated 途中、reload 前發出的操作在途中回來。打回：只換班級篩選時途中的 ws / 操作結果被回應蓋掉（反例見 risk_notes），且 126 同步的 description 多了本 task 沒有的「篩選與目前資料相同」限定。"
+        "notes": "複審通過。紅燈 6d72b82 先於修正 99fbb55；mergeTouched 拿掉 loadedKey !== key 例外，新 red_case『class filter change』全綠，還原例外即轉紅；FRONTEND-126 tdd.run 全綠（17），126 description 已拿掉「篩選與目前資料相同」限定。重跑反例全守住：上次的換班級途中 ws、換班級途中操作結果、舊篩選他班列不外洩、A→B→A 時 B 的 touched 不帶進 A、重疊 reload、reload 前後各一次 ws、reload 前發出的操作途中回來。殘留：換日期時新日期的 ws 在 reload 途中被 applyRows 略過（未顯示過，非覆蓋），可另開 task。"
       }
     },
     {
@@ -6607,7 +6607,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-152"
@@ -6630,9 +6630,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-f2",
-        "notes": "3 條 red_case 有同名測試且全綠，FRONTEND-152 tdd.run 全綠（14）；b0b7db5 測試先於 d8912d1 實作。另構造的反例守住：重疊 reload、reload 前後各一次 ws、狀態切換 PATCH 在 reload 途中回來、延後的 ws snapshot 在 chain 結束後才套用。打回：同 FRONTEND-304，只換班級篩選時途中的 ws / mutation 結果被回應蓋掉，見 risk_notes。"
+        "notes": "複審通過。紅燈 6d72b82 先於修正 99fbb55；新 red_case『class filter change』全綠，還原例外即轉紅；FRONTEND-152 tdd.run 全綠（15），152 description 已拿掉限定。重跑反例全守住：上次的換班級途中 ws、換班級途中 mutation 結果、回應沒有的 touched 學生不保留、重疊 reload、reload 前後各一次 ws、PATCH 途中回來、延後 snapshot 在 chain 後套用。殘留：換日期同 304；reload 之前就被延後的 ws snapshot 會在 chain 結束後蓋過 reload 結果（FRONTEND-152 既有行為）。"
       }
     },
     {
