@@ -600,4 +600,31 @@ describe('useAttendanceBoard', () => {
     expect(statusOf(board, 's1')).toBe('present')
     expect(board.data.value?.summary.present).toBe(1)
   })
+
+  it('useAttendanceBoard keeps row updated by ws during reload: class filter change', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mock.onGet(DAILY_URL).reply(async (config: AxiosRequestConfig) => {
+      if ((config.params as { class_id?: string }).class_id !== 'c1') return [200, daily([S1, S2])]
+      await gate
+      return [200, daily([S1, S2])]
+    })
+    const classId = ref<string | null>(null)
+    const { board } = await mountBoard(ref(DATE), classId)
+
+    // 只換班級（日期不變）：新篩選的 reload 途中收到符合新篩選的 ws 列
+    classId.value = 'c1'
+    await settle()
+    socket().serverMessage('attendance.updated', { ...S1, status: 'present' })
+    await settle()
+    expect(statusOf(board, 's1')).toBe('present')
+
+    release()
+    await settle()
+    expect(dailyGets().at(-1)?.params).toEqual({ date: DATE, class_id: 'c1' })
+    expect(statusOf(board, 's1')).toBe('present')
+    expect(board.data.value?.summary.present).toBe(1)
+  })
 })

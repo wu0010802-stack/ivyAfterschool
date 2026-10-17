@@ -568,4 +568,32 @@ describe('useHomeworkBoard', () => {
     expect(studentOf(board, 's2')?.items.map((i) => i.status)).toEqual(['todo', 'todo'])
     expect(studentOf(board, 's2')?.progress.overall_status).toBe('not_started')
   })
+
+  it('useHomeworkBoard keeps student updated by ws during reload: class filter change', async () => {
+    const gate = deferred<void>()
+    mock.onGet(BOARD_URL).reply(async (config: AxiosRequestConfig) => {
+      if ((config.params as { class_id?: string }).class_id !== 'c1') return [200, boardOf([S1])]
+      await gate.promise
+      return [200, boardOf([S1])]
+    })
+    const classId = ref<string | null>(null)
+    const board = await mountBoard(ref(DATE), classId)
+
+    // 只換班級（日期不變）：新篩選的 reload 途中收到 ws 快照
+    classId.value = 'c1'
+    await settle()
+    socket().serverMessage('homework.progress_updated', {
+      student_id: 's1',
+      service_date: DATE,
+      items: [H1, H2],
+      progress: makeProgress({ overall_status: 'in_progress', ready_eta: '18:20' }),
+    })
+    await settle()
+    expect(studentOf(board)?.progress.ready_eta).toBe('18:20')
+
+    gate.resolve()
+    await settle()
+    expect(boardGets().at(-1)?.params).toEqual({ date: DATE, class_id: 'c1' })
+    expect(studentOf(board)?.progress.ready_eta).toBe('18:20')
+  })
 })
