@@ -261,13 +261,23 @@ def test_pickup_schemas_request_out() -> None:
         with pytest.raises(ValidationError):
             _request_out(**bad)
 
-    queue = PickupQueueOut(
-        date=_DAY,
-        open=[out],
-        closed=[],
-        counts=PickupQueueCountsOut(pending=0, acknowledged=0, arrived=1, needs_reply=1),
-    )
-    assert queue.model_dump(mode="json")["counts"]["arrived"] == 1
+    queue_fields: dict[str, Any] = {
+        "date": _DAY,
+        "open": [out],
+        "closed": [],
+        "counts": PickupQueueCountsOut(pending=0, acknowledged=0, arrived=1, needs_reply=1),
+        "latest_expected_arrival": "19:00",
+    }
+    queue = PickupQueueOut(**queue_fields)
+    dumped = queue.model_dump(mode="json")
+    assert dumped["counts"]["arrived"] == 1
+    assert dumped["latest_expected_arrival"] == "19:00"
+    # BACKEND-563：latest_expected_arrival 必填且為 HH:MM
+    for bad in ("7:00", "24:00", "19:60", "19:00:00", ""):
+        with pytest.raises(ValidationError):
+            PickupQueueOut(**{**queue_fields, "latest_expected_arrival": bad})
+    with pytest.raises(ValidationError):
+        PickupQueueOut(**{k: v for k, v in queue_fields.items() if k != "latest_expected_arrival"})
 
 
 def test_pickup_schemas_parent_out_has_no_staff_names() -> None:
