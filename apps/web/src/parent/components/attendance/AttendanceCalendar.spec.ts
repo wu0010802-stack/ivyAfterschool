@@ -144,9 +144,9 @@ describe('AttendanceCalendar', () => {
     expect(leave).not.toContain('att-day--left')
     expect(left).not.toContain('att-day--leave')
     // 請假格在月曆格與圖例改用 tertiary-container，與已離班（secondary-container）明顯區分
-    expect(rule('.att-day--leave')).toContain('background: var(--m3-tertiary-container)')
+    expect(rule('.att-day--leave')).toContain('background-color: var(--m3-tertiary-container)')
     expect(rule('.att-day--leave')).toContain('color: var(--m3-on-tertiary-container)')
-    expect(rule('.att-day--left')).toContain('background: var(--m3-secondary-container)')
+    expect(rule('.att-day--left')).toContain('background-color: var(--m3-secondary-container)')
     expect(rule('.att-day--left')).toContain('color: var(--m3-on-secondary-container)')
     expect(cell(wrapper, 5).get('.m3-icon').text()).toBe('event_busy')
     expect(cell(wrapper, 6).get('.m3-icon').text()).toBe('done_all')
@@ -312,10 +312,10 @@ describe('AttendanceCalendar', () => {
     ]
     for (const [kind, token] of pairs) {
       const style = rule(`.att-day--${kind}`)
-      expect(style, kind).toContain(`background: var(--m3-${token}-container)`)
+      expect(style, kind).toContain(`background-color: var(--m3-${token}-container)`)
       expect(style, kind).toContain(`color: var(--m3-on-${token}-container)`)
     }
-    expect(rule('.att-day--unrecorded')).toContain('background: var(--m3-surface-container-high)')
+    expect(rule('.att-day--unrecorded')).toContain('background-color: var(--m3-surface-container-high)')
     expect(rule('.att-day--closed')).toContain('color: var(--m3-on-surface-variant)')
     expect(rule('.att-day--none')).toContain('color: var(--m3-on-surface)')
     // 休息與無紀錄沒有底色
@@ -522,7 +522,7 @@ describe('AttendanceCalendar', () => {
     // 今天：2px primary 內框 + 粗體數字；選中：primary 實心 + on-primary；兩者並存再加一圈 on-primary
     expect(rule('.att-day.is-today')).toContain('box-shadow: inset 0 0 0 2px var(--m3-primary)')
     expect(rule('.att-day.is-today .att-day__num')).toMatch(/font-weight:\s*700/)
-    expect(rule('.att-day.is-selected')).toContain('background: var(--m3-primary)')
+    expect(rule('.att-day.is-selected')).toContain('background-color: var(--m3-primary)')
     expect(rule('.att-day.is-selected')).toContain('color: var(--m3-on-primary)')
     const both = rule('.att-day.is-selected.is-today')
     expect(both).toContain('inset 0 0 0 2px var(--m3-primary)')
@@ -543,12 +543,43 @@ describe('AttendanceCalendar', () => {
     const dayStyle = rule('.att-day')
     expect(dayStyle).toContain('border: solid transparent')
     expect(dayStyle).toContain('border-width: 0 2px')
-    expect(dayStyle).toContain('background-clip: padding-box')
+    // background 簡寫會重設 background-clip，所以 clip 寫在簡寫內
+    expect(dayStyle).toContain('background: transparent padding-box')
     expect(dayStyle).not.toMatch(/border:\s*none/)
     expect(source).not.toMatch(/@media/)
     const focus = rule('.att-day:focus-visible')
     expect(focus).toContain('outline: 2px solid var(--m3-on-surface)')
     expect(focus).toContain('outline-offset: -1px')
+  })
+
+  it('AttendanceCalendar status colours stay inside the padding box', () => {
+    // 狀態 / 選中格的底色不得畫進左右 2px 透明框（否則色塊吃掉欄距）：只用 background-color 長寫，
+    // 或 background 簡寫帶 padding-box（簡寫會把 background-clip 重設為 border-box）
+    const coloured = [
+      '.att-day--present',
+      '.att-day--left',
+      '.att-day--leave',
+      '.att-day--absent',
+      '.att-day--expected',
+      '.att-day--unrecorded',
+      '.att-day.is-selected',
+    ]
+    for (const selector of coloured) {
+      const style = rule(selector)
+      const shorthand = /(?:^|[\s;])background:\s*([^;]*);/.exec(style)?.[1]
+      if (shorthand !== undefined) expect(shorthand, selector).toContain('padding-box')
+      else expect(style, selector).toMatch(/background-color:\s*var\(--m3-[a-z-]+\)/)
+    }
+    // 樣式區塊中 .att-day 基底規則之後，所有作用在格子本身（非 ::before、非圖例色塊）的 background 簡寫都要帶 padding-box
+    const style = source.slice(source.indexOf('<style'))
+    const after = style.slice(style.search(/^\.att-day \{/m))
+    for (const m of after.matchAll(/^([^{}@/]+)\{([^}]*)\}/gm)) {
+      const selector = m[1]!.trim()
+      if (!selector.includes('.att-day') || selector.includes('::before') || selector.startsWith('.att-legend')) continue
+      for (const decl of m[2]!.matchAll(/(?:^|[\s;])background:\s*([^;]*);/g)) {
+        expect(decl[1], selector).toContain('padding-box')
+      }
+    }
   })
 
   it('AttendanceCalendar keeps seven columns', () => {
