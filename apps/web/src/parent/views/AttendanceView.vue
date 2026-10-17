@@ -358,7 +358,8 @@ onMounted(() => {
 
           <M3Card
             variant="outlined"
-            padding="sm"
+            padding="none"
+            class="att-cal-card"
           >
             <AttendanceCalendar
               :month="monthKey"
@@ -408,6 +409,12 @@ onMounted(() => {
 /* 頁面自帶左右 16px、底部 24px 內距（ParentLayout 不再加） */
 .attendance-view {
   padding: 0 16px 24px;
+}
+
+/* PARENT-207：月曆卡內距上下 12px、左右 8px，360 寬時月曆格寬仍 ≥ 44px（其他卡片維持 M3Card 的內距）；
+   加 .m3-card 提高權重，不依賴 M3Card 與本頁樣式的載入順序 */
+.m3-card.att-cal-card {
+  padding: 12px 8px;
 }
 
 .page-stack {

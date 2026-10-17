@@ -189,11 +189,14 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
 </template>
 
 <style scoped>
+/* PARENT-207：欄距 0、列距 4px；格子左右各 2px 透明框（background-clip: padding-box）畫出 4px 視覺欄距，
+   整欄寬都是觸控範圍（360 寬約 44.3px、390 寬約 48.6px），所有寬度同一規則 */
 .att-cal__weekdays,
 .att-cal__grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  column-gap: 0;
+  row-gap: 4px;
 }
 
 .att-cal__wd {
@@ -218,9 +221,11 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
   min-width: 0;
   height: 52px;
   padding: 0;
-  border: none;
+  border: solid transparent;
+  border-width: 0 2px;
   border-radius: var(--m3-shape-small);
   background: transparent;
+  background-clip: padding-box;
   color: var(--m3-on-surface);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -261,34 +266,35 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
   height: 16px;
 }
 
-/* 狀態底色 = StatusPill 同一組 container token；請假用 tertiary 與已離班區分 */
+/* 狀態底色 = StatusPill 同一組 container token；請假用 tertiary 與已離班區分。
+   background 簡寫會把 background-clip 重設為 border-box，所以底色一律帶 padding-box，色塊不畫進左右 2px 透明框 */
 .att-day--present {
-  background: var(--m3-primary-container);
+  background: var(--m3-primary-container) padding-box;
   color: var(--m3-on-primary-container);
 }
 
 .att-day--left {
-  background: var(--m3-secondary-container);
+  background: var(--m3-secondary-container) padding-box;
   color: var(--m3-on-secondary-container);
 }
 
 .att-day--leave {
-  background: var(--m3-tertiary-container);
+  background: var(--m3-tertiary-container) padding-box;
   color: var(--m3-on-tertiary-container);
 }
 
 .att-day--absent {
-  background: var(--m3-error-container);
+  background: var(--m3-error-container) padding-box;
   color: var(--m3-on-error-container);
 }
 
 .att-day--expected {
-  background: var(--m3-warning-container);
+  background: var(--m3-warning-container) padding-box;
   color: var(--m3-on-warning-container);
 }
 
 .att-day--unrecorded {
-  background: var(--m3-surface-container-high);
+  background: var(--m3-surface-container-high) padding-box;
   color: var(--m3-on-surface);
 }
 
@@ -309,7 +315,7 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
 }
 
 .att-day.is-selected {
-  background: var(--m3-primary);
+  background: var(--m3-primary) padding-box;
   color: var(--m3-on-primary);
 }
 
@@ -322,7 +328,8 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
 
 .att-day:focus-visible {
   outline: 2px solid var(--m3-on-surface);
-  outline-offset: 1px;
+  /* 負值：外框不壓到隔壁格的色塊 */
+  outline-offset: -1px;
 }
 
 .att-legend {
