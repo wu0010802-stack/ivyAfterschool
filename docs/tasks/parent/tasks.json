@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 230,
-  "last_updated": "2026-10-17T07:48:41Z",
+  "version": 231,
+  "last_updated": "2026-10-17T07:51:35Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -4212,7 +4212,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/parent/api/exams.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-192",
@@ -4234,9 +4234,9 @@
         "notes": "red_case 的函式名稱以 parent/api 實際匯出為準（getChildToday 若名稱不同照實際寫）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p4",
+        "notes": "2 條 red_case 皆有同名測試（rejects dot ids、static scan），被改寫的 PARENT-192 四條（encodes unsafe ids、keeps normal uuid urls unchanged、static scan、checker flags raw interpolation）名稱與 spec 一致；tdd.run 5/5 綠。e019f6b（只改 pathEncoding.spec.ts）先於 ad22409（只改 9 個 client .ts），9 個 client 既有 spec 在本 task 範圍零修改、全綠；spec 內只把 checker 自測的合法函式由 encodeURIComponent 換成 encodePathSegment 並新增 encodeURIComponent 視為違規的案例，encodes unsafe ids / uuid 兩條斷言未動。涵蓋度：逐一比對 parent/api 匯出，帶路徑 id 的 20 個呼叫點（getChild、getChildToday、getChildAttendance、listChildExams、getChildExam 兩個 id、getChildHomework、listChildLeaves、cancelLeave、uploadLeaveAttachment、markNotificationRead、pickupAuthorizations 4 個、pickupPersons 3 個、markPickupArrived、cancelPickupRequest）全在 CASES；rejects dot ids 對每個傳 '..'/'.'/'' 斷言 ApiError invalid_path_segment 且 get/post/delete history 皆空。突變（備份還原、cmp 確認乾淨）：9 個 client 各自把 encodePathSegment 改回 encodeURIComponent → static scan 與 rejects dot ids 皆紅；exams examId、pickupPersons delete、leavePath、authorizationPath 單點改回 → 紅；examId / leavePath 改裸插值 → 三條紅；新增含裸 ${id} 的探針 client → static scan 紅（已刪）。web-lint 乾淨、web-typecheck 0 錯。殘留（不擋）：①PARENT-192 的 title 仍寫「一律 encodeURIComponent」，description 已同步，title 宜順手改成 encodePathSegment。②router-link / router.push 仍用 encodeURIComponent 組前端路由：parent/components/exams/ExamListItem.vue:17、後台 components/student/StudentExamHistoryTab.vue:65、views/ExamsView.vue:181。id 來自後端 UUID，且就算是 dot id，進到詳情頁後 api 層的 encodePathSegment 也會 reject，不會打到別的 endpoint；在 computed 內改用 encodePathSegment 反而會讓渲染丟例外。建議不另開 task。views/LeavesView.vue:263 是 query string 值，用 encodeURIComponent 才正確，不屬同類。③靜態掃描的已知限制（'+' 串接、組合運算式、巢狀 template）已寫在 spec 註解。"
       }
     },
     {
