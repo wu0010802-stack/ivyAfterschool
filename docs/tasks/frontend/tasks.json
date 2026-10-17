@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 345,
-  "last_updated": "2026-10-17T04:20:59Z",
+  "version": 346,
+  "last_updated": "2026-10-17T04:23:58Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6133,7 +6133,7 @@
     {
       "id": "FRONTEND-292",
       "title": "撰寫 e2e：接送請求 → 員工回覆預計時間 → 確認 → 完成交付",
-      "description": "建立 `apps/web/e2e/admin/pickup.spec.ts`。種子資料 1 位學生並先以 API 登記到班（`POST /api/admin/attendance/{id}/check-in`）。\n\n**流程**\n1. 建立接送請求：以 API 呼叫 `POST /api/admin/pickup/requests`（員工代建，`expected_arrival_at` 為現在 +30 分）。e2e 只測員工代建流程，不做家長 LIFF 登入；家長發起、「我到了」與「我已經到了」捷徑由元件測試（FRONTEND-188 / 195 及 PARENT 區域）與後端整合測試涵蓋。\n2. `loginAsAdmin` → `/#/pickup`；右欄出現該生的佇列卡（「員工代建」）。\n3. 點「回覆時間」→ 選現在 +20 分、訊息「數學訂正中」、保留「同時確認此請求」→ 送出 → 卡片顯示「已確認」與回覆內容。\n4. 點「完成交付」→ 選種子的監護人 → 送出 → 卡片移到「今日已結束」，學生卡顯示「已離班」。\n5. 另開一個 browser context 登入同頁面，驗證步驟 3 的狀態變更透過 ws 即時出現（不重新整理，10 秒內）。\n- 非營業日 skip（同 FRONTEND-291）；afterAll 先取消仍進行中的請求（`POST /api/admin/pickup/requests/{id}/cancel`）再 cleanup。\n- POS 頁第一次 pointerdown 會移除「點一下畫面以啟用提示音」提示列、版面上移：進頁後先點提示列本身再操作卡片。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/e2e/admin/pickup.spec.ts`。種子資料 1 位學生並先以 API 登記到班（`POST /api/admin/attendance/{id}/check-in`）。\n\n**流程**\n1. 建立接送請求：以 API 呼叫 `POST /api/admin/pickup/requests`（員工代建，`expected_arrival_at` 為現在 +30 分）。e2e 只測員工代建流程，不做家長 LIFF 登入；家長發起、「我到了」與「我已經到了」捷徑由元件測試（FRONTEND-188 / 195 及 PARENT 區域）與後端整合測試涵蓋。\n2. `loginAsAdmin` → `/#/pickup`；右欄出現該生的佇列卡（「員工代建」）。\n3. 點「回覆時間」→ 選現在 +20 分、訊息「數學訂正中」、保留「同時確認此請求」→ 送出 → 卡片顯示「已確認」與回覆內容。\n4. 點「完成交付」→ 選種子的監護人 → 送出 → 卡片移到「今日已結束」，學生卡顯示「已離班」。\n5. 另開一個 browser context 登入同頁面，驗證步驟 3 的狀態變更透過 ws 即時出現（不重新整理，10 秒內）。\n- 整組 skip 並寫明原因的兩種情況：非營業日（同 FRONTEND-291）；「現在 +30 分」（台北時間，跨過午夜視為晚於）晚於 `GET /api/admin/pickup/queue` 回傳的 `latest_expected_arrival`（不寫死時間），此時員工代建會 422 `expected_arrival_too_late`。\n- afterAll 先取消仍進行中的請求（`POST /api/admin/pickup/requests/{id}/cancel`）再 cleanup。\n- POS 頁第一次 pointerdown 會移除「點一下畫面以啟用提示音」提示列、版面上移：進頁後先點提示列本身再操作卡片。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/pickup.spec.ts",
       "source_ref": null,
@@ -6147,9 +6147,7 @@
       ],
       "suggested_model": "sonnet-5",
       "risk_notes": "",
-      "open_design_questions": [
-        "在 pickup.window 的 latest_expected_arrival 前 30 分之後（預設 18:30 之後）執行時，員工代建「現在 +30 分」會 422 expected_arrival_too_late：要比照非營業日整組 skip、改成不帶 expected_arrival_at，還是維持失敗並要求在營業時段內執行？"
-      ],
+      "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/e2e/admin/pickup.spec.ts",
         "markers": [
@@ -6162,7 +6160,7 @@
           "pickup flow realtime update in second context：第二個 context 在步驟 3 前已開啟 /#/pickup，不重新整理 → 10 秒內該卡片含 '已確認'"
         ],
         "run": "flock /tmp/afterschool_db.lock timeout 600 just e2e e2e/admin/pickup.spec.ts -g \"pickup flow\"",
-        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。營業日之外整組 skip；員工代建的 expected_arrival_at（現在 +30 分）不可晚於 pickup.window 的 latest_expected_arrival，該時間前 30 分之後執行會 422（見 open_design_questions）。"
+        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。非營業日，或「現在 +30 分」晚於佇列回應的 latest_expected_arrival（預設 19:00，即 18:30 之後）時整組 skip，要實際跑完四條需在營業日的這個時間之前執行。"
       },
       "review": {
         "status": "pending",
