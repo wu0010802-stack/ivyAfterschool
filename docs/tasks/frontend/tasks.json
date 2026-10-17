@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 370,
-  "last_updated": "2026-10-17T08:06:28Z",
+  "version": 371,
+  "last_updated": "2026-10-17T08:07:10Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6909,7 +6909,7 @@
           "vitest"
         ],
         "red_cases": [
-          "message box buttons meet touch target：以 ?raw 讀 base.css → 含 `.el-message-box__btns .el-button` 規則，宣告 min-height: 44px 與 padding: 0 20px",
+          "message box buttons meet touch target：以 fs 讀 base.css（vitest 下 css ?raw 回空字串） → 含 `.el-message-box__btns .el-button` 規則，宣告 min-height: 44px 與 padding: 0 20px",
           "message box rule is not scoped to a component：該規則位於全域 base.css（非 .vue scoped 區塊），且 selector 以 .el-message-box__btns 起始、不影響其他 .el-button"
         ],
         "run": "just web-test src/styles/base.spec.ts -t \"message box\"",
