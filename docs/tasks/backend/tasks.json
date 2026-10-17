@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 463,
-  "last_updated": "2026-10-16T23:32:51Z",
+  "version": 464,
+  "last_updated": "2026-10-17T04:11:16Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15658,14 +15658,14 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/pickup/requests.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-414",
         "BACKEND-429"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r11-b 打回] (1) PickupQueueOut 加必填 latest_expected_arrival 後，BACKEND-402 的 apps/api/tests/unit/schemas/test_pickup_schemas.py::test_pickup_schemas_request_out 建 PickupQueueOut 未帶新欄位 → ValidationError 紅；需補上該欄位（並可順帶斷言 model_dump 的 latest_expected_arrival 為 'HH:MM'、不合格式被拒），跑 `just test apps/api/tests/unit/schemas/test_pickup_schemas.py -k \"test_pickup_schemas_\"` 全綠，並把此改動寫進本 task 的實作備註（說明動到 BACKEND-402 的既有測試）。(2) 順帶：apps/api/app/api/admin/pickup.py 模組 docstring 的 BACKEND-429 段仍寫「PickupQueueOut（open / closed / counts）」，補上 latest_expected_arrival。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/api/tests/integration/services/pickup/test_pickup_requests.py",
@@ -15681,9 +15681,9 @@
         "notes": "改設定的案例用 db_session（交易結束 rollback），不得 commit 改動 system_settings 種子值；若必須 committing，測試結束前還原並以 owner 唯讀確認 pickup.window 回到預設。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-b",
+        "notes": "打回。tdd.run 兩段（test_pickup_queue_ 6 條、test_admin_pickup_queue_ 6 條，即 BACKEND-414 / 429 的 tdd.run）全綠，測試 commit b87fa96 先於實作 594da65，突變（get_queue 寫死 '19:00'）使 follows_setting 轉紅，api_index B429 / domain_spec §2、§4 已同步。但 PickupQueueOut 新增必填欄位後，BACKEND-402 的單元測試 tests/unit/schemas/test_pickup_schemas.py::test_pickup_schemas_request_out 以舊鍵建 PickupQueueOut，回歸為 ValidationError（latest_expected_arrival Field required），`just test apps/api/tests/unit/schemas/test_pickup_schemas.py` 1 failed。"
       }
     },
     {
@@ -15693,7 +15693,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/homework_service.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-390",
@@ -15716,9 +15716,9 @@
         "notes": "前兩條在函式公開前就會因 AttributeError 轉紅；第三條的 hasattr 斷言鎖住重複組裝不再出現。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-b",
+        "notes": "通過。測試 commit 320450b 先於實作 8ed49d1；3 條 red_case 對到同名測試，tdd.run 與 BACKEND-390（test_admin_homework_progress_ 11 條）、BACKEND-374（test_broadcast_homework_snapshot_ 4 條）全綠。突變：progress_view 的 eta_updated_by_name 改傳 None → test_progress_view_matches_board_progress 與 test_admin_homework_progress_response_uses_service_view 轉紅，還原後 cmp 一致。_publish_snapshot 改走 progress_view、router _progress_out 已刪，BACKEND-390 description 已同步。lint / typecheck 乾淨。"
       }
     },
     {
@@ -15764,7 +15764,7 @@
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/api/admin/test_homework_endpoints.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-388",
@@ -15786,9 +15786,9 @@
         "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-b",
+        "notes": "通過。純補測試（3f57cdf）；2 條 red_case 對到同名測試，tdd.run（test_admin_homework_item_update_ / delete_ 共 14 條，即 BACKEND-388 / 389 的 tdd.run）全綠。突變：在 service update_item 與 delete_item 鎖項目後加回 check_service_date → 兩條新測試皆轉紅，其餘照綠；還原後 cmp 一致。成功案例重讀 DB 項目與進度。"
       }
     },
     {
@@ -15798,7 +15798,7 @@
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/services/test_class_service.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-553",
@@ -15821,9 +15821,9 @@
         "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 盤點時改到的其他檔案列在回報與 commit message。並發測試照 kickoff 規則帶 timeout 執行。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-b",
+        "notes": "通過。純改測試（5569847）；test_pickup_transitions 並發、test_class_service 整檔 24 條、test_promotion_execute_lock_ 3 條、test_binding_code_service 兩條並發、test_put_setting_invalidate_after_commit 全綠。突變：拿掉 grade_promotion_service 候選列 with_for_update 並略過 0.5 秒時間斷言 → 新斷言以 b_grade == 3 轉紅；還原後 cmp 一致。跑完 owner 唯讀：roles code like 'test_%' 0 列、非系統角色 0 列（staff_users 僅剩他人 e2e 的 e2e.admin，與本 task 無關）。盤點：AST 掃 integration 下有 committing_db_session / commit 的函式，committing 測試的 make_staff 已全帶 role_code；BACKEND-553 red_case 已同步。"
       }
     },
     {
@@ -15833,7 +15833,7 @@
       "granularity_unit": "endpoint",
       "target_path": "apps/api/app/api/admin/students.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-165",
@@ -15855,9 +15855,9 @@
         "notes": "docstring 修正沒有測試，reviewer 以閱讀確認。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-b",
+        "notes": "通過。測試 commit 1976321 先於實作 6f14b8e；red_case 對到 test_admin_promote_missing_expected_total_without_schema_validator（model_construct 繞過驗證器直呼 handler，經 app 的 RequestValidationError handler 得 422 / validation_error / loc ['body','expected_total']）與既有 test_admin_promote_422 新增的 loc 斷言；tdd.run（即 BACKEND-165 的 tdd.run）10 條全綠，test_student_schemas 單元測試 11 條綠。突變：handler 明確檢查改成 if False → 新測試轉紅；還原後 cmp 一致。錯誤 handler 只保留 loc/msg/type，兩條路徑同形狀。deps.get_owned_student_for_write docstring 已補暫停，閱讀確認。BACKEND-165 description 已同步。"
       }
     },
     {
@@ -15867,7 +15867,7 @@
       "granularity_unit": "test",
       "target_path": "apps/api/tests/integration/api/admin/test_pickup_endpoints.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-437",
@@ -15889,9 +15889,9 @@
         "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-b",
+        "notes": "通過。純補測試（8aefad6）；2 條 red_case 對到同名測試，tdd.run（test_admin_pickup_verify_ 10 條，即 BACKEND-437 的 tdd.run）與 BACKEND-562 的 test_verify_code_ 10 條全綠。突變：handler 只在成功時 commit（錯碼 / 鎖定先拋錯）→ 兩條新測試與既有 persists / lock_on_fifth / after_regenerate 轉紅；還原後 cmp 一致。red_case 改斷言推播形狀＝PickupAuthorizationOut 與 api_index pickup 事件表一致；確認恰 1 則 admin:pickup、無 student 頻道、不含接送碼與 code_hash。"
       }
     }
   ]
