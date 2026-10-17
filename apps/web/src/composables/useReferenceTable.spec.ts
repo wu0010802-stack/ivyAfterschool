@@ -38,8 +38,10 @@ async function clickMessageBoxButton(text: string): Promise<void> {
 
 function setup(overrides: { create?: () => Promise<unknown>; update?: () => Promise<unknown> } = {}) {
   const list = vi.fn(() => Promise.resolve(ROWS.map((r) => ({ ...r }))))
-  const create = vi.fn(overrides.create ?? (() => Promise.resolve({})))
-  const update = vi.fn(overrides.update ?? (() => Promise.resolve({})))
+  const create = vi.fn<(form: Form) => Promise<unknown>>(overrides.create ?? (() => Promise.resolve({})))
+  const update = vi.fn<(row: Row, form: Form) => Promise<unknown>>(
+    overrides.update ?? (() => Promise.resolve({})),
+  )
   const remove = vi.fn(() => Promise.resolve({ deleted: true, deactivated: false }))
   const onChanged = vi.fn()
   const table = useReferenceTable<Row, Form, 'name' | 'sort_order'>({
