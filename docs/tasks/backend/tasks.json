@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 471,
-  "last_updated": "2026-10-17T04:18:44Z",
+  "version": 472,
+  "last_updated": "2026-10-17T04:20:04Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15728,7 +15728,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/core/tx_hooks.py",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-374",
@@ -15746,7 +15746,9 @@
         "red_cases": [
           "test_collect_before_commit_dedupes_and_flushes_once：同一 session 以 name 'x' 登記 key 'a'（value 1）、'a'（value 2）、'b'（value 3）→ commit 時 flush 恰被呼叫 1 次，收到的 dict == {'a': 2, 'b': 3}；commit 後再登記 'a' 並 commit → 第二次 flush 收到 {'a': ...} 且只含 'a'",
           "test_collect_before_commit_skips_savepoint_and_clears_on_rollback：在 begin_nested() 內登記並釋放 savepoint → 此時 flush 0 次，最外層 commit 後 1 次；另一筆交易登記後 session.rollback() → flush 0 次，之後空交易 commit 也是 0 次",
-          "test_collect_before_commit_names_are_independent：name 'x' 與 'y' 各登記一筆 → commit 時兩個 flush 各被呼叫 1 次、各自只收到自己的 key"
+          "test_collect_before_commit_names_are_independent：name 'x' 與 'y' 各登記一筆 → commit 時兩個 flush 各被呼叫 1 次、各自只收到自己的 key",
+          "test_collect_before_commit_keeps_entries_on_savepoint_rollback：外層登記 'a'；begin_nested 內登記 'b' 後拋例外（contextlib.suppress）讓 savepoint rollback → 外層 commit 時 flush 恰 1 次，收到 {'a': 1, 'b': 2}（突變：savepoint rollback 也 pop → 轉紅）",
+          "test_collect_before_commit_listens_once_per_name：同 session 同 name 登記兩次 → session.dispatch.before_commit 與 after_soft_rollback 的 listener 數量各只比登記前多 1，commit 後 flush 收到 {'a': 1, 'b': 2}（突變：每次登記都 event.listen → 轉紅）"
         ],
         "run": "just test-int apps/api/tests/integration/core/test_tx_hooks.py -k \"test_collect_before_commit_\" && just test-int apps/api/tests/integration/services/test_homework_service.py -k \"test_broadcast_homework_snapshot_\" && just test-int apps/api/tests/integration/services/pickup/test_pickup_views.py -k \"test_pickup_views_\"",
         "notes": "flush 以收集呼叫參數的假函式驗證具體 dict 內容，不只斷言被呼叫。"
