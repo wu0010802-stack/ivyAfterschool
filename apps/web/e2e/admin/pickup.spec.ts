@@ -1,7 +1,9 @@
 // FRONTEND-292：接送請求（員工代建）→ 員工回覆預計時間並確認 → 完成交付，另一個 context 經 ws 即時看到確認。
 // 接真實後端，種子 1 位學生由 ../support/admin.ts 經 API 建立並登記到班；afterAll 取消仍進行中的請求後清理。
 // e2e 只測員工代建流程；家長發起、「我到了」與「我已經到了」捷徑由元件測試與後端整合測試涵蓋。
-// 測試日不是營業日時整組 skip（以 GET /api/admin/attendance/daily 的 is_service_day 判斷）。
+// 整組 skip 的兩種情況：測試日不是營業日（GET /api/admin/attendance/daily 的 is_service_day）；
+// 「現在 + 30 分」晚於 pickup.window 的最晚預計抵達時間（GET /api/admin/pickup/queue 的 latest_expected_arrival），
+// 此時員工代建會 422 expected_arrival_too_late。
 // 登入有每 IP 5 分鐘 20 次的限流：整組共用一個以 UI 登入一次的 page（serial），不在每條測試重新登入。
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test'
 
@@ -23,7 +25,8 @@ let context: APIRequestContext
 let api: AdminApi
 let seed: SeedResult | null = null
 let requestId = ''
-let isServiceDay = false
+/** 非 null：整組 skip 的原因 */
+let skipReason: string | null = null
 let observerContext: BrowserContext | null = null
 let observer: Page | null = null
 let staffContext: BrowserContext | null = null
@@ -41,6 +44,16 @@ const TAIPEI_HM = new Intl.DateTimeFormat('en-GB', {
 /** 台北時間「現在 + minutes」的 HH:MM */
 function taipeiHm(minutes: number): string {
   return TAIPEI_HM.format(new Date(nowMs() + minutes * MINUTE_MS))
+}
+
+function hmToMinutes(hm: string): number {
+  const [h, m] = hm.split(':').map(Number)
+  return (h ?? 0) * 60 + (m ?? 0)
+}
+
+/** 「現在 + minutes」是否晚於當天的 latest（HH:MM）；跨過午夜一律視為晚於 */
+function laterThanToday(minutes: number, latest: string): boolean {
+  return hmToMinutes(taipeiHm(0)) + minutes > hmToMinutes(latest)
 }
 
 const queueCard = (p: Page, name: string) => p.locator('.qcard').filter({ hasText: name })
@@ -65,8 +78,17 @@ test.describe('pickup flow', () => {
     const baseURL = resolveBaseUrl(process.env)
     context = await playwright.request.newContext({ baseURL })
     api = await adminApi(context)
-    isServiceDay = (await api.get<{ is_service_day: boolean }>('/api/admin/attendance/daily')).is_service_day
-    if (!isServiceDay) return
+    if (!(await api.get<{ is_service_day: boolean }>('/api/admin/attendance/daily')).is_service_day) {
+      skipReason = '今天不是營業日'
+      return
+    }
+    const { latest_expected_arrival: latest } = await api.get<{ latest_expected_arrival: string }>(
+      '/api/admin/pickup/queue',
+    )
+    if (laterThanToday(EXPECTED_ARRIVAL_MINUTES, latest)) {
+      skipReason = `現在 +${EXPECTED_ARRIVAL_MINUTES} 分晚於最晚預計抵達時間 ${latest}，員工代建會被拒絕`
+      return
+    }
     seed = await seedBasic(api, { students: 1 })
     const studentId = seed.studentIds[0]
     await api.post(`/api/admin/attendance/${studentId}/check-in`, {})
@@ -99,7 +121,7 @@ test.describe('pickup flow', () => {
   })
 
   test.beforeEach(() => {
-    test.skip(!isServiceDay, '今天不是營業日')
+    test.skip(skipReason !== null, skipReason ?? '')
   })
 
   test('pickup flow staff created request appears in queue', async () => {
