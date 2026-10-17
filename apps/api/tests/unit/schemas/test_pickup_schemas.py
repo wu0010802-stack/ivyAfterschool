@@ -273,9 +273,9 @@ def test_pickup_schemas_request_out() -> None:
     assert dumped["counts"]["arrived"] == 1
     assert dumped["latest_expected_arrival"] == "19:00"
     # BACKEND-563：latest_expected_arrival 必填且為 HH:MM
-    for bad in ("7:00", "24:00", "19:60", "19:00:00", ""):
+    for bad_hm in ("7:00", "24:00", "19:60", "19:00:00", ""):
         with pytest.raises(ValidationError):
-            PickupQueueOut(**{**queue_fields, "latest_expected_arrival": bad})
+            PickupQueueOut(**{**queue_fields, "latest_expected_arrival": bad_hm})
     with pytest.raises(ValidationError):
         PickupQueueOut(**{k: v for k, v in queue_fields.items() if k != "latest_expected_arrival"})
 
