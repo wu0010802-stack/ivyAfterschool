@@ -77,16 +77,38 @@ describe('ExamScoreTable', () => {
     expect(headers.every((th) => th.classes().includes('m3-label-medium'))).toBe(true)
   })
 
-  it('ExamScoreTable formats scores and full scores to at most one decimal', () => {
+  it('ExamScoreTable shows two decimals without rounding', () => {
+    // 後端 Numeric(6,2) 以 JSON number 輸出：'85.50' 解析後即 85.5
+    const cases: [number, string][] = [
+      [59.95, '59.95'],
+      [JSON.parse('85.50') as number, '85.5'],
+    ]
+    for (const [score, text] of cases) {
+      const wrapper = mountTable([subject({ score })])
+      expect(row(wrapper, 0).get('.score-table__score').text(), String(score)).toBe(text)
+    }
+  })
+
+  it('ExamScoreTable trims trailing zeros', () => {
+    const wrapper = mountTable([
+      subject({ subject_name: '英語', score: JSON.parse('90.00') as number }),
+      subject({ subject_name: '數學', score: null, is_absent: true }),
+      subject({ subject_name: '社會', score: null, is_absent: false }),
+    ])
+    expect([0, 1, 2].map((i) => row(wrapper, i).get('.score-table__score').text())).toEqual(['90', '缺考', '未登記'])
+  })
+
+  it('ExamScoreTable formats scores and full scores to at most two decimals', () => {
     const cases: [number, string][] = [
       [92.5, '92.5'],
       [101.5, '101.5'],
       [88, '88'],
       [100, '100'],
       [0, '0'],
-      [87.04, '87'],
-      [87.96, '88'],
-      [66.66, '66.7'],
+      [87.04, '87.04'],
+      [87.96, '87.96'],
+      [66.66, '66.66'],
+      [999.95, '999.95'],
     ]
     for (const [score, text] of cases) {
       const wrapper = mountTable([subject({ score, full_score: 120 })])
@@ -97,8 +119,14 @@ describe('ExamScoreTable', () => {
       subject({ subject_name: 'a', score: 40, full_score: 50 }),
       subject({ subject_name: 'b', score: 40, full_score: 99.5 }),
       subject({ subject_name: 'c', score: 40, full_score: 100.0 }),
+      subject({ subject_name: 'd', score: 40, full_score: 120.25 }),
     ])
-    expect([0, 1, 2].map((i) => row(full, i).get('.score-table__full').text())).toEqual(['50', '99.5', '100'])
+    expect([0, 1, 2, 3].map((i) => row(full, i).get('.score-table__full').text())).toEqual([
+      '50',
+      '99.5',
+      '100',
+      '120.25',
+    ])
   })
 
   it('ExamScoreTable absent wins over a stored score and uses the error colour', () => {
