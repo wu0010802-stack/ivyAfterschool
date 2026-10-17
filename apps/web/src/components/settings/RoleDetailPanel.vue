@@ -18,6 +18,7 @@ import { ApiError, isApiError } from '@/shared/types/api'
 import { errorCode, errorMessage } from '@/shared/utils/errorMessage'
 import { useAuthStore } from '@/stores/auth'
 import { usePermission } from '@/utils/permission'
+import { cannotGrantMessage } from '@/utils/cannotGrantMessage'
 
 const props = defineProps<{
   role: Role
@@ -88,16 +89,6 @@ function changedFields(): RoleUpdateBody {
   return body
 }
 
-/** 403 cannot_grant_permissions 的 details.permissions → 中文名稱；沒有清單時用後端訊息 */
-function cannotGrantMessage(err: unknown): string {
-  const details = isApiError(err) ? (err.details as { permissions?: unknown } | null) : null
-  const codes = Array.isArray(details?.permissions)
-    ? details.permissions.filter((c): c is string => typeof c === 'string')
-    : []
-  if (!codes.length) return errorMessage(err, '你沒有部分權限，無法授出')
-  return `你沒有以下權限，無法授出：${codes.map((c) => permissionLabels.value.get(c) ?? c).join('、')}`
-}
-
 async function save(): Promise<void> {
   nameError.value = form.name.trim() ? '' : '請輸入角色名稱'
   if (nameError.value) return
@@ -112,7 +103,7 @@ async function save(): Promise<void> {
     emit('saved', saved)
   } catch (err) {
     const code = errorCode(err)
-    if (code === 'cannot_grant_permissions') alertMessage.value = cannotGrantMessage(err)
+    if (code === 'cannot_grant_permissions') alertMessage.value = cannotGrantMessage(err, permissionLabels.value)
     else if (code !== null && MANAGER_CONFLICTS.has(code)) alertMessage.value = errorMessage(err, '儲存失敗，請稍後再試')
     else ElMessage.error(errorMessage(err, '儲存失敗，請稍後再試'))
   } finally {
