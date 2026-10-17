@@ -423,14 +423,14 @@ def test_ci_docker_build_job_cleanup_tolerates_missing_container() -> None:
 E2E_ADMIN_SCRIPT = REPO_ROOT / "scripts" / "e2e_bootstrap_admin.sh"
 WEB_DIR = REPO_ROOT / "apps" / "web"
 PLAYWRIGHT_CONFIG = WEB_DIR / "playwright.config.ts"
-# 密碼變數名（workflow 與腳本共用）
+# 密碼變數的展開（只提到變數名稱的錯誤訊息不算印出密碼）
 PASSWORD_VARS = (
-    "E2E_ADMIN_PASSWORD",
+    "$E2E_ADMIN_PASSWORD",
+    "${E2E_ADMIN_PASSWORD}",
     "$pass",
     "${pass}",
-    "$password",
-    "${password}",
-    "INITIAL_PASSWORD",
+    "$INITIAL_PASSWORD",
+    "${INITIAL_PASSWORD}",
 )
 
 
@@ -504,7 +504,8 @@ def test_e2e_workflow_bootstrap_masks_password() -> None:
     assert [
         line for line in (bootstrap + "\n" + script).splitlines() if _echoes_password(line)
     ] == []
-    assert "set -x" not in script
+    # 不得開啟 xtrace（set -x / set -ex …）：會把展開後的密碼印進 log
+    assert re.search(r"^\s*set\s+-[a-z]*x", script, re.MULTILINE) is None
     generate = [s for s in steps if "E2E_ADMIN_PASSWORD=" in str(s.get("run", ""))]
     assert len(generate) == 1
     run = str(generate[0]["run"])
@@ -555,3 +556,14 @@ def test_playwright_config_test_match_only_specs() -> None:
     files = set(re.findall(r"\u203a\s+(\S+?):\d+:\d+", output))
     assert files
     assert [f for f in files if not f.endswith(".spec.ts")] == []
+
+
+def test_vite_config_prebundles_element_plus_styles() -> None:
+    """unplugin 依「這次用到的元件」才 import element-plus 樣式：冷快取時進新頁面才發現新依賴，
+    vite 重新預打包並整頁重載，打斷 e2e 換頁。dev server 啟動時就要預打包全部元件樣式。"""
+    shared = (WEB_DIR / "build" / "optimizeDeps.ts").read_text(encoding="utf-8")
+    config = (WEB_DIR / "vite.config.ts").read_text(encoding="utf-8")
+
+    assert "'element-plus/es/components/*/style/css'" in shared
+    assert re.search(r"optimizeDeps:\s*\{\s*include:\s*\[\s*\.\.\.OPTIMIZE_DEPS_INCLUDE", config)
+    assert "from './build/optimizeDeps.ts'" in config
