@@ -5,7 +5,8 @@
 // - 工具列：今天日期、唯讀 tag、四個計數 chip（0 時中性灰、載入中 / 失敗「–」）、連線膠囊、提示音切換、代理接送核驗、
 //   代建接送請求（pickup:operate）。平板 1024 寬度一列，寬度 < 900 才換行。
 // - 提示音（FRONTEND-187）：board.onArrived / onNewRequest 與 transient pickup.arrived 都交給 chime（chime 以 request id 去重）；
-//   本機 board.create 建立的請求由 board 不觸發 onNewRequest（FRONTEND-188）。第一次 pointerdown 時 unlock。
+//   本機 board.create 建立的請求由 board 不觸發 onNewRequest（FRONTEND-188）。第一次 pointerdown 時 unlock；
+//   提示列等這次手勢結束（根元素收到冒泡的 click 或 pointercancel）才移除，第一下點到的按鈕不會因版面上移而落空（FRONTEND-314）。
 // - 家長到達：呼叫 DismissalPosBoard（FRONTEND-190）的 focusRequest，以 request id 去重；佇列還沒有該卡（找不到）時不記為已定位，
 //   之後 pickup 推播到了會再定位一次。
 // - 名單或佇列第一次載入失敗：EmptyState error + 重試；載入成功後的重新整理失敗維持畫面。
@@ -95,11 +96,18 @@ function onCreated(req: PickupRequest): void {
 
 // ---- 提示音 ----
 const unlocked = ref(false)
+/** 「點一下畫面以啟用提示音」：unlock 之後等該次點擊完成才移除 */
+const hintShown = ref(true)
 
 function onPointerDown(): void {
   if (unlocked.value) return
   unlocked.value = true
   chime.unlock()
+}
+
+/** click 冒泡到根元素時目標按鈕的 handler 已執行完；pointercancel 為不產生 click 的手勢（觸控捲動等） */
+function onGestureEnd(): void {
+  if (unlocked.value && hintShown.value) hintShown.value = false
 }
 
 // ---- 家長到達：定位並閃爍 ----
@@ -156,6 +164,8 @@ onBeforeUnmount(() => {
   <div
     class="pos"
     @pointerdown="onPointerDown"
+    @click="onGestureEnd"
+    @pointercancel="onGestureEnd"
   >
     <div class="pos-top">
       <div class="pos-toolbar">
@@ -225,7 +235,7 @@ onBeforeUnmount(() => {
         </el-button>
       </div>
       <el-alert
-        v-if="!unlocked"
+        v-if="hintShown"
         class="pos-hint"
         type="info"
         :closable="false"
