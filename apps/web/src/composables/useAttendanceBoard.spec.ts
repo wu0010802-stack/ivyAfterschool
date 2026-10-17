@@ -598,4 +598,104 @@ describe('useAttendanceBoard', () => {
     expect(statusOf(board, 's1')).toBe('present')
     expect(board.data.value?.summary.present).toBe(1)
   })
+
+  describe('useAttendanceBoard date change', () => {
+    const D2 = '2026-10-03'
+    const D3 = '2026-10-04'
+    const onDate = (row: AttendanceRow, d: string, extra: Partial<AttendanceRow> = {}): AttendanceRow => ({
+      ...row,
+      service_date: d,
+      ...extra,
+    })
+
+    /** d1 照常回應；其他日期卡住，由測試放行 */
+    function gatedByDate(responses: Record<string, AttendanceRow[]>): Record<string, () => void> {
+      const gates: Record<string, () => void> = {}
+      mock.onGet(DAILY_URL).reply(async (config: AxiosRequestConfig) => {
+        const d = (config.params as { date: string }).date
+        if (d !== DATE) {
+          await new Promise<void>((resolve) => {
+            gates[d] = resolve
+          })
+        }
+        return [200, daily(responses[d] ?? [], d)]
+      })
+      return gates
+    }
+
+    it('useAttendanceBoard date change keeps ws row for new date during reload', async () => {
+      const gates = gatedByDate({ [DATE]: [S1, S2], [D2]: [onDate(S1, D2), onDate(S2, D2)] })
+      const date = ref(DATE)
+      const { board } = await mountBoard(date)
+
+      date.value = D2
+      await settle()
+      serverMessage(socket(), 'attendance.updated', onDate(S1, D2, { status: 'present' }))
+      await settle()
+      // 新日期清單尚未回來：不套用到 d1 的舊清單
+      expect(board.data.value?.date).toBe(DATE)
+      expect(statusOf(board, 's1')).toBe('expected')
+
+      gates[D2]?.()
+      await settle()
+      expect(board.data.value?.date).toBe(D2)
+      expect(statusOf(board, 's1')).toBe('present')
+      expect(statusOf(board, 's2')).toBe('expected')
+      expect(board.data.value?.summary.present).toBe(1)
+    })
+
+    it('useAttendanceBoard date change inserts buffered row missing from response', async () => {
+      const S3 = makeRow({ id: 'a3', student_id: 's3', student_no: 'S11303', student_name: '林小華' })
+      const gates = gatedByDate({ [DATE]: [S1, S2], [D2]: [onDate(S1, D2), onDate(S2, D2)] })
+      const date = ref(DATE)
+      const { board } = await mountBoard(date)
+
+      date.value = D2
+      await settle()
+      serverMessage(socket(), 'attendance.updated', onDate(S3, D2, { status: 'present' }))
+      await settle()
+      gates[D2]?.()
+      await settle()
+      expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s1', 's2', 's3'])
+      expect(board.data.value?.summary.total).toBe(3)
+      expect(board.data.value?.summary.present).toBe(1)
+    })
+
+    it('useAttendanceBoard date change drops buffered rows of previous switch', async () => {
+      const gates = gatedByDate({ [DATE]: [S1, S2], [D2]: [onDate(S1, D2)], [D3]: [onDate(S1, D3)] })
+      const date = ref(DATE)
+      const { board } = await mountBoard(date)
+
+      date.value = D2
+      await settle()
+      serverMessage(socket(), 'attendance.updated', onDate(S1, D2, { status: 'present' }))
+      await settle()
+      date.value = D3
+      await settle()
+      gates[D3]?.()
+      await settle()
+      expect(board.data.value?.date).toBe(D3)
+      expect(statusOf(board, 's1')).toBe('expected')
+      // d2 的回應晚到：序號防護不採用
+      gates[D2]?.()
+      await settle()
+      expect(board.data.value?.date).toBe(D3)
+      expect(statusOf(board, 's1')).toBe('expected')
+    })
+
+    it('useAttendanceBoard date change keeps ws row for new date during reload: buffered row outside class filter is ignored', async () => {
+      const C2 = makeRow({ id: 'a9', student_id: 's9', student_no: 'S11309', class_id: 'c2', class_name: '低年級 B 班' })
+      const gates = gatedByDate({ [DATE]: [S1], [D2]: [onDate(S1, D2)] })
+      const date = ref(DATE)
+      const { board } = await mountBoard(date, ref<string | null>('c1'))
+
+      date.value = D2
+      await settle()
+      serverMessage(socket(), 'attendance.updated', onDate(C2, D2, { status: 'present' }))
+      await settle()
+      gates[D2]?.()
+      await settle()
+      expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s1'])
+    })
+  })
 })

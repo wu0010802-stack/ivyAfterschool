@@ -567,4 +567,172 @@ describe('useHomeworkBoard', () => {
     expect(boardGets().at(-1)?.params).toEqual({ date: DATE, class_id: 'c1' })
     expect(studentOf(board)?.progress.ready_eta).toBe('18:20')
   })
+
+  describe('useHomeworkBoard date change', () => {
+    const D2 = '2026-10-03'
+    const onDate = (s: BoardStudent, d: string, progress: Partial<Progress> = {}): BoardStudent => ({
+      ...s,
+      items: s.items.map((i) => ({ ...i, service_date: d })),
+      progress: { ...s.progress, service_date: d, ...progress },
+    })
+
+    function gatedByDate(responses: Record<string, BoardStudent[]>): Record<string, () => void> {
+      const gates: Record<string, () => void> = {}
+      mock.onGet(BOARD_URL).reply(async (config: AxiosRequestConfig) => {
+        const d = (config.params as { date: string }).date
+        if (d !== DATE) {
+          await new Promise<void>((resolve) => {
+            gates[d] = resolve
+          })
+        }
+        return [200, boardOf(responses[d] ?? [], d)]
+      })
+      return gates
+    }
+
+    it('useHomeworkBoard date change keeps ws snapshot for new date during reload', async () => {
+      const gates = gatedByDate({ [DATE]: [S1], [D2]: [onDate(S1, D2)] })
+      const date = ref(DATE)
+      const board = await mountBoard(date)
+
+      date.value = D2
+      await settle()
+      serverMessage(socket(), 'homework.progress_updated', {
+        student_id: 's1',
+        service_date: D2,
+        items: onDate(S1, D2).items,
+        progress: makeProgress({ service_date: D2, overall_status: 'in_progress', ready_eta: '18:20' }),
+      })
+      await settle()
+      // 新日期看板尚未回來：不套用到 d1 的舊看板
+      expect(board.board.value?.date).toBe(DATE)
+      expect(studentOf(board)?.progress.ready_eta).toBeNull()
+
+      gates[D2]?.()
+      await settle()
+      expect(board.board.value?.date).toBe(D2)
+      expect(studentOf(board)?.progress.ready_eta).toBe('18:20')
+    })
+
+    it('useHomeworkBoard date change ignores buffered student missing from response', async () => {
+      const gates = gatedByDate({ [DATE]: [S1], [D2]: [onDate(S1, D2)] })
+      const date = ref(DATE)
+      const board = await mountBoard(date)
+
+      date.value = D2
+      await settle()
+      serverMessage(socket(), 'homework.progress_updated', {
+        student_id: 's9',
+        service_date: D2,
+        items: [makeItem({ id: 'h9', student_id: 's9', service_date: D2 })],
+        progress: makeProgress({ student_id: 's9', service_date: D2 }),
+      })
+      await settle()
+      gates[D2]?.()
+      await settle()
+      expect(board.board.value?.students.map((s) => s.student_id)).toEqual(['s1'])
+    })
+
+    it('useHomeworkBoard date change keeps ws snapshot for new date during reload: buffer of previous switch is dropped', async () => {
+      const D3 = '2026-10-04'
+      const gates = gatedByDate({ [DATE]: [S1], [D2]: [onDate(S1, D2)], [D3]: [onDate(S1, D3)] })
+      const date = ref(DATE)
+      const board = await mountBoard(date)
+
+      date.value = D2
+      await settle()
+      serverMessage(socket(), 'homework.progress_updated', {
+        student_id: 's1',
+        service_date: D2,
+        items: onDate(S1, D2).items,
+        progress: makeProgress({ service_date: D2, overall_status: 'in_progress', ready_eta: '18:20' }),
+      })
+      await settle()
+      date.value = D3
+      await settle()
+      gates[D3]?.()
+      await settle()
+      expect(board.board.value?.date).toBe(D3)
+      expect(studentOf(board)?.progress.ready_eta).toBeNull()
+    })
+  })
+
+  it('useHomeworkBoard deferred snapshot older than reload is discarded', async () => {
+    const patch = deferred<void>()
+    mock
+      .onGet(BOARD_URL)
+      .replyOnce(200, boardOf([S1]))
+      .onGet(BOARD_URL)
+      .reply(200, boardOf([{ ...S1, progress: makeProgress({ overall_status: 'in_progress', ready_eta: '18:30' }) }]))
+    mock.onPatch('/admin/homework/items/h1').reply(async () => {
+      await patch.promise
+      return [
+        200,
+        {
+          item: { ...H1, status: 'doing' },
+          progress: makeProgress({ overall_status: 'in_progress', ready_eta: '18:30' }),
+        },
+      ]
+    })
+    const board = await mountBoard()
+
+    const pending = board.setItemStatus(H1, 'doing')
+    await settle()
+    // chain 進行中收到 snapshot A：延後
+    serverMessage(socket(), 'homework.progress_updated', {
+      student_id: 's1',
+      service_date: DATE,
+      items: [H1, H2],
+      progress: makeProgress({ overall_status: 'in_progress', ready_eta: '18:10' }),
+    })
+    await settle()
+    // 收到 A 之後才發出的 reload：伺服器狀態不比回應舊
+    await board.reload()
+    await settle()
+    expect(studentOf(board)?.progress.ready_eta).toBe('18:30')
+
+    patch.resolve()
+    await pending
+    await settle()
+    expect(studentOf(board)?.progress.ready_eta).toBe('18:30')
+  })
+
+  it('useHomeworkBoard deferred snapshot received after reload start still applies', async () => {
+    const patch = deferred<void>()
+    const reloadGate = deferred<void>()
+    mock
+      .onGet(BOARD_URL)
+      .replyOnce(200, boardOf([S1]))
+      .onGet(BOARD_URL)
+      .reply(async () => {
+        await reloadGate.promise
+        return [200, boardOf([S1])]
+      })
+    mock.onPatch('/admin/homework/items/h1').reply(async () => {
+      await patch.promise
+      return [200, { item: { ...H1, status: 'doing' }, progress: makeProgress({ overall_status: 'in_progress' }) }]
+    })
+    const board = await mountBoard()
+
+    const pending = board.setItemStatus(H1, 'doing')
+    await settle()
+    const reloading = board.reload()
+    await settle()
+    serverMessage(socket(), 'homework.progress_updated', {
+      student_id: 's1',
+      service_date: DATE,
+      items: [{ ...H1, status: 'doing' }, H2],
+      progress: makeProgress({ overall_status: 'in_progress', ready_eta: '18:40' }),
+    })
+    await settle()
+    reloadGate.resolve()
+    await reloading
+    await settle()
+    expect(studentOf(board)?.progress.ready_eta).toBeNull()
+
+    patch.resolve()
+    await pending
+    await settle()
+    expect(studentOf(board)?.progress.ready_eta).toBe('18:40')
+  })
 })
