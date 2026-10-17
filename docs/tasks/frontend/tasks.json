@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 344,
-  "last_updated": "2026-10-17T04:20:19Z",
+  "version": 345,
+  "last_updated": "2026-10-17T04:20:59Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -3600,7 +3600,7 @@
     {
       "id": "FRONTEND-126",
       "title": "實作 composables/useAttendanceBoard.ts：今日出勤資料、操作與 ws 即時合併",
-      "description": "建立 `apps/web/src/composables/useAttendanceBoard.ts`，今日出勤頁（FRONTEND-122）的資料擁有者。\n\n**介面**\n```ts\nexport function useAttendanceBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  data: Ref<DailyAttendance | null>; loading: Ref<boolean>; error: Ref<string | null>\n  busyIds: Ref<ReadonlySet<string>>                      // 操作中的 student_id\n  reload(): Promise<void>\n  checkIn(row): Promise<void>; checkOut(row): Promise<void>; markAbsent(row): Promise<void>\n  batchCheckIn(studentIds: string[]): Promise<BatchCheckInResult>\n  applyRow(row: AttendanceRow): void                      // 以 student_id 取代並重算 summary（只套用符合目前篩選的列）\n  wsStatus: ComputedRef<WsStatus>; wsDenied: ComputedRef<boolean>\n}\n```\n- 掛載時與 date / classId 變更時重新載入（序號防護，只採用最新回應）；classId 為 null 或空字串時不帶 class_id。\n- 載入失敗：`error = errorMessage(err, '無法載入出勤資料')`，成功時清為 null；同一篩選的重抓失敗（例如斷線輪詢）保留舊 data，換日期 / 班級後的載入失敗則 data 清為 null（不顯示別的篩選的舊資料）。\n- 操作：同一學生進行中再呼叫直接忽略；成功以回傳 row `applyRow`（與 ws 同一條件，篩選切換期間晚到、已不屬於目前篩選的回傳列不套用）；失敗 `ElMessage.error(errorMessage(err, '操作失敗'))`，409（already_checked_in / already_checked_out / not_checked_in / student_on_leave）額外重新載入該日資料以修正畫面。\n- `batchCheckIn`：成功列套用（同 applyRow，只套用符合目前篩選的列；回傳值原樣交給呼叫端）；`skipped` 含上述畫面過期的 code 時重新載入；請求失敗 `ElMessage.error(errorMessage(err, '批次到班失敗'))` 後 reject 原錯誤（409 過期類同樣重新載入），呼叫端只需決定畫面狀態。\n- `applyRow`（操作、批次、ws 共用）只套用符合目前篩選的列：`row.service_date === date` 且（classId 為 null 或 `row.class_id === classId`），並且與目前資料同日（`data.date`，篩選切換後新清單尚未回來時不套用到舊清單）；不在清單中的列依班級、學號插入：沿用清單既有的班級順序（後端依班級 sort_order、班名排序，列上沒有 sort_order），同班內依學號，清單中沒有該班時接在最後。\n- `summary` 由 items 重算（不信任舊 summary），與後端一致：total = items 數、各狀態計數。\n- ws：`useAdminWsTopic('attendance', {...}, { resync: reload })`（FRONTEND-038）。`attendance.updated` → applyRow（同上條件；不在清單中則加入並依班級、學號排序），不符合則忽略；`attendance.batch_updated` → 逐筆同上；`attendance.bulk_updated` → `dates` 含目前 date 時 reload。\n- 只有 date 為今天時才訂閱有意義，但仍一律訂閱（改判過去日期也會推播）。\n- reload 晚到不倒退（FRONTEND-304）：以本機異動序號判斷，不依賴伺服器時間。維護遞增計數 `touchClock`；每次套用列（ws、操作、批次）記 `touched[student_id] = ++touchClock`；`reload()` 發出時記 `startedAt = touchClock`。回應到達時（篩選與目前資料相同）`touched[id] > startedAt` 的列保留目前值，其餘取回應值；回應沒有、但在 startedAt 之後套用過的列保留（依班級、學號插入）；summary 依合併後的列重算。篩選鍵改變時清空 touched；resync（ws 重連補抓）走同一個 reload。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/useAttendanceBoard.ts`，今日出勤頁（FRONTEND-122）的資料擁有者。\n\n**介面**\n```ts\nexport function useAttendanceBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  data: Ref<DailyAttendance | null>; loading: Ref<boolean>; error: Ref<string | null>\n  busyIds: Ref<ReadonlySet<string>>                      // 操作中的 student_id\n  reload(): Promise<void>\n  checkIn(row): Promise<void>; checkOut(row): Promise<void>; markAbsent(row): Promise<void>\n  batchCheckIn(studentIds: string[]): Promise<BatchCheckInResult>\n  applyRow(row: AttendanceRow): void                      // 以 student_id 取代並重算 summary（只套用符合目前篩選的列）\n  wsStatus: ComputedRef<WsStatus>; wsDenied: ComputedRef<boolean>\n}\n```\n- 掛載時與 date / classId 變更時重新載入（序號防護，只採用最新回應）；classId 為 null 或空字串時不帶 class_id。\n- 載入失敗：`error = errorMessage(err, '無法載入出勤資料')`，成功時清為 null；同一篩選的重抓失敗（例如斷線輪詢）保留舊 data，換日期 / 班級後的載入失敗則 data 清為 null（不顯示別的篩選的舊資料）。\n- 操作：同一學生進行中再呼叫直接忽略；成功以回傳 row `applyRow`（與 ws 同一條件，篩選切換期間晚到、已不屬於目前篩選的回傳列不套用）；失敗 `ElMessage.error(errorMessage(err, '操作失敗'))`，409（already_checked_in / already_checked_out / not_checked_in / student_on_leave）額外重新載入該日資料以修正畫面。\n- `batchCheckIn`：成功列套用（同 applyRow，只套用符合目前篩選的列；回傳值原樣交給呼叫端）；`skipped` 含上述畫面過期的 code 時重新載入；請求失敗 `ElMessage.error(errorMessage(err, '批次到班失敗'))` 後 reject 原錯誤（409 過期類同樣重新載入），呼叫端只需決定畫面狀態。\n- `applyRow`（操作、批次、ws 共用）只套用符合目前篩選的列：`row.service_date === date` 且（classId 為 null 或 `row.class_id === classId`），並且與目前資料同日（`data.date`，篩選切換後新清單尚未回來時不套用到舊清單）；不在清單中的列依班級、學號插入：沿用清單既有的班級順序（後端依班級 sort_order、班名排序，列上沒有 sort_order），同班內依學號，清單中沒有該班時接在最後。\n- `summary` 由 items 重算（不信任舊 summary），與後端一致：total = items 數、各狀態計數。\n- ws：`useAdminWsTopic('attendance', {...}, { resync: reload })`（FRONTEND-038）。`attendance.updated` → applyRow（同上條件；不在清單中則加入並依班級、學號排序），不符合則忽略；`attendance.batch_updated` → 逐筆同上；`attendance.bulk_updated` → `dates` 含目前 date 時 reload。\n- 只有 date 為今天時才訂閱有意義，但仍一律訂閱（改判過去日期也會推播）。\n- reload 晚到不倒退（FRONTEND-304）：以本機異動序號判斷，不依賴伺服器時間。維護遞增計數 `touchClock`；每次套用列（ws、操作、批次）記 `touched[student_id] = ++touchClock`；`reload()` 發出時記 `startedAt = touchClock`。回應到達時`touched[id] > startedAt` 的列保留目前值，其餘取回應值；回應沒有、但在 startedAt 之後套用過的列保留（依班級、學號插入）；summary 依合併後的列重算。篩選鍵改變時清空 touched（因此只換班級、目前資料仍是前一個篩選的清單時，reload 途中套用的列也照常保留）；resync（ws 重連補抓）走同一個 reload。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
@@ -3634,7 +3634,8 @@
           "useAttendanceBoard clears error on success and ignores results of another date：首次載入 500 → error '伺服器忙碌中'，reload 成功 → error null；checkIn(s1) 回應前切到 2026-10-01（新清單未回）→ 2026-10-02 的回傳列不套用、s1 仍 expected；切回 2026-10-02 但清單未回時收到當日 ws 列 → 不套用到 2026-10-01 的舊清單",
           "useAttendanceBoard keeps row updated by ws during reload：reload 發出後、回應前 ws 派發 s1 到班（status present）→ 回應（s1 仍 expected、s2 present）到達後 s1.status === 'present'、s2.status === 'present'，summary.present === 2（FRONTEND-304）",
           "useAttendanceBoard applies reload rows untouched since request：reload 前 ws 已改過 s1、reload 發出後沒有新事件 → 回應的 s1 值（status left）覆蓋目前值（FRONTEND-304）",
-          "useAttendanceBoard keeps operation result during reload：checkIn(s1) 的回應在 reload 回應之前到達 → reload 回應後 s1 仍為 present（FRONTEND-304）"
+          "useAttendanceBoard keeps operation result during reload：checkIn(s1) 的回應在 reload 回應之前到達 → reload 回應後 s1 仍為 present（FRONTEND-304）",
+          "useAttendanceBoard keeps row updated by ws during reload: class filter change：classId null 載入 [s1,s2] → 改 c1（reload 卡住）→ ws s1 present → c1 回應（s1 expected）到達後 s1 仍 present、summary.present 1（FRONTEND-304）"
         ],
         "run": "just web-test src/composables/useAttendanceBoard.spec.ts -t \"useAttendanceBoard\"",
         "notes": ""
@@ -3773,7 +3774,8 @@
           "LeavesView restores student label from url without matching rows：網址 ?student_id=s9、GET /admin/leaves 回空清單、GET /admin/students/s9 回 {name:'王小明', student_no:'S11301', ...} → StudentSelect 顯示文字含 '王小明'（FRONTEND-300）",
           "LeavesView keeps id when student lookup fails：網址 ?student_id=s9、GET /admin/students/s9 回 404 → 頁面沒有錯誤訊息、StudentSelect 顯示 's9'，GET /admin/leaves 照常帶 student_id=s9（FRONTEND-300）",
           "LeavesView action column width：操作欄 el-table-column 的 width === '88'（FRONTEND-300）",
-          "LeavesView recomputes today on reload：台北 2026-10-14 23:59 載入，請假 2026-10-15～2026-10-15 列為「取消」且不是「進行中」；推進到 2026-10-15 00:01 按「重新整理」→「進行中」，日期區間仍為 2026-10-14～2026-11-13（FRONTEND-300）"
+          "LeavesView recomputes today on reload：台北 2026-10-14 23:59 載入，請假 2026-10-15～2026-10-15 列為「取消」且不是「進行中」；推進到 2026-10-15 00:01 按「重新整理」→「進行中」，日期區間仍為 2026-10-14～2026-11-13（FRONTEND-300）",
+          "LeavesView recomputes today on reload: reset keeps initial range, shortcuts use new today：台北 2026-10-14 23:59 建立、2026-10-15 00:01 按「重新整理」後 →「今天起 30 天」快捷鍵值為 2026-10-15～2026-11-14；清除日期區間再按「重設」→ 送出 date_from 2026-10-14、date_to 2026-11-13，「重設」回到 disabled（FRONTEND-300）"
         ],
         "run": "just web-test src/views/LeavesView.spec.ts -t \"LeavesView\"",
         "notes": "13 passed（8 條 red_cases + 5 條延伸：清空日期／重設、單日／原因 fallback／學生連結、取消後重載、取消失敗關閉後重載、載入失敗重試）。describe timeout 20s（happy-dom 下 el-select／el-date-picker 渲染慢）；日期區間改值以 findComponent ElDatePicker 直接 emit update:modelValue（happy-dom 打字不會 emit）。日期「不限」以 date_from=all&date_to=all 寫入網址；除列表篩選與 page 外不需額外 query 參數（usePagedList 洗參數問題不影響本頁）。突變 13/14 抓到；未抓到者為等價突變（預設 status 改空字串，toApiParams 會 fallback 回 active）。"
@@ -3998,7 +4000,7 @@
     {
       "id": "FRONTEND-152",
       "title": "實作 composables/useHomeworkBoard.ts：看板資料、樂觀更新、ws 即時合併",
-      "description": "建立 `apps/web/src/composables/useHomeworkBoard.ts`，作業看板（FRONTEND-151）資料擁有者。\n\n**介面**\n```ts\nexport function useHomeworkBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  board: Readonly<Ref<HomeworkBoard | null>>; loading; error   // 伺服器資料疊上本地樂觀變更\n  summary: ComputedRef<{ total; done; in_progress; not_started }>   // 由 students 的 progress 重算；只計 attendance_status 不是 leave / absent 的學生（與 BACKEND-383 一致）\n  reload(): Promise<void>\n  addItem(studentId, body: { subject_id?: string | null; title: string }): Promise<void>\n  setItemStatus(item: HomeworkItem, status): Promise<void>          // 樂觀更新\n  renameItem(item, body: { title?: string; subject_id?: string | null }): Promise<void>\n  removeItem(item): Promise<void>\n  setProgress(studentId, body: { overall?: 'done' | 'auto'; ready_eta?: string | null; note?: string | null }): Promise<void>   // 呼叫 PUT /admin/homework/progress/{student_id}，body 為 {service_date: date.value, ...body}（只含給定的鍵）\n  batchAdd(body: { subject_id?: string | null; title: string; student_ids?: string[] }): Promise<number>   // 回傳 created；成功後 reload\n  pendingItemIds: Ref<ReadonlySet<string>>\n  wsStatus; wsDenied\n}\n```\n- 掛載時與 date / classId 變更 → reload（序號防護）；classId 為 null 或空字串時不帶 class_id。載入失敗：`error = errorMessage(err, '無法載入作業看板')`，成功時清為 null；同一篩選的重抓失敗保留舊資料，換日期 / 班級後的載入失敗則 board 為 null。\n- `setItemStatus`：先在本地改 item.status 並依 domain_spec M6 規則重算 overall（無 item 或全部 todo → not_started；全部 done → done；其餘 in_progress；項目異動一律覆蓋先前的手動 done，與後端 BACKEND-375 `recompute_progress` 一致，伺服器回應也不會保留手動 done）；呼叫 API 成功後以回傳 `{item, progress}` 取代；失敗還原為伺服器確認過的狀態（含手動 done）並 `ElMessage.error(errorMessage(err, '更新作業狀態失敗'))`，不 reject。同一 item 進行中再呼叫：以最後一次為準（前一次完成後再送最後的值），不並行送同一 item。\n- 其他 mutation 成功後以回傳的 item / progress 更新對應學生（只更新與看板同日、且在看板中的學生）；service_date 一律帶 `date.value`；addItem / batchAdd 的 subject_id 為 null 時不送；失敗時 reject 原錯誤、不顯示訊息（呼叫端依情境：dialog 的 error 或 ElMessage）。batchAdd 需先選班級（classId 為 null 時 throw）。\n- 匯出 `deriveOverallStatus(items)`（M6 推導規則），供 HomeworkStudentCard（FRONTEND-153）判斷「手動標記」。\n- ws：`useAdminWsTopic('homework', { 'homework.progress_updated': d => ... }, { resync: reload })`：`d.service_date === date` 且學生在目前 board 中 → 以 `d.items` 與 `d.progress` 取代該生（若該生有 pending 的本地樂觀變更則延後到 pending 結束後再套用最新一筆）；不在 board 中的學生忽略。\n- reload 晚到不倒退（FRONTEND-305，同 FRONTEND-126 的本機異動序號）：serverBoard 每次更新某生（ws `homework.progress_updated`、mutation 回應，皆經 patchStudent）記 `touched[student_id] = ++touchClock`，`reload()` 發出時記 startedAt；回應到達時（篩選與目前資料相同）startedAt 之後更新過的學生保留目前的 serverBoard 列，其餘取回應值；看板名單以回應為準（回應沒有的學生不保留：ws 與 mutation 只更新已在看板中的學生，不會新增學生）。篩選鍵改變時清空 touched；summary 由合併結果重算；樂觀 override 層不受影響。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/composables/useHomeworkBoard.ts`，作業看板（FRONTEND-151）資料擁有者。\n\n**介面**\n```ts\nexport function useHomeworkBoard(params: { date: Ref<string>; classId: Ref<string | null> }): {\n  board: Readonly<Ref<HomeworkBoard | null>>; loading; error   // 伺服器資料疊上本地樂觀變更\n  summary: ComputedRef<{ total; done; in_progress; not_started }>   // 由 students 的 progress 重算；只計 attendance_status 不是 leave / absent 的學生（與 BACKEND-383 一致）\n  reload(): Promise<void>\n  addItem(studentId, body: { subject_id?: string | null; title: string }): Promise<void>\n  setItemStatus(item: HomeworkItem, status): Promise<void>          // 樂觀更新\n  renameItem(item, body: { title?: string; subject_id?: string | null }): Promise<void>\n  removeItem(item): Promise<void>\n  setProgress(studentId, body: { overall?: 'done' | 'auto'; ready_eta?: string | null; note?: string | null }): Promise<void>   // 呼叫 PUT /admin/homework/progress/{student_id}，body 為 {service_date: date.value, ...body}（只含給定的鍵）\n  batchAdd(body: { subject_id?: string | null; title: string; student_ids?: string[] }): Promise<number>   // 回傳 created；成功後 reload\n  pendingItemIds: Ref<ReadonlySet<string>>\n  wsStatus; wsDenied\n}\n```\n- 掛載時與 date / classId 變更 → reload（序號防護）；classId 為 null 或空字串時不帶 class_id。載入失敗：`error = errorMessage(err, '無法載入作業看板')`，成功時清為 null；同一篩選的重抓失敗保留舊資料，換日期 / 班級後的載入失敗則 board 為 null。\n- `setItemStatus`：先在本地改 item.status 並依 domain_spec M6 規則重算 overall（無 item 或全部 todo → not_started；全部 done → done；其餘 in_progress；項目異動一律覆蓋先前的手動 done，與後端 BACKEND-375 `recompute_progress` 一致，伺服器回應也不會保留手動 done）；呼叫 API 成功後以回傳 `{item, progress}` 取代；失敗還原為伺服器確認過的狀態（含手動 done）並 `ElMessage.error(errorMessage(err, '更新作業狀態失敗'))`，不 reject。同一 item 進行中再呼叫：以最後一次為準（前一次完成後再送最後的值），不並行送同一 item。\n- 其他 mutation 成功後以回傳的 item / progress 更新對應學生（只更新與看板同日、且在看板中的學生）；service_date 一律帶 `date.value`；addItem / batchAdd 的 subject_id 為 null 時不送；失敗時 reject 原錯誤、不顯示訊息（呼叫端依情境：dialog 的 error 或 ElMessage）。batchAdd 需先選班級（classId 為 null 時 throw）。\n- 匯出 `deriveOverallStatus(items)`（M6 推導規則），供 HomeworkStudentCard（FRONTEND-153）判斷「手動標記」。\n- ws：`useAdminWsTopic('homework', { 'homework.progress_updated': d => ... }, { resync: reload })`：`d.service_date === date` 且學生在目前 board 中 → 以 `d.items` 與 `d.progress` 取代該生（若該生有 pending 的本地樂觀變更則延後到 pending 結束後再套用最新一筆）；不在 board 中的學生忽略。\n- reload 晚到不倒退（FRONTEND-305，同 FRONTEND-126 的本機異動序號）：serverBoard 每次更新某生（ws `homework.progress_updated`、mutation 回應，皆經 patchStudent）記 `touched[student_id] = ++touchClock`，`reload()` 發出時記 startedAt；回應到達時startedAt 之後更新過的學生保留目前的 serverBoard 列，其餘取回應值；看板名單以回應為準（回應沒有的學生不保留：ws 與 mutation 只更新已在看板中的學生，不會新增學生）。篩選鍵改變時清空 touched（因此只換班級時 reload 途中更新的學生也照常保留）；summary 由合併結果重算；樂觀 override 層不受影響。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
       "source_ref": null,
@@ -4030,7 +4032,8 @@
           "useHomeworkBoard uses latest response when filters change：classId 改 c1 再改 c2，c1 回應較晚到 → board 為 c2 的結果、loading false",
           "useHomeworkBoard keeps data only for the same filters when load fails：首次載入後 GET 改回 500 → reload() 後 error '伺服器忙碌中' 且 students 仍 1 位；classId 改 c1 → board 為 null、loading false",
           "useHomeworkBoard keeps student updated by ws during reload：reload 發出後 ws 派發 s1 progress_updated（overall done）→ 回應（s1 in_progress）到達後 s1.progress.overall_status === 'done'（FRONTEND-305）",
-          "useHomeworkBoard applies reload students untouched since request：reload 發出後沒有事件 → 回應的 s2（新增一個項目）整列取代目前值，s2.items.length 等於回應值（FRONTEND-305）"
+          "useHomeworkBoard applies reload students untouched since request：reload 發出後沒有事件 → 回應的 s2（新增一個項目）整列取代目前值，s2.items.length 等於回應值（FRONTEND-305）",
+          "useHomeworkBoard keeps student updated by ws during reload: class filter change：classId null 載入 [s1] → 改 c1（reload 卡住）→ ws s1 快照 ready_eta '18:20' → c1 回應（ready_eta null）到達後 s1.progress.ready_eta === '18:20'（FRONTEND-305）"
         ],
         "run": "just web-test src/composables/useHomeworkBoard.spec.ts -t \"useHomeworkBoard\"",
         "notes": ""
@@ -4071,7 +4074,8 @@
           "HomeworkStudentCard readonly hides write actions：canWrite false → 沒有 '＋ 新增作業' 與 ⋮ 選單",
           "HomeworkStudentCard eta row opens dialog when writable today：canWrite、isToday、student.name '王小明' → 點 [aria-label='設定 王小明 的預計可接送時間'] → emitted('edit-eta')[0][0].student_id === 's1'；isToday false 或 canWrite false → 不存在該 aria-label 的元素，點預計可接送那一列無 emit",
           "HomeworkStudentCard hides menu when no actions apply：canWrite true、isToday false、項目全 done 且非手動標記 → 卡片內沒有 aria-label 為「王小明 的選項」的按鈕（FRONTEND-299）",
-          "HomeworkStudentCard keeps menu when an action applies：canWrite true、isToday false、整體 in_progress → ⋮ 存在，點開只有「標記整體完成」一項（FRONTEND-299）"
+          "HomeworkStudentCard keeps menu when an action applies：canWrite true、isToday false、整體 in_progress → ⋮ 存在，點開只有「標記整體完成」一項（FRONTEND-299）",
+          "HomeworkStudentCard keeps menu when an action applies: manual done on past day：canWrite true、isToday false、overall done 但項目推導非 done → ⋮ 存在，點開只有「改回依項目判斷」（FRONTEND-299）"
         ],
         "run": "just web-test src/components/homework/HomeworkStudentCard.spec.ts -t \"HomeworkStudentCard\"",
         "notes": "紅燈測試 1f72acf、實作 00a3190。除 7 條 red_cases 外另有 2 條：項目列依 sort_order、pending 轉圈只在對應項目、set-status(item, status) / edit-item / remove-item / add-item 轉發；⋮ 44×44、預計可接送列與「＋ 新增作業」高 44px、淡化 55%（?raw 原始碼斷言）。手動標記沿用 FRONTEND-152 的 deriveOverallStatus（無項目卻標 done 也算手動）。卡片與項目列都有 ⋮，測試以觸發鈕的 aria-controls 找對應選單。出勤 chip 只在 expected / left / leave / absent 顯示，請假 / 缺席淡化、已離班不淡化（稿 decisions 第 8 條）。突變自檢：手動標記改成「有項目未完成」、徽章不看 isToday、預計列按鈕不看 isToday、已離班也淡化、present 也顯示 chip、done 也顯示「標記整體完成」、選單的預計時間不看 isToday、項目不依 sort_order、改回依項目判斷送 done、唯讀仍顯示新增作業 各使對應測試轉紅。"
@@ -6391,7 +6395,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-153"
@@ -6406,7 +6410,8 @@
         ],
         "red_cases": [
           "HomeworkStudentCard hides menu when no actions apply：canWrite true、isToday false、項目全 done 且非手動標記 → 卡片內沒有 aria-label 為「王小明 的選項」的按鈕",
-          "HomeworkStudentCard keeps menu when an action applies：canWrite true、isToday false、整體 in_progress → ⋮ 存在，點開只有「標記整體完成」一項"
+          "HomeworkStudentCard keeps menu when an action applies：canWrite true、isToday false、整體 in_progress → ⋮ 存在，點開只有「標記整體完成」一項",
+          "HomeworkStudentCard keeps menu when an action applies: manual done on past day：canWrite true、isToday false、overall done 但項目推導非 done → ⋮ 存在，點開只有「改回依項目判斷」"
         ],
         "run": "just web-test src/components/homework/HomeworkStudentCard.spec.ts -t \"HomeworkStudentCard\"",
         "notes": ""
@@ -6424,7 +6429,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/LeavesView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-129"
@@ -6442,7 +6447,8 @@
           "LeavesView keeps id when student lookup fails：網址 ?student_id=s9、GET /admin/students/s9 回 404 → 頁面沒有錯誤訊息、StudentSelect 顯示 's9'，GET /admin/leaves 照常帶 student_id=s9",
           "LeavesView action column width：操作欄 el-table-column 的 width === '88'",
           "LeavesView recomputes today on reload：vi.setSystemTime 台北 2026-10-14 23:59 載入，請假 2026-10-15～2026-10-15（active）列顯示「取消」且不是「進行中」；時間推進到 2026-10-15 00:01 後按「重新整理」→ 該列為「進行中」",
-          "LeavesView restores student label from url without matching rows: skips lookup when rows have the student or no students:read：列表回應已含 s9 → 不打 GET /admin/students/s9 且顯示 '王小明'；permissions ['leaves:read'] → 不打 GET /admin/students/s9"
+          "LeavesView restores student label from url without matching rows: skips lookup when rows have the student or no students:read：列表回應已含 s9 → 不打 GET /admin/students/s9 且顯示 '王小明'；permissions ['leaves:read'] → 不打 GET /admin/students/s9",
+          "LeavesView recomputes today on reload: reset keeps initial range, shortcuts use new today：台北 2026-10-14 23:59 建立、2026-10-15 00:01 按「重新整理」後 →「今天起 30 天」快捷鍵值為 2026-10-15～2026-11-14；清除日期區間再按「重設」→ 送出 date_from 2026-10-14、date_to 2026-11-13，「重設」回到 disabled"
         ],
         "run": "just web-test src/views/LeavesView.spec.ts -t \"LeavesView\"",
         "notes": ""
@@ -6565,7 +6571,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-126"
@@ -6582,7 +6588,8 @@
           "useAttendanceBoard keeps row updated by ws during reload：reload 發出後、回應前 ws 派發 s1 到班（status present）→ 回應（s1 仍 expected、s2 present）到達後 s1.status === 'present'、s2.status === 'present'，summary.present === 2",
           "useAttendanceBoard applies reload rows untouched since request：reload 前 ws 已改過 s1、reload 發出後沒有新事件 → 回應的 s1 值（status left）覆蓋目前值",
           "useAttendanceBoard keeps operation result during reload：checkIn(s1) 的回應在 reload 回應之前到達 → reload 回應後 s1 仍為 present",
-          "useAttendanceBoard keeps row updated by ws during reload: keeps rows missing from the response：reload 發出後 ws 派發清單外的 s3（present）→ 回應只有 s1、s2 → 順序 ['s1','s2','s3']、summary {total:3,expected:2,present:1}"
+          "useAttendanceBoard keeps row updated by ws during reload: keeps rows missing from the response：reload 發出後 ws 派發清單外的 s3（present）→ 回應只有 s1、s2 → 順序 ['s1','s2','s3']、summary {total:3,expected:2,present:1}",
+          "useAttendanceBoard keeps row updated by ws during reload: class filter change：classId null 載入 [s1,s2] → 改 c1（reload 卡住）→ ws s1 present → c1 回應（s1 expected）到達後 s1 仍 present、summary.present 1"
         ],
         "run": "just web-test src/composables/useAttendanceBoard.spec.ts -t \"useAttendanceBoard\"",
         "notes": ""
@@ -6600,7 +6607,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-152"
@@ -6616,7 +6623,8 @@
         "red_cases": [
           "useHomeworkBoard keeps student updated by ws during reload：reload 發出後 ws 派發 s1 progress_updated（overall done）→ 回應（s1 in_progress）到達後 s1.progress.overall_status === 'done'",
           "useHomeworkBoard applies reload students untouched since request：reload 發出後沒有事件 → 回應的 s2（新增一個項目）整列取代目前值，s2.items.length 等於回應值",
-          "useHomeworkBoard keeps student updated by ws during reload: mutation result applied during reload：reload 發出後 setProgress(s1, ready_eta '18:10') 的回應先到 → reload 回應（ready_eta null）到達後 s1.progress.ready_eta === '18:10'"
+          "useHomeworkBoard keeps student updated by ws during reload: mutation result applied during reload：reload 發出後 setProgress(s1, ready_eta '18:10') 的回應先到 → reload 回應（ready_eta null）到達後 s1.progress.ready_eta === '18:10'",
+          "useHomeworkBoard keeps student updated by ws during reload: class filter change：classId null 載入 [s1] → 改 c1（reload 卡住）→ ws s1 快照 ready_eta '18:20' → c1 回應（ready_eta null）到達後 s1.progress.ready_eta === '18:20'"
         ],
         "run": "just web-test src/composables/useHomeworkBoard.spec.ts -t \"useHomeworkBoard\"",
         "notes": ""
