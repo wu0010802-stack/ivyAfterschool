@@ -8,6 +8,7 @@
 - task `description` 的每一條驗收標準都要對應到具體測試（檔案 + 測試名稱）。對應不到的視為未驗收，task 不得標 `done`。
 - 例外：純設定檔以 `tdd.notes` 寫明的可執行驗收指令取代測試。
 - 純補測試（實作本身正確、只缺測試）：用突變證明新測試會紅，不要故意把程式改壞再改回來。
+- 突變與 reviewer 的臨時探針測試都不 commit：探針放 scratchpad 或用完即刪，突變做完以 `cmp` / `git diff` 確認原始檔已還原（Python 另刪該模組的 `__pycache__/*.pyc`）。
 
 ## 2. 測試品質
 
@@ -59,6 +60,16 @@
 - migration（含 grant）/ schema drift 的測試屬 integration。migration 測試以 owner 連線只限 DDL 探針、清表、查其他角色權限等明確場合，測資一律經 `app_backend` 寫入。
 - R2 storage：單元測試以 botocore Stubber 或 FakeStorage 取代；與本機 SeaweedFS 的往返只在 storage 本身的整合測試驗證，其他 service / endpoint 測試一律用 FakeStorage。
 - 前端 API 呼叫用 axios-mock-adapter，元件測試用真實 DOM 互動（`setValue`、`trigger('click')`）斷言 emit payload 與畫面文字。
+
+### 後台 e2e（接真實後端，`apps/web/e2e/admin/`）
+
+- 只打本機服務（INFRA-014 環境守衛）：先 `just up`，帳密放 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數（e2e 專用 admin 由 `uv run python -m app.cli create-admin` 建立並改好密碼；CI 由 `scripts/e2e_bootstrap_admin.sh` 建立、帳密每次 run 隨機產生）。密碼不寫進任何檔案、log 或 commit。
+- e2e.admin 只在 run 期間啟用（globalSetup 啟用、globalTeardown 停用，以 owner 只改 `staff_users.is_active`），其餘寫入一律經 API（app_backend）。
+- 會在共用本機 DB 建立未封存的種子資料：整個 Playwright run 包在 `flock /tmp/afterschool_db.lock timeout <秒>` 內，與整合測試輪流執行；run 後以 owner 唯讀確認沒有殘列（啟用中員工 0、未封存學生 / 班級 / 監護人 0、exams 0、進行中接送請求 0、種子表筆數不變）。run 被中止時 e2e.admin 會保持啟用，重跑一次任一 e2e 即可停用。
+- 員工登入有每 IP 5 分鐘 20 次的限流：spec 整組 serial、共用一個登入過的 page，不要每條測試各自登入；短時間重跑多次會 429。
+- 與時間有關的流程在條件不成立時整組 `test.skip` 並寫明原因（非營業日以 `GET /api/admin/attendance/daily` 的 `is_service_day` 判斷；接送代建以佇列回應的 `latest_expected_arrival` 判斷，不寫死時間）。skip 不算驗收：要在這些時段驗證，自起 API（`app.dependency_overrides[get_clock]` 覆寫時間、關 scheduler）與 Web、瀏覽器 `page.clock.install`，平移版的 spec 複本只放 scratchpad。
+- dev server 冷快取時，vite 若在換頁途中發現新依賴會重新預打包並整頁重載，打斷 e2e；`apps/web/build/optimizeDeps.ts` 的 `OPTIMIZE_DEPS_INCLUDE` 已列出 element-plus 全部元件樣式，出現「optimized dependencies changed. reloading」時把缺的依賴補進清單。
+- e2e 檔不在 `just web-typecheck` 範圍：以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。Playwright 的 testMatch 只收 `*.spec.ts`，共用 helper 放 `e2e/support/` 或同目錄非 spec 檔。
 
 ## 4. 禁止全量執行
 
