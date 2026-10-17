@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 369,
-  "last_updated": "2026-10-17T08:05:42Z",
+  "version": 370,
+  "last_updated": "2026-10-17T08:06:28Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6895,7 +6895,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/styles/base.css",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "FRONTEND-302"
@@ -6916,9 +6916,9 @@
         "notes": "happy-dom 量不到版面：單元測試只鎖樣式宣告，實際高度以 Chromium 量測驗收。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p4",
+        "notes": "2 條 red_case 皆有同名測試，tdd.run 2/2 綠；c092063（只新增 base.spec.ts）先於 4770cf4（只在 base.css 加 7 行）。讀檔方式：另寫探針確認 vitest 下 import './base.css?raw' 確實回空字串（已刪），改以 fs.readFileSync 讀原始檔可靠，bootstrap.spec.ts 已有相同前例；解析前先去掉註解，避免註解內文字造成誤判。突變（皆還原、cmp 確認乾淨）：拿掉 min-height → 第 1 條紅；selector 改成 .el-button → 兩條皆紅；padding 改成 0 12px、min-height 改成 40px → 第 1 條紅；另加 .toolbar .el-button 規則 → 第 2 條紅。FRONTEND-046 tdd.run（useFormDirty）8/8 綠；web-typecheck exit 0；web-lint base.spec.ts 乾淨。Chromium 量測：harness 依 main.ts 順序載入 element-plus/dist/index.css 與 base.css，量 confirmDiscardChanges 與 useConfirmDelete（長名稱）兩種確認框。1024×768：discard 確認框位置 302,314–722,454，兩顆按鈕高 44、寬 98、top 皆為 398；刪除確認框 302,302–722,466，兩顆按鈕高 44、寬 70、top 皆為 410。390×844：discard 確認框 16,352–374,492，按鈕高 44、top 皆為 436；刪除確認框 16,340–374,504，按鈕高 44、top 皆為 448。兩種尺寸下按鈕 padding 皆為 0 20px，確認框都在畫面內。同頁的一般 el-button 維持 32px、padding 8px 15px，small 為 24px，min-height 0，不受影響。家長端用自己的 parent/styles/base.css，也沒有使用 ElMessageBox。殘留（不擋）：①red_case 1 文字寫「以 ?raw 讀 base.css」，實作與 tdd.notes 的理由都是 fs 讀檔，建議協調者把 red_case 文字改成「以 fs 讀」。②核可稿 component-common-extra.html:464 仍寫 confirmDiscardChanges 的確認框按鈕「維持 Element Plus 預設，另開 task」，與同檔 470/471 的 FRONTEND-313 決策矛盾，屬於該刪的舊敘述。③prompt 型確認框沒有實測，與 confirm 共用 .el-message-box__btns，預期相同。"
       }
     },
     {
