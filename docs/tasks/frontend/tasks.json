@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 376,
-  "last_updated": "2026-10-17T08:20:08Z",
+  "version": 377,
+  "last_updated": "2026-10-17T08:23:55Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -5464,7 +5464,7 @@
     {
       "id": "FRONTEND-235",
       "title": "實作 components/exams/ScoreGrid.vue：學生 × 科目成績輸入格（鍵盤導覽、逐格自動儲存）",
-      "description": "建立 `apps/web/src/components/exams/ScoreGrid.vue`（domain_spec M8：後台以「學生 × 科目」格狀表格輸入，逐格自動儲存）。鍵盤導覽參考 ivy `FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-exam-detail.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：考試 header（狀態、發布 / 取消發布 / 編輯 / 刪除依權限）、成績輸入格（學生 × 科目，格子五種狀態：未填 / 編輯中 / 儲存中 / 已儲存 / 錯誤，缺考勾選、超出滿分錯誤、已不在名單的學生）、已發布後修改的重新通知選擇、各科平均表、科目設定（草稿可改 / 已發布唯讀）、只有 exams:read 時唯讀、無科目時的引導、載入中。\n\n**props / emits / expose**：`examId: string`、`canWrite: boolean`；emits `dirty-change(hasUnsaved: boolean)`；expose `hasUnsaved`、`failedCount`、`flush(): Promise<void>`（送出未儲存的格子並等請求結束，不開 RenotifyChoiceDialog）、`reload(): Promise<void>`（重新 `fetchScoreGrid`）。\n**內容**\n- 載入 `fetchScoreGrid(examId)`；列 = students（依班級、學號），欄 = subjects（依 sort_order，表頭「{subject_name}（滿分 {full_score}）」）；左側固定「學號 / 姓名 / 班級」，表頭固定，表格高度填滿內容區剩餘高度（只捲表格本體）；科目欄最小寬 140，表頭的「（滿分 {full_score}）」換到第二行灰字。列高 ≥ 48px，點格子任何位置（不是輸入框、「缺」或備註圖示本身）都聚焦該格輸入框。`in_roster === false` 的學生列淡化並標「已不在名單」（仍可編輯既有分數；只淡化儲存格內容，固定欄底色保持不透明）。\n- 每格 `ScoreCell`（FRONTEND-236，備註由 FRONTEND-296 擴充），值（含 `note`）與狀態由 `useScoreAutosave`（FRONTEND-237）提供；ScoreCell 的 `change({score, is_absent, note})` 原樣交給 `edit`。備註入口依 FRONTEND-296 的核可稿：備註圖示鈕不在 Tab 順序裡，focusCell 只找分數輸入框 / 缺考格的「缺」勾選；Shift+F2 交給 ScoreCell 開啟備註編輯框，ScoreGrid 的 keydown 不攔截、不 preventDefault；編輯框 teleport 到 body，其中的 Enter / Esc / 方向鍵不觸發格子導覽或 Esc 還原。\n- 鍵盤：Enter / ↓ 往下一列同科、Shift+Enter / ↑ 上一列；Tab 右一格（最後一科換到下一列第一科）、Shift+Tab 左一格（第一科換到上一列最後一科），表格最後一格的 Tab 與第一格的 Shift+Tab 交給瀏覽器（離開表格）；→ / ← 只在輸入框游標位於結尾 / 開頭時換格；到表格邊界停在原格。移入的格子全選內容；缺考格（輸入框停用）改聚焦該格的「缺」勾選。被左側固定欄遮住的格子要捲到可見（捲動容器 scroll-padding-left = 固定欄總寬）。工具列灰字提示「Enter 下一位　Tab 下一科　Esc 還原　輸入「缺」標記缺考　Shift+F2 備註」。\n- Esc 還原該格尚未送出的輸入：ScoreCell（FRONTEND-236）沒有 reset 介面，ScoreGrid 遞增該格的 `key` 重建 ScoreCell（輸入框回到 props 值）並聚焦同一格；重建前先標記該格，忽略卸載時 blur 觸發的 change。\n- 工具列（只有 canWrite 才顯示）：儲存狀態摘要（「所有變更已儲存」/「{n} 格尚未儲存」/「儲存中…」/「{n} 格儲存失敗」+「重試」）、`exam.status === 'published'` 時「修改後通知家長：{開 / 關 / 尚未選擇}」切換（FRONTEND-238）。\n- RenotifyChoiceDialog 以 Esc / X 關閉（未選擇）後，格子維持未儲存、工具列顯示「尚未選擇」；之後再有格子變更觸發自動儲存且仍 `awaitingNotifyChoice` 時重新開啟 dialog；使用者也可直接在工具列切換選擇（選擇後立即 flush）。view 呼叫的 `flush()`（離開、發布、重新載入前）不開 dialog。\n- 換考試（`examId` 變更；考試頁 `/exams/:id` 只換參數時元件沿用）：每場考試各一個 `useScoreAutosave`。前一場考試尚未送出（dirty、等待通知選擇、儲存失敗）的格子一律丟棄，不得以新的 examId 送出、也不得顯示在新考試的成績格；已送出中的請求照原考試完成，之後不再送出前一場的格子。新考試載入完成前顯示 skeleton，不顯示前一場的表格。換參數前的 flush 與「放棄變更」確認由考試頁（FRONTEND-234）負責。\n- `!canWrite`：沒有工具列，所有格唯讀（ScoreCell readonly）。\n- 無科目：EmptyState「尚未設定科目」；canWrite 時說明「設定考試科目與滿分後才能輸入成績」+「前往科目設定」（`router.replace({query: {tab: 'subjects'}})`），唯讀時說明「有成績編輯權限的人設定科目後，這裡才會出現成績表」、沒有按鈕；無學生：「此考試沒有應考學生，請確認年級或班級設定」。\n- expose `markPublished()`（FRONTEND-315）：草稿的 notifyParents false 改為 null（已選過則保留），有未送出格子時以同一個 debounce 開 RenotifyChoiceDialog；`load()` 拿到的狀態由草稿變成已發布時同樣處理。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/exams/ScoreGrid.vue`（domain_spec M8：後台以「學生 × 科目」格狀表格輸入，逐格自動儲存）。鍵盤導覽參考 ivy `FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-exam-detail.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：考試 header（狀態、發布 / 取消發布 / 編輯 / 刪除依權限）、成績輸入格（學生 × 科目，格子五種狀態：未填 / 編輯中 / 儲存中 / 已儲存 / 錯誤，缺考勾選、超出滿分錯誤、已不在名單的學生）、已發布後修改的重新通知選擇、各科平均表、科目設定（草稿可改 / 已發布唯讀）、只有 exams:read 時唯讀、無科目時的引導、載入中。\n\n**props / emits / expose**：`examId: string`、`canWrite: boolean`；emits `dirty-change(hasUnsaved: boolean)`；expose `hasUnsaved`、`failedCount`、`flush(): Promise<void>`（送出未儲存的格子並等請求結束，不開 RenotifyChoiceDialog）、`reload(): Promise<void>`（重新 `fetchScoreGrid`）。\n**內容**\n- 載入 `fetchScoreGrid(examId)`；列 = students（依班級、學號），欄 = subjects（依 sort_order，表頭「{subject_name}（滿分 {full_score}）」）；左側固定「學號 / 姓名 / 班級」，表頭固定，表格高度填滿內容區剩餘高度（只捲表格本體）；科目欄最小寬 140，表頭的「（滿分 {full_score}）」換到第二行灰字。列高 ≥ 48px，點格子任何位置（不是輸入框、「缺」或備註圖示本身）都聚焦該格輸入框。`in_roster === false` 的學生列淡化並標「已不在名單」（仍可編輯既有分數；只淡化儲存格內容，固定欄底色保持不透明）。\n- 每格 `ScoreCell`（FRONTEND-236，備註由 FRONTEND-296 擴充），值（含 `note`）與狀態由 `useScoreAutosave`（FRONTEND-237）提供；ScoreCell 的 `change({score, is_absent, note})` 原樣交給 `edit`。備註入口依 FRONTEND-296 的核可稿：備註圖示鈕不在 Tab 順序裡，focusCell 只找分數輸入框 / 缺考格的「缺」勾選；Shift+F2 交給 ScoreCell 開啟備註編輯框，ScoreGrid 的 keydown 不攔截、不 preventDefault；編輯框 teleport 到 body，其中的 Enter / Esc / 方向鍵不觸發格子導覽或 Esc 還原。\n- 鍵盤：Enter / ↓ 往下一列同科、Shift+Enter / ↑ 上一列；Tab 右一格（最後一科換到下一列第一科）、Shift+Tab 左一格（第一科換到上一列最後一科），表格最後一格的 Tab 與第一格的 Shift+Tab 交給瀏覽器（離開表格）；→ / ← 只在輸入框游標位於結尾 / 開頭時換格；到表格邊界停在原格。移入的格子全選內容；缺考格（輸入框停用）改聚焦該格的「缺」勾選。被左側固定欄遮住的格子要捲到可見（捲動容器 scroll-padding-left = 固定欄總寬）。工具列灰字提示「Enter 下一位　Tab 下一科　Esc 還原　輸入「缺」標記缺考　Shift+F2 備註」。\n- Esc 還原該格尚未送出的輸入：ScoreCell（FRONTEND-236）沒有 reset 介面，ScoreGrid 遞增該格的 `key` 重建 ScoreCell（輸入框回到 props 值）並聚焦同一格；重建前先標記該格，忽略卸載時 blur 觸發的 change。\n- 工具列（只有 canWrite 才顯示）：儲存狀態摘要（「所有變更已儲存」/「{n} 格尚未儲存」/「儲存中…」/「{n} 格儲存失敗」+「重試」）、`exam.status === 'published'` 時「修改後通知家長：{開 / 關 / 尚未選擇}」切換（FRONTEND-238）。\n- RenotifyChoiceDialog 以 Esc / X 關閉（未選擇）後，格子維持未儲存、工具列顯示「尚未選擇」；之後再有格子變更觸發自動儲存且仍 `awaitingNotifyChoice` 時重新開啟 dialog；使用者也可直接在工具列切換選擇（選擇後立即 flush）。view 呼叫的 `flush()`（離開、發布、重新載入前）不開 dialog。\n- 換考試（`examId` 變更；考試頁 `/exams/:id` 只換參數時元件沿用）：每場考試各一個 `useScoreAutosave`。前一場考試尚未送出（dirty、等待通知選擇、儲存失敗）的格子一律丟棄，不得以新的 examId 送出、也不得顯示在新考試的成績格；已送出中的請求照原考試完成，之後不再送出前一場的格子。新考試載入完成前顯示 skeleton，不顯示前一場的表格。換參數前的 flush 與「放棄變更」確認由考試頁（FRONTEND-234）負責。\n- `!canWrite`：沒有工具列，所有格唯讀（ScoreCell readonly）。\n- 無科目：EmptyState「尚未設定科目」；canWrite 時說明「設定考試科目與滿分後才能輸入成績」+「前往科目設定」（`router.replace({query: {tab: 'subjects'}})`），唯讀時說明「有成績編輯權限的人設定科目後，這裡才會出現成績表」、沒有按鈕；無學生：「此考試沒有應考學生，請確認年級或班級設定」。\n- expose `markPublished()`（FRONTEND-315）：每個 session 記錄自己認定的考試狀態；認定為草稿時改為已發布、通知選擇設為 null，有未送出格子時以同一個 debounce 開 RenotifyChoiceDialog。`load()` 只在回應狀態與 session 認定不同時轉換（草稿→已發布同上；已發布→草稿設回 false），已發布期間的選擇（含「不通知」）在重新載入後保留。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": "FE:src/composables/useGridKeyboardNav.ts::useGridKeyboardNav",
@@ -6967,7 +6967,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-234",
@@ -6986,10 +6986,12 @@
           "ScoreGrid markPublished holds pending edits until choice：草稿載入 → 編輯 s1 數學 88 → 立即 markPublished() → 推進 800ms → saveScores 未收到該格、dialog 開啟；選「通知家長」→ saveScores 收到 notify_parents true",
           "ScoreGrid markPublished without dirty cells does not prompt：草稿載入、沒有編輯 → markPublished() → 推進 800ms → dialog 未開啟；之後編輯一格 → 800ms 後 dialog 開啟",
           "ExamDetailView publish then edit before grid reload asks renotify：publishExam resolve 後 fetchScoreGrid 卡住，期間編輯一格並推進 800ms → saveScores 未收到該格、未出現「放棄變更」確認框；fetchScoreGrid resolve（published）→ 出現重新通知 dialog，選「不通知」→ saveScores notify_parents false、工具列「所有變更已儲存」",
-          "ExamDetailView publish still flushes draft edits first：發布前已有 dirty 格 → saveScores 以 notify_parents false 送出該格之後才呼叫 publishExam（呼叫順序以紀錄陣列斷言）"
+          "ExamDetailView publish still flushes draft edits first：發布前已有 dirty 格 → saveScores 以 notify_parents false 送出該格之後才呼叫 publishExam（呼叫順序以紀錄陣列斷言）",
+          "ScoreGrid keeps skip choice after reload turns published：草稿載入 → markPublished() → 編輯 s1 國語 95 → 800ms 出 dialog → 選「不通知」（PUT notify_parents false）→ reload() 回 published → 編輯 s1 數學 80 → 800ms 後 dialog 未開、第二個 PUT 為 notify_parents false 且 cells 含 s1 數學 80，工具列「所有變更已儲存」",
+          "ExamDetailView publish reloads grid without flush or discard prompt（apps/web/src/views/ExamDetailView.spec.ts）：publish 成功後第二次 GET /admin/exams/e1 卡住，期間編輯一格再放行 → 未出現「放棄變更」、PUT 尚未送出；800ms 後出現重新通知 dialog（改回 reloadAll() 時 settleGrid 會跳「放棄變更」而轉紅）"
         ],
         "run": "just web-test src/components/exams/ScoreGrid.spec.ts -t \"ScoreGrid\" && just web-test src/views/ExamDetailView.spec.ts -t \"ExamDetailView\" && just web-test src/components/exams/RenotifyChoiceDialog.spec.ts -t \"RenotifyChoiceDialog\"",
-        "notes": "後兩條 red_case 寫在 apps/web/src/views/ExamDetailView.spec.ts。 ExamDetailView.spec 的 ScoreGrid stub 加 `useReal` 旗標，後兩條掛真正的 ScoreGrid（expose 以 getter 轉接）。第 5 條在原程式上就會綠（既有規則的回歸保護）。load() 遇草稿→已發布時只把 false 改 null：markPublished 之後、重新載入回來前已做的選擇保留，不再重問。"
+        "notes": "第 4、5、7 條 red_case 寫在 apps/web/src/views/ExamDetailView.spec.ts。 ExamDetailView.spec 的 ScoreGrid stub 加 `useReal` 旗標，這三條掛真正的 ScoreGrid（expose 以 getter 轉接）。第 5 條在原程式上就會綠（既有規則的回歸保護）。每個 session 記錄自己認定的考試狀態（status）：markPublished 時即改為已發布並把通知選擇設為 null；load() 只在認定狀態與回應不同時轉換，所以 markPublished 之後選的「通知家長」/「不通知」在重新載入拿到 published 後都保留。"
       },
       "review": {
         "status": "concern",
@@ -7046,7 +7048,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSubjectsEditor.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-232",
@@ -7068,10 +7070,11 @@
           "ExamFormDialog accepts full score with two decimals：勾選科目滿分 99.75 → 建立送出 full_score 99.75；99.755 → 錯誤「請輸入勾選科目的滿分（大於 0、最多 1000、最多兩位小數）」、不送出",
           "ScoreCell accepts two decimal score：輸入 59.95（滿分 100）→ emit change score 59.95、沒有錯誤",
           "ScoreCell rejects three decimal score：輸入 88.255 → 紅框、tooltip / title「最多兩位小數」，不 emit",
-          "ScoreCell shows original value without trailing zeros：props.score 85.5 → 輸入框值 '85.5'；props.score 90 → '90'"
+          "ScoreCell shows original value without trailing zeros：props.score 85.5 → 輸入框值 '85.5'；props.score 90 → '90'",
+          "ExamSubjectsEditor / ExamFormDialog accept minimum full score 0.01（各自的 spec）：滿分輸入 0.01 → 送出 full_score 0.01、沒有錯誤（:min 改回 0.1 時 el-input-number 會夾成 0.1 而轉紅）"
         ],
         "run": "just web-test src/components/exams/ExamSubjectsEditor.spec.ts -t \"ExamSubjectsEditor\" && just web-test src/components/exams/ExamFormDialog.spec.ts -t \"ExamFormDialog\" && just web-test src/components/exams/ScoreCell.spec.ts -t \"ScoreCell\"",
-        "notes": "第 4 條寫在 ExamFormDialog.spec.ts，第 5~7 條寫在 ScoreCell.spec.ts。 el-input-number（未設 precision）收到 99.755 不改值，三位小數由 isValidFullScore 擋下，red_case 3 照原文斷言。FRONTEND-236 既有案例「rejects out of range and extra decimals」的小數部分改為 88.255 拒絕（「最多兩位小數」）、88.25 接受。"
+        "notes": "第 4 條寫在 ExamFormDialog.spec.ts，第 5~7 條寫在 ScoreCell.spec.ts。 el-input-number（未設 precision）收到 99.755 不改值，三位小數由 isValidFullScore 擋下，red_case 3 照原文斷言。FRONTEND-236 既有案例「rejects out of range and extra decimals」的小數部分改為 88.255 拒絕（「最多兩位小數」）、88.25 接受。 0.01 兩條為純補測試：實作已正確，以突變（:min 改回 0.1）自證兩邊皆轉紅。"
       },
       "review": {
         "status": "concern",
