@@ -180,7 +180,8 @@ function relativeLabel(minutes: number): string {
 .arrival__chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  /* 換行列距 12px（同接送頁稿），欄距 8px */
+  gap: 12px 8px;
   padding: 8px 0;
 }
 
