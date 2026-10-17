@@ -260,6 +260,27 @@ describe('ExamFormDialog', () => {
     })
   })
 
+  it('ExamFormDialog accepts minimum full score 0.01', async () => {
+    const created: Exam = { ...DRAFT, id: 'e9', subjects: [] }
+    mock.onPost('/admin/exams').reply(201, created)
+    mock.onPut('/admin/exams/e9/subjects').reply(200, created)
+    await mountDialog()
+    await fillCreateBasics()
+    await choose('年級', '三年級')
+    for (const name of ['數學', '英語', '自然']) await uncheckSubject(name)
+
+    const full = subjectBox('國語').find('.el-input-number input')
+    await full.setValue('0.01')
+    await full.trigger('change')
+    await settle()
+    await submit('建立')
+
+    expect(dialog().text()).not.toContain('請輸入勾選科目的滿分')
+    expect(JSON.parse(mock.history.put[0]?.data as string)).toEqual({
+      items: [{ subject_id: 'sub1', full_score: 0.01, sort_order: 1 }],
+    })
+  })
+
   it('ExamFormDialog requires grade or class', async () => {
     const wrapper = await mountDialog()
 

@@ -262,6 +262,24 @@ describe('ExamSubjectsEditor', () => {
     }
   })
 
+  it('ExamSubjectsEditor accepts minimum full score 0.01', async () => {
+    mock.onPut('/admin/exams/e1/subjects').reply(200, makeExam())
+    const wrapper = await mountEditor()
+
+    await setFullScore(rowOf(wrapper, '國語'), '0.01')
+    await clickIn(wrapper, '儲存')
+
+    expect(rowOf(wrapper, '國語').classes()).not.toContain('is-error-full')
+    expect(putBodies()).toEqual([
+      {
+        items: [
+          { subject_id: 'sub1', full_score: 0.01, sort_order: 1 },
+          { subject_id: 'sub2', full_score: 100, sort_order: 2 },
+        ],
+      },
+    ])
+  })
+
   it('ExamSubjectsEditor rejects full score with three decimals', async () => {
     mock.onPut('/admin/exams/e1/subjects').reply(200, makeExam())
     const wrapper = await mountEditor()
