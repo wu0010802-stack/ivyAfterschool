@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
-<meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="FRONTEND-040,FRONTEND-043,FRONTEND-302">
+<meta name="preview-status" content="draft">
+<meta name="preview-tasks" content="FRONTEND-040,FRONTEND-043,FRONTEND-302,FRONTEND-313">
 <meta name="preview-route" content="component:components/common/{FormDialog,StatCard}.vue">
 <meta name="preview-updated" content="2026-10-17">
 
@@ -59,6 +59,10 @@ body { font-family: var(--el-font-family); background: var(--el-bg-color-page); 
 .form-dialog__footer .el-button + .el-button { margin-left: 0; }
 /* FRONTEND-302：footer 按鈕觸控目標 ≥ 44px（桌機、平板、手機滿版同一規則） */
 .form-dialog__footer .el-button { min-height: 44px; padding: 0 20px; }
+
+/* ---------- 確認框（FRONTEND-313）：全站 ElMessageBox 的按鈕觸控目標 ≥ 44px，與 FormDialog footer 同一規則。
+   實作放在後台全域樣式 apps/web/src/styles/base.css（element-plus CSS 之後載入），不逐一加 customClass。 */
+.el-message-box__btns .el-button { min-height: 44px; padding: 0 20px; }
 
 /* ---------- StatCard（FRONTEND-043） ---------- */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
@@ -158,6 +162,22 @@ body { font-family: var(--el-font-family); background: var(--el-bg-color-page); 
               </div>
             </div>
           </div>
+        </div>
+      </el-card>
+
+      <!-- ============ FRONTEND-313 確認框 ============ -->
+      <el-card shadow="never">
+        <h2 class="section-title">確認框（ElMessageBox）<el-tag size="small" disable-transitions>FRONTEND-313</el-tag></h2>
+        <p class="section-desc">全站以 <code>ElMessageBox.confirm</code>（以及同一個元件的 <code>prompt</code>）開的確認框，底部按鈕最小高 44px、左右 padding 20px，與 FormDialog footer 同一規則；文案、按鈕順序（取消在左、確認在右）、type 圖示與行為都不變。套用方式：後台全域樣式 <code>.el-message-box__btns .el-button</code>，呼叫端不必改。點下方按鈕實際開啟（稿已套用新尺寸）。</p>
+        <div class="demo-label">1. 實際會出現的確認框</div>
+        <div class="demo-box">
+          <div class="trigger-row">
+            <el-button @click="demoDiscard('dialog')">未儲存的變更（關閉 dialog）</el-button>
+            <el-button @click="demoDiscard('page')">未儲存的變更（離開頁面）</el-button>
+            <el-button @click="demoDelete">刪除確認（useConfirmDelete）</el-button>
+            <el-button @click="demoPrompt">輸入框確認（取消接送請求）</el-button>
+          </div>
+          <div class="log">{{ mbLog }}</div>
         </div>
       </el-card>
 
@@ -341,8 +361,9 @@ const ROLES = {
 }
 
 /** 與 apps/web/src/composables/useFormDirty.ts 的 confirmDiscardChanges 一致 */
-const confirmDiscardChanges = () => ElMessageBox.confirm('尚未儲存的變更將會遺失，確定要關閉嗎？', '未儲存的變更', {
-  confirmButtonText: '放棄變更', cancelButtonText: '繼續編輯',
+const DISCARD_MESSAGES = { dialog: '尚未儲存的變更將會遺失，確定要關閉嗎？', page: '尚未儲存的變更將會遺失，確定要放棄變更嗎？' }
+const confirmDiscardChanges = (scope = 'dialog') => ElMessageBox.confirm(DISCARD_MESSAGES[scope], '未儲存的變更', {
+  confirmButtonText: '放棄變更', cancelButtonText: '繼續編輯', closeOnHashChange: false,
 }).then(() => true).catch(() => false)
 
 /* ---------- FormDialog ----------
@@ -446,6 +467,8 @@ const app = createApp({
       'FormDialog submitDisabled 只停用送出鈕，取消與關閉不受影響。hideFooter 時整個 footer 不渲染，只剩 X。',
       'FormDialog 開啟動畫結束後聚焦 body 內第一個可輸入的 input / textarea（略過 disabled、readonly、checkbox / radio，也略過下拉與日期等 picker，避免一開就彈出選單；同 ivy）；沒有可輸入欄位時不搶焦點。',
       'FormDialog 欄位錯誤（前端 rules 或後端 422 validationFieldErrors）顯示在 el-form-item 下方，由使用端負責；FormDialog 本身不顯示錯誤訊息。',
+      '確認框（FRONTEND-313）：全站 ElMessageBox 的底部按鈕（confirm 的取消 / 確認，以及 prompt 的兩顆）最小高 44px、左右 padding 20px，字級 14px，與 FormDialog footer 同一規則；不分桌機 / 平板 / 手機。只改尺寸，文案、按鈕順序、type 圖示、Esc / X / 點遮罩行為都不變。涵蓋 confirmDiscardChanges、useConfirmDelete 與各頁直接呼叫的 ElMessageBox.confirm / prompt（目前 15 處）。',
+      '確認框套用方式：在後台全域樣式 apps/web/src/styles/base.css 加 `.el-message-box__btns .el-button { min-height: 44px; padding: 0 20px; }`（命令式 ElMessageBox 掛在 body，scoped style 碰不到）。不採 customClass：customClass 要在 15 個呼叫點逐一加參數，新呼叫點容易漏掉而回到 32px；全域規則一次涵蓋現在與以後的確認框，且只作用在 .el-message-box 內，不影響其他 el-button。家長端不使用 ElMessageBox，不受影響。',
       'StatCard 版面：標籤 13px 次要色在上，數值 28px 粗體（tabular 數字）在中，hint 12px 次要色在下；卡片圓角 8、細框、白底，最小高 88px（同時滿足平板觸控）。多張卡用 auto-fill grid（最小寬 160px）排列。',
       'StatCard tone 只改數值顏色：success → success-dark-2、warning → warning-dark-2、danger → danger、info → 主要文字色（info 代表「沒有特殊狀態」，不上色）。顏色不是唯一資訊，標籤文字本身已說明意義。',
       'StatCard 有 to 時：標籤列右側灰色箭頭，hover 時邊框轉主色淡色並浮起淡陰影、箭頭轉主色；role="link"、可 Tab 聚焦、Enter 觸發。沒有 to 也不可點的卡完全靜態（無箭頭、無 hover、不可聚焦），例如儀表板上沒有對應權限的區塊。',
@@ -453,7 +476,13 @@ const app = createApp({
       'StatCard loading：標籤照常顯示，數值換成 56×24 的 skeleton 條，hint 不顯示；loading 中仍可點（導頁或 emit click 照常）。',
       'StatCard 新增 clickable?: boolean（預設 false）：有 to 或 clickable 才可點；沒有 to 且 clickable 不為 true 時為靜態卡（沒有 role、tabindex、hover，點擊不 emit）。篩選 chip 用法傳 clickable + active。',
     ]
-    const openQuestions = []
+    const openQuestions = [
+      {
+        question: 'FRONTEND-313：確認框按鈕 44px 要用哪種方式套到全站？',
+        optionA: '（推薦，稿已照此畫）後台全域樣式 base.css 加 .el-message-box__btns .el-button 規則：一次涵蓋 15 個呼叫點與以後新增的確認框，呼叫端不用改；只作用在確認框內',
+        optionB: '各呼叫點傳 customClass（例如 touch-message-box）再寫對應樣式：作用範圍明確，但 15 處都要改，新呼叫點忘了加就會回到 32px',
+      },
+    ]
 
     const mobile = ref(false)
     const blank = {
@@ -504,10 +533,19 @@ const app = createApp({
     ]
     const hwFilter = ref('all')
 
+    const mbLog = ref('（點上方按鈕開啟確認框）')
+    const demoDiscard = async (scope) => { mbLog.value = (await confirmDiscardChanges(scope)) ? '放棄變更 → true' : '繼續編輯 / 關閉 → false' }
+    const demoDelete = () => ElMessageBox.confirm('刪除後無法復原，確定要刪除「自然」嗎？', '確認刪除', { type: 'warning', confirmButtonText: '刪除', cancelButtonText: '取消' })
+      .then(() => { mbLog.value = '刪除 → 送出 DELETE' }).catch(() => { mbLog.value = '取消 → 不刪除' })
+    const demoPrompt = () => ElMessageBox.prompt('取消原因（選填，家長發起的請求會通知家長）', '取消接送請求', {
+      confirmButtonText: '取消請求', cancelButtonText: '返回', inputPlaceholder: '例如：家長改明天接',
+      inputValidator: (v) => !v || v.length <= 200 || '最多 200 字',
+    }).then(({ value }) => { mbLog.value = `取消請求，原因「${(value ?? '').trim()}」` }).catch(() => { mbLog.value = '返回 → null' })
+
     return {
       meta, decisions, openQuestions, roles: ROLES, viewAs, can, notesOpen: ref(false),
       mobile, dlg, dlgLog, log, isDirty, openDlg, submit, subjectForm, subjectRules, submitSubject, classes: CLASSES,
-      dashState, dashLoading, navLog, nav, homeworkChips, hwFilter,
+      dashState, dashLoading, navLog, nav, homeworkChips, hwFilter, mbLog, demoDiscard, demoDelete, demoPrompt,
     }
   },
 })

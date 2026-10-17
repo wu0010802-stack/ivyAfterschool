@@ -54,7 +54,7 @@ code { font-size: 13px; }
   <h1>設計稿總覽</h1>
   <p class="lead">後台與家長端每張設計稿的狀態，待核可的稿集中在最上方。出稿、核可、改稿時同步更新（待核可與已核可分兩區，各自依檔名排序）（流程見 <code>.claude/skills/ui-design-preview/SKILL.md</code>）。</p>
 
-  <h2>待核可（0）</h2>
+  <h2>待核可（1）</h2>
   <p class="lead">這一區的稿需要你核可後才會進入實作。點稿名打開，右上「設計說明 / 待裁定」可看設計決策與待裁定題；稿已照推薦選項畫。</p>
   <div class="card">
     <table>
@@ -69,12 +69,19 @@ code { font-size: 13px; }
         </tr>
       </thead>
       <tbody>
-        <tr class="empty"><td colspan="6">目前沒有待核可的稿</td></tr>
+        <tr>
+          <td><a href="component-common-extra.html">component-common-extra.html</a></td>
+          <td class="tasks">FRONTEND-040, FRONTEND-043, FRONTEND-302, FRONTEND-313</td>
+          <td class="route"><code>component:components/common/{FormDialog,StatCard}.vue</code></td>
+          <td class="note">1 題：確認框 44px 用全域樣式或 customClass（推薦 A：全域樣式）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
       </tbody>
     </table>
   </div>
 
-  <h2>已核可（68）</h2>
+  <h2>已核可（67）</h2>
   <div class="card">
     <table>
       <thead>
@@ -97,13 +104,6 @@ code { font-size: 13px; }
         </tr>
         狀態 class：status--draft（待核可）/ status--approved（已核可）/ status--superseded（已取代）
         -->
-        <tr>
-          <td><a href="component-common-extra.html">component-common-extra.html</a></td>
-          <td class="tasks">FRONTEND-040, FRONTEND-043, FRONTEND-302</td>
-          <td class="route"><code>component:components/common/{FormDialog,StatCard}.vue</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-17</td>
-        </tr>
         <tr>
           <td><a href="component-common.html">component-common.html</a></td>
           <td class="tasks">FRONTEND-039, FRONTEND-041, FRONTEND-042</td>
