@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 336,
-  "last_updated": "2026-10-17T04:07:23Z",
+  "version": 337,
+  "last_updated": "2026-10-17T04:07:50Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6531,7 +6531,7 @@
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/api/http.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-020",
@@ -6553,9 +6553,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f1",
+        "notes": "通過。tdd.run（http.spec -t adminHttp）11/11 綠，兩條 red_case 同名測試皆選到；a2c9bed 紅燈先於 b357bf0 實作，實作未放寬既有斷言。突變：從 noRefreshPaths 拿掉 '/parent/config' → 'adminHttp does not refresh for public config' 轉紅（還原後 cmp 一致）。noRefreshPaths 以 startsWith 比對，adminHttp 沒有其他 /parent/config* 呼叫，不會誤傷。被改的 FRONTEND-020 description 已同步（noRefreshPaths 清單含 /parent/config）；020 / 021 的 tdd.run（http.spec adminHttp、auth.spec authApi 4/4）全綠。web-lint 對動到的檔乾淨；web-typecheck 只剩他人未追蹤 scratch 檔 src/parent/rv11p1_counter.spec.ts 的 TS6133，與本 task 無關。"
       }
     },
     {
@@ -6669,7 +6669,7 @@
       "granularity_unit": "config",
       "target_path": "apps/web/src/router/authGuard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-024",
@@ -6691,9 +6691,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f1",
+        "notes": "通過。tdd.run（authGuard.spec 10/10、routes.spec admin routes 6/6）全綠，兩條 red_case 同名測試皆選到；6b8273c 紅燈先於 1115ee5 實作。突變：守衛改回 to.path !== LOGIN_PATH → 'authGuard redirects authenticated user from login variants' 轉紅；以舊版內容重建 PlaceholderView.vue → 'admin routes every view loader loads a real view' 轉紅（還原後 cmp / git status 乾淨）。測試以真 router.resolve 產生 to，且先斷言 '/login/'、'/LOGIN' 解析到 name 'login'，含 redirect query 與 must_change_password 兩支。PlaceholderView 在程式碼中零引用（只剩 routes.spec 的 glob 斷言與註解）。被改的 FRONTEND-024 description / red_case、FRONTEND-025 判斷順序第 2 條已同步。回歸：src/router/ 全部 spec、http / auth / navigation / bootstrap / App / LoginView / ChangePasswordView / ErrorView spec 共 11 檔 112 測試全綠。web-lint 乾淨；web-typecheck 只剩他人 scratch 檔錯誤。殘留（非本 task 範圍）：16 個已 done view task（047/048/049/058/063/064/071/072/085/097/122/127/129/151/189/200/231/234/261）的 description 仍寫「loader 由 PlaceholderView 改為 …」，以及 docs/tasks/kickoff_prompt.md 第 23 行「PlaceholderView.vue 目前只剩測試引用」已過時，建議協調者另開 chore 收成最終敘述。"
       }
     },
     {
