@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 371,
-  "last_updated": "2026-10-17T08:07:10Z",
+  "version": 372,
+  "last_updated": "2026-10-17T08:07:46Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6650,14 +6650,14 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePickupBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-188",
         "FRONTEND-298"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "[review-r11-f4 打回] (1) 跨日 reload 途中的新日期更新被蓋掉（等同 FRONTEND-304 打回的「換篩選途中」反例）：dayTimer 換 date 並清 touched 後，新日期的 ws 仍套進舊日期的 queue / roster 物件，畫面已顯示，回應到達時被丟或混入舊資料。重現 A：載入 2026-10-02 佇列 → 台北跨午夜（reload 卡住）→ ws pickup.request_updated r9（service_date 2026-10-03）→ openIds 已含 r9 → 回應 {date:'2026-10-03', open:[]} → r9 消失（mergeQueue 的 `current.date !== res.date` 直接回傳回應）。重現 B（withRoster）：舊名單 s1.open_request 為昨天的 r1 pending、ready_eta 17:20 → 跨午夜（名單 reload 卡住）→ ws attendance.updated s1（service_date 2026-10-03）→ 新日期名單回應 s1.open_request null、ready_eta null → 合併後 s1 仍是昨天的 open_request r1 與 ready_eta 17:20（findStudent 取回舊日期的整列）。請讓跨日後套用的更新不落在舊日期資料上（例如換日時把 queue / roster 重設為新日期的空殼或 null，讓 mergeQueue 的日期比對與名單合併只看新日期套用過的列），補這兩條 red_case。\n(2) 合併保留的版本可能比回應舊，違反 FRONTEND-188 的多來源守衛（狀態機順序較小的不得蓋過較大的）：reload 發出後 ws r1 acknowledged（touched）→ 回應 r1 已 arrived → 合併後 r1 仍是 acknowledged，counts.arrived 0，「家長已到」不會顯示（082d165 之前 reload 會取回應的 arrived）。實際路徑：斷線期間本機 acknowledge 送出、家長按到了（推播遺失）→ 重連 resync reload 發出後 acknowledge 回應才到。請在 mergeQueue 保留目前版本時比較 STATUS_RANK，回應的狀態較大時取回應，補 red_case（reload 發出後 ws r1 acknowledged、回應 r1 arrived → r1.status arrived、counts.arrived 1），並把規則寫進本 task 與 188 description。\n[review-r11-f4 複審打回] description 寫「跨日時 roster 設為 null 等新日期回應」，但沒有測試鎖住：只拿掉 dayTimer 的 `roster.value = null`（保留 mergeRoster 的日期比對），tdd.run 31 條仍全綠——換日後到新名單回應前畫面會繼續顯示昨天的名單（佇列已清空，兩邊不一致）。請在既有 red_case『does not mix previous day roster into new day roster』（或新 red_case）補斷言：跨午夜、名單 reload 尚未回應時 board.roster.value 為 null，並同步 red_case 文字。",
+      "risk_notes": "換日到新日期名單回應前 roster 為 null，期間的出勤 / 作業 ws 不保留，以新日期名單回應為準；新日期名單載入失敗時名單維持空白並顯示錯誤，直到下次 reload。授權清單跨日後到 reload 回應前仍是昨天的內容。reload 合併取回應較新的狀態時不觸發 onArrived（與 reload 一貫行為相同）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/usePickupBoard.spec.ts",
@@ -6676,9 +6676,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-f4",
-        "notes": "複審打回（1 項，小）。紅燈 03442b1 先於修正 c6b1117，306 / 188 description 已同步（d7de193）。上次的反例都已守住：跨日佇列（新 red_case『keeps new day request created while midnight reload is pending』，拿掉換日佇列空殼即轉紅）、跨日名單混入（『does not mix previous day roster into new day roster』，同時拿掉 roster = null 與 mergeRoster 日期比對即轉紅）、回應狀態較新（『takes response when it is ahead…』，拿掉 STATUS_RANK 比較即轉紅）。先前守住的反例重跑仍守住：reload 途中 acknowledge 結果保留、較早 reload 晚回（夾 ws）、reload 途中 completed 的佇列與名單、首次載入途中的 ws。tdd.run 31 條全綠，web-typecheck exit 0。取捨判斷：(a) 換日到新名單回應前 roster 為 null、期間出勤 / 作業 ws 不保留——可接受：只丟在伺服器讀完名單到回應抵達這一個往返的窗口內、午夜沒有接送業務、事件未曾顯示（不是顯示後被蓋掉），與 review-r11-f2 對 FRONTEND-304 接受的換日殘留同性質；新日期名單載入失敗時名單維持空白並顯示 error，比顯示昨天的名單好。(b) 授權清單跨日仍是昨天的直到 reload 回應——可接受：reload 同時重抓授權清單，回應後整包取代；roster 為 null 期間 recount 不作用。(c) 換日後佇列短暫為空——可接受，是正確的新日期狀態。打回項見 risk_notes。"
+        "notes": "三審通過。60b1b67 只改 spec，在「does not mix previous day roster into new day roster」補上「跨午夜、名單尚未回應時 board.roster.value 為 null」，red_case 文字已同步；只拿掉 dayTimer 的 roster.value = null 這條即轉紅。實作檔自 c6b1117 起無改動，複審結論沿用：跨日佇列、跨日名單混入、回應狀態較新（STATUS_RANK）三個反例守住，初審守住的反例（reload 途中操作結果、較早 reload 晚回、reload 途中 completed、首次載入途中 ws）仍守住。tdd.run（即 FRONTEND-188 的 run）31 條全綠，web-typecheck exit 0。取捨可接受：(a) 換日到新名單回應前出勤 / 作業 ws 不保留（只在一次往返窗口、午夜、事件未曾顯示過）；(b) 授權清單到 reload 回應前仍是昨天的；(c) 換日後佇列短暫為空。"
       }
     },
     {
