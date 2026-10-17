@@ -999,6 +999,8 @@ describe('usePickupBoard', () => {
     vi.setSystemTime(Date.parse('2026-10-02T15:59:30Z'))
     await vi.advanceTimersByTimeAsync(60_000)
     await settle()
+    // 新日期名單尚未回應：不再顯示昨天的名單
+    expect(board.roster.value).toBeNull()
     serverMessage(
       socket(),
       'attendance.updated',
