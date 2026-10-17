@@ -1,7 +1,7 @@
 {
   "area": "infra",
-  "version": 132,
-  "last_updated": "2026-10-08T08:29:47Z",
+  "version": 133,
+  "last_updated": "2026-10-17T04:28:03Z",
   "tasks": [
     {
       "id": "INFRA-001",
@@ -2016,6 +2016,45 @@
         ],
         "run": "just test-int apps/api/tests/integration/infra/test_db_fixtures.py -k \"test_db_fixtures_\"",
         "notes": "沿用同檔 pytester 的 project fixture 與 _write / _run / _output 寫法；探針表建在 infra_probe schema（既有 session fixture 已建立 infra_probe 與授權），測試結束要清掉自己建的表。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "INFRA-055",
+      "title": "CI e2e workflow 建立 e2e admin 並帶入帳密；Playwright testMatch 只收 *.spec.ts",
+      "description": "改寫 `.github/workflows/e2e.yml`（INFRA-030、051）與 `apps/web/playwright.config.ts`（INFRA-014）；可新增一支建立 e2e admin 的腳本（例如 `scripts/e2e_bootstrap_admin.sh`）。被改的 task 維持 done；完成時同步 INFRA-014 / 030 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況（已確認）：\n1. e2e.yml 在 `just db-reset --yes` 之後沒有建立 e2e 專用 admin 的步驟，Playwright step 也沒有 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` env：globalSetup 不啟用帳號、後台 e2e（FRONTEND-290~293）的 `loginAsAdmin` 一律 throw「缺少 E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD」。\n2. `playwright.config.ts` 的 parent project `testMatch: ['e2e/parent/**']` 會把 `e2e/parent/fixtures.ts` 當成測試檔載入：`pnpm exec playwright test --list` 直接報「test file \"parent/login-bind-pickup.spec.ts\" should not import test file \"parent/fixtures.ts\"」並列出 0 個測試——不帶 `--project` 時（CI 就是這樣跑）整個 run 連 admin project 也跑不起來。admin project 的 `e2e/admin/**` 目前目錄內只有 *.spec.ts、單跑 `--project admin-chromium` 可列出 17 個測試，但同樣的寫法一放共用 helper 就會壞。\n\n做法：\n- testMatch：兩個 project 都只收 spec 檔（`e2e/admin/**/*.spec.ts`、`e2e/smoke.spec.ts`、`e2e/parent/**/*.spec.ts`），其他設定不變。\n- e2e admin：`dev_up.sh` 之後、Playwright 之前新增一步：以 `uv run python -m app.cli create-admin --username <E2E_ADMIN_USERNAME> --display-name 'E2E 管理員'`（BACKEND-065；密碼由 stdin 帶入，非 tty 時 getpass 讀 stdin）建立帳號，再以 API 登入並 `POST /api/admin/auth/change-password` 把 must_change_password 的初始密碼改成 `E2E_ADMIN_PASSWORD`（請求要帶符合 `CORS_ORIGINS` 的 Origin，BACKEND-019）。帳號已存在時略過建立與改密碼（腳本可重跑）。密碼不得出現在 log（不 echo；若由 workflow 產生，先 `::add-mask::`）。Playwright step 的 env 帶入兩個變數。\n- 帳密來源依 open_design_questions 的裁定；不得在 repo 寫入任何固定密碼。\n\n**驗收標準**：每一條對應下列 red_case；INFRA-030、051 的 tdd.run 全綠；本機模擬 CI 步驟可跑：依 e2e.yml 順序執行（服務啟動、建立 admin 腳本、`pnpm exec playwright test` 不帶 `--project`），至少 `e2e/smoke.spec.ts`、`e2e/admin/support.spec.ts`、`e2e/parent/login-bind-pickup.spec.ts` 全綠，回報附指令與結果。",
+      "granularity_unit": "config",
+      "target_path": ".github/workflows/e2e.yml",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "INFRA-014",
+        "INFRA-030",
+        "INFRA-051"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "本機共用 DB 禁止 `just db-reset`（第 11 輪共用規則）：本機模擬時略過重建 DB 那一步，建立 admin 腳本在既有 e2e.admin 上走「已存在即略過」路徑；全新 DB 的建立與改密碼路徑需協調者安排 db-reset 時段，或由協調者 push 後以 workflow_dispatch 實跑驗證。e2e 一律包在 `flock /tmp/afterschool_db.lock` 內，run 結束 globalTeardown 會停用 e2e.admin。登入限流每 IP 5 分鐘 20 次，腳本的登入也算在內。",
+      "open_design_questions": [
+        "e2e admin 帳密的來源：(A) workflow 每次 run 隨機產生（比照 APP_SECRET_KEY 以 openssl rand 產生並 add-mask，CI DB 每次重建，不需要任何 GitHub secret）；(B) 使用 repo secrets `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD`（需使用者在 GitHub repo Settings → Secrets and variables → Actions 建立，值由使用者自訂，本 task 不提供）。選哪一個？選 (B) 時 secret 缺漏的處理也要決定：該步驟直接失敗，或略過後台 e2e 只跑 smoke 與家長端？"
+      ],
+      "tdd": {
+        "test_path": "scripts/tests/test_ci_workflow.py",
+        "markers": [
+          "unit"
+        ],
+        "red_cases": [
+          "test_e2e_workflow_bootstraps_admin：載入 e2e.yml → 存在 run 含建立 admin（'create-admin' 或建立 admin 腳本名）的 step，索引在含 'dev_up.sh' 的 step 之後、含 'playwright test' 的 step 之前",
+          "test_e2e_workflow_playwright_env_has_admin_credentials：含 'playwright test' 的 step 的 env 含 E2E_ADMIN_USERNAME 與 E2E_ADMIN_PASSWORD，值為 `${{ ... }}` 表達式或前一步寫入的 `$GITHUB_ENV` 變數，e2e.yml 與建立 admin 腳本全文沒有字面密碼",
+          "test_e2e_workflow_bootstrap_masks_password：建立 admin 的 step / 腳本不含 echo / printf 密碼變數到 stdout 的行；採 (A) 時產生密碼的 step 含 '::add-mask::'",
+          "test_playwright_config_test_match_only_specs：在 apps/web 以不含 E2E_ADMIN_* 的 env 執行 `pnpm exec playwright test --list`（不帶 --project）→ exit 0，輸出含 'parent/login-bind-pickup.spec.ts' 與 'admin/support.spec.ts'，不含 'should not import test file'，且列出的每個檔案都以 .spec.ts 結尾"
+        ],
+        "run": "just test scripts/tests/test_ci_workflow.py -k \"e2e_workflow or playwright_config\"",
+        "notes": "open_design_questions 裁定前不可進 in_progress。test_playwright_config_test_match_only_specs 需要 apps/web/node_modules（Playwright 已安裝），--list 不需要服務啟動。"
       },
       "review": {
         "status": "pending",

@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 348,
-  "last_updated": "2026-10-17T04:27:20Z",
+  "version": 349,
+  "last_updated": "2026-10-17T04:28:03Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6903,6 +6903,157 @@
         ],
         "run": "just web-test src/composables/useFormDirty.spec.ts -t \"confirmDiscardChanges\"",
         "notes": "happy-dom 量不到版面：單元測試只鎖 class 與樣式宣告，實際高度以 Chromium 量測驗收。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-314",
+      "title": "接送 POS：第一次點擊移除「啟用提示音」提示列時不吞掉這一下（需改稿並重新核可）",
+      "description": "修改 `apps/web/src/views/PickupPosView.vue`（FRONTEND-189）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：根元素 `.pos` 的 `@pointerdown=\"onPointerDown\"` 第一次觸發時把 `unlocked` 設為 true 並呼叫 `chime.unlock()`；工具列下方的 `el-alert.pos-hint`（「點一下畫面以啟用提示音」，`v-if=\"!unlocked\"`）在同一次 pointerdown 就被移除，下方內容上移約 49px（提示列高度 + 間距）。點擊要 pointerdown 與 pointerup 落在同一個元素才會產生 click，所以平板上進頁後第一下點佇列卡 / 名單卡的按鈕時，pointerup 已落在別的元素，這一下落空（e2e FRONTEND-292 實證，目前 `e2e/admin/pickup.spec.ts` 以「進頁先點提示列本身」繞過）。\n- 做法（建議，改稿時確認）：版面不變，只延後移除提示列。`chime.unlock()` 仍在第一次 pointerdown 呼叫（瀏覽器音訊解鎖需要使用者手勢，維持現行時機）；提示列改在這次手勢結束後才移除：根元素的 `click`（冒泡到 `.pos` 時，目標按鈕的 handler 已執行完）或 `pointercancel`（觸控捲動等不產生 click 的手勢）。移除後的版面上移發生在點擊完成之後，不影響這一下。\n- 若改稿時使用者改選「提示列不佔版面」（例如浮在工具列下方、不推擠內容），改以該稿為準，並在進 `in_progress` 前改寫本 task 的 description 與 red_cases。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/page-pickup-pos.html`：把提示音 decision 的「頁面任一處 pointerdown 後消失」改成本 task 的最終行為（第一次 pointerdown 啟用提示音，該次點擊結束後提示列才消失，第一下點到的按鈕照常作用），稿內 `unlock` 示範同步；本 task id 加進 `preview-tasks`，`preview-status` 改 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。\n- FRONTEND-189 既有 red_case「PickupPosView unlock hint disappears after first tap」（只派發 pointerdown 就斷言提示列消失）改為本規則，並同步 189 的 description。\n- `e2e/admin/pickup.spec.ts` 的繞道屬 FRONTEND-292，不在本 task 移除。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-189 tdd.run 全綠；另以真實 Chromium（1024×768、touch 模擬）進頁後第一下直接點佇列卡的「回覆時間」→ 回覆 dialog 開啟（回報附操作步驟與結果）。",
+      "granularity_unit": "view",
+      "target_path": "apps/web/src/views/PickupPosView.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-189"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/views/PickupPosView.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "PickupPosView first tap unlocks chime but keeps hint until click：在佇列卡「回覆時間」按鈕上派發 pointerdown → chime 替身 unlock 呼叫 1 次、畫面仍含「點一下畫面以啟用提示音」",
+          "PickupPosView first tap still activates the tapped button：同一按鈕依序派發 pointerdown、pointerup、click → 回覆 dialog 開啟（dialog 標題可見），之後畫面不含「點一下畫面以啟用提示音」",
+          "PickupPosView hint removed after pointercancel：第一次 pointerdown 後派發 pointercancel（不產生 click）→ 提示列消失；chime unlock 仍只呼叫 1 次",
+          "PickupPosView unlock only once：第二次 pointerdown / click → chime unlock 呼叫次數維持 1"
+        ],
+        "run": "just web-test src/views/PickupPosView.spec.ts -t \"PickupPosView\"",
+        "notes": "happy-dom 沒有版面：單元測試只鎖事件時序（提示列移除在 click / pointercancel 之後、按鈕的 click 照常作用），實際「第一下不落空」以 Chromium 驗收。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-315",
+      "title": "考試詳情：發布後、成績格重新載入完成前修改分數會卡在「尚未儲存」且不出現重新通知選擇（需稿列入本 task）",
+      "description": "修改 `apps/web/src/components/exams/ScoreGrid.vue`（FRONTEND-235）與 `apps/web/src/views/ExamDetailView.vue`（FRONTEND-234）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況（以程式碼確認的重現路徑；e2e FRONTEND-293 目前以「發布後等成績格重新載入完成再改分數」繞過）：\n- ScoreGrid 每場考試的 `notifyParents` 只在 `load()` 拿到的考試狀態與上一次不同時重設（草稿 false、已發布 null）；重新通知 dialog 只由 `onCellChange → schedulePrompt()` 排程，而 `schedulePrompt` 在 `notifyParents !== null` 時直接 return。\n- ExamDetailView `publish()` 在 `publishExam` 成功後立刻把 header 改成「已發布」，接著 `reloadAll()`：`loadExam(true)` → `refreshGrid()` → `settleGrid()`（有未儲存就 `flush()`）→ `scoreGrid.reload()`。\n- 路徑 A（卡住）：使用者在 `scoreGrid.reload()` 的 `fetchScoreGrid` 進行中修改一格 → 當下 `notifyParents` 仍是草稿的 false，`schedulePrompt` 不排程 → 回應帶 published，`notifyParents` 改成 null → 800ms debounce 到期時 `runLoop` 因 null 不送出 → 格子停在 dirty，工具列「1 格尚未儲存」，dialog 永遠不開（只能自己點工具列的「修改後通知家長：開 / 關」）。\n- 路徑 B（未詢問就送出）：在 `publishExam` 成功後、成績格拿到 published 之前修改，且 debounce 先到期（或 `settleGrid` 的 `flush()` 先送）→ 以 `notify_parents: false` 送出，使用者沒被問是否重新通知。若 `flush()` 時 `notifyParents` 已是 null，`settleGrid` 會因仍有未儲存而跳出「放棄變更」確認框。\n\n做法：\n- ScoreGrid expose `markPublished()`：目前 session 的 `notifyParents` 為 false（草稿）時改成 null；已有未送出的格子時以同一個 debounce 排程開 RenotifyChoiceDialog（沿用 `schedulePrompt` 的計時器）。`load()` 偵測到狀態由草稿變成已發布、且有 dirty 格時同樣排程開 dialog（涵蓋其他來源造成的狀態改變）。\n- ExamDetailView `publish()`：`publishExam` 成功後先呼叫 `scoreGrid.markPublished()`，再 `reloadAll('clean')`（發布前已 flush 過；成績格 reload 會保留未儲存格子，不再 flush、不詢問放棄變更）。發布前「先送出未儲存的格子（notify_parents false）、仍有失敗就不發布」的既有規則不變。取消發布與其他 `reloadAll` 呼叫不變。\n- 設計稿關卡：畫面不變，但 view / 元件屬 UI task：以 `.claude/skills/ui-design-preview` 把本 task id 加進 `docs/mockups/page-exam-detail.html` 的 `preview-tasks`，decisions 的重新通知段補一句「發布當下尚未送出的修改也會詢問是否通知」，`preview-status` 改 `draft`，取得使用者核可才能進 `in_progress`。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-234、235、238 的 tdd.run 全綠。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-234",
+        "FRONTEND-235"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "fake timers 下 debounce（800ms）、fetchScoreGrid 卡住與 publishExam 的先後要逐步推進，避免測試在錯誤的時序下恰好通過；每條測試都要斷言 saveScores 收到的 notify_parents 值與工具列文字，不可只斷言有沒有呼叫。",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/components/exams/ScoreGrid.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ScoreGrid prompts when reload turns exam published with dirty cells：草稿載入 → 編輯 s1 國語 95 → debounce 到期前 reload()（回應 status published）完成 → 推進 800ms → 出現「是否在修改後通知家長分數已更新？」、saveScores 尚未收到該格；選「不通知」→ saveScores 收到 notify_parents false 且 cells 含 s1 國語 95，工具列含「所有變更已儲存」",
+          "ScoreGrid markPublished holds pending edits until choice：草稿載入 → 編輯 s1 數學 88 → 立即 markPublished() → 推進 800ms → saveScores 未收到該格、dialog 開啟；選「通知家長」→ saveScores 收到 notify_parents true",
+          "ScoreGrid markPublished without dirty cells does not prompt：草稿載入、沒有編輯 → markPublished() → 推進 800ms → dialog 未開啟；之後編輯一格 → 800ms 後 dialog 開啟",
+          "ExamDetailView publish then edit before grid reload asks renotify：publishExam resolve 後 fetchScoreGrid 卡住，期間編輯一格並推進 800ms → saveScores 未收到該格、未出現「放棄變更」確認框；fetchScoreGrid resolve（published）→ 出現重新通知 dialog，選「不通知」→ saveScores notify_parents false、工具列「所有變更已儲存」",
+          "ExamDetailView publish still flushes draft edits first：發布前已有 dirty 格 → saveScores 以 notify_parents false 送出該格之後才呼叫 publishExam（呼叫順序以紀錄陣列斷言）"
+        ],
+        "run": "just web-test src/components/exams/ScoreGrid.spec.ts -t \"ScoreGrid\" && just web-test src/views/ExamDetailView.spec.ts -t \"ExamDetailView\" && just web-test src/components/exams/RenotifyChoiceDialog.spec.ts -t \"RenotifyChoiceDialog\"",
+        "notes": "後兩條 red_case 寫在 apps/web/src/views/ExamDetailView.spec.ts。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-316",
+      "title": "今日出勤 / 作業看板：換日期途中的 ws 事件不被略過、延後的 ws snapshot 不蓋掉 reload 帶回的較新值",
+      "description": "修改 `apps/web/src/composables/useAttendanceBoard.ts`（FRONTEND-126、304）與 `apps/web/src/composables/useHomeworkBoard.ts`（FRONTEND-152、305）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：\n1. 換日期：`date` 改變觸發 `reload()`，回應到達前 `data` / `serverBoard` 仍是前一個日期。這期間新日期的 ws 事件會被丟掉——出勤 `applyRows` 以 `row.service_date !== current.date` 略過；作業看板 `onProgressUpdated` 通過 `service_date === date.value`，但 `patchStudent` 以 `current.date !== serviceDate` 略過（且先以舊看板的名單檢查學生）。reload 的回應若在該事件之前就已在伺服器產生（較舊），該筆變更就漏掉，直到下一次事件或重整。FRONTEND-304/305 的 touched 合併只涵蓋「已套用到畫面」的列，這些被略過的事件沒有進 touched。\n2. 作業看板延後的 snapshot（沿用 FRONTEND-152）：某生有狀態切換 chain 進行中時，`onProgressUpdated` 把 snapshot 放進 `deferredSnapshots`，chain 結束 `flushDeferred` 才套用。若延後期間 reload 回應已帶回較新的值，chain 結束後仍以較舊的 snapshot 蓋回。\n\n做法（兩支同一規則）：\n- 換篩選途中的暫存：事件 / 操作結果的 `service_date` 等於目前 `date`、但目前資料仍是別的日期（reload 尚未回來）時，不丟棄：依 student_id 暫存最新一筆，並記 `touched[student_id] = ++touchClock`。reload 回應到達時，暫存的列與 touched 一起參與 `mergeTouched`（touched > startedAt 的以暫存 / 目前值為準）。出勤：暫存列也要符合目前班級篩選，回應沒有的列依既有規則插入；作業看板：只覆蓋回應中有的學生（名單以回應為準，FRONTEND-305）。篩選鍵改變時清空暫存（與 touched 同時）；暫存日期與回應日期不同的一律丟棄。\n- 延後的 snapshot：放進 `deferredSnapshots` 時記下收到當下的 `touchClock`（不遞增 touched）；reload 回應套用時，丟棄收到序號 ≤ 該次 reload `startedAt` 的延後 snapshot（請求發出前收到的事件，伺服器狀態不會比回應新）；收到序號 > startedAt 的保留，chain 結束照常套用。換篩選時清空 `deferredSnapshots`。\n- 只換班級（日期不變）的合併行為維持 FRONTEND-304/305 的最終規則。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-126、152 的 tdd.run 全綠（即兩支 spec 全檔 -t 名稱）。",
+      "granularity_unit": "composable",
+      "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-304",
+        "FRONTEND-305"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "暫存只收 service_date 等於目前 date 的事件；連續換兩次日期（d1→d2→d3）時 d2 的暫存不可帶進 d3 的回應。延後 snapshot 的丟棄只看該次被採用的 reload（序號防護下被捨棄的舊 reload 不算）。",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/useAttendanceBoard.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "useAttendanceBoard date change keeps ws row for new date during reload：date d1 載入 [s1,s2] → 改 d2（reload 卡住）→ ws attendance.updated s1（service_date d2、status present）→ d2 回應（s1 expected、s2 expected）到達後 s1.status === 'present'、summary.present === 1",
+          "useAttendanceBoard date change inserts buffered row missing from response：改 d2 途中 ws 派發 s3（d2、present、符合篩選）→ d2 回應只有 s1、s2 → s3 依班級、學號插入，summary.total === 3",
+          "useAttendanceBoard date change drops buffered rows of previous switch：d1 → d2（卡住）收到 s1 d2 present → 再改 d3（卡住）→ d3 回應（s1 expected）到達後 s1.status === 'expected'",
+          "useHomeworkBoard date change keeps ws snapshot for new date during reload：d1 載入 [s1] → 改 d2（卡住）→ ws homework.progress_updated s1（service_date d2、ready_eta '18:20'）→ d2 回應（s1 ready_eta null）到達後 s1.progress.ready_eta === '18:20'",
+          "useHomeworkBoard date change ignores buffered student missing from response：改 d2 途中收到 s9（d2）snapshot → d2 回應沒有 s9 → board.students 不含 s9",
+          "useHomeworkBoard deferred snapshot older than reload is discarded：s1 狀態切換 PATCH 進行中時收到 snapshot A（ready_eta '18:10'，被延後）→ 之後才發出的 reload 回應（ready_eta '18:30'）先套用 → PATCH 結束（回應不含 ready_eta 變更）後 s1.progress.ready_eta === '18:30'",
+          "useHomeworkBoard deferred snapshot received after reload start still applies：reload 發出後、回應前，s1 chain 進行中收到 snapshot B（ready_eta '18:40'，被延後）→ reload 回應（ready_eta null）→ chain 結束後 s1.progress.ready_eta === '18:40'"
+        ],
+        "run": "just web-test src/composables/useAttendanceBoard.spec.ts -t \"useAttendanceBoard\" && just web-test src/composables/useHomeworkBoard.spec.ts -t \"useHomeworkBoard\"",
+        "notes": "後四條 red_case 寫在 apps/web/src/composables/useHomeworkBoard.spec.ts。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-317",
+      "title": "考試滿分與成績格分數輸入改為最多兩位小數，與後端一致（需改稿並重新核可）",
+      "description": "修改 `apps/web/src/components/exams/ExamSubjectsEditor.vue`（FRONTEND-233）、`apps/web/src/components/exams/ExamFormDialog.vue`（FRONTEND-232）與 `apps/web/src/components/exams/ScoreCell.vue`（FRONTEND-236、296）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況（已核對）：後端 `apps/api/app/schemas/exams.py` 的 `Score`（0~1000）與 `FullScore`（>0、≤1000）皆為 `max_digits=6, decimal_places=2`，DB `Numeric(6, 2)`；domain_spec M8 規定分數顯示照輸入原值、最多兩位小數。前端三處只收一位小數：\n- ExamSubjectsEditor `isValidFullScore`：`Math.round(v * 10) === v * 10`，錯誤訊息「請輸入滿分（大於 0、最多 1000、最多一位小數）」。\n- ExamFormDialog `isValidFullScore`：同上（多一個 `Number.isInteger` 判斷），訊息「請輸入勾選科目的滿分（大於 0、最多 1000、最多一位小數）」。\n- 成績格同樣有此問題：ScoreCell `parse()` 以 `/^\\d+\\.\\d{2,}$/` 判定「最多一位小數」、`/^\\d+(\\.\\d)?$/` 才接受，59.95 這類後端允許、家長端也照原值顯示的分數無法輸入。\n\n做法：\n- 三處都改為最多兩位小數：滿分 >0、≤1000；分數 0~滿分。判斷不用浮點乘法（`1.15 * 100 !== 115`），滿分以 `el-input-number` 的值轉字串或 `Math.round(v * 100)` 與容差比對；ScoreCell 以正規式 `^\\d+(\\.\\d{1,2})?$` 判斷，三位以上小數訊息「最多兩位小數」。兩個 dialog 的錯誤訊息「最多一位小數」改為「最多兩位小數」。上限 1000 與其他規則不變；共用判斷抽成一個函式（例如 `apps/web/src/utils/examScore.ts`）供兩個滿分輸入使用。\n- 顯示：ScoreCell 照原值顯示、去掉尾端 0（domain_spec M8），不四捨五入。\n- 文件：domain_spec M8 補一句「分數與滿分輸入最多兩位小數（與 `numeric(6,2)` 一致）」。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/component-exams.html`（ScoreCell 段的「最多一位小數」說明、decisions 與示範格「輸入超過一位小數」）、`docs/mockups/page-exam-detail.html`（科目設定的滿分規則與稿內 parse）、`docs/mockups/page-exams.html`（建立考試的滿分規則），三張稿都把本 task id 加進 `preview-tasks`、`preview-status` 改 `draft`，取得使用者核可才能進 `in_progress`。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-232、233、236 的 tdd.run 全綠。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/components/exams/ExamSubjectsEditor.vue",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-232",
+        "FRONTEND-233",
+        "FRONTEND-236"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "el-input-number 未設 precision 時是否會把輸入的 99.755 進位或截斷，先以元件測試確認：若會被元件改值，「三位小數被拒」的 red_case 要改成斷言元件最終送出的值不超過兩位小數，並在 description 寫明實際行為。不可為了顯示兩位而設 `:precision=\"2\"`（會把 100 顯示成 100.00）。",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/components/exams/ExamSubjectsEditor.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "ExamSubjectsEditor accepts full score with two decimals：滿分輸入 99.75 → 儲存送出 subjects[0].full_score === 99.75，沒有列錯誤",
+          "ExamSubjectsEditor accepts float edge full scores：滿分 1.15、0.29、999.99 各自儲存時沒有列錯誤，送出值與輸入相同",
+          "ExamSubjectsEditor rejects full score with three decimals：滿分 99.755 → 列錯誤「請輸入滿分（大於 0、最多 1000、最多兩位小數）」，不呼叫儲存",
+          "ExamFormDialog accepts full score with two decimals：勾選科目滿分 99.75 → 建立送出 full_score 99.75；99.755 → 錯誤「請輸入勾選科目的滿分（大於 0、最多 1000、最多兩位小數）」、不送出",
+          "ScoreCell accepts two decimal score：輸入 59.95（滿分 100）→ emit change score 59.95、沒有錯誤",
+          "ScoreCell rejects three decimal score：輸入 88.255 → 紅框、tooltip / title「最多兩位小數」，不 emit",
+          "ScoreCell shows original value without trailing zeros：props.score 85.5 → 輸入框值 '85.5'；props.score 90 → '90'"
+        ],
+        "run": "just web-test src/components/exams/ExamSubjectsEditor.spec.ts -t \"ExamSubjectsEditor\" && just web-test src/components/exams/ExamFormDialog.spec.ts -t \"ExamFormDialog\" && just web-test src/components/exams/ScoreCell.spec.ts -t \"ScoreCell\"",
+        "notes": "第 4 條寫在 ExamFormDialog.spec.ts，第 5~7 條寫在 ScoreCell.spec.ts。"
       },
       "review": {
         "status": "pending",
