@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 373,
-  "last_updated": "2026-10-17T08:13:41Z",
+  "version": 374,
+  "last_updated": "2026-10-17T08:16:11Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6964,14 +6964,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-234",
         "FRONTEND-235"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "fake timers 下 debounce（800ms）、fetchScoreGrid 卡住與 publishExam 的先後要逐步推進，避免測試在錯誤的時序下恰好通過；每條測試都要斷言 saveScores 收到的 notify_parents 值與工具列文字，不可只斷言有沒有呼叫。",
+      "risk_notes": "fake timers 下 debounce（800ms）、fetchScoreGrid 卡住與 publishExam 的先後要逐步推進，避免測試在錯誤的時序下恰好通過；每條測試都要斷言 saveScores 收到的 notify_parents 值與工具列文字，不可只斷言有沒有呼叫。\n[review-r11-f2 打回] (1) tdd.notes 寫的「markPublished 之後、重新載入回來前已做的選擇保留，不再重問」只對「通知家長」成立：選「不通知」會把 notifyParents 設成 false，與草稿的 false 分不出來，load() 看到草稿→已發布時 becamePublished 又把 false 改回 null，下一次修改再跳 dialog。重現（ScoreGrid）：草稿載入 → markPublished() → 編輯一格 → 800ms 出 dialog → 選「不通知」（PUT notify_parents false）→ reload() 回 published → 再編輯一格 → 800ms 又出 dialog（預期不出、直接以 false 送出）；選「通知家長」的版本正確。請讓 session 記住已標記為已發布（例如記錄 session 認定的狀態，markPublished 時改成 published），load() 只在 session 仍認定為草稿時轉換；補 red_case 涵蓋「不通知」。(2) description 規定 publish() 改呼叫 reloadAll('clean')（不再 flush、不詢問放棄變更），但沒有測試：改回 reloadAll() 時 ExamDetailView 全綠。反例：publish 成功後第二次 GET /admin/exams/e1 卡住、期間編輯一格 → 放行 → 原實作不出「放棄變更」、800ms 後出重新通知 dialog；改回 reloadAll() 時 settleGrid 的 flush 因 notifyParents null 不送、跳「放棄變更」確認框。請補這條 red_case（路徑 B 的 flush 分支）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/exams/ScoreGrid.spec.ts",
@@ -6989,9 +6989,9 @@
         "notes": "後兩條 red_case 寫在 apps/web/src/views/ExamDetailView.spec.ts。 ExamDetailView.spec 的 ScoreGrid stub 加 `useReal` 旗標，後兩條掛真正的 ScoreGrid（expose 以 getter 轉接）。第 5 條在原程式上就會綠（既有規則的回歸保護）。load() 遇草稿→已發布時只把 false 改 null：markPublished 之後、重新載入回來前已做的選擇保留，不再重問。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f2",
+        "notes": "5 條 red_case 都有同名測試且全綠；FRONTEND-234（20，含 301 的 flush / 序號 / 頁面文案案例）、235（19）、238（5）tdd.run 全綠；測試 33349b3 / c07bed3 先於實作 c9ef2b1（c07bed3 只把無 dirty 案例的工具列斷言從「尚未選擇」改成「所有變更已儲存」：markPublished 後成績格本機的考試仍是草稿，工具列不顯示通知選擇，符合實作）。突變：拿掉 view 的 markPublished → 路徑 A 測試紅；load() 不走 becamePublished、becamePublished 不排程 → 對應 ScoreGrid 測試紅。useReal 旗標以 getter 轉接 expose 掛真 ScoreGrid，做法可行。稿已列入本 task、decision 已補。web-lint 乾淨、web-typecheck exit 0。打回兩項見 risk_notes：選「不通知」後 reload 會再問一次；reloadAll('clean') 沒有測試（突變全綠）。"
       }
     },
     {
@@ -7042,7 +7042,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSubjectsEditor.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-232",
@@ -7050,7 +7050,7 @@
         "FRONTEND-236"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "el-input-number 未設 precision 時是否會把輸入的 99.755 進位或截斷，先以元件測試確認：若會被元件改值，「三位小數被拒」的 red_case 要改成斷言元件最終送出的值不超過兩位小數，並在 description 寫明實際行為。不可為了顯示兩位而設 `:precision=\"2\"`（會把 100 顯示成 100.00）。",
+      "risk_notes": "el-input-number 未設 precision 時是否會把輸入的 99.755 進位或截斷，先以元件測試確認：若會被元件改值，「三位小數被拒」的 red_case 要改成斷言元件最終送出的值不超過兩位小數，並在 description 寫明實際行為。不可為了顯示兩位而設 `:precision=\"2\"`（會把 100 顯示成 100.00）。\n[review-r11-f2 打回] description 規定兩個滿分輸入框最小值改 0.01，沒有測試：把 ExamSubjectsEditor 或 ExamFormDialog 的 `:min=\"0.01\"` 改回 0.1，兩邊 tdd.run 都全綠（實際上 el-input-number 會把 0.01~0.09 夾成 0.1，後端允許的滿分無法輸入）。請補 red_case：兩個滿分輸入框輸入 0.01 → 送出 full_score 0.01、沒有錯誤。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/exams/ExamSubjectsEditor.spec.ts",
@@ -7070,9 +7070,9 @@
         "notes": "第 4 條寫在 ExamFormDialog.spec.ts，第 5~7 條寫在 ScoreCell.spec.ts。 el-input-number（未設 precision）收到 99.755 不改值，三位小數由 isValidFullScore 擋下，red_case 3 照原文斷言。FRONTEND-236 既有案例「rejects out of range and extra decimals」的小數部分改為 88.255 拒絕（「最多兩位小數」）、88.25 接受。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f2",
+        "notes": "7 條 red_case 都有同名測試且全綠；FRONTEND-232（7）、233（10）、236 / 296（21）tdd.run 全綠；測試 775df77 先於實作 8fa4c5e。236 既有案例只把 88.25 拒絕／88.2 接受改成 88.255 拒絕（「最多兩位小數」）／88.25 接受，該測試其他斷言未動，沒有放寬。isValidFullScore 窮舉 0.01~1000 的所有兩位小數全接受、所有三位小數全拒絕；1.15、59.95、0.01、1000 接受，1.155、0、1000.01、0.005、999.995 拒絕。測試以真 el-input-number 輸入，99.755 未被元件改值。突變：容差改 Number.isInteger(v*100) → 浮點邊界紅；容差判斷改恆真 → 99.755 紅；ScoreCell 正規式改一位 / 三位門檻改四位 → 對應測試紅。Chromium 實測 ScoreCell 框寬 68px、內容寬 46px，999.95 文字寬 42.8px、scrollWidth == clientWidth，不裁切（寬度本身沒有 vitest 斷言，以實測驗收）。三張稿皆列入本 task 且 approved；domain_spec M8 已補。web-lint 乾淨、web-typecheck exit 0。打回：滿分最小值 0.01 沒有測試（突變全綠），見 risk_notes。"
       }
     }
   ]
