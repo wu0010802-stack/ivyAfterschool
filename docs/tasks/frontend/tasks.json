@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 353,
-  "last_updated": "2026-10-17T04:37:56Z",
+  "version": 354,
+  "last_updated": "2026-10-17T07:38:25Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6913,7 +6913,7 @@
     {
       "id": "FRONTEND-314",
       "title": "接送 POS：第一次點擊移除「啟用提示音」提示列時不吞掉這一下（需改稿並重新核可）",
-      "description": "修改 `apps/web/src/views/PickupPosView.vue`（FRONTEND-189）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：根元素 `.pos` 的 `@pointerdown=\"onPointerDown\"` 第一次觸發時把 `unlocked` 設為 true 並呼叫 `chime.unlock()`；工具列下方的 `el-alert.pos-hint`（「點一下畫面以啟用提示音」，`v-if=\"!unlocked\"`）在同一次 pointerdown 就被移除，下方內容上移約 49px（提示列高度 + 間距）。點擊要 pointerdown 與 pointerup 落在同一個元素才會產生 click，所以平板上進頁後第一下點佇列卡 / 名單卡的按鈕時，pointerup 已落在別的元素，這一下落空（e2e FRONTEND-292 實證，目前 `e2e/admin/pickup.spec.ts` 以「進頁先點提示列本身」繞過）。\n- 做法（建議，改稿時確認）：版面不變，只延後移除提示列。`chime.unlock()` 仍在第一次 pointerdown 呼叫（瀏覽器音訊解鎖需要使用者手勢，維持現行時機）；提示列改在這次手勢結束後才移除：根元素的 `click`（冒泡到 `.pos` 時，目標按鈕的 handler 已執行完）或 `pointercancel`（觸控捲動等不產生 click 的手勢）。移除後的版面上移發生在點擊完成之後，不影響這一下。\n- 若改稿時使用者改選「提示列不佔版面」（例如浮在工具列下方、不推擠內容），改以該稿為準，並在進 `in_progress` 前改寫本 task 的 description 與 red_cases。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/page-pickup-pos.html`：把提示音 decision 的「頁面任一處 pointerdown 後消失」改成本 task 的最終行為（第一次 pointerdown 啟用提示音，該次點擊結束後提示列才消失，第一下點到的按鈕照常作用），稿內 `unlock` 示範同步；本 task id 加進 `preview-tasks`，`preview-status` 改 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。\n- FRONTEND-189 既有 red_case「PickupPosView unlock hint disappears after first tap」（只派發 pointerdown 就斷言提示列消失）改為本規則，並同步 189 的 description。\n- `e2e/admin/pickup.spec.ts` 的繞道屬 FRONTEND-292，不在本 task 移除。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-189 tdd.run 全綠；另以真實 Chromium（1024×768、touch 模擬）進頁後第一下直接點佇列卡的「回覆時間」→ 回覆 dialog 開啟（回報附操作步驟與結果）。",
+      "description": "修改 `apps/web/src/views/PickupPosView.vue`（FRONTEND-189）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：根元素 `.pos` 的 `@pointerdown=\"onPointerDown\"` 第一次觸發時把 `unlocked` 設為 true 並呼叫 `chime.unlock()`；工具列下方的 `el-alert.pos-hint`（「點一下畫面以啟用提示音」，`v-if=\"!unlocked\"`）在同一次 pointerdown 就被移除，下方內容上移約 49px（提示列高度 + 間距）。點擊要 pointerdown 與 pointerup 落在同一個元素才會產生 click，所以平板上進頁後第一下點佇列卡 / 名單卡的按鈕時，pointerup 已落在別的元素，這一下落空（e2e FRONTEND-292 實證，目前 `e2e/admin/pickup.spec.ts` 以「進頁先點提示列本身」繞過）。\n- 做法（使用者 2026-10-17 裁定）：版面不變，只延後移除提示列。`chime.unlock()` 仍在第一次 pointerdown 呼叫（瀏覽器音訊解鎖需要使用者手勢，維持現行時機）；提示列改在這次手勢結束後才移除：根元素的 `click`（冒泡到 `.pos` 時，目標按鈕的 handler 已執行完）或 `pointercancel`（觸控捲動等不產生 click 的手勢）。移除後的版面上移發生在點擊完成之後，不影響這一下。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/page-pickup-pos.html`：把提示音 decision 的「頁面任一處 pointerdown 後消失」改成本 task 的最終行為（第一次 pointerdown 啟用提示音，該次點擊結束後提示列才消失，第一下點到的按鈕照常作用），稿內 `unlock` 示範同步；本 task id 加進 `preview-tasks`，`preview-status` 改 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。\n- FRONTEND-189 既有 red_case「PickupPosView unlock hint disappears after first tap」（只派發 pointerdown 就斷言提示列消失）改為本規則，並同步 189 的 description。\n- `e2e/admin/pickup.spec.ts` 的繞道屬 FRONTEND-292，不在本 task 移除。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-189 tdd.run 全綠；另以真實 Chromium（1024×768、touch 模擬）進頁後第一下直接點佇列卡的「回覆時間」→ 回覆 dialog 開啟（回報附操作步驟與結果）。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupPosView.vue",
       "source_ref": null,
