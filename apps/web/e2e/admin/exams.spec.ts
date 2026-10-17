@@ -1,5 +1,6 @@
 // FRONTEND-293：建立考試 → 成績輸入（自動儲存）→ 各科平均 → 發布後修改分數選擇是否重新通知。
 // 接真實後端，種子 2 位學生（班級對象）由 ../support/admin.ts 經 API 建立；afterAll 先刪考試（已發布先取消發布），再清理學生。
+// 考試 id 取自「建立」的 POST 回應，afterAll 另以名稱查詢補刪：建立後網址還沒換頁就失敗時也不留考試列。
 // 登入有每 IP 5 分鐘 20 次的限流：整組共用一個以 UI 登入一次的 page（serial），不在每條測試重新登入。
 import { expect, test, type APIRequestContext, type BrowserContext, type Locator, type Page } from '@playwright/test'
 
@@ -17,6 +18,10 @@ const KEPT_SUBJECTS = ['國語', '數學']
 const CHINESE = 0
 const MATH = 1
 const ALL_SAVED = '所有變更已儲存'
+/** 建立後換到考試頁：dev server 冷快取時首次編譯考試頁可能超過預設 5 秒 */
+const DETAIL_NAV_TIMEOUT_MS = 30_000
+/** 第一條測試含建立考試與換頁等待，放寬整條測試的逾時 */
+const CREATE_TEST_TIMEOUT_MS = 90_000
 
 const TAIPEI_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' })
 
@@ -58,6 +63,19 @@ async function grid(): Promise<ScoreGrid> {
   return api.get<ScoreGrid>(`/api/admin/exams/${examId}/scores`)
 }
 
+const examName = (): string => `E2E 段考-${seed.runId}`
+
+/** 本次建立的考試：POST 回應取得的 id，加上以名稱查到的同名考試（補 id 沒取到的情況） */
+async function createdExams(): Promise<{ id: string; status: string }[]> {
+  const found = new Map<string, string>()
+  const list = await api.get<{ items: { id: string; name: string; status: string }[] }>(
+    `/api/admin/exams?q=${encodeURIComponent(examName())}`,
+  )
+  for (const e of list.items) if (e.name === examName()) found.set(e.id, e.status)
+  if (examId && !found.has(examId)) found.set(examId, (await grid()).exam.status)
+  return [...found].map(([id, status]) => ({ id, status }))
+}
+
 test.describe('exams flow', () => {
   test.describe.configure({ mode: 'serial' })
 
@@ -73,12 +91,14 @@ test.describe('exams flow', () => {
 
   test.afterAll(async () => {
     await browserContext?.close()
-    if (examId) {
+    if (seed) {
       try {
-        if ((await grid()).exam.status === 'published') await api.post(`/api/admin/exams/${examId}/unpublish`)
-        await api.delete(`/api/admin/exams/${examId}`)
+        for (const exam of await createdExams()) {
+          if (exam.status === 'published') await api.post(`/api/admin/exams/${exam.id}/unpublish`)
+          await api.delete(`/api/admin/exams/${exam.id}`)
+        }
       } catch (err) {
-        console.warn(`[e2e cleanup] 刪除考試 ${examId} 失敗：${String(err)}`)
+        console.warn(`[e2e cleanup] 刪除考試 ${examName()} 失敗：${String(err)}`)
       }
     }
     if (seed) await cleanup(api, seed)
@@ -86,13 +106,14 @@ test.describe('exams flow', () => {
   })
 
   test('exams flow scores autosave and persist', async () => {
+    test.setTimeout(CREATE_TEST_TIMEOUT_MS)
     const [first, second] = seed.studentNames
     await page.goto('/#/exams')
     // 沒有考試時空狀態也有一顆「建立考試」，取頁首那顆
     await page.getByRole('button', { name: '建立考試' }).first().click()
     const dialog = page.getByRole('dialog', { name: '建立考試' })
     await expect(dialog).toBeVisible()
-    await dialog.getByPlaceholder('例如：第一次段考').fill(`E2E 段考-${seed.runId}`)
+    await dialog.getByPlaceholder('例如：第一次段考').fill(examName())
     await pickOption(dialog, '考試類型')
     const datePicker = dialog.getByPlaceholder('選擇日期')
     await datePicker.fill(TAIPEI_DATE.format(new Date()).replaceAll('-', '/'))
@@ -102,10 +123,15 @@ test.describe('exams flow', () => {
     for (const name of await subjectBoxes.locator('.el-checkbox__label').allInnerTexts()) {
       if (!KEPT_SUBJECTS.includes(name.trim())) await subjectBoxes.filter({ hasText: name.trim() }).locator('.el-checkbox').click()
     }
+    const createResponse = page.waitForResponse(
+      (r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/admin/exams',
+    )
     await dialog.getByRole('button', { name: '建立', exact: true }).click()
+    const created = await createResponse
+    expect(created.status()).toBe(201)
+    examId = ((await created.json()) as { id: string }).id
 
-    await expect(page).toHaveURL(/#\/exams\/[0-9a-f-]+\?tab=scores$/)
-    examId = /#\/exams\/([0-9a-f-]+)/.exec(page.url())![1]!
+    await expect(page).toHaveURL(new RegExp(`#/exams/${examId}\\?tab=scores$`), { timeout: DETAIL_NAV_TIMEOUT_MS })
     await expect(row(first)).toBeVisible()
 
     await typeScore(first, CHINESE, '95')
