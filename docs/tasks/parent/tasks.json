@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 221,
-  "last_updated": "2026-10-17T04:17:49Z",
+  "version": 222,
+  "last_updated": "2026-10-17T04:18:28Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3020,7 +3020,7 @@
     {
       "id": "PARENT-152",
       "title": "建立 ExamScoreTable 元件：單次考試各科分數（含缺考與備註）",
-      "description": "建立 `apps/web/src/parent/components/exams/ExamScoreTable.vue`：\n```ts\nprops: { subjects: ParentExamDetail['subjects'] }\n```\n- 語意化 `<table>`（caption「各科成績」視覺隱藏）：欄位「科目」「分數」「滿分」；分數規則：`is_absent` →「缺考」（error 色）；`score` 為 null 且非缺考 →「未登記」；否則顯示數字（整數不帶小數，非整數保留至多 1 位，例如 92.5）。科目 `note` 有值時於該列下方小字顯示。\n- 不顯示總分、平均、排名（domain_spec M8：不做排名；平均只在後台）。\n- subjects 為空 → 顯示「這次考試尚無科目成績」。\n\n新寫元件。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-exam-score-table.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：一般分數、小數分數、缺考、未登記、含科目備註、無科目。可併入 `parent-page-exam-detail.html`。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/components/exams/ExamScoreTable.vue`：\n```ts\nprops: { subjects: ParentExamDetail['subjects'] }\n```\n- 語意化 `<table>`（caption「各科成績」視覺隱藏）：欄位「科目」「分數」「滿分」；分數規則：`is_absent` →「缺考」（error 色）；`score` 為 null 且非缺考 →「未登記」；否則照原值顯示到兩位小數、去掉尾端 0，不四捨五入（59.95、85.5、90；滿分同規則，PARENT-209）。科目 `note` 有值時於該列下方小字顯示。\n- 不顯示總分、平均、排名（domain_spec M8：不做排名；平均只在後台）。\n- subjects 為空 → 顯示「這次考試尚無科目成績」。\n\n新寫元件。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-exam-score-table.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：一般分數、小數分數、缺考、未登記、含科目備註、無科目。可併入 `parent-page-exam-detail.html`。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/exams/ExamScoreTable.vue",
       "source_ref": null,
@@ -4173,12 +4173,12 @@
     },
     {
       "id": "PARENT-209",
-      "title": "家長端成績分數的顯示位數（待使用者決定）",
-      "description": "修改 `apps/web/src/parent/components/exams/ExamScoreTable.vue`（PARENT-152）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：後端 score 為 Numeric(6,2)，可到兩位小數；ExamScoreTable 依 description 與核可稿四捨五入到一位，59.95 會顯示 60（看起來像及格）。**使用者裁定**：照後端原值顯示到兩位小數、去掉尾端 0（59.95 → 59.95、85.50 → 85.5、90.00 → 90），不四捨五入（docs/domain_spec.md M8）；後台成績格本來就顯示輸入原值、各科平均維持現行位數，不在本 task 範圍。依此改稿 `docs/mockups/parent-component-exam-score-table.html` 的 decision（把本 task id 加進 `preview-tasks`）並補 red_case，再解除 blocked。\n\n**驗收標準**：每一條對應下列 red_case（依決定結果改寫數值）。",
+      "title": "家長端成績分數顯示到兩位小數、不四捨五入",
+      "description": "修改 `apps/web/src/parent/components/exams/ExamScoreTable.vue`（PARENT-152）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n後端 score / full_score 為 Numeric(6,2)（JSON number）。分數與滿分照原值顯示到兩位小數、去掉尾端 0，不四捨五入（59.95 → 59.95、85.50 → 85.5、90.00 → 90；docs/domain_spec.md M8）；`toFixed(2)` 只用來消除浮點誤差。缺考、未登記的顯示不變。後台成績格與各科平均不在本 task 範圍。\n- 設計稿關卡：`docs/mockups/parent-component-exam-score-table.html`（approved，`preview-tasks` 已列入本 task）。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-152 tdd.run 全綠。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/exams/ExamScoreTable.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-152"
