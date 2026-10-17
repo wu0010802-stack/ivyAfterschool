@@ -2,7 +2,7 @@ import { DOMWrapper, flushPromises } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { RouterView, type RouteRecordRaw } from 'vue-router'
+import { isNavigationFailure, NavigationFailureType, RouterView, type RouteRecordRaw } from 'vue-router'
 import { createApiMock, mountWithApp, type MountedApp } from '@/test/helpers'
 import type { ChildSummary } from '../api/children'
 import { _resetPublicConfigForTests, DEFAULT_PARENT_LIMITS, type ParentLimits, type PublicConfig } from '../api/config'
@@ -633,5 +633,114 @@ describe('PickupProxyView', () => {
     expect(m.wrapper.text()).toContain('林阿公')
     expect(lastSnackbar(m)?.tone).toBe('error')
     expect(lastSnackbar(m)?.message).toBe('更新失敗，請稍後再試')
+  })
+
+  it('PickupProxyView sorts authorizations by service date', async () => {
+    const m = await mountView({
+      persons: [LI_AUNT],
+      auths: [
+        auth('a1', { proxy_name: '陳叔叔', service_date: '2026-10-16' }),
+        auth('a2', { proxy_name: '林阿公', service_date: '2026-10-14' }),
+        auth('a3', { proxy_name: '張阿姨', service_date: '2026-10-15' }),
+      ],
+    })
+
+    const order = m.wrapper
+      .findAll('ul[aria-label="有效的代理接送授權"] > li')
+      .map((li) => ['陳叔叔', '林阿公', '張阿姨'].find((name) => li.text().includes(name)))
+    expect(order).toEqual(['林阿公', '張阿姨', '陳叔叔'])
+  })
+
+  it('PickupProxyView disables add person until persons load', async () => {
+    const slowPersons = deferredReply()
+    mock.onGet(personsUrl('s1')).reply(slowPersons.reply)
+    const m = await mountView({ persons: null, auths: [] })
+
+    // 未回應：不知道目前人數
+    expect(button(root(m.wrapper), '新增接送人').disabled).toBe(true)
+
+    slowPersons.resolve([200, [LI_AUNT]])
+    await flushPromises()
+
+    expect(button(root(m.wrapper), '新增接送人').disabled).toBe(false)
+    m.wrapper.unmount()
+    mounted = null
+
+    mock.onGet(personsUrl('s1')).reply(500, SERVER_ERROR)
+    const failed = await mountView({ persons: null, auths: [] })
+
+    expect(sectionCard(failed.wrapper, '常用接送人').textContent).toContain('常用接送人載入失敗')
+    expect(button(root(failed.wrapper), '新增接送人').disabled).toBe(true)
+  })
+
+  it('PickupProxyView upserts created authorization', async () => {
+    const m = await mountView({ persons: [LI_AUNT], auths: [] })
+
+    await createAuthorizationWithCode(m)
+
+    // 接送碼 sheet 還開著、尚未重抓：清單已含回應的 a2
+    expect(requireSheet('接送碼').textContent).toContain('048213')
+    expect(getCount(authsUrl('s1'))).toBe(1)
+    const items = m.wrapper.findAll('ul[aria-label="有效的代理接送授權"] > li')
+    expect(items).toHaveLength(1)
+    expect(items[0]!.text()).toContain('李阿姨')
+    expect(items[0]!.text()).toContain('8213')
+    expect(m.wrapper.text()).toContain('有效 1 筆')
+  })
+
+  it('PickupProxyView keeps delete dialog on generic error', async () => {
+    const m = await mountView({ persons: [LI_AUNT], auths: [] })
+    mock.onDelete('/parent/pickup-persons/pp1').reply(500, SERVER_ERROR)
+
+    await click(root(m.wrapper).querySelector('[aria-label="刪除 李阿姨"]'))
+    await click(button(requireDialog(), '刪除'))
+
+    expect(mock.history.delete).toHaveLength(1)
+    expect(requireDialog().querySelector('h2')?.textContent?.trim()).toBe('刪除 李阿姨？')
+    expect(lastSnackbar(m)?.tone).toBe('error')
+    expect(lastSnackbar(m)?.message).toBe('伺服器錯誤')
+    expect(sectionCard(m.wrapper, '常用接送人').textContent).toContain('李阿姨')
+    expect(getCount(personsUrl('s1'))).toBe(1)
+  })
+
+  it('PickupProxyView disables add authorization without child', async () => {
+    mock.onGet(CONFIG_URL).reply(200, config())
+    mounted = await mountWithApp(Host, {
+      routes: ROUTES,
+      initialRoute: '/pickup/proxy',
+      piniaInitialState: { parentChildren: { items: [], loaded: true, selectedId: null } },
+    })
+    await flushPromises()
+
+    expect(useChildrenStore(mounted.pinia).selectedId).toBeNull()
+    expect(button(root(mounted.wrapper), '新增代理接送').disabled).toBe(true)
+    expect(mock.history.get.filter((r) => r.url?.includes('/pickup-'))).toHaveLength(0)
+  })
+
+  it('PickupProxyView resolves pending leave confirm as false', async () => {
+    const m = await mountView({ persons: [LI_AUNT], auths: [] })
+    await createAuthorizationWithCode(m)
+
+    let firstResult: unknown = 'pending'
+    void m.router.push('/pickup').then((result) => {
+      firstResult = result
+    })
+    await flushPromises()
+    expect(requireDialog().querySelector('h2')?.textContent?.trim()).toBe('確定已記下接送碼？')
+    expect(firstResult).toBe('pending')
+
+    // 前一次還沒回答又觸發離頁：前一次視為「留在這裡」
+    const second = m.router.push('/more')
+    await flushPromises()
+
+    expect(isNavigationFailure(firstResult)).toBe(true)
+    expect(m.router.currentRoute.value.path).toBe('/pickup/proxy')
+    expect(requireDialog().querySelector('h2')?.textContent?.trim()).toBe('確定已記下接送碼？')
+    expect(requireSheet('接送碼').textContent).toContain('048213')
+
+    await click(button(requireDialog(), '留在這裡'))
+    const secondResult = await second
+    expect(isNavigationFailure(secondResult, NavigationFailureType.aborted)).toBe(true)
+    expect(m.router.currentRoute.value.path).toBe('/pickup/proxy')
   })
 })
