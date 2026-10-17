@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 372,
-  "last_updated": "2026-10-17T08:07:46Z",
+  "version": 373,
+  "last_updated": "2026-10-17T08:13:41Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6928,13 +6928,13 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupPosView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-189"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "\n[review-r11-f5 打回] description「按鈕以 @click.stop 吞掉 click（例如佇列卡 ⋮）時，提示列等下一次完成的點擊才消失」與核可稿 decision「不改用 capture 階段的 click」沒有測試：把根元素 `@click=\"onGestureEnd\"` 改成 `@click.capture=\"onGestureEnd\"` 時 tdd.run 仍 22 條全綠。請補 red_case（例如 stub 內加一顆 `@click.stop` 的按鈕：對它 pointerdown → pointerup → click 後 unlock 1 次、畫面仍含「點一下畫面以啟用提示音」，之後在「回覆時間」完成一次點擊才消失），以上述 capture 突變確認會紅；同步 FRONTEND-189 red_case 視需要。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/PickupPosView.spec.ts",
@@ -6952,9 +6952,9 @@
         "notes": "happy-dom 沒有版面：單元測試只鎖事件時序（提示列移除在 click / pointercancel 之後、按鈕的 click 照常作用），實際「第一下不落空」以 Chromium 驗收。\nChromium 驗收（impl-frontend-r11b，2026-10-17）：以 dts: false 的 vite harness 掛真實 PickupPosView / DismissalPosBoard / QueueCard（API 以 axios-mock-adapter 回 1 筆 pending、needs_reply 請求），Chromium 1243、viewport 1024×768、hasTouch，進頁後直接 locator.tap() 佇列卡「回覆時間」→ 回覆 dialog「回覆預計可接送時間：王小明」開啟，提示列移除、按鈕在點擊完成後上移 50px（326 → 276）；同一 harness 換回修改前的 PickupPosView → dialog 不開（落空重現）。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f5",
+        "notes": "打回（review-r11-f5）。TDD 順序正確（b30d0b8 測試 → eb3793f 實作；測試 commit 只把 189 舊案例改為新規則，屬 description 要求的改寫）；5 條 red_case 皆有同名測試、tdd.run（= FRONTEND-189 tdd.run）22 條全綠，無回歸；FRONTEND-189 description / red_case 已同步；web-lint 乾淨，web-typecheck 唯一錯誤在 FRONTEND-317 的 src/utils/examScore.ts（不擋）。「只有 click 無 pointerdown 不算啟用」與核可稿一致：稿 hideHint 以 unlocked 為前提、description 也寫明鍵盤 click 不算啟用，此案例在實作前即會綠，作為回歸守衛（突變拿掉 unlocked 前提時轉紅）。Chromium 實測（review-r11-f5 harness，dts 未啟用 unplugin、Chromium 1243、1024×768、hasTouch，真實 PickupPosView / DismissalPosBoard / QueueCard，axios-mock-adapter 回 1 筆 needs_reply 請求）：進頁直接 locator.tap() 佇列卡「回覆時間」→ 回覆 dialog「回覆預計可接送時間：王小明」開啟、提示列移除、按鈕 y 311.5 → 261.5；同一 harness 換回 eb3793f^ 的 PickupPosView → dialog 不開（落空重現），還原後 cmp / git diff 乾淨。突變：拿掉 pointercancel、v-if 改回 !unlocked、拿掉 unlocked 前提皆轉紅；但根元素 @click 改為 @click.capture 仍全綠（見打回項）。"
       }
     },
     {
@@ -7001,14 +7001,14 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-304",
         "FRONTEND-305"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "暫存只收 service_date 等於目前 date 的事件；連續換兩次日期（d1→d2→d3）時 d2 的暫存不可帶進 d3 的回應。延後 snapshot 的丟棄只看該次被採用的 reload（序號防護下被捨棄的舊 reload 不算）。",
+      "risk_notes": "暫存只收 service_date 等於目前 date 的事件；連續換兩次日期（d1→d2→d3）時 d2 的暫存不可帶進 d3 的回應。延後 snapshot 的丟棄只看該次被採用的 reload（序號防護下被捨棄的舊 reload 不算）。\n[review-r11-f5 打回] 1. 作業看板「換日期途中、新日期才有的學生」沒有測試：onProgressUpdated 改回原本 `if (!serverBoard.value?.students.some(...)) return`（先以舊看板名單檢查學生，description 現況第 1 點指出的缺陷）時 tdd.run 仍全綠——現有案例的 s1 同時在 d1、d2 名單，s9 案例只斷言「不在回應就不出現」。請補 red_case（寫進本 task 與 FRONTEND-152 的 red_cases）：d1 載入 [s1] → 改 d2（卡住）→ ws s2（service_date d2、ready_eta '18:20'）→ d2 回應 [s1, s2(ready_eta null)] 到達後 s2.progress.ready_eta === '18:20'；以上述突變確認會紅。2. 本 task description 的延後 snapshot 規則仍寫「記下收到當下的 touchClock（不遞增 touched）」，與實作 / FRONTEND-152、305 已同步的「++touchClock 取序號、不記 touched」不一致，請改成最終規則（含為何要遞增：否則 reload 發出後才收到、期間無其他異動的 snapshot 序號等於 startedAt 會被誤丟）；tdd.notes「後四條 red_case 寫在 useHomeworkBoard.spec.ts」已過時（現為第 4~7、9 條共五條），一併更正。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useAttendanceBoard.spec.ts",
@@ -7030,9 +7030,9 @@
         "notes": "後四條 red_case 寫在 apps/web/src/composables/useHomeworkBoard.spec.ts。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f5",
+        "notes": "打回（review-r11-f5）。TDD 順序正確（5a3904a 純新增測試 → 0efd872 實作，未放寬既有斷言）；9 條 red_case 皆有同名測試、tdd.run 兩支 spec 21 + 20 全綠，FRONTEND-126 / 152 / 304 / 305 的 tdd.run 即同兩支 spec，無回歸；web-lint 乾淨，web-typecheck 唯一錯誤在 FRONTEND-317 的 src/utils/examScore.ts（不擋）。偏離判斷：(a) 延後 snapshot 以 ++touchClock 取序號合理——讀當下值時「reload 發出後才收到、期間無其他異動」的 snapshot 序號等於 startedAt 會被誤丟（突變改回讀當下值，「deferred snapshot received after reload start still applies」轉紅）；遞增 clock 不寫 touched 不影響 touched 比較。(b) 作業看板暫存更新函式、回應到達時依序套用合理（snapshot / mutation 回應是部分欄位變換，暫存結果需要先有該生的基底列）。反例檢查（皆以程式推演，無誤）：換日期途中再換班級→篩選鍵改變清空暫存，新 reload 在事件之後發出；d1→d2→d3 暫存不帶入（有測試）；暫存學生不在回應中→出勤依班級學號插入、作業看板忽略（有測試）；snapshot 在 reload 前 / 中 / 後到達→丟棄 / 保留 / 照常延後；被序號捨棄的 reload 不算，由之後採用的 reload startedAt 判斷；暫存期間同鍵 resync reload 在事件後發出→暫存依 touched ≤ startedAt 丟棄（正確）；304/305 既有測試全綠。突變：拿掉延後 snapshot 丟棄迴圈、≤ 改 <、++ 改讀當下值、出勤 mergeTouched 不併入 buffered、出勤只比日期不比班級皆轉紅；但 onProgressUpdated 改回原本「先以舊看板名單檢查學生」仍全綠（見打回 1）。打回項見 risk_notes。"
       }
     },
     {
