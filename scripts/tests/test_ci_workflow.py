@@ -6,7 +6,10 @@ helper：
 - `run_lines(name, file)`：展開該 job 所有 step 的 `run`（多行 run 拆成逐行、去掉前後空白）。
 """
 
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -413,3 +416,142 @@ def test_ci_docker_build_job_cleanup_tolerates_missing_container() -> None:
     assert len(cleanup) == 1
     assert "docker rm -f" in cleanup[0]["run"]
     assert "|| true" in cleanup[0]["run"]
+
+
+# --- INFRA-055：e2e workflow 建立 e2e admin、Playwright testMatch 只收 spec ---------------------
+
+E2E_ADMIN_SCRIPT = REPO_ROOT / "scripts" / "e2e_bootstrap_admin.sh"
+WEB_DIR = REPO_ROOT / "apps" / "web"
+PLAYWRIGHT_CONFIG = WEB_DIR / "playwright.config.ts"
+# 密碼變數名（workflow 與腳本共用）
+PASSWORD_VARS = (
+    "E2E_ADMIN_PASSWORD",
+    "$pass",
+    "${pass}",
+    "$password",
+    "${password}",
+    "INITIAL_PASSWORD",
+)
+
+
+def step_index(steps: list[dict[str, Any]], needle: str) -> int:
+    for index, step in enumerate(steps):
+        if needle in str(step.get("run", "")):
+            return index
+    raise AssertionError(f"找不到 run 含 {needle!r} 的 step")
+
+
+def bootstrap_step_index(steps: list[dict[str, Any]]) -> int:
+    for index, step in enumerate(steps):
+        run = str(step.get("run", ""))
+        if "create-admin" in run or E2E_ADMIN_SCRIPT.name in run:
+            return index
+    raise AssertionError("找不到建立 e2e admin 的 step")
+
+
+def test_e2e_workflow_bootstraps_admin() -> None:
+    steps = steps_of("e2e", E2E_YML)
+
+    assert (
+        step_index(steps, "dev_up.sh")
+        < bootstrap_step_index(steps)
+        < step_index(steps, "playwright test")
+    )
+
+
+def test_e2e_workflow_playwright_env_has_admin_credentials() -> None:
+    steps = steps_of("e2e", E2E_YML)
+    playwright = steps[step_index(steps, "playwright test")]
+    env = playwright.get("env", {})
+
+    for key in ("E2E_ADMIN_USERNAME", "E2E_ADMIN_PASSWORD"):
+        assert re.fullmatch(r"\$\{\{\s*env\." + key + r"\s*\}\}", str(env.get(key, ""))), env
+    # 前一步以 $GITHUB_ENV 寫入，值由 openssl rand 產生
+    generate = [
+        s
+        for s in steps[: step_index(steps, "playwright test")]
+        if "E2E_ADMIN_PASSWORD=" in str(s.get("run", ""))
+    ]
+    assert len(generate) == 1
+    assert "GITHUB_ENV" in generate[0]["run"]
+    assert "openssl rand" in generate[0]["run"]
+    # 不得有字面密碼
+    literal = re.compile(r"E2E_ADMIN_PASSWORD\s*[=:]\s*['\"]?[A-Za-z0-9]")
+    for text in (
+        (WORKFLOWS / E2E_YML).read_text(encoding="utf-8"),
+        E2E_ADMIN_SCRIPT.read_text(encoding="utf-8"),
+    ):
+        assert [line for line in text.splitlines() if literal.search(line)] == []
+
+
+def _echoes_password(line: str) -> bool:
+    stripped = line.strip()
+    if not re.match(r"(echo|printf)\b", stripped):
+        return False
+    if "::add-mask::" in stripped:
+        return False
+    # 只寫進檔案（>> "$GITHUB_ENV"）不算印到 stdout
+    if re.search(r">>?\s*\"?\$GITHUB_ENV", stripped):
+        return False
+    return any(var in stripped for var in PASSWORD_VARS)
+
+
+def test_e2e_workflow_bootstrap_masks_password() -> None:
+    steps = steps_of("e2e", E2E_YML)
+    bootstrap = str(steps[bootstrap_step_index(steps)]["run"])
+    script = E2E_ADMIN_SCRIPT.read_text(encoding="utf-8")
+
+    assert [
+        line for line in (bootstrap + "\n" + script).splitlines() if _echoes_password(line)
+    ] == []
+    assert "set -x" not in script
+    generate = [s for s in steps if "E2E_ADMIN_PASSWORD=" in str(s.get("run", ""))]
+    assert len(generate) == 1
+    run = str(generate[0]["run"])
+    assert "::add-mask::" in run
+    # add-mask 必須在寫入 GITHUB_ENV 之前
+    assert run.index("::add-mask::") < run.index("E2E_ADMIN_PASSWORD=")
+
+
+def test_playwright_config_test_match_static() -> None:
+    text = PLAYWRIGHT_CONFIG.read_text(encoding="utf-8")
+    matches = re.findall(r"testMatch:\s*\[([^\]]*)\]", text)
+
+    assert len(matches) == 2
+    patterns = [p for group in matches for p in re.findall(r"'([^']+)'", group)]
+    assert sorted(patterns) == [
+        "e2e/admin/**/*.spec.ts",
+        "e2e/parent/**/*.spec.ts",
+        "e2e/smoke.spec.ts",
+    ]
+
+
+@pytest.mark.skipif(
+    not (WEB_DIR / "node_modules" / "@playwright" / "test").is_dir()
+    or shutil.which("pnpm") is None,
+    reason="需要 apps/web/node_modules 的 Playwright 與 pnpm（CI 的 unit job 不裝 node）",
+)
+def test_playwright_config_test_match_only_specs() -> None:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("E2E_")}
+    pnpm = shutil.which("pnpm")
+    assert pnpm is not None
+    # 固定指令、無外部輸入
+    result = subprocess.run(  # noqa: S603
+        [pnpm, "exec", "playwright", "test", "--list"],
+        cwd=WEB_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    output = result.stdout + result.stderr
+
+    assert result.returncode == 0, output
+    assert "should not import test file" not in output
+    assert "parent/login-bind-pickup.spec.ts" in output
+    assert "admin/support.spec.ts" in output
+    # list reporter 每列：[project] <U+203A> <檔案>:<行>:<欄> <U+203A> <標題>
+    files = set(re.findall(r"\u203a\s+(\S+?):\d+:\d+", output))
+    assert files
+    assert [f for f in files if not f.endswith(".spec.ts")] == []
