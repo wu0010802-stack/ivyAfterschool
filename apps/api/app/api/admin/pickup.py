@@ -1,7 +1,8 @@
 """後台接送 endpoint（domain_spec M8）。
 
 - BACKEND-429 ``GET /pickup/queue``：pickup:read；``PickupQueueQuery``（date 預設今天）→ BACKEND-414
-  → ``PickupQueueOut``（open / closed / counts）。
+  → ``PickupQueueOut``（open / closed / counts / latest_expected_arrival：目前 ``pickup.window`` 的
+  最晚預計抵達時間，不隨 date 變化；BACKEND-563）。
 - BACKEND-435 ``GET /pickup/roster``：pickup:read；``RosterQuery`` → BACKEND-415 → ``RosterOut``
   （POS 學生卡，依班級分組）。
 - BACKEND-436 ``GET /pickup/authorizations``：pickup:read；``StaffAuthorizationListQuery`` +
