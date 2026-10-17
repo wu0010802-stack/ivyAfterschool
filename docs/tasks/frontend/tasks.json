@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 340,
-  "last_updated": "2026-10-17T04:16:19Z",
+  "version": 341,
+  "last_updated": "2026-10-17T04:16:20",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6391,13 +6391,13 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/homework/HomeworkStudentCard.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-153"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r11-f2 打回] 「非今天、手動標記完成」的 ⋮ 沒有測試：把 hasMenu 改成 `props.canWrite && (props.isToday || !isDone.value)`（拿掉 isManualDone）FRONTEND-299 / 153 測試仍全綠，但這時卡片只剩「改回依項目判斷」可用、⋮ 卻被隱藏。請補 red_case（例如『HomeworkStudentCard keeps menu when an action applies: manual done on past day』：canWrite true、isToday false、overall done 但項目推導非 done → ⋮ 存在，點開只有「改回依項目判斷」）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/components/homework/HomeworkStudentCard.spec.ts",
@@ -6412,9 +6412,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f2",
+        "notes": "兩條 red_case 有同名測試且全綠，FRONTEND-153 tdd.run 全綠（11）；commit 40dd292 測試先於 624d2b1 實作；稿 decision 已補。打回：hasMenu 的「手動標記」分支沒有測試，突變（拿掉 isManualDone）全綠，見 risk_notes。"
       }
     },
     {
@@ -6424,13 +6424,13 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/LeavesView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-129"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r11-f2 打回] description 寫的「「重設」回到頁面建立時的預設區間；日期快捷鍵以目前的 today 計算」沒有測試：把 defaultFilters 的 `date_from: initialToday` 改成 `today.value` 仍全綠（跨午夜後按重設會改成新日期，且 isDefaultFilters 判斷跟著換日）；快捷鍵改回用 initialToday 也不會被抓到。請補 red_case：跨台北午夜並重新整理後，(1) 改過篩選再按「重設」→ 送出的 date_from / date_to 仍為頁面建立日 2026-10-14 / 2026-11-13；(2) 「今天起 30 天」快捷鍵的值以新日期 2026-10-15 計算。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/views/LeavesView.spec.ts",
@@ -6448,9 +6448,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f2",
+        "notes": "5 條 red_case 有同名測試且全綠，FRONTEND-129 tdd.run 全綠（18）；aead51b 測試先於 5b64949 實作；稿操作欄 88。突變：拿掉 fetch 內 today 更新 → recomputes today 紅；拿掉 canReadStudents 判斷 / 拿掉『本頁已有該生』判斷 → skips lookup 紅。打回：重設與快捷鍵的 today 口徑沒有測試（突變全綠），見 risk_notes。"
       }
     },
     {
@@ -6460,7 +6460,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/ExamDetailView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-234",
@@ -6486,9 +6486,9 @@
         "notes": "第一條是補測試：已以突變自證會紅（取消發布前不 flush → flush 次數 0；放棄後改回只 reload、不以 key 重建 → mounts 仍 1）。RolesView 既有 spec 的兩處確認框內文斷言、ExamDetailView 既有的三處，同步改為 page 文案全文。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f2",
+        "notes": "4 條 red_case 皆有同名測試且全綠；FRONTEND-234/046/058/071 tdd.run 全綠（18/8/15/14）。測試 commit ac4ca24 先於實作 9623177，既有斷言只收緊為 page 全文。突變：拿掉 scoredSeq 判斷 → stale scored counts 紅；settleGrid 改回不帶 'page' → 4 條紅；拿掉 flush → unpublish flushes 等 3 條紅；RolesView / SystemSettingsView 改回預設文案 → 各自紅。FormDialog 維持 dialog 文案；page-exam-detail 稿 decision 已含頁面文案。web-lint 乾淨；web-typecheck 唯一錯誤在別人進行中的 FRONTEND-310 紅燈 spec（cannotGrantMessage），與本 task 無關。"
       }
     },
     {
@@ -6565,13 +6565,13 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-126"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r11-f2 打回] 反例：篩選只換班級（日期不變，例如「全部」→ c1）時，新篩選的 reload 在途中收到的 ws / 操作結果會被回應蓋掉。重現：classId null 載入 [s1,s2] → classId 改 'c1'（reload 卡住）→ ws attendance.updated s1 present（matchesFilter 通過、touched 記在 startedAt 之後、畫面已 present）→ reload 回應 s1 expected → s1 變回 expected。原因是 mergeTouched 在 `loadedKey !== key` 時直接回傳回應；但 reload 開頭已在篩選鍵改變時清空 touched，所以 startedAt 之後的 touched 都是在目前篩選下套用的，可以照常合併。請拿掉這個例外（或改成只合併 touched 的列），補 red_case（換班級篩選途中的 ws 列保留），並把同步進 FRONTEND-126 description 的「（篩選與目前資料相同）」限定拿掉，讓 126 與本 task description 一致（本 task description 沒有這個限定）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useAttendanceBoard.spec.ts",
@@ -6588,9 +6588,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f2",
+        "notes": "4 條 red_case 有同名測試且全綠，FRONTEND-126 tdd.run 全綠（16）；dfa9398 測試先於 45eacfa 實作。突變（>= startedAt、拿掉插入、拿掉 touched.set、summary 不重算）皆有測試轉紅。另構造的反例全部守住：較早發出較晚回來的 reload 被新 reload 取代、reload 前後各有一次 ws 取最新、batch_updated 途中、reload 前發出的操作在途中回來。打回：只換班級篩選時途中的 ws / 操作結果被回應蓋掉（反例見 risk_notes），且 126 同步的 description 多了本 task 沒有的「篩選與目前資料相同」限定。"
       }
     },
     {
@@ -6600,13 +6600,13 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useHomeworkBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-152"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r11-f2 打回] 反例：篩選只換班級（日期不變，例如「全部」→ c1）時，新篩選的 reload 在途中收到的 ws / 操作結果會被回應蓋掉。重現：classId null 載入 [s1] → classId 改 'c1'（reload 卡住）→ ws homework.progress_updated s1（patchStudent 套到舊看板中的 s1、touched 記在 startedAt 之後、畫面已 present）→ reload 回應 s1 ready_eta null → s1 的 ready_eta 變回 null。原因是 mergeTouched 在 `loadedKey !== key` 時直接回傳回應；但 reload 開頭已在篩選鍵改變時清空 touched，所以 startedAt 之後的 touched 都是在目前篩選下套用的，可以照常合併。請拿掉這個例外（或改成只覆蓋回應中有、且 touched 的學生），補 red_case（換班級篩選途中的 ws 列保留），並把同步進 FRONTEND-152 description 的「（篩選與目前資料相同）」限定拿掉，讓 126 與本 task description 一致（本 task description 沒有這個限定）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/useHomeworkBoard.spec.ts",
@@ -6622,9 +6622,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-f2",
+        "notes": "3 條 red_case 有同名測試且全綠，FRONTEND-152 tdd.run 全綠（14）；b0b7db5 測試先於 d8912d1 實作。另構造的反例守住：重疊 reload、reload 前後各一次 ws、狀態切換 PATCH 在 reload 途中回來、延後的 ws snapshot 在 chain 結束後才套用。打回：同 FRONTEND-304，只換班級篩選時途中的 ws / mutation 結果被回應蓋掉，見 risk_notes。"
       }
     },
     {
