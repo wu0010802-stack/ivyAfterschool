@@ -210,6 +210,19 @@ describe('HomeworkStudentCard', () => {
     expect(labels(await openMenu(wrapper))).toEqual(['標記整體完成'])
   })
 
+  it('HomeworkStudentCard keeps menu when an action applies: manual done on past day', async () => {
+    const wrapper = await mountCard(
+      makeStudent({
+        items: [makeItem({ id: 'h1', status: 'done' }), makeItem({ id: 'h2', status: 'todo', sort_order: 2 })],
+        progress: makeProgress({ overall_status: 'done' }),
+      }),
+      { isToday: false },
+    )
+    expect(wrapper.text()).toContain('手動標記')
+    expect(menuButton(wrapper).exists()).toBe(true)
+    expect(labels(await openMenu(wrapper))).toEqual(['改回依項目判斷'])
+  })
+
   it('HomeworkStudentCard dims leave students and empty items', async () => {
     const leave = await mountCard(makeStudent({ attendance_status: 'leave' }))
     expect(leave.classes()).toContain('is-dimmed')
