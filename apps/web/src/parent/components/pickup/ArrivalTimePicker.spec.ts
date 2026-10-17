@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ArrivalTimePicker from './ArrivalTimePicker.vue'
+import pickerSource from './ArrivalTimePicker.vue?raw'
 
 const ERROR_TEXT = '預計抵達時間不能早於現在'
 
@@ -182,4 +183,24 @@ describe('ArrivalTimePicker', () => {
     await wrapper.setProps({ modelValue: null })
     expect(chip(wrapper, '不指定').attributes('aria-pressed')).toBe('true')
   })
+
+  it('ArrivalTimePicker chip rows are 12px apart', () => {
+    expect(chipsRule()).toMatch(/(^|;)\s*gap:\s*12px 8px\s*(;|$)/)
+  })
+
+  it('ArrivalTimePicker chips keep 8px column gap', () => {
+    const decls = chipsRule()
+      .split(';')
+      .map((d) => d.trim())
+      .filter((d) => /^(gap|row-gap|column-gap)\s*:/.test(d))
+    expect(decls).toEqual(['gap: 12px 8px'])
+  })
 })
+
+/** 取出元件樣式中 `.arrival__chips {` 規則的宣告內容（happy-dom 量不到版面，以宣告鎖住） */
+function chipsRule(): string {
+  const style = pickerSource.slice(pickerSource.indexOf('<style'))
+  const start = style.indexOf('.arrival__chips {')
+  if (start < 0) throw new Error('找不到 .arrival__chips 規則')
+  return style.slice(style.indexOf('{', start) + 1, style.indexOf('}', start))
+}
