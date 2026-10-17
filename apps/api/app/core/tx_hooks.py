@@ -19,6 +19,13 @@ callback。
   註冊的 callback（沿 ``SessionTransaction.parent`` 鏈判定；內層 savepoint 已正常釋放者亦屬其內），
   外層與先前已註冊的保留——否則被回滾的業務寫入（例如 ``NotificationService.enqueue`` 的 outbox
   列）仍會在外層 commit 後 kick / 推播，產生幽靈通知。
+- BACKEND-565 ``collect_before_commit(session, name, key, value, flush)``：commit **前**才組資料
+  的去重登記（作業快照推播、接送請求推播共用）。同一 session 同一 name 以 key 去重（後登記
+  覆蓋 value）；最外層交易 ``before_commit`` 時取出整包 dict 呼叫一次
+  ``flush(session, pending)``（savepoint 釋放也發 before_commit，此時
+  ``in_nested_transaction()`` 為 True，跳過）；最外層 rollback 清除登記，savepoint rollback
+  不清除。每個 session 每個 name 只 listen 一次，flush 以第一次登記的為準。flush 的查詢在
+  before_commit 執行，失敗會讓 commit 失敗（已知取捨）。
 - callback 內不得再使用同一個 session 寫 DB（需要 DB 的 callback 自行開 ``session_scope()``）。
 
 **與 INFRA-010 ``db_session``（``join_transaction_mode="create_savepoint"``）搭配的實測結論**：
@@ -34,7 +41,7 @@ callback。
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 
 from sqlalchemy import event
 from sqlalchemy.orm import Session, SessionTransaction
@@ -42,6 +49,8 @@ from sqlalchemy.orm import Session, SessionTransaction
 logger = logging.getLogger(__name__)
 
 CALLBACKS_KEY = "after_commit_callbacks"
+BEFORE_COMMIT_KEY = "before_commit_collections"
+_BEFORE_COMMIT_HOOKED = "before_commit_hooked_names"
 _installed = False
 
 _Entry = tuple[SessionTransaction, Callable[[], None]]
@@ -93,6 +102,41 @@ def _clear_on_rollback(session: Session, previous_transaction: SessionTransactio
     entries: list[_Entry] | None = session.info.get(CALLBACKS_KEY)
     if entries:
         entries[:] = [(tx, fn) for tx, fn in entries if not _is_within(tx, previous_transaction)]
+
+
+Flush = Callable[[Session, dict[Hashable, object]], None]
+
+
+def _listen_before_commit(session: Session, name: str, flush: Flush) -> None:
+    def on_before_commit(session: Session) -> None:
+        # savepoint（begin_nested）釋放也會觸發 before_commit：等最外層 commit 才組資料
+        if session.in_nested_transaction():
+            return
+        pending = session.info.get(BEFORE_COMMIT_KEY, {}).pop(name, None)
+        if pending:
+            flush(session, pending)
+
+    def on_rollback(session: Session, previous_transaction: SessionTransaction) -> None:
+        if previous_transaction.nested:
+            return
+        session.info.get(BEFORE_COMMIT_KEY, {}).pop(name, None)
+
+    event.listen(session, "before_commit", on_before_commit)
+    event.listen(session, "after_soft_rollback", on_rollback)
+
+
+def collect_before_commit(
+    session: Session, name: str, key: Hashable, value: object, flush: Flush
+) -> None:
+    hooked: set[str] = session.info.setdefault(_BEFORE_COMMIT_HOOKED, set())
+    if name not in hooked:
+        _listen_before_commit(session, name, flush)
+        hooked.add(name)
+    # 與 run_after_commit 相同：先開交易，之後的 rollback 才一定會觸發 after_soft_rollback 清掉登記
+    if not session.in_transaction():
+        session.begin()
+    collections: dict[str, dict[Hashable, object]] = session.info.setdefault(BEFORE_COMMIT_KEY, {})
+    collections.setdefault(name, {})[key] = value
 
 
 def install_tx_hooks() -> None:

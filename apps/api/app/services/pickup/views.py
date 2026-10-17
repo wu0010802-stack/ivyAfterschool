@@ -7,22 +7,24 @@
 - picked_up_by：guardian.name 或代理授權的 proxy_name；override 且兩者皆無 →「老師確認交付」。
 
 ``build_*`` 的 SQL 固定（學生、員工 / 家長名稱、guardian、代理授權、作業進度各一條），不 N+1。
-``publish_request_change`` 同一交易對同一請求多次呼叫只推最後狀態：先登記在 session.info，最外層
-commit 前（before_commit）才重讀請求並組資料，交給 BACKEND-224 在 commit 後送出。
+``publish_request_change`` 同一交易對同一請求多次呼叫只推最後狀態：以 BACKEND-565
+``collect_before_commit`` 登記，最外層 commit 前（before_commit）才重讀請求並組資料，交給
+BACKEND-224 在 commit 後送出。
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Hashable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, time
-from typing import Any, Final
+from typing import Any, Final, cast
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, Select, and_, event, literal, or_, select
-from sqlalchemy.orm import Session, SessionTransaction
+from sqlalchemy import ColumnElement, Select, and_, literal, or_, select
+from sqlalchemy.orm import Session
 
 from app.core.clock import Clock, format_hm, format_taipei_hm
+from app.core.tx_hooks import collect_before_commit
 from app.models.account import StaffUser
 from app.models.homework import HomeworkDailyProgress
 from app.models.parents import Guardian, ParentAccount
@@ -33,8 +35,7 @@ from app.schemas.pickup import ParentPickupRequestOut, PickupRequestOut, PickupS
 
 OVERRIDE_PICKER_NAME: Final = "老師確認交付"
 CAN_MARK_ARRIVED_STATUSES: Final = frozenset({"pending", "acknowledged"})
-PUBLISH_KEYS: Final = "pickup_publish_request_ids"
-_PUBLISH_HOOKED: Final = "pickup_publish_hooked"
+PUBLISH_NAME: Final = "pickup_publish_request"
 
 
 def needs_reply(request: PickupRequest) -> bool:
@@ -273,17 +274,11 @@ def build_parent_request_views(
     return [_parent_view(request, lookups) for request in requests]
 
 
-def _flush_publishes(session: Session) -> None:
-    # begin_nested 的 savepoint 釋放也會發 before_commit：等最外層 commit 才組資料
-    if session.in_nested_transaction():
-        return
-    pending: dict[UUID, Clock] = session.info.pop(PUBLISH_KEYS, {})
-    if not pending:
-        return
+def _publish_pending(session: Session, pending: dict[Hashable, object]) -> None:
     requests = list(
         session.execute(
             select(PickupRequest)
-            .where(PickupRequest.id.in_(pending))
+            .where(PickupRequest.id.in_(cast(Iterable[UUID], pending)))
             .execution_options(populate_existing=True)
         ).scalars()
     )
@@ -296,24 +291,10 @@ def _flush_publishes(session: Session) -> None:
             data=_admin_view(request, lookups).model_dump(),
             student_id=request.student_id,
             parent_data=_parent_view(request, lookups).model_dump(),
-            clock=pending[request.id],
+            clock=cast(Clock, pending[request.id]),
         )
-
-
-def _clear_publishes(session: Session, previous_transaction: SessionTransaction) -> None:
-    if previous_transaction.nested:
-        return
-    session.info.pop(PUBLISH_KEYS, None)
 
 
 def publish_request_change(session: Session, request: PickupRequest, *, clock: Clock) -> None:
     """登記推播；commit 時推 admin:pickup 完整資料與 student:<id> 家長版，rollback 不推。"""
-    if not session.info.get(_PUBLISH_HOOKED):
-        event.listen(session, "before_commit", _flush_publishes)
-        event.listen(session, "after_soft_rollback", _clear_publishes)
-        session.info[_PUBLISH_HOOKED] = True
-    # 與 run_after_commit 相同：先開交易，之後的 rollback 才一定會觸發 after_soft_rollback 清掉登記
-    if not session.in_transaction():
-        session.begin()
-    keys: dict[UUID, Clock] = session.info.setdefault(PUBLISH_KEYS, {})
-    keys[request.id] = clock
+    collect_before_commit(session, PUBLISH_NAME, request.id, clock, _publish_pending)

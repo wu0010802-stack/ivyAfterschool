@@ -22,18 +22,20 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Hashable
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal, cast
 from uuid import UUID
 
-from sqlalchemy import event, func, select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session, SessionTransaction
+from sqlalchemy.orm import Session
 
 from app.core.clock import Clock
 from app.core.errors import AppError, ConflictError, NotFoundError
 from app.core.settings_registry import HOMEWORK_WINDOW
+from app.core.tx_hooks import collect_before_commit
 from app.models.account import StaffUser
 from app.models.attendance import AttendanceStatus, StudentAttendance
 from app.models.classes import SchoolClass
@@ -73,8 +75,7 @@ if TYPE_CHECKING:
     from app.api.deps import CurrentStaff
 
 UQ_PROGRESS_STUDENT_DATE = "uq_homework_daily_progress_student_date"
-BROADCAST_KEYS: Final = "homework_broadcast_keys"
-_BROADCAST_HOOKED: Final = "homework_broadcast_hooked"
+BROADCAST_NAME: Final = "homework_broadcast"
 # set_ready_eta_and_note 的「未提供」標記（與給 None 代表清除區分）
 UNSET: Final[Any] = object()
 
@@ -246,19 +247,10 @@ def _publish_snapshot(session: Session, student_id: UUID, service_date: date, cl
     )
 
 
-def _flush_broadcasts(session: Session) -> None:
-    # begin_nested 的 savepoint 釋放也會發 before_commit：等最外層 commit 才組資料
-    if session.in_nested_transaction():
-        return
-    pending: dict[tuple[UUID, date], Clock] = session.info.pop(BROADCAST_KEYS, {})
-    for (student_id, service_date), clock in pending.items():
-        _publish_snapshot(session, student_id, service_date, clock)
-
-
-def _clear_broadcasts(session: Session, previous_transaction: SessionTransaction) -> None:
-    if previous_transaction.nested:
-        return
-    session.info.pop(BROADCAST_KEYS, None)
+def _broadcast_pending(session: Session, pending: dict[Hashable, object]) -> None:
+    for key, clock in pending.items():
+        student_id, service_date = cast(tuple[UUID, date], key)
+        _publish_snapshot(session, student_id, service_date, cast(Clock, clock))
 
 
 def broadcast_homework_snapshot(
@@ -266,17 +258,12 @@ def broadcast_homework_snapshot(
 ) -> None:
     """登記該生該日的快照推播；commit 前（before_commit）才讀取最終狀態並交給 BACKEND-224 送出。
 
-    同一交易內同一 (student_id, service_date) 只推一次；rollback 時清除登記。
+    同一交易內同一 (student_id, service_date) 只推一次；rollback 時清除登記（BACKEND-565
+    ``collect_before_commit``）。
     """
-    if not session.info.get(_BROADCAST_HOOKED):
-        event.listen(session, "before_commit", _flush_broadcasts)
-        event.listen(session, "after_soft_rollback", _clear_broadcasts)
-        session.info[_BROADCAST_HOOKED] = True
-    # 與 run_after_commit 相同：先開交易，之後的 rollback 才一定會觸發 after_soft_rollback 清掉登記
-    if not session.in_transaction():
-        session.begin()
-    keys: dict[tuple[UUID, date], Clock] = session.info.setdefault(BROADCAST_KEYS, {})
-    keys[(student_id, service_date)] = clock
+    collect_before_commit(
+        session, BROADCAST_NAME, (student_id, service_date), clock, _broadcast_pending
+    )
 
 
 def get_board(session: Session, query: BoardQuery, *, clock: Clock) -> BoardOut:
