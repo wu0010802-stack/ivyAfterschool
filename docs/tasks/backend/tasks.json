@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 470,
-  "last_updated": "2026-10-17T04:18:26Z",
+  "version": 471,
+  "last_updated": "2026-10-17T04:18:44Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15728,7 +15728,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/core/tx_hooks.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-374",
@@ -15736,7 +15736,7 @@
         "BACKEND-564"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r11-b3 打回】description 兩條行為改壞仍全綠，請補測試（放 test_tx_hooks.py、名稱以 test_collect_before_commit_ 開頭讓 tdd.run 選到，並補進 red_cases）：(1) savepoint rollback 不清除登記：最外層交易登記 key 'a' 後，with begin_nested() 內登記 'b' 再拋例外（contextlib.suppress）使 savepoint rollback，外層 commit → flush 收到 {'a': ..., 'b': ...}（現況行為，突變『savepoint rollback 也 pop』必須轉紅）；(2) 每個 session 每個 name 只 listen 一次：同 session 同 name 登記兩次後，session.dispatch.before_commit（與 after_soft_rollback）的 listener 數量只比登記前多 1（突變『每次登記都 event.listen』必須轉紅）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/api/tests/integration/core/test_tx_hooks.py",
@@ -15752,9 +15752,9 @@
         "notes": "flush 以收集呼叫參數的假函式驗證具體 dict 內容，不只斷言被呼叫。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-b3",
+        "notes": "打回（只缺測試，實作本身正確）。5caa608（測試）先於 f2e3681（實作），實作 commit 未動任何測試；565 三條 red_case 與 374（4 條）/404（8 條）/545（tx_hooks 10 條 + test_enqueue_inside）tdd.run 共 26 條全綠；just lint / typecheck 對 tx_hooks.py、homework_service.py、pickup/views.py、test_tx_hooks.py 乾淨；374 / 404 description 已改寫為以 collect_before_commit 登記。突變（scratch，已還原、cmp 確認）：savepoint 的 before_commit 不跳過 → 1 紅；最外層 rollback 不清除 → 3 紅；key 不去重 → 7 紅；先登記者勝 → 1 紅；flush 後不 pop → 2 紅；登記前不 begin → 3 紅。存活兩個：(1) savepoint rollback 也清除登記 → 全綠；(2) 每次登記都 event.listen → 全綠（pop 使多餘 listener 不重複 flush，只洩漏 listener），description 這兩條行為沒有測試。『同 name 後續 flush 被忽略、以第一次為準』可接受：全 repo 只有兩個呼叫端，各用模組常數 name（homework_broadcast / pickup_publish_request）配固定的模組級 flush，不會有同 name 不同 flush 而靜默失效；且已寫進 description 實作備註與 tx_hooks docstring。"
       }
     },
     {
