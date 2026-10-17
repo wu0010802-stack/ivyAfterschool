@@ -11,6 +11,7 @@ import { computed } from 'vue'
 import { formatDateTime, formatDateWithWeekday } from '@/shared/utils/datetime'
 import type { ParentLimits } from '../../api/config'
 import type { ParentLeave } from '../../api/leaves'
+import { leaveStatusPill, type LeaveStatusPill } from '../../utils/leaveStatus'
 import M3Button from '../m3/M3Button.vue'
 import M3Icon from '../m3/M3Icon.vue'
 import ParentBottomSheet from '../ParentBottomSheet.vue'
@@ -39,14 +40,10 @@ const emit = defineEmits<{
 const LEAVE_TYPE_ICONS: Record<string, string> = { sick: 'sick', personal: 'event_busy', other: 'event_note' }
 const DAY_MS = 86_400_000
 
-// 與 LeaveListItem 同一套規則與 tone
-const status = computed<{ label: string; tone: 'info' | 'warning' | 'neutral' }>(() => {
-  const l = props.leave
-  if (!l || l.status === 'cancelled') return { label: '已取消', tone: 'neutral' }
-  if (l.end_date < props.today) return { label: '已結束', tone: 'neutral' }
-  if (l.start_date > props.today) return { label: '已排定', tone: 'info' }
-  return { label: '請假中', tone: 'warning' }
-})
+// 與 LeaveListItem 同一套規則與 tone；沒有 leave 時（sheet 關閉中）沿用「已取消」
+const status = computed<LeaveStatusPill>(() =>
+  props.leave ? leaveStatusPill(props.leave, props.today) : { label: '已取消', tone: 'neutral' },
+)
 
 function spanDays(start: string, end: string): number {
   return Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / DAY_MS) + 1

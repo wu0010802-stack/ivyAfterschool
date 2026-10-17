@@ -8,6 +8,7 @@
 import { computed } from 'vue'
 import { formatDateWithWeekday } from '@/shared/utils/datetime'
 import type { ParentLeave } from '../../api/leaves'
+import { leaveStatusPill } from '../../utils/leaveStatus'
 import M3Button from '../m3/M3Button.vue'
 import M3Icon from '../m3/M3Icon.vue'
 import StatusPill from '../StatusPill.vue'
@@ -20,13 +21,7 @@ const LEAVE_TYPE_ICONS: Record<string, string> = { sick: 'sick', personal: 'even
 
 const isCancelled = computed(() => props.leave.status === 'cancelled')
 
-// tone 是列表自己計算的狀態，不在 FRONTEND-005 的對照表內
-const status = computed<{ label: string; tone: 'info' | 'warning' | 'neutral' }>(() => {
-  if (isCancelled.value) return { label: '已取消', tone: 'neutral' }
-  if (props.leave.end_date < props.today) return { label: '已結束', tone: 'neutral' }
-  if (props.leave.start_date > props.today) return { label: '已排定', tone: 'info' }
-  return { label: '請假中', tone: 'warning' }
-})
+const status = computed(() => leaveStatusPill(props.leave, props.today))
 
 const period = computed(() => {
   const { start_date: start, end_date: end } = props.leave
