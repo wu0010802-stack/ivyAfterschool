@@ -2,6 +2,7 @@ import { flushPromises } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApiMock, mountWithApp, type MountedApp } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ChildSummary } from '../api/children'
 import type { HomeworkToday } from '../api/homework'
 import { parentHttp } from '../api/http'
@@ -10,36 +11,6 @@ import { useChildrenStore } from '../stores/children'
 import { useParentWsStore } from '../stores/parentWs'
 import { useSnackbarStore } from '../stores/snackbar'
 import HomeworkView from './HomeworkView.vue'
-
-// 最小假 WebSocket：只做 parentWs store 需要的 open / message
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-}
 
 // 系統時間固定台北 2026-10-02 16:00（UTC 08:00）
 const NOW = new Date('2026-10-02T08:00:00Z')
@@ -87,7 +58,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
   FakeWebSocket.instances.length = 0
-  vi.stubGlobal('WebSocket', FakeWebSocket)
+  installFakeWebSocket()
   mock = createApiMock(parentHttp)
 })
 
@@ -433,9 +404,9 @@ describe('HomeworkView', () => {
     const ws = useParentWsStore()
     ws.connect()
     const socket = FakeWebSocket.instances.at(-1)!
-    socket.serverOpen()
+    socket.open()
 
-    socket.serverMessage({
+    socket.message({
       type: 'homework.progress_updated',
       data: {
         student_id: 's1',

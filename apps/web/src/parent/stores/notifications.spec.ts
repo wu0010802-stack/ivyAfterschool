@@ -1,42 +1,13 @@
 import type MockAdapter from 'axios-mock-adapter'
 import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createApiMock } from '@/test/helpers'
 import type { Notification } from '@/shared/types/api'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import { parentHttp } from '../api/http'
 import { useNotificationsStore } from './notifications'
 import { useParentWsStore } from './parentWs'
-
-// 最小假 WebSocket：只做 parentWs store 需要的 open / message
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-}
 
 function lastSocket(): FakeWebSocket {
   const s = FakeWebSocket.instances.at(-1)
@@ -71,7 +42,7 @@ describe('notificationsStore', () => {
 
   beforeEach(() => {
     FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     setActivePinia(createPinia())
     mock = createApiMock(parentHttp)
   })
@@ -219,17 +190,17 @@ describe('notificationsStore', () => {
     const store = await loadedStore()
     const ws = useParentWsStore()
     ws.connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
     const n3 = notification('n3', { title: '作業已完成', read_at: null })
 
-    lastSocket().serverMessage({ type: 'notification.created', data: n3, sent_at: SENT_AT })
+    lastSocket().message({ type: 'notification.created', data: n3, sent_at: SENT_AT })
 
     expect(store.items[0]?.id).toBe('n3')
     expect(store.items).toHaveLength(3)
     expect(store.unreadCount).toBe(2)
     expect(store.total).toBe(3)
 
-    lastSocket().serverMessage({ type: 'notification.created', data: n3, sent_at: SENT_AT })
+    lastSocket().message({ type: 'notification.created', data: n3, sent_at: SENT_AT })
 
     expect(store.items).toHaveLength(3)
     expect(store.unreadCount).toBe(2)
@@ -503,13 +474,13 @@ describe('notificationsStore', () => {
     await store.load()
     const ws = useParentWsStore()
     ws.connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
     const late = deferredReply()
     mock.onGet('/parent/notifications').replyOnce(late.reply)
 
     const refresh = store.refreshUnread()
     await flushPromises()
-    lastSocket().serverMessage({ type: 'notification.created', data: notification('n3'), sent_at: SENT_AT })
+    lastSocket().message({ type: 'notification.created', data: notification('n3'), sent_at: SENT_AT })
     expect(store.unreadCount).toBe(2)
 
     late.resolve([200, { items: [N1], total: 2, unread_count: 1 }])

@@ -1,8 +1,9 @@
 import { flushPromises } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createApiMock, mountWithApp, type MountedApp } from '@/test/helpers'
 import type { Notification } from '@/shared/types/api'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ChildSummary } from '../api/children'
 import { parentHttp } from '../api/http'
 import PullToRefresh from '../components/PullToRefresh.vue'
@@ -11,35 +12,6 @@ import { useParentWsStore } from '../stores/parentWs'
 import { useSnackbarStore } from '../stores/snackbar'
 import NotificationsView from './NotificationsView.vue'
 import source from './NotificationsView.vue?raw'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-}
 
 const LIST_URL = '/parent/notifications'
 const READ_ALL_URL = '/parent/notifications/read-all'
@@ -76,7 +48,7 @@ describe('NotificationsView', () => {
 
   beforeEach(() => {
     FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     mock = createApiMock(parentHttp)
   })
 
@@ -476,9 +448,9 @@ describe('NotificationsView', () => {
     const { wrapper, pinia } = await mountView()
     const ws = useParentWsStore(pinia)
     ws.connect()
-    FakeWebSocket.instances.at(-1)!.serverOpen()
+    FakeWebSocket.instances.at(-1)!.open()
 
-    FakeWebSocket.instances.at(-1)!.serverMessage({
+    FakeWebSocket.instances.at(-1)!.message({
       type: 'notification.created',
       data: noti('n9', { title: '作業已完成' }),
       sent_at: '2026-10-02T09:30:00Z',

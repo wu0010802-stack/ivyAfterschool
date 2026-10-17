@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, type App } from 'vue'
 import { createMemoryHistory, type Router } from 'vue-router'
 import { createApiMock } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ChildSummary, ParentMe } from './api/children'
 import { _resetPublicConfigForTests } from './api/config'
 import { parentHttp, parentRefreshHttp } from './api/http'
@@ -14,26 +15,6 @@ import source from './main.ts?raw'
 import { useChildrenStore } from './stores/children'
 import { useParentAuthStore } from './stores/parentAuth'
 import { useParentWsStore } from './stores/parentWs'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-}
 
 const UNAUTHORIZED = { error: { code: 'unauthenticated', message: '請重新登入', details: null } }
 const KID: ChildSummary = {
@@ -54,7 +35,7 @@ let host: HTMLElement | null = null
 
 beforeEach(() => {
   FakeWebSocket.instances.length = 0
-  vi.stubGlobal('WebSocket', FakeWebSocket)
+  installFakeWebSocket()
   _resetPublicConfigForTests()
   mock = createApiMock(parentHttp)
   refreshMock = createApiMock(parentRefreshHttp)

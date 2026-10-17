@@ -4,52 +4,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApiMock } from '@/test/helpers'
 import type { WsEnvelope } from '@/shared/types/api'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ChildSummary } from '../api/children'
 import { parentHttp } from '../api/http'
 import { useChildrenStore } from './children'
 import { useParentWsStore } from './parentWs'
 import ownSource from './parentWs.spec.ts?raw'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  closeCalls = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.closeCalls += 1
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-
-  serverClose(code: number): void {
-    this.readyState = 3
-    this.onclose?.({ code, reason: '', wasClean: false } as CloseEvent)
-  }
-}
 
 const sockets = FakeWebSocket.instances
 
@@ -79,7 +39,7 @@ const SENT_AT = '2026-10-02T09:00:00Z'
 function connectOpen() {
   const store = useParentWsStore()
   store.connect()
-  lastSocket().serverOpen()
+  lastSocket().open()
   return store
 }
 
@@ -90,7 +50,7 @@ describe('parentWs store', () => {
     // setImmediate 保持真實，flushPromises 才會回來；只釘住重連 / 輪詢用的計時器
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     sockets.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     setActivePinia(createPinia())
     mock = createApiMock(parentHttp)
   })
@@ -108,9 +68,9 @@ describe('parentWs store', () => {
       received.push({ data, envelope })
     })
     store.connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
 
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'r1' }, sent_at: SENT_AT })
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'r1' }, sent_at: SENT_AT })
 
     expect(received).toHaveLength(1)
     expect(received[0]!.data.id).toBe('r1')
@@ -118,7 +78,7 @@ describe('parentWs store', () => {
     expect(received[0]!.envelope.type).toBe('pickup.request_updated')
 
     off()
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'r2' }, sent_at: SENT_AT })
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'r2' }, sent_at: SENT_AT })
 
     expect(received).toHaveLength(1)
   })
@@ -130,10 +90,10 @@ describe('parentWs store', () => {
     store.on('homework.progress_updated', (data) => homework.push(data))
     store.on('notification.created', (data) => notifications.push(data))
     store.connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
 
-    lastSocket().serverMessage({ type: 'homework.progress_updated', data: { student_id: 's1' }, sent_at: SENT_AT })
-    lastSocket().serverMessage({ type: 'notification.created', data: { id: 'n1' }, sent_at: SENT_AT })
+    lastSocket().message({ type: 'homework.progress_updated', data: { student_id: 's1' }, sent_at: SENT_AT })
+    lastSocket().message({ type: 'notification.created', data: { id: 'n1' }, sent_at: SENT_AT })
 
     expect(homework).toEqual([{ student_id: 's1' }])
     expect(notifications).toEqual([{ id: 'n1' }])
@@ -153,7 +113,7 @@ describe('parentWs store', () => {
     expect(store.enabled).toBe(true)
     expect(store.status).toBe('connecting')
 
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(store.status).toBe('open')
   })
 
@@ -164,13 +124,13 @@ describe('parentWs store', () => {
     const store = connectOpen()
     const childrenRequests = () => mock.history.get.filter((r) => r.url === '/parent/children').length
 
-    lastSocket().serverMessage({ type: 'ready', children: ['s1'] })
+    lastSocket().message({ type: 'ready', children: ['s1'] })
     await flushPromises()
 
     expect(store.children).toEqual(['s1'])
     expect(childrenRequests()).toBe(0)
 
-    lastSocket().serverMessage({ type: 'children_changed', children: ['s1', 's2'] })
+    lastSocket().message({ type: 'children_changed', children: ['s1', 's2'] })
     await flushPromises()
 
     expect(store.children).toEqual(['s1', 's2'])
@@ -178,7 +138,7 @@ describe('parentWs store', () => {
     expect(children.items.map((c) => c.id)).toEqual(['s1', 's2'])
 
     // 同一組 id、順序不同：不重抓
-    lastSocket().serverMessage({ type: 'children_changed', children: ['s2', 's1'] })
+    lastSocket().message({ type: 'children_changed', children: ['s2', 's1'] })
     await flushPromises()
 
     expect(store.children).toEqual(['s2', 's1'])
@@ -191,7 +151,7 @@ describe('parentWs store', () => {
     children.seed([MING, HUA])
     connectOpen()
 
-    lastSocket().serverMessage({ type: 'children_changed', children: ['s1'] })
+    lastSocket().message({ type: 'children_changed', children: ['s1'] })
     await flushPromises()
 
     expect(mock.history.get.filter((r) => r.url === '/parent/children')).toHaveLength(1)
@@ -203,9 +163,9 @@ describe('parentWs store', () => {
     children.seed([MING])
     const store = connectOpen()
 
-    lastSocket().serverMessage({ type: 'ready' })
-    lastSocket().serverMessage({ type: 'children_changed', children: 's1' })
-    lastSocket().serverMessage({ type: 'children_changed', children: ['s1', 42] })
+    lastSocket().message({ type: 'ready' })
+    lastSocket().message({ type: 'children_changed', children: 's1' })
+    lastSocket().message({ type: 'children_changed', children: ['s1', 42] })
     await flushPromises()
 
     expect(store.children).toEqual([])
@@ -219,18 +179,18 @@ describe('parentWs store', () => {
       polls += 1
     })
     store.connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
     // 第一次連線成功不是重連，不輪詢
     expect(polls).toBe(0)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     // 斷線當下 FRONTEND-004 立即補一次
     expect(polls).toBe(1)
     expect(store.status).toBe('reconnecting')
 
     vi.advanceTimersByTime(1000)
     expect(sockets).toHaveLength(2)
-    lastSocket().serverOpen()
+    lastSocket().open()
 
     // 重連成功補齊斷線期間遺漏的事件
     expect(polls).toBe(2)
@@ -243,7 +203,7 @@ describe('parentWs store', () => {
     const poller = vi.fn()
     store.registerPoller(poller)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(poller).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(30000)
     expect(poller).toHaveBeenCalledTimes(3)
@@ -254,7 +214,7 @@ describe('parentWs store', () => {
     const poller = vi.fn()
     store.registerPoller(poller)
 
-    lastSocket().serverClose(4401)
+    lastSocket().close(4401)
 
     expect(store.enabled).toBe(false)
     expect(store.status).toBe('closed')
@@ -266,7 +226,7 @@ describe('parentWs store', () => {
   it('parentWs stops on 4403 and can connect again', () => {
     const store = connectOpen()
 
-    lastSocket().serverClose(4403)
+    lastSocket().close(4403)
     expect(store.enabled).toBe(false)
     expect(store.status).toBe('closed')
     vi.advanceTimersByTime(60000)
@@ -288,10 +248,10 @@ describe('parentWs store', () => {
     })
     store.on('notification.created', (data) => received.push(data))
     store.connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
 
     expect(() =>
-      lastSocket().serverMessage({ type: 'notification.created', data: { id: 'n1' }, sent_at: SENT_AT }),
+      lastSocket().message({ type: 'notification.created', data: { id: 'n1' }, sent_at: SENT_AT }),
     ).not.toThrow()
 
     expect(received).toEqual([{ id: 'n1' }])
@@ -300,7 +260,7 @@ describe('parentWs store', () => {
 
   it('parentWs disconnect stops the client and resets state', () => {
     const store = connectOpen()
-    lastSocket().serverMessage({ type: 'ready', children: ['s1'] })
+    lastSocket().message({ type: 'ready', children: ['s1'] })
     expect(store.children).toEqual(['s1'])
     const socket = lastSocket()
 
@@ -327,17 +287,17 @@ describe('parentWs store', () => {
     store.registerPoller(poller)
 
     store.connect()
-    lastSocket().serverOpen()
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'r1' }, sent_at: SENT_AT })
+    lastSocket().open()
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'r1' }, sent_at: SENT_AT })
     store.disconnect()
     store.connect()
     expect(sockets).toHaveLength(2)
-    lastSocket().serverOpen()
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'r2' }, sent_at: SENT_AT })
+    lastSocket().open()
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'r2' }, sent_at: SENT_AT })
 
     expect(received).toEqual([{ id: 'r1' }, { id: 'r2' }])
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(poller).toHaveBeenCalledTimes(1)
   })
 
@@ -367,9 +327,9 @@ describe('parentWs store', () => {
   it('parentWs logs control errors without changing state', () => {
     const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const store = connectOpen()
-    lastSocket().serverMessage({ type: 'ready', children: ['s1'] })
+    lastSocket().message({ type: 'ready', children: ['s1'] })
 
-    expect(() => lastSocket().serverMessage({ type: 'error', code: 'not_allowed' })).not.toThrow()
+    expect(() => lastSocket().message({ type: 'error', code: 'not_allowed' })).not.toThrow()
 
     expect(store.children).toEqual(['s1'])
     expect(store.enabled).toBe(true)
@@ -384,15 +344,15 @@ describe('parentWs store', () => {
 
     store.connect()
     expect(store.status).toBe('connecting')
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(store.status).toBe('open')
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(store.status).toBe('reconnecting')
     vi.advanceTimersByTime(1000)
     expect(store.status).toBe('reconnecting')
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(store.status).toBe('open')
-    lastSocket().serverClose(4401)
+    lastSocket().close(4401)
     expect(store.status).toBe('closed')
   })
 })

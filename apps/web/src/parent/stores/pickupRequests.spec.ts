@@ -3,40 +3,11 @@ import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApiMock } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import { parentHttp } from '../api/http'
 import type { ParentPickupRequest } from '../api/pickupRequests'
 import { useParentWsStore } from './parentWs'
 import { usePickupRequestsStore } from './pickupRequests'
-
-// 最小假 WebSocket：只做 parentWs store 需要的 open / message
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-}
 
 function lastSocket(): FakeWebSocket {
   const s = FakeWebSocket.instances.at(-1)
@@ -90,7 +61,7 @@ describe('pickupRequestsStore', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'], now: NOW })
     FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     setActivePinia(createPinia())
     mock = createApiMock(parentHttp)
   })
@@ -118,7 +89,7 @@ describe('pickupRequestsStore', () => {
 
   function connectWs(): FakeWebSocket {
     useParentWsStore().connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
     return lastSocket()
   }
 
@@ -251,7 +222,7 @@ describe('pickupRequestsStore', () => {
     const store = await loadedStore()
     const socket = connectWs()
 
-    socket.serverMessage({
+    socket.message({
       type: 'pickup.request_updated',
       data: request('r2', { status: 'acknowledged', reply_ready_eta: '17:45', reply_source: 'staff', created_at: '2026-10-02T08:00:00Z' }),
       sent_at: SENT_AT,
@@ -262,7 +233,7 @@ describe('pickupRequestsStore', () => {
     expect(store.items).toHaveLength(3)
 
     // 新的 id：加入
-    socket.serverMessage({ type: 'pickup.request_updated', data: request('r7', { student_id: 's3' }), sent_at: SENT_AT })
+    socket.message({ type: 'pickup.request_updated', data: request('r7', { student_id: 's3' }), sent_at: SENT_AT })
     expect(store.items).toHaveLength(4)
     expect(store.openFor('s3')?.id).toBe('r7')
   })
@@ -272,12 +243,12 @@ describe('pickupRequestsStore', () => {
     const socket = connectWs()
     const before = JSON.parse(JSON.stringify(store.items))
 
-    socket.serverMessage({
+    socket.message({
       type: 'pickup.request_updated',
       data: request('r2', { status: 'completed', service_date: YESTERDAY }),
       sent_at: SENT_AT,
     })
-    socket.serverMessage({
+    socket.message({
       type: 'pickup.request_updated',
       data: request('r8', { service_date: YESTERDAY }),
       sent_at: SENT_AT,

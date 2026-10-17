@@ -3,6 +3,7 @@ import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PICKUP_REQUEST_STATUS_META } from '@/shared/constants/statusLabels'
 import { createApiMock, mountWithApp, type MountedApp } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ChildSummary, ChildToday } from '../api/children'
 import { parentHttp } from '../api/http'
 import type { ParentPickupRequest } from '../api/pickupRequests'
@@ -11,34 +12,9 @@ import { useParentWsStore } from '../stores/parentWs'
 import { useSnackbarStore } from '../stores/snackbar'
 import ChildHubView from './ChildHubView.vue'
 
-// 最小假 WebSocket：只做 parentWs store 需要的 open / message
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: '2026-10-07T09:50:01Z' }) } as MessageEvent)
-  }
+/** ws 事件封包（type + data + sent_at）由伺服器送出 */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: '2026-10-07T09:50:01Z' })
 }
 
 const SELECTED_KEY = 'parent_selected_child_v1'
@@ -109,7 +85,7 @@ let mounted: MountedApp | null = null
 
 beforeEach(() => {
   FakeWebSocket.instances.length = 0
-  vi.stubGlobal('WebSocket', FakeWebSocket)
+  installFakeWebSocket()
   localStorage.removeItem(SELECTED_KEY)
   localStorage.removeItem(SKIP_KEY)
   mock = createApiMock(parentHttp)
@@ -193,7 +169,7 @@ function connectWs(m: MountedApp): FakeWebSocket {
   useParentWsStore(m.pinia).connect()
   const socket = FakeWebSocket.instances.at(-1)
   if (!socket) throw new Error('尚未建立 socket')
-  socket.serverOpen()
+  socket.open()
   return socket
 }
 
@@ -372,7 +348,7 @@ describe('ChildHubView', () => {
     const m = await mountWithToday()
     const socket = connectWs(m)
 
-    socket.serverMessage('attendance.updated', {
+    serverMessage(socket, 'attendance.updated', {
       student_id: 's2',
       service_date: TODAY,
       status: 'left',

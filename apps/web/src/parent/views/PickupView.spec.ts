@@ -3,6 +3,7 @@ import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PICKUP_REQUEST_STATUS_META } from '@/shared/constants/statusLabels'
 import { createApiMock, mountWithApp, type MountedApp } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ChildDetail, ChildSummary } from '../api/children'
 import type { HomeworkToday } from '../api/homework'
 import { parentHttp } from '../api/http'
@@ -11,34 +12,9 @@ import { useParentWsStore } from '../stores/parentWs'
 import { useSnackbarStore } from '../stores/snackbar'
 import PickupView from './PickupView.vue'
 
-// 最小假 WebSocket：只做 parentWs store 需要的 open / message
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: '2026-10-07T09:23:00Z' }) } as MessageEvent)
-  }
+/** ws 事件封包（type + data + sent_at）由伺服器送出 */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: '2026-10-07T09:23:00Z' })
 }
 
 // 系統時間固定台北 2026-10-07（三）17:22
@@ -163,7 +139,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(NOW)
   FakeWebSocket.instances.length = 0
-  vi.stubGlobal('WebSocket', FakeWebSocket)
+  installFakeWebSocket()
   localStorage.removeItem(SELECTED_KEY)
   localStorage.removeItem(SKIP_KEY)
   mock = createApiMock(parentHttp)
@@ -882,9 +858,9 @@ describe('PickupView', () => {
     const m = await mountPickup({ today: [[200, [request('r1')]]] })
     useParentWsStore(m.pinia).connect()
     const socket = FakeWebSocket.instances.at(-1)!
-    socket.serverOpen()
+    socket.open()
 
-    socket.serverMessage(
+    serverMessage(socket,
       'pickup.request_updated',
       request('r1', { status: 'acknowledged', reply_message: '作業寫完了，正在收書包', reply_source: 'staff', replied_at: '2026-10-07T09:23:00Z' }),
     )

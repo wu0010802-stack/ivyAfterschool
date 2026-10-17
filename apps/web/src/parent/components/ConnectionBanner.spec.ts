@@ -4,40 +4,10 @@ import { createPinia, setActivePinia, type Pinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import type { WsStatus } from '@/shared/ws/createWsClient'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import { useParentWsStore } from '../stores/parentWs'
 import ConnectionBanner from './ConnectionBanner.vue'
 import source from './ConnectionBanner.vue?raw'
-
-// 最小假 WebSocket：只做 parentWs 需要的 open / close
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverClose(code: number): void {
-    this.readyState = 3
-    this.onclose?.({ code, reason: '', wasClean: false } as CloseEvent)
-  }
-}
 
 function lastSocket(): FakeWebSocket {
   const s = FakeWebSocket.instances.at(-1)
@@ -69,7 +39,7 @@ describe('ConnectionBanner', () => {
     // setImmediate 保持真實，只釘住 banner 延遲與 ws 重連 / 輪詢用的計時器
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     pinia = createPinia()
     setActivePinia(pinia)
   })
@@ -88,8 +58,8 @@ describe('ConnectionBanner', () => {
   async function dropWs(): Promise<void> {
     const ws = useParentWsStore()
     ws.connect()
-    lastSocket().serverOpen()
-    lastSocket().serverClose(1006)
+    lastSocket().open()
+    lastSocket().close(1006)
     await nextTick()
   }
 
@@ -135,7 +105,7 @@ describe('ConnectionBanner', () => {
     expect(banner(wrapper).text()).toContain(WS_TEXT)
 
     // 1 秒時 FRONTEND-004 已重連，開啟那條新 socket
-    lastSocket().serverOpen()
+    lastSocket().open()
     await nextTick()
 
     expect(useParentWsStore().status).toBe('open')
@@ -147,7 +117,7 @@ describe('ConnectionBanner', () => {
     const wrapper = mountBanner()
     await dropWs()
     await advance(1000)
-    lastSocket().serverOpen()
+    lastSocket().open()
     await nextTick()
 
     await advance(10000)
@@ -221,8 +191,8 @@ describe('ConnectionBanner', () => {
     const wrapper = mountBanner()
     const ws = useParentWsStore()
     ws.connect()
-    lastSocket().serverOpen()
-    lastSocket().serverClose(4401)
+    lastSocket().open()
+    lastSocket().close(4401)
     await nextTick()
     expect(ws.enabled).toBe(false)
     expect(ws.status).toBe('closed')

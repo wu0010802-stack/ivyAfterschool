@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { h, nextTick } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { createApiMock, mountWithApp, type MountedApp } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ParentMe } from '../api/children'
 import { _resetPublicConfigForTests, type PublicConfig } from '../api/config'
 import { parentHttp } from '../api/http'
@@ -13,26 +14,6 @@ import { useParentAuthStore } from '../stores/parentAuth'
 import { useParentWsStore } from '../stores/parentWs'
 import ParentLayout from './ParentLayout.vue'
 import source from './ParentLayout.vue?raw'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-}
 
 const CONFIG_URL = '/parent/config'
 const NOTI_URL = '/parent/notifications'
@@ -80,7 +61,7 @@ describe('ParentLayout', () => {
   beforeEach(() => {
     _resetPublicConfigForTests()
     FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     mock = createApiMock(parentHttp)
     window.scrollTo(0, 0)
   })

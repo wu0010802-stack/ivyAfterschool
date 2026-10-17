@@ -3,40 +3,11 @@ import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApiMock } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { HomeworkToday } from '../api/homework'
 import { parentHttp } from '../api/http'
 import { useHomeworkTodayStore } from './homeworkToday'
 import { useParentWsStore } from './parentWs'
-
-// 最小假 WebSocket：只做 parentWs store 需要的 open / message
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-}
 
 function lastSocket(): FakeWebSocket {
   const s = FakeWebSocket.instances.at(-1)
@@ -70,7 +41,7 @@ describe('homeworkToday', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'], now: NOW })
     FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     setActivePinia(createPinia())
     mock = createApiMock(parentHttp)
   })
@@ -87,7 +58,7 @@ describe('homeworkToday', () => {
 
   function connectWs(): FakeWebSocket {
     useParentWsStore().connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
     return lastSocket()
   }
 
@@ -141,7 +112,7 @@ describe('homeworkToday', () => {
     await store.load('s1')
     const socket = connectWs()
 
-    socket.serverMessage({
+    socket.message({
       type: 'homework.progress_updated',
       data: { student_id: 's1', date: TODAY, items: [], overall_status: 'done', ready_eta: null, note: '今日無作業' },
       sent_at: '2026-10-02T08:00:00Z',
@@ -161,7 +132,7 @@ describe('homeworkToday', () => {
     const store = useHomeworkTodayStore()
     const socket = connectWs()
 
-    socket.serverMessage({
+    socket.message({
       type: 'homework.progress_updated',
       data: {
         student_id: 's2',
@@ -185,7 +156,7 @@ describe('homeworkToday', () => {
     await store.load('s1')
     const socket = connectWs()
 
-    socket.serverMessage({
+    socket.message({
       type: 'homework.progress_updated',
       data: { student_id: 's1', date: '2026-10-01', items: [], overall_status: 'done', ready_eta: null, note: '昨天' },
       sent_at: '2026-10-02T08:00:00Z',

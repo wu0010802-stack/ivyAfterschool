@@ -1,43 +1,19 @@
 import type MockAdapter from 'axios-mock-adapter'
 import { flushPromises, type VueWrapper } from '@vue/test-utils'
 import type { Pinia } from 'pinia'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick, ref, type Ref } from 'vue'
 import { createApiMock, mountWithApp } from '@/test/helpers'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 import type { ChildToday } from '../api/children'
 import { parentHttp } from '../api/http'
 import type { ParentPickupRequest } from '../api/pickupRequests'
 import { useParentWsStore } from '../stores/parentWs'
 import { useTodayStatus } from './useTodayStatus'
 
-// 最小假 WebSocket：只做 parentWs store 需要的 open / message
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(readonly url: string) {
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: SENT_AT }) } as MessageEvent)
-  }
+/** ws 事件封包（type + data + sent_at）由伺服器送出 */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: SENT_AT })
 }
 
 function lastSocket(): FakeWebSocket {
@@ -114,7 +90,7 @@ describe('useTodayStatus', () => {
 
   beforeEach(() => {
     FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     mock = createApiMock(parentHttp)
   })
 
@@ -149,7 +125,7 @@ describe('useTodayStatus', () => {
   function connectWs(): FakeWebSocket {
     if (!pinia) throw new Error('尚未掛載')
     useParentWsStore(pinia).connect()
-    lastSocket().serverOpen()
+    lastSocket().open()
     return lastSocket()
   }
 
@@ -262,7 +238,7 @@ describe('useTodayStatus', () => {
     const { status } = await mountStatus('s1')
     const socket = connectWs()
 
-    socket.serverMessage('attendance.updated', {
+    serverMessage(socket, 'attendance.updated', {
       student_id: 's2',
       service_date: TODAY,
       status: 'left',
@@ -271,7 +247,7 @@ describe('useTodayStatus', () => {
     })
     expect(status.today.value?.attendance.status).toBe('present')
 
-    socket.serverMessage('attendance.updated', {
+    serverMessage(socket, 'attendance.updated', {
       student_id: 's1',
       service_date: YESTERDAY,
       status: 'left',
@@ -281,7 +257,7 @@ describe('useTodayStatus', () => {
     expect(status.today.value?.attendance.status).toBe('present')
     expect(status.today.value?.attendance.check_out_at).toBeNull()
 
-    socket.serverMessage('attendance.updated', {
+    serverMessage(socket, 'attendance.updated', {
       student_id: 's1',
       service_date: TODAY,
       status: 'left',
@@ -308,7 +284,7 @@ describe('useTodayStatus', () => {
       { title: '自然學習單', subject_name: '自然', status: 'correcting' },
     ]
 
-    socket.serverMessage('homework.progress_updated', {
+    serverMessage(socket, 'homework.progress_updated', {
       student_id: 's1',
       date: TODAY,
       items,
@@ -326,7 +302,7 @@ describe('useTodayStatus', () => {
     })
 
     // 其他小孩或非今日：不變
-    socket.serverMessage('homework.progress_updated', {
+    serverMessage(socket, 'homework.progress_updated', {
       student_id: 's2',
       date: TODAY,
       items: [],
@@ -334,7 +310,7 @@ describe('useTodayStatus', () => {
       ready_eta: null,
       note: null,
     })
-    socket.serverMessage('homework.progress_updated', {
+    serverMessage(socket, 'homework.progress_updated', {
       student_id: 's1',
       date: YESTERDAY,
       items: [],
@@ -352,7 +328,7 @@ describe('useTodayStatus', () => {
     const socket = connectWs()
 
     // 另一筆終態：目前的 r1 仍是進行中，忽略
-    socket.serverMessage(
+    serverMessage(socket,
       'pickup.request_updated',
       request('r0', { status: 'completed', completed_at: '2026-10-02T06:00:00Z', picked_up_by_name: '王爸爸', can_cancel: false, can_mark_arrived: false }),
     )
@@ -360,7 +336,7 @@ describe('useTodayStatus', () => {
     expect(status.today.value?.pickup_request?.status).toBe('pending')
 
     // 同一筆：取代
-    socket.serverMessage(
+    serverMessage(socket,
       'pickup.request_updated',
       request('r1', { status: 'acknowledged', reply_source: 'staff', reply_ready_eta: '17:45', reply_message: '老師：17:45 可接', replied_at: '2026-10-02T08:00:00Z' }),
     )
@@ -370,7 +346,7 @@ describe('useTodayStatus', () => {
     expect(status.today.value?.pickup_request?.replied_at).toBe('2026-10-02T08:00:00Z')
 
     // 同一筆進入終態：取代（含接走資訊）
-    socket.serverMessage(
+    serverMessage(socket,
       'pickup.request_updated',
       request('r1', { status: 'completed', completed_at: '2026-10-02T09:40:00Z', picked_up_by_name: '王媽媽', can_cancel: false, can_mark_arrived: false }),
     )
@@ -378,13 +354,13 @@ describe('useTodayStatus', () => {
     expect(status.today.value?.pickup_request?.picked_up_by_name).toBe('王媽媽')
 
     // 目前為終態、來了新的非終態：取代
-    socket.serverMessage('pickup.request_updated', request('r2'))
+    serverMessage(socket, 'pickup.request_updated', request('r2'))
     expect(status.today.value?.pickup_request?.id).toBe('r2')
     expect(status.today.value?.pickup_request?.status).toBe('pending')
 
     // 其他小孩或非今日：不變
-    socket.serverMessage('pickup.request_updated', request('r3', { student_id: 's2', status: 'arrived' }))
-    socket.serverMessage('pickup.request_updated', request('r4', { service_date: YESTERDAY, status: 'arrived' }))
+    serverMessage(socket, 'pickup.request_updated', request('r3', { student_id: 's2', status: 'arrived' }))
+    serverMessage(socket, 'pickup.request_updated', request('r4', { service_date: YESTERDAY, status: 'arrived' }))
     expect(status.today.value?.pickup_request?.id).toBe('r2')
   })
 
@@ -394,7 +370,7 @@ describe('useTodayStatus', () => {
     const socket = connectWs()
     expect(status.today.value?.pickup_request).toBeNull()
 
-    socket.serverMessage('pickup.request_updated', request('r2'))
+    serverMessage(socket, 'pickup.request_updated', request('r2'))
 
     expect(status.today.value?.pickup_request).toEqual({
       id: 'r2',
@@ -468,7 +444,7 @@ describe('useTodayStatus', () => {
     expect(status.today.value?.pickup_request?.completed_at).toBe('2026-10-02T09:40:00Z')
 
     const socket = connectWs()
-    socket.serverMessage(
+    serverMessage(socket,
       'pickup.request_updated',
       request('r1', { status: 'completed', completed_at: '2026-10-02T09:40:00Z', picked_up_by_name: '王爸爸', can_cancel: false, can_mark_arrived: false }),
     )
@@ -530,7 +506,7 @@ describe('useTodayStatus', () => {
 
     wrapper.unmount()
 
-    socket.serverMessage('attendance.updated', {
+    serverMessage(socket, 'attendance.updated', {
       student_id: 's1',
       service_date: TODAY,
       status: 'left',
