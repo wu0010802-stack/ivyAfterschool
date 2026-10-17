@@ -20,6 +20,7 @@ import { useFormDirty } from '@/composables/useFormDirty'
 import { useLookupsStore, type LookupKind, type LookupOption } from '@/stores/lookups'
 import { errorCode, errorMessage, validationFieldErrors } from '@/shared/utils/errorMessage'
 import { currentAcademicYear, GRADE_OPTIONS } from '@/utils/academicYear'
+import { isValidFullScore, MAX_FULL_SCORE } from '@/utils/examScore'
 
 const props = withDefaults(defineProps<{ modelValue: boolean; exam?: Exam }>(), { exam: undefined })
 
@@ -48,7 +49,6 @@ type FieldKey = keyof FormState
 type ErrorKey = FieldKey | 'scope' | 'subjects'
 
 const DEFAULT_FULL_SCORE = 100
-const MAX_FULL_SCORE = 1000
 
 /** 後端 422 錯誤碼 → 顯示在哪個欄位（訊息用後端 message） */
 const FIELD_BY_CODE: Record<string, FieldKey> = {
@@ -164,10 +164,6 @@ function onScopeChange(): void {
   errors.class_id = ''
 }
 
-function isValidFullScore(v: number | null): v is number {
-  return v !== null && v > 0 && v <= MAX_FULL_SCORE && Number.isInteger(Math.round(v * 10)) && Math.round(v * 10) === v * 10
-}
-
 function validate(): boolean {
   clearErrors()
   if (!form.name.trim()) errors.name = '請輸入考試名稱'
@@ -175,7 +171,7 @@ function validate(): boolean {
   if (!form.exam_date) errors.exam_date = '請選擇考試日期'
   if (form.grade_level === null && !form.class_id) errors.scope = '請選擇年級或班級'
   if (subjects.value.some((s) => s.on && !isValidFullScore(s.full_score))) {
-    errors.subjects = '請輸入勾選科目的滿分（大於 0、最多 1000、最多一位小數）'
+    errors.subjects = '請輸入勾選科目的滿分（大於 0、最多 1000、最多兩位小數）'
   }
   return !Object.values(errors).some(Boolean)
 }
@@ -472,7 +468,7 @@ async function submit(): Promise<void> {
               滿分
               <el-input-number
                 v-model="s.full_score"
-                :min="0.1"
+                :min="0.01"
                 :max="MAX_FULL_SCORE"
                 :step="1"
                 controls-position="right"

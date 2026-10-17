@@ -13,6 +13,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import { useLookupsStore } from '@/stores/lookups'
 import { isApiError } from '@/shared/types/api'
 import { errorCode, errorMessage } from '@/shared/utils/errorMessage'
+import { isValidFullScore, MAX_FULL_SCORE } from '@/utils/examScore'
 
 const props = defineProps<{
   exam: Exam
@@ -29,7 +30,6 @@ const emit = defineEmits<{
 
 const MAX_SUBJECTS = 20
 const DEFAULT_FULL_SCORE = 100
-const MAX_FULL_SCORE = 1000
 
 interface Row {
   key: number
@@ -142,10 +142,6 @@ function removeRow(row: Row): void {
   delete rowErrors[row.key]
 }
 
-function isValidFullScore(v: number | null): v is number {
-  return v !== null && v > 0 && v <= MAX_FULL_SCORE && Math.round(v * 10) === v * 10
-}
-
 function validate(): boolean {
   clearErrors()
   let ok = true
@@ -154,7 +150,7 @@ function validate(): boolean {
       rowErrors[r.key] = { field: 'subject', message: '請選擇科目' }
       ok = false
     } else if (!isValidFullScore(r.full_score)) {
-      rowErrors[r.key] = { field: 'full', message: '請輸入滿分（大於 0、最多 1000、最多一位小數）' }
+      rowErrors[r.key] = { field: 'full', message: '請輸入滿分（大於 0、最多 1000、最多兩位小數）' }
       ok = false
     }
   }
@@ -367,7 +363,7 @@ async function save(): Promise<void> {
         </span>
         <el-input-number
           v-model="row.full_score"
-          :min="0.1"
+          :min="0.01"
           :max="MAX_FULL_SCORE"
           :step="1"
           controls-position="right"

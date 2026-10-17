@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // FRONTEND-236：單一成績格（分數、缺考、驗證、儲存狀態）。設計稿：docs/mockups/component-exams.html。
-// - 允許空白（未填）、0~fullScore、最多一位小數；不合法即時紅框 + tooltip / title，不 emit。
+// - 允許空白（未填）、0~fullScore、最多兩位小數（與後端 numeric(6,2) 一致）；顯示照原值、去掉尾端 0；不合法即時紅框 + tooltip / title，不 emit。
 // - 合法且與 props 不同才在 blur / Enter 時 emit；輸入「缺」或「-」等同勾選缺考。
 // - saved 標記在 state 轉 idle 時淡出（轉換時機由 useScoreAutosave FRONTEND-237 決定）。
 // FRONTEND-296：每格備註（domain_spec M8，最多 200 字、空白視為無備註）。
@@ -56,8 +56,8 @@ function parse(raw: string): Parsed {
   const t = raw.trim()
   if (t === '') return { ok: true, value: { score: null, is_absent: false } }
   if (ABSENT_INPUTS.has(t)) return { ok: true, value: { score: null, is_absent: true } }
-  if (/^\d+\.\d{2,}$/.test(t)) return { ok: false, message: '最多一位小數' }
-  if (!/^\d+(\.\d)?$/.test(t) || Number(t) > props.fullScore) {
+  if (/^\d+\.\d{3,}$/.test(t)) return { ok: false, message: '最多兩位小數' }
+  if (!/^\d+(\.\d{1,2})?$/.test(t) || Number(t) > props.fullScore) {
     return { ok: false, message: `需介於 0~${props.fullScore}` }
   }
   return { ok: true, value: { score: Number(t), is_absent: false } }
@@ -510,7 +510,7 @@ onBeforeUnmount(removeDocumentListeners)
 }
 
 .score-cell__input {
-  width: 64px;
+  width: 68px;
 }
 
 .score-cell__input :deep(.el-input__inner) {
