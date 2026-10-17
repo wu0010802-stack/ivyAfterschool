@@ -2,6 +2,7 @@
 // 型別逐欄對照 apps/api/app/schemas/exams.py 的 ParentExamListItemOut / ParentExamDetailOut；
 // 分數（Decimal）後端以 JSON number 輸出。後端只回已發布且該生有成績的考試，其餘一律 404 `exam_not_found`。
 import type { ISODate, ISODateTime, Page } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface ParentExamSummary {
@@ -29,7 +30,7 @@ export interface ParentExamDetail {
   }[]
 }
 
-const childExamsPath = (childId: string) => `/parent/children/${encodeURIComponent(childId)}/exams`
+const childExamsPath = (childId: string) => `/parent/children/${encodePathSegment(childId)}/exams`
 
 /** 依後端順序（考試日期新到舊）；page ≥ 1、1 ≤ pageSize ≤ 200 由後端驗證 */
 export async function listChildExams(
@@ -44,6 +45,6 @@ export async function listChildExams(
 }
 
 export async function getChildExam(childId: string, examId: string): Promise<ParentExamDetail> {
-  const res = await parentHttp.get<ParentExamDetail>(`${childExamsPath(childId)}/${encodeURIComponent(examId)}`)
+  const res = await parentHttp.get<ParentExamDetail>(`${childExamsPath(childId)}/${encodePathSegment(examId)}`)
   return res.data
 }

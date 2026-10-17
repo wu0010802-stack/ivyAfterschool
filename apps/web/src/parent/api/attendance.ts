@@ -1,6 +1,7 @@
 // PARENT-130：家長端月出勤 api client（BACKEND-323）。
 // 型別逐欄對照 apps/api/app/schemas/attendance.py 的 ParentMonthlyAttendanceOut；`*_at` 為 UTC ISO8601。
 import type { AttendanceStatus, ISODate, ISODateTime, LeaveType } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface AttendanceDay {
@@ -30,7 +31,7 @@ export interface MonthlyAttendance {
   }
 }
 
-const childAttendancePath = (childId: string) => `/parent/children/${encodeURIComponent(childId)}/attendance`
+const childAttendancePath = (childId: string) => `/parent/children/${encodePathSegment(childId)}/attendance`
 
 /** month 為 YYYY-MM，格式由後端驗證（錯誤回 422） */
 export async function getChildAttendance(childId: string, month: string): Promise<MonthlyAttendance> {

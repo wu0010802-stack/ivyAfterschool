@@ -1,5 +1,6 @@
 // PARENT-070：家長端作業進度 api client（BACKEND-391）。
 import type { HHMM, HomeworkItemStatus, HomeworkOverallStatus, ISODate, ISODateTime } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface HomeworkToday {
@@ -15,7 +16,7 @@ export interface HomeworkToday {
 /** date 省略時不帶 query（後端以台北今日為準） */
 export async function getChildHomework(childId: string, date?: ISODate): Promise<HomeworkToday> {
   const res = await parentHttp.get<HomeworkToday>(
-    `/parent/children/${encodeURIComponent(childId)}/homework`,
+    `/parent/children/${encodePathSegment(childId)}/homework`,
     date === undefined ? undefined : { params: { date } },
   )
   return res.data

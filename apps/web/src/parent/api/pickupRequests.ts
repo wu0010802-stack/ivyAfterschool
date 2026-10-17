@@ -8,6 +8,7 @@ import type {
   PickupReplySource,
   PickupRequestStatus,
 } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface ParentPickupRequest {
@@ -60,7 +61,7 @@ export async function listTodayPickupRequests(): Promise<ParentPickupRequest[]> 
   return res.data
 }
 
-const requestPath = (id: string) => `/parent/pickup/requests/${encodeURIComponent(id)}`
+const requestPath = (id: string) => `/parent/pickup/requests/${encodePathSegment(id)}`
 
 /** 我到了 */
 export async function markPickupArrived(id: string): Promise<ParentPickupRequest> {

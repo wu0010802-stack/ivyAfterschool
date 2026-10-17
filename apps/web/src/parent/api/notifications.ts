@@ -1,5 +1,6 @@
 // PARENT-170：家長端收件匣 api client（BACKEND-217 / 218 / 520）。
 import type { Notification, NotificationPage } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export async function listNotifications(
@@ -16,7 +17,7 @@ export async function listNotifications(
 }
 
 export async function markNotificationRead(id: string): Promise<Notification> {
-  const res = await parentHttp.post<Notification>(`/parent/notifications/${encodeURIComponent(id)}/read`)
+  const res = await parentHttp.post<Notification>(`/parent/notifications/${encodePathSegment(id)}/read`)
   return res.data
 }
 

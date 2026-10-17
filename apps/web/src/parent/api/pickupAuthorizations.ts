@@ -10,6 +10,7 @@ import type {
   ISODateTime,
   VerificationMethod,
 } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface ParentAuthorization {
@@ -41,8 +42,8 @@ export type AuthorizationCreateInput =
   | { service_date: ISODate; proxy_name: string; proxy_phone: string }
 
 const childAuthorizationsPath = (childId: string) =>
-  `/parent/children/${encodeURIComponent(childId)}/pickup-authorizations`
-const authorizationPath = (id: string) => `/parent/pickup-authorizations/${encodeURIComponent(id)}`
+  `/parent/children/${encodePathSegment(childId)}/pickup-authorizations`
+const authorizationPath = (id: string) => `/parent/pickup-authorizations/${encodePathSegment(id)}`
 
 /** 近 30 天起的授權（含已完成 / 取消 / 過期） */
 export async function listPickupAuthorizations(childId: string): Promise<ParentAuthorization[]> {

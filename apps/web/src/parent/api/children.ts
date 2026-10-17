@@ -12,6 +12,7 @@ import type {
   PickupRequestStatus,
   StudentStatus,
 } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface ChildSummary {
@@ -95,7 +96,7 @@ export async function listChildren(): Promise<ChildSummary[]> {
   return res.data
 }
 
-const childPath = (id: string) => `/parent/children/${encodeURIComponent(id)}`
+const childPath = (id: string) => `/parent/children/${encodePathSegment(id)}`
 
 export async function getChild(id: string): Promise<ChildDetail> {
   const res = await parentHttp.get<ChildDetail>(childPath(id))

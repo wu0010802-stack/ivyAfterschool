@@ -2,6 +2,7 @@
 // 型別逐欄對照 apps/api/app/schemas/leaves.py 的 ParentLeaveOut / ParentLeaveAttachmentOut；`*_at` 為 UTC ISO8601。
 import { buildFormData } from '@/shared/http/upload'
 import type { ActorCreatedByType, ISODate, ISODateTime, LeaveStatus, LeaveType, Page } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface LeaveAttachment {
@@ -30,8 +31,8 @@ export interface ParentLeave {
   attachments: LeaveAttachment[]
 }
 
-const childLeavesPath = (childId: string) => `/parent/children/${encodeURIComponent(childId)}/leaves`
-const leavePath = (id: string) => `/parent/leaves/${encodeURIComponent(id)}`
+const childLeavesPath = (childId: string) => `/parent/children/${encodePathSegment(childId)}/leaves`
+const leavePath = (id: string) => `/parent/leaves/${encodePathSegment(id)}`
 
 /** 含已取消，依開始日新到舊 */
 export async function listChildLeaves(childId: string, page = 1, pageSize = 20): Promise<Page<ParentLeave>> {

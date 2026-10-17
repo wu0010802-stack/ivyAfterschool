@@ -2,6 +2,7 @@
 // 型別逐欄對照 apps/api/app/schemas/pickup.py 的 PickupPersonOut；photo_url 為短效簽名網址。
 import { buildFormData } from '@/shared/http/upload'
 import type { ISODateTime } from '@/shared/types/api'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 import { parentHttp } from './http'
 
 export interface PickupPerson {
@@ -15,7 +16,7 @@ export interface PickupPerson {
   created_at: ISODateTime
 }
 
-const childPersonsPath = (childId: string) => `/parent/children/${encodeURIComponent(childId)}/pickup-persons`
+const childPersonsPath = (childId: string) => `/parent/children/${encodePathSegment(childId)}/pickup-persons`
 
 export async function listPickupPersons(childId: string): Promise<PickupPerson[]> {
   const res = await parentHttp.get<PickupPerson[]>(childPersonsPath(childId))
@@ -43,5 +44,5 @@ export async function createPickupPerson(
 
 /** 軟刪除，後端回 204 */
 export async function deletePickupPerson(id: string): Promise<void> {
-  await parentHttp.delete(`/parent/pickup-persons/${encodeURIComponent(id)}`)
+  await parentHttp.delete(`/parent/pickup-persons/${encodePathSegment(id)}`)
 }
