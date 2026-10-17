@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 233,
-  "last_updated": "2026-10-17T07:56:31Z",
+  "version": 234,
+  "last_updated": "2026-10-17T08:01:09Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -4246,7 +4246,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/parent/stores/parentWs.spec.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "FRONTEND-312"
@@ -4267,9 +4267,9 @@
         "notes": "第二條的掃描 spec 放在 parentWs.spec.ts 內（describe 名稱以 parentWs 開頭讓 tdd.run 選得到）。替換前後測試數：main 13/13、pickupRequests 26/26、homeworkToday 10/10、notifications 23/23、parentWs 16/16（另加本 task 2 條 → 18）、ConnectionBanner 12/12、ParentLayout 22/22、PickupView 44/44、ChildHubView 26/26、NotificationsView 26/26、HomeworkView 17/17、useTodayStatus 16/16。共用版沒有追加任何能力；type + data + sent_at 封包輔助 serverMessage(socket, type, data) 留在 PickupView / ChildHubView / useTodayStatus 各自的 spec。共用版 close() 一律觸發 onclose：家長端程式經 createWsClient 先卸 handler 再 close，替換後各 spec 全綠。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p4",
+        "notes": "2 條 red_case 皆有同名測試，tdd.run 18/18 綠；1747761（只加 parentWs.spec 兩條掃描測試）先於 7e0e91d（12 個 spec 替換）。測試數：12 檔替換前後 it( 數逐檔與 tdd.notes 一致（main 13、pickupRequests 26、homeworkToday 10、notifications 23、parentWs 16→18、ConnectionBanner 12、ParentLayout 22、PickupView 44、ChildHubView 26、NotificationsView 26、HomeworkView 17、useTodayStatus 16），12 檔合跑 253 全綠；各檔 expect( 數替換前後完全相同。diff 只是機械替換：刪掉自製 class、vi.stubGlobal 改成 installFakeWebSocket()、serverOpen/serverMessage/serverClose 改成 open/message/close；PickupView / ChildHubView / useTodayStatus 的 type+data+sent_at 封包改成 spec 內的 serverMessage(socket, ...)，sent_at 值與原本相同；沒有斷言被改、沒有 skip/only。拿掉 vi import 的三檔（useTodayStatus、stores/notifications、NotificationsView）原本只用 vi.stubGlobal，afterEach 原本也沒有 unstub，行為不變。語意差異已確認無害：共用版 close() 會遞增 closeCalls 並觸發 onclose，舊 serverClose 不遞增 closeCalls。parentWs.spec 唯一的 closeCalls 斷言是 disconnect 後為 1，且同時斷言 onclose 為 null（createWsClient 先卸 handler 再 close），維持有效。突變（皆還原、git status 乾淨）：HomeworkView / pickupRequests / ParentLayout 末尾各加 class FakeWebSocket、describe 內縮排的 class、新增含 export class 的探針 spec → 掃描那條紅；parentWs.spec 本檔加 class → ?raw 那條紅；glob 改成不存在的目錄 → 「讀到 main.spec」的防空轉斷言紅；import 改成相對路徑 → ?raw 那條紅。web-typecheck exit 0。殘留（不擋）：掃描只認 class FakeWebSocket 這個名稱，改名（class FakeSocket）或寫成 const FakeWebSocket = class 不會被擋；目前沒有這些寫法。"
       }
     }
   ]
