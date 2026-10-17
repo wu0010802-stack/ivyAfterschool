@@ -1,7 +1,7 @@
 // FRONTEND-293：建立考試 → 成績輸入（自動儲存）→ 各科平均 → 發布後修改分數選擇是否重新通知。
 // 接真實後端，種子 2 位學生（班級對象）由 ../support/admin.ts 經 API 建立；afterAll 先刪考試（已發布先取消發布），再清理學生。
 // 考試 id 取自「建立」的 POST 回應，afterAll 另以名稱查詢補刪：建立後網址還沒換頁就失敗時也不留考試列。
-// 登入有每 IP 5 分鐘 20 次的限流：整組共用一個以 UI 登入一次的 page（serial），不在每條測試重新登入。
+// 整組 serial、共用一個以 storageState 登入的 page（loginAsAdmin 不送帳密，見 ../support/authState.ts）。
 import { expect, test, type APIRequestContext, type BrowserContext, type Locator, type Page } from '@playwright/test'
 
 import { resolveBaseUrl } from '../guards/env'

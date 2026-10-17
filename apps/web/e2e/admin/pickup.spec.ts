@@ -4,7 +4,7 @@
 // 整組 skip 的兩種情況：測試日不是營業日（GET /api/admin/attendance/daily 的 is_service_day）；
 // 「現在 + 30 分」晚於 pickup.window 的最晚預計抵達時間（GET /api/admin/pickup/queue 的 latest_expected_arrival），
 // 此時員工代建會 422 expected_arrival_too_late。
-// 登入有每 IP 5 分鐘 20 次的限流：整組共用一個以 UI 登入一次的 page（serial），不在每條測試重新登入。
+// 整組 serial、共用一個以 storageState 登入的 page（loginAsAdmin 不送帳密，見 ../support/authState.ts）。
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test'
 
 import { resolveBaseUrl } from '../guards/env'

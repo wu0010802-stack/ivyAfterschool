@@ -1,12 +1,12 @@
 // FRONTEND-290：後台 e2e 共用工具（FRONTEND-291~293）。接真實後端（本機 just up），種子資料一律經 API 建立：
-// - loginAsAdmin：走 UI 登入（/#/login），帳密讀 E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD。
-// - adminApi：以 API 登入，cookie 留在傳入的 APIRequestContext，之後的呼叫都帶員工 cookie。
+// - loginAsAdmin / adminApi：用 globalSetup 存下的 storageState cookie（./authState.ts），不碰帳密，trace 不會出現密碼；
+//   走登入表單的測試只有 e2e/admin/support.spec.ts 一條。
 // - seedBasic / cleanup：建立「E2E班-{runId}」與學生、監護人；結束後依序封存監護人、學生、班級（失敗只記 log）。
 // 型別在這裡自行宣告最小欄位（e2e 走 tsconfig.node，不引用 src 的 @/ 路徑）。
-import type { APIRequestContext, APIResponse, Page } from '@playwright/test'
+import { expect, type APIRequestContext, type APIResponse, type Page } from '@playwright/test'
 
-const MISSING_CREDENTIALS = '缺少 E2E_ADMIN_USERNAME / E2E_ADMIN_PASSWORD'
-const LOGIN_PATH = '/api/admin/auth/login'
+import { readStorageState } from './authState'
+
 /** 學年度以台北時間 8/1 切換（同 src/utils/academicYear.ts::currentAcademicYear） */
 const ACADEMIC_YEAR_START_MONTH = 8
 const TAIPEI_OFFSET_MS = 8 * 60 * 60 * 1000
@@ -33,13 +33,6 @@ interface IdOut {
   id: string
 }
 
-function credentials(): { username: string; password: string } {
-  const username = process.env.E2E_ADMIN_USERNAME?.trim()
-  const password = process.env.E2E_ADMIN_PASSWORD
-  if (!username || !password) throw new Error(MISSING_CREDENTIALS)
-  return { username, password }
-}
-
 /** 非 2xx 一律 throw，訊息帶 method / path / status / body，方便從報告看出哪一步失敗 */
 async function unwrap<T>(method: string, path: string, response: APIResponse): Promise<T> {
   if (!response.ok()) {
@@ -49,31 +42,29 @@ async function unwrap<T>(method: string, path: string, response: APIResponse): P
   return (await response.json()) as T
 }
 
+/** 以 storageState 的 cookie 進後台首頁；路由守衛把人導回登入頁（cookie 失效、帳號停用）時立即失敗 */
 export async function loginAsAdmin(page: Page): Promise<void> {
-  const { username, password } = credentials()
-  await page.goto('/#/login')
-  await page.getByPlaceholder('請輸入帳號').fill(username)
-  await page.getByPlaceholder('請輸入密碼').fill(password)
-  await page.getByRole('button', { name: '登入' }).click()
-  // 登入失敗（帳密錯、限流 429）時登入頁顯示 alert：立即以其文字失敗，不等到測試逾時
-  const alert = page.getByRole('alert')
-  await Promise.race([
-    page.waitForURL((url) => !url.hash.startsWith('#/login')),
-    alert.waitFor().then(async () => {
-      throw new Error(`登入失敗：${await alert.innerText()}`)
-    }),
-  ])
+  const state = readStorageState()
+  await page.context().addCookies(state.cookies)
+  await page.goto('/#/')
+  // 路由 afterEach 設好標題（「<頁名> - 安親班管理系統」）才代表守衛已決定落點
+  await expect.poll(() => page.title()).toContain(' - ')
+  if (new URL(page.url()).hash.startsWith('#/login')) {
+    throw new Error('登入失敗：storageState 的登入狀態無效（帳號停用或 token 過期）')
+  }
 }
 
+/** 呼叫後台 API 的小包裝：每個請求帶 storageState 的員工 cookie（不送帳密） */
 export async function adminApi(request: APIRequestContext): Promise<AdminApi> {
-  await unwrap('POST', LOGIN_PATH, await request.post(LOGIN_PATH, { data: credentials() }))
+  const headers = { Cookie: readStorageState().cookies.map((c) => `${c.name}=${c.value}`).join('; ') }
   return {
     request,
-    get: async <T>(path: string) => unwrap<T>('GET', path, await request.get(path)),
+    get: async <T>(path: string) => unwrap<T>('GET', path, await request.get(path, { headers })),
     post: async <T>(path: string, body?: unknown) =>
-      unwrap<T>('POST', path, await request.post(path, body === undefined ? {} : { data: body })),
-    patch: async <T>(path: string, body: unknown) => unwrap<T>('PATCH', path, await request.patch(path, { data: body })),
-    delete: async (path: string) => unwrap<void>('DELETE', path, await request.delete(path)),
+      unwrap<T>('POST', path, await request.post(path, body === undefined ? { headers } : { headers, data: body })),
+    patch: async <T>(path: string, body: unknown) =>
+      unwrap<T>('PATCH', path, await request.patch(path, { headers, data: body })),
+    delete: async (path: string) => unwrap<void>('DELETE', path, await request.delete(path, { headers })),
   }
 }
 

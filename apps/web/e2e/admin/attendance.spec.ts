@@ -1,7 +1,7 @@
 // FRONTEND-291：登入 → 今日出勤到班 / 離班 / 批次到班（docs/testing_conventions.md §3：少量關鍵流程）。
 // 接真實後端，種子資料（2 位學生）由 ../support/admin.ts 經 API 建立、afterAll 清理。
 // 測試日不是營業日（closed_days 或週日）時整組 skip（以 GET /api/admin/attendance/daily 的 is_service_day 判斷）。
-// 登入有每 IP 5 分鐘 20 次的限流：整組共用一個以 UI 登入一次的 page（serial），不在每條測試重新登入。
+// 整組 serial、共用一個以 storageState 登入的 page（loginAsAdmin 不送帳密，見 ../support/authState.ts）。
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test'
 
 import { resolveBaseUrl } from '../guards/env'
