@@ -170,6 +170,23 @@ describe('HomeworkView', () => {
     expect(wrapper.get('.hws-note').text()).toBe('老師說明：數學習作訂正中\n國語已完成')
   })
 
+  it('HomeworkView teacher note has no leading whitespace', async () => {
+    mock.onGet(url('s1')).reply(200, homework('s1', { note: '數學訂正第 3 題' }))
+
+    const { wrapper } = await mountView()
+
+    // textContent 不經 trim：縮排空白若進入 pre-wrap 文字節點就會被看見
+    expect(wrapper.get('.hws-note').element.textContent).toBe('老師說明：數學訂正第 3 題')
+  })
+
+  it('HomeworkView keeps note line breaks', async () => {
+    mock.onGet(url('s1')).reply(200, homework('s1', { note: '第一行\n第二行' }))
+
+    const { wrapper } = await mountView()
+
+    expect(wrapper.get('.hws-note').element.textContent).toBe('老師說明：第一行\n第二行')
+  })
+
   it('HomeworkView shows eta fallback', async () => {
     mock.onGet(url('s1')).reply(
       200,
