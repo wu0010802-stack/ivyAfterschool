@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 211,
-  "last_updated": "2026-10-16T23:28:30Z",
+  "version": 212,
+  "last_updated": "2026-10-17T04:03:42Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3938,8 +3938,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/HomeworkView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-073"
       ],
@@ -4004,8 +4004,8 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/utils/leaveStatus.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-136",
         "PARENT-137"
@@ -4038,8 +4038,8 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/parent/views/PickupProxyView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-104"
       ],
@@ -4075,8 +4075,8 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/ArrivalTimePicker.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-096"
       ],
@@ -4142,8 +4142,8 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamsView.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-153",
         "PARENT-028"

@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 334,
-  "last_updated": "2026-10-17T04:02:39Z",
+  "version": 335,
+  "last_updated": "2026-10-17T04:03:42Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6703,8 +6703,8 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/shared/utils/pathSegment.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-020"
       ],
@@ -6737,8 +6737,8 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useReferenceTable.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-059",
         "FRONTEND-060",
@@ -6775,8 +6775,8 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/utils/cannotGrantMessage.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-065",
         "FRONTEND-069",
@@ -6810,8 +6810,8 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/components/student/GuardianManager.vue",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-091"
       ],
@@ -6843,8 +6843,8 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/test/fakeWebSocket.ts",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-004"
       ],
