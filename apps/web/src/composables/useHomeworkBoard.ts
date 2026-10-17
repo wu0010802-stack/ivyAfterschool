@@ -8,6 +8,9 @@
 // - reload 晚到不倒退（FRONTEND-305，規則同 FRONTEND-304）：serverBoard 每次更新某生（ws、mutation 回應）記
 //   touched[student_id] = ++touchClock，reload 發出時記 startedAt；回應到達時 startedAt 之後更新過的學生保留目前的
 //   serverBoard 列，其餘取回應值（看板名單以回應為準）。篩選鍵改變時清空 touched；summary 由合併結果重算。
+// - 換日期途中（FRONTEND-316）：service_date 等於目前日期、但 serverBoard 仍是別的日期時，更新依 student_id 暫存並記 touched；
+//   回應到達時套用到回應中有的學生（日期不同的暫存丟棄）。延後的 snapshot 記收到序號（++touchClock，不記 touched），
+//   採用的 reload 回應套用時丟棄序號 ≤ 該次 startedAt 的延後 snapshot。篩選鍵改變時清空暫存與延後 snapshot。
 import { ElMessage } from 'element-plus'
 import { computed, ref, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
 import {
@@ -119,7 +122,8 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
   const error = ref<string | null>(null)
 
   const chains = new Map<string, StatusChain>()
-  const deferredSnapshots = new Map<string, ProgressSnapshot>()
+  /** 狀態切換進行中而延後的 snapshot；receivedAt 為收到當下的 touchClock 序號 */
+  const deferredSnapshots = new Map<string, { snapshot: ProgressSnapshot; receivedAt: number }>()
 
   let seq = 0
   /** serverBoard 對應的篩選；載入失敗時若篩選已換，就不再顯示別的篩選的舊資料 */
@@ -128,6 +132,8 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
   let touchClock = 0
   const touched = new Map<string, number>()
   let touchedKey: string | null = null
+  /** 換日期途中收到、serverBoard 尚無該日可套用的更新（student_id → 依序套用的變換） */
+  const buffered = new Map<string, { date: string; patches: ((s: BoardStudent) => BoardStudent)[] }>()
 
   const currentClassId = (): string | null => classId.value || null
   const filterKey = (): string => `${date.value}|${currentClassId() ?? ''}`
@@ -156,6 +162,8 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
     const query: HomeworkBoardParams = cls ? { date: date.value, class_id: cls } : { date: date.value }
     if (touchedKey !== key) {
       touched.clear()
+      buffered.clear()
+      deferredSnapshots.clear()
       touchedKey = key
     }
     const startedAt = touchClock
@@ -164,6 +172,11 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
       const res = await fetchHomeworkBoard(query)
       if (mySeq !== seq) return
       serverBoard.value = mergeTouched(res, startedAt)
+      buffered.clear()
+      // 請求發出前收到的延後 snapshot 不會比回應新
+      for (const [studentId, entry] of deferredSnapshots) {
+        if (entry.receivedAt <= startedAt) deferredSnapshots.delete(studentId)
+      }
       loadedKey = key
       error.value = null
     } catch (err) {
@@ -183,21 +196,38 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
    * reload 開頭已在篩選鍵改變時清空 touched，所以只換班級時（serverBoard 仍是前一個篩選的看板）也照常合併。
    */
   function mergeTouched(res: HomeworkBoard, startedAt: number): HomeworkBoard {
+    const isNewer = (studentId: string): boolean => (touched.get(studentId) ?? 0) > startedAt
     const current = serverBoard.value
-    if (!current) return res
     const newer = new Map(
-      current.students
-        .filter((s) => (touched.get(s.student_id) ?? 0) > startedAt)
+      (current && current.date === res.date ? current.students : [])
+        .filter((s) => isNewer(s.student_id))
         .map((s) => [s.student_id, s] as const),
     )
-    if (!newer.size) return res
-    return { ...res, students: res.students.map((s) => newer.get(s.student_id) ?? s) }
+    const pending = new Map([...buffered].filter(([id, b]) => b.date === res.date && isNewer(id)))
+    if (!newer.size && !pending.size) return res
+    return {
+      ...res,
+      students: res.students.map((s) => {
+        const kept = newer.get(s.student_id)
+        if (kept) return kept
+        const patches = pending.get(s.student_id)?.patches ?? []
+        return patches.reduce((acc, fn) => fn(acc), s)
+      }),
+    }
   }
 
   /** 只更新與看板同日、且在看板中的學生 */
   function patchStudent(studentId: string, serviceDate: string, fn: (s: BoardStudent) => BoardStudent): void {
     const current = serverBoard.value
-    if (!current || current.date !== serviceDate) return
+    if (!current || current.date !== serviceDate) {
+      // 換日期途中：新日期的看板尚未回來，暫存到回應到達時套用
+      if (serviceDate !== date.value) return
+      const entry = buffered.get(studentId)
+      if (entry && entry.date === serviceDate) entry.patches.push(fn)
+      else buffered.set(studentId, { date: serviceDate, patches: [fn] })
+      touched.set(studentId, ++touchClock)
+      return
+    }
     const index = current.students.findIndex((s) => s.student_id === studentId)
     if (index < 0) return
     const students = [...current.students]
@@ -233,10 +263,10 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
 
   function flushDeferred(studentId: string): void {
     if (hasPendingChain(studentId)) return
-    const snapshot = deferredSnapshots.get(studentId)
-    if (!snapshot) return
+    const entry = deferredSnapshots.get(studentId)
+    if (!entry) return
     deferredSnapshots.delete(studentId)
-    applySnapshot(snapshot)
+    applySnapshot(entry.snapshot)
   }
 
   function setOverride(itemId: string, status: HomeworkItemStatus | null): void {
@@ -330,9 +360,13 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
 
   function onProgressUpdated(snapshot: ProgressSnapshot): void {
     if (!snapshot || snapshot.service_date !== date.value || !Array.isArray(snapshot.items)) return
-    if (!serverBoard.value?.students.some((s) => s.student_id === snapshot.student_id)) return
+    const current = serverBoard.value
+    // 看板與事件同日時只收看板中的學生；新日期看板尚未回來時交給 patchStudent 暫存（名單以回應為準）
+    if (current?.date === snapshot.service_date && !current.students.some((s) => s.student_id === snapshot.student_id)) {
+      return
+    }
     if (hasPendingChain(snapshot.student_id)) {
-      deferredSnapshots.set(snapshot.student_id, snapshot)
+      deferredSnapshots.set(snapshot.student_id, { snapshot, receivedAt: ++touchClock })
       return
     }
     applySnapshot(snapshot)

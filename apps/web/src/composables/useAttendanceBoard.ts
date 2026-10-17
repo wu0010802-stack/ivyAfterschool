@@ -10,6 +10,8 @@
 // - reload 晚到不倒退（FRONTEND-304）：以本機異動序號判斷、不依賴伺服器時間。每次套用列記 touched[student_id] = ++touchClock，
 //   reload 發出時記 startedAt = touchClock；回應到達時 touched > startedAt 的列保留目前值（回應沒有的也保留），其餘取回應值。
 //   篩選鍵改變時清空 touched；resync（ws 重連補抓）走同一個 reload。
+// - 換日期途中（FRONTEND-316）：符合目前篩選、但目前資料仍是別的日期（新日期清單尚未回來）的列不丟棄，
+//   依 student_id 暫存最新一筆並記 touched；回應到達時與 touched 一起合併（日期不同的暫存丟棄），篩選鍵改變時清空。
 import { ElMessage } from 'element-plus'
 import { ref, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
 import {
@@ -99,6 +101,8 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
   let touchClock = 0
   const touched = new Map<string, number>()
   let touchedKey: string | null = null
+  /** 換日期途中收到、尚無清單可套用的新日期列（student_id → 最新一筆） */
+  const buffered = new Map<string, AttendanceRow>()
 
   const currentClassId = (): string | null => classId.value || null
   const filterKey = (): string => `${date.value}|${currentClassId() ?? ''}`
@@ -110,6 +114,7 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     const query: DailyAttendanceParams = cls ? { date: date.value, class_id: cls } : { date: date.value }
     if (touchedKey !== key) {
       touched.clear()
+      buffered.clear()
       touchedKey = key
     }
     const startedAt = touchClock
@@ -117,7 +122,8 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     try {
       const res = await fetchDailyAttendance(query)
       if (mySeq !== seq) return
-      const items = mergeTouched(res.items, startedAt)
+      const items = mergeTouched(res.date, res.items, startedAt)
+      buffered.clear()
       data.value = { ...res, items, summary: summarize(items) }
       loadedKey = key
       error.value = null
@@ -137,11 +143,13 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
    * 回應列與目前資料合併：startedAt 之後在本機套用過的列保留目前值（回應沒有的依班級、學號插入）。
    * reload 開頭已在篩選鍵改變時清空 touched，startedAt 之後的 touched 都是在目前篩選下套用的列，
    * 所以只換班級時（目前資料仍是前一個篩選的清單）也照常合併，只取 touched 的列。
+   * 換日期途中暫存的列（buffered）同樣以 touched 判斷，日期與回應不同的丟棄。
    */
-  function mergeTouched(responseItems: AttendanceRow[], startedAt: number): AttendanceRow[] {
+  function mergeTouched(responseDate: string, responseItems: AttendanceRow[], startedAt: number): AttendanceRow[] {
+    const isNewer = (r: AttendanceRow): boolean =>
+      r.service_date === responseDate && (touched.get(r.student_id) ?? 0) > startedAt
     const current = data.value
-    if (!current) return responseItems
-    const newer = current.items.filter((r) => (touched.get(r.student_id) ?? 0) > startedAt)
+    const newer = [...(current?.items ?? []).filter(isNewer), ...[...buffered.values()].filter(isNewer)]
     if (!newer.length) return responseItems
     const items = [...responseItems]
     for (const row of newer) {
@@ -159,18 +167,23 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
 
   function applyRows(rows: AttendanceRow[]): void {
     const current = data.value
-    if (!current) return
-    const items = [...current.items]
+    const items = current ? [...current.items] : []
     let changed = false
     for (const row of rows) {
-      if (row.service_date !== current.date || !matchesFilter(row)) continue
+      if (!matchesFilter(row)) continue
+      if (!current || row.service_date !== current.date) {
+        // 新日期的清單尚未回來：暫存，待回應到達時合併
+        buffered.set(row.student_id, row)
+        touched.set(row.student_id, ++touchClock)
+        continue
+      }
       const index = items.findIndex((r) => r.student_id === row.student_id)
       if (index >= 0) items[index] = row
       else items.splice(insertionIndex(items, row), 0, row)
       touched.set(row.student_id, ++touchClock)
       changed = true
     }
-    if (changed) data.value = { ...current, items, summary: summarize(items) }
+    if (changed && current) data.value = { ...current, items, summary: summarize(items) }
   }
 
   function applyRow(row: AttendanceRow): void {
