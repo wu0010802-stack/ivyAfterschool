@@ -150,7 +150,7 @@ function makeQueue(open: PickupRequest[] = []): PickupQueue {
     if (r.status === 'pending' || r.status === 'acknowledged' || r.status === 'arrived') counts[r.status] += 1
     if (r.needs_reply) counts.needs_reply += 1
   }
-  return { date: TODAY, open, closed: [], counts }
+  return { date: TODAY, open, closed: [], counts, latest_expected_arrival: '19:00' }
 }
 
 let mock: MockAdapter
