@@ -1,11 +1,12 @@
 import { DOMWrapper, flushPromises, type VueWrapper } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { nextTick, shallowRef } from 'vue'
 import { adminHttp } from '@/api/http'
 import {
   acknowledgePickupRequest,
   replyPickupRequest,
+  type PickupQueue,
   type PickupReply,
   type PickupRequest,
 } from '@/api/pickupRequests'
@@ -48,12 +49,25 @@ function makeRequest(overrides: Partial<PickupRequest> = {}): PickupRequest {
   }
 }
 
-type ReplyBoard = Pick<PickupBoard, 'reply' | 'acknowledge'>
+type ReplyBoard = Pick<PickupBoard, 'reply' | 'acknowledge' | 'queue'>
 
-/** 直接打 api（axios-mock-adapter 攔截）；其他錯誤 reject，與 board 的約定相同 */
-const httpBoard: ReplyBoard = {
-  reply: (id: string, body: PickupReply) => replyPickupRequest(id, body),
-  acknowledge: (id: string) => acknowledgePickupRequest(id),
+function makeQueue(latest: string): PickupQueue {
+  return {
+    date: '2026-10-02',
+    open: [],
+    closed: [],
+    counts: { pending: 0, acknowledged: 0, arrived: 0, needs_reply: 0 },
+    latest_expected_arrival: latest,
+  }
+}
+
+/** 直接打 api（axios-mock-adapter 攔截）；其他錯誤 reject，與 board 的約定相同。queue 帶 pickup.window 的最晚時間 */
+function httpBoard(latest: string | null = '20:00'): ReplyBoard {
+  return {
+    reply: (id: string, body: PickupReply) => replyPickupRequest(id, body),
+    acknowledge: (id: string) => acknowledgePickupRequest(id),
+    queue: shallowRef(latest === null ? null : makeQueue(latest)),
+  }
 }
 
 let mock: MockAdapter
@@ -65,7 +79,7 @@ async function settle(): Promise<void> {
 
 async function mountDialog(props: Record<string, unknown> = {}): Promise<VueWrapper> {
   const { wrapper } = await mountWithApp(PickupReplyDialog, {
-    props: { modelValue: true, request: makeRequest(), board: httpBoard, ...props },
+    props: { modelValue: true, request: makeRequest(), board: httpBoard(), ...props },
   })
   await settle()
   return wrapper as VueWrapper
@@ -89,14 +103,16 @@ function timeValue(): string {
   return formItem('預計可接送時間').find('.el-select__placeholder').text().trim()
 }
 
-async function chooseTime(hhmm: string): Promise<void> {
+async function openTimeOptions(): Promise<HTMLElement[]> {
   const item = formItem('預計可接送時間')
   await item.find('.el-select__wrapper').trigger('click')
   await settle()
   const listId = item.find('input').attributes('aria-controls')
-  const option = Array.from(
-    document.getElementById(listId!)?.querySelectorAll<HTMLElement>('.el-select-dropdown__item') ?? [],
-  ).find((o) => o.textContent?.trim() === hhmm)
+  return Array.from(document.getElementById(listId!)?.querySelectorAll<HTMLElement>('.el-select-dropdown__item') ?? [])
+}
+
+async function chooseTime(hhmm: string): Promise<void> {
+  const option = (await openTimeOptions()).find((o) => o.textContent?.trim() === hhmm)
   if (!option) throw new Error(`找不到時間 ${hhmm}`)
   option.click()
   await settle()
@@ -363,7 +379,7 @@ describe('PickupReplyDialog', () => {
 
   it('PickupReplyDialog closes without done when the board handled a conflict', async () => {
     // board 已對 404 / 409 提示並重新整理，resolve null
-    const board: ReplyBoard = { reply: vi.fn(() => Promise.resolve(null)), acknowledge: vi.fn() }
+    const board: ReplyBoard = { ...httpBoard(), reply: vi.fn(() => Promise.resolve(null)), acknowledge: vi.fn() }
     const wrapper = await mountDialog({ board })
 
     await footerButton('回覆並確認').trigger('click')
@@ -399,6 +415,42 @@ describe('PickupReplyDialog', () => {
     await clickButton('+30 分')
     expect(timeValue()).toBe('17:45')
     expect(formItem('給家長的訊息').find('textarea').attributes('placeholder')).toBe('預計 17:45 可接送')
+  })
+
+  it('PickupReplyDialog limits eta options to latest expected arrival', async () => {
+    vi.setSystemTime(new Date('2026-10-02T09:12:00Z')) // 台北 17:12
+    await mountDialog({ board: httpBoard('18:30') })
+
+    const options = (await openTimeOptions()).map((o) => o.textContent?.trim())
+    expect(options[0]).toBe('17:15')
+    expect(options[1]).toBe('17:20')
+    expect(options.at(-1)).toBe('18:30')
+  })
+
+  it('PickupReplyDialog falls back to default latest when queue missing', async () => {
+    await mountDialog({ board: httpBoard(null) })
+
+    const options = (await openTimeOptions()).map((o) => o.textContent?.trim())
+    expect(options[0]).toBe('17:10')
+    expect(options.at(-1)).toBe('19:00')
+  })
+
+  it('PickupReplyDialog quick buttons clamp to latest expected arrival', async () => {
+    vi.setSystemTime(new Date('2026-10-02T10:12:00Z')) // 台北 18:12
+    await mountDialog({ board: httpBoard('18:30') })
+
+    await clickButton('+10 分')
+    expect(timeValue()).toBe('18:25')
+    await clickButton('+20 分')
+    expect(timeValue()).toBe('18:30')
+    await clickButton('+30 分')
+    expect(timeValue()).toBe('18:30')
+
+    document.body.innerHTML = ''
+    await mountDialog({ board: httpBoard(null) })
+    vi.setSystemTime(new Date('2026-10-02T10:52:00Z')) // 台北 18:52，佇列未載入 → 預設 19:00
+    await clickButton('+10 分')
+    expect(timeValue()).toBe('19:00')
   })
 
   it('PickupReplyDialog resets the form when reopened', async () => {

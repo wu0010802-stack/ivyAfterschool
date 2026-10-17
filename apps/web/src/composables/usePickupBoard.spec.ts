@@ -95,7 +95,7 @@ function makeQueue(open: PickupRequest[] = [], closed: PickupRequest[] = []): Pi
     if (r.status === 'pending' || r.status === 'acknowledged' || r.status === 'arrived') counts[r.status] += 1
     if (r.needs_reply) counts.needs_reply += 1
   }
-  return { date: DATE, open, closed, counts }
+  return { date: DATE, open, closed, counts, latest_expected_arrival: '19:00' }
 }
 
 function makeStudent(overrides: Partial<RosterStudent> = {}): RosterStudent {
@@ -265,6 +265,7 @@ describe('usePickupBoard', () => {
       expect((gets(url)[0]?.params as { date?: string }).date).toBe(DATE)
     }
     expect(openIds(board)).toEqual(['r1'])
+    expect(board.queue.value?.latest_expected_arrival).toBe('19:00')
     expect(rosterStudent(board, 's1')?.name).toBe('王小明')
     expect(board.authorizations.value.map((a) => a.id)).toEqual(['pa1'])
     expect(board.loading.value).toBe(false)
@@ -276,6 +277,18 @@ describe('usePickupBoard', () => {
       .filter((m) => m.action === 'subscribe')
       .flatMap((m) => m.topics)
     expect([...subscribed].sort()).toEqual(['attendance', 'homework', 'pickup'])
+  })
+
+  it('usePickupBoard builds empty queue from ws event before queue loads', async () => {
+    mock.onGet(QUEUE_URL).reply(500, { error: { code: 'internal_error', message: '系統錯誤', details: null } })
+    const { board } = await mountBoard()
+    expect(board.queue.value).toBeNull()
+
+    socket().serverMessage('pickup.request_updated', makeRequest())
+    await settle()
+
+    expect(openIds(board)).toEqual(['r1'])
+    expect(board.queue.value?.latest_expected_arrival).toBeNull()
   })
 
   it('usePickupBoard skips roster and authorizations when not requested', async () => {

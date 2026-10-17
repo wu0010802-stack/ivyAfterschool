@@ -1,9 +1,14 @@
 import { DOMWrapper, flushPromises, type VueWrapper } from '@vue/test-utils'
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { nextTick, shallowRef } from 'vue'
 import { adminHttp } from '@/api/http'
-import { createPickupRequest, type PickupRequest, type PickupRequestCreate } from '@/api/pickupRequests'
+import {
+  createPickupRequest,
+  type PickupQueue,
+  type PickupRequest,
+  type PickupRequestCreate,
+} from '@/api/pickupRequests'
 import StudentSelect from '@/components/student/StudentSelect.vue'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import PickupCreateDialog from './PickupCreateDialog.vue'
@@ -11,8 +16,23 @@ import PickupCreateDialog from './PickupCreateDialog.vue'
 const CREATE_URL = '/admin/pickup/requests'
 const PRESET = { id: 's1', name: '王小明', student_no: 'S11301', class_name: '中年級班' }
 
-/** 測試用的 board：create 直接打 API（與 usePickupBoard 的 create 同一支 client） */
-const board = { create: (body: PickupRequestCreate) => createPickupRequest(body) }
+function makeQueue(latest: string): PickupQueue {
+  return {
+    date: '2026-10-02',
+    open: [],
+    closed: [],
+    counts: { pending: 0, acknowledged: 0, arrived: 0, needs_reply: 0 },
+    latest_expected_arrival: latest,
+  }
+}
+
+/** 測試用的 board：create 直接打 API（與 usePickupBoard 的 create 同一支 client）；queue 帶 pickup.window 的最晚時間 */
+function makeBoard(latest = '20:00') {
+  return {
+    create: (body: PickupRequestCreate) => createPickupRequest(body),
+    queue: shallowRef<PickupQueue | null>(makeQueue(latest)),
+  }
+}
 
 function createdRequest(overrides: Partial<PickupRequest> = {}): PickupRequest {
   return {
@@ -60,7 +80,7 @@ async function settleErrors(): Promise<void> {
 }
 
 async function mountDialog(props: Record<string, unknown> = {}): Promise<VueWrapper> {
-  const { wrapper } = await mountWithApp(PickupCreateDialog, { props: { modelValue: true, board, ...props } })
+  const { wrapper } = await mountWithApp(PickupCreateDialog, { props: { modelValue: true, board: makeBoard(), ...props } })
   await settle()
   return wrapper as VueWrapper
 }
@@ -153,12 +173,41 @@ describe('PickupCreateDialog', () => {
   it('PickupCreateDialog offers arrival times from five minutes ago', async () => {
     await mountDialog({ presetStudent: PRESET })
 
-    // 現在 16:02 → 最早 15:57 進位到 5 分 = 16:00，每 5 分一格到 21:00
+    // 現在 16:02 → 最早 15:57 進位到 5 分 = 16:00，每 5 分一格到佇列的 latest_expected_arrival（20:00）
     const options = (await openTimeOptions()).map((o) => o.textContent?.trim())
     expect(options[0]).toBe('16:00')
     expect(options[1]).toBe('16:05')
-    expect(options.at(-1)).toBe('21:00')
+    expect(options.at(-1)).toBe('20:00')
     expect(formItem('家長預計抵達時間').find('.el-select__placeholder').text()).toBe('不指定')
+  })
+
+  it('PickupCreateDialog limits arrival options to latest expected arrival', async () => {
+    const board = makeBoard('20:00')
+    const wrapper = await mountDialog({ presetStudent: PRESET, board })
+
+    let options = (await openTimeOptions()).map((o) => o.textContent?.trim())
+    expect(options[0]).toBe('16:00')
+    expect(options.at(-1)).toBe('20:00')
+
+    board.queue.value = makeQueue('17:00')
+    await wrapper.setProps({ modelValue: false })
+    await settle()
+    await wrapper.setProps({ modelValue: true })
+    await settle()
+    options = (await openTimeOptions()).map((o) => o.textContent?.trim())
+    expect(options[0]).toBe('16:00')
+    expect(options.at(-1)).toBe('17:00')
+  })
+
+  it('PickupCreateDialog has no arrival options after latest', async () => {
+    vi.setSystemTime(new Date('2026-10-02T11:40:00Z')) // 台北 19:40
+    mock.onPost(CREATE_URL).reply(201, createdRequest({ expected_arrival_at: null }))
+    await mountDialog({ presetStudent: PRESET, board: makeBoard('19:00') })
+
+    expect(await openTimeOptions()).toEqual([])
+    await submit()
+
+    expect(postBody()).toEqual({ student_id: 's1' })
   })
 
   it('PickupCreateDialog requires student when not preset', async () => {
@@ -200,7 +249,7 @@ describe('PickupCreateDialog', () => {
   })
 
   it('PickupCreateDialog closes quietly when board already handled the error', async () => {
-    const wrapper = await mountDialog({ presetStudent: PRESET, board: { create: () => Promise.resolve(null) } })
+    const wrapper = await mountDialog({ presetStudent: PRESET, board: { ...makeBoard(), create: () => Promise.resolve(null) } })
 
     await submit()
 
