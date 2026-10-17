@@ -348,4 +348,54 @@ describe('parentMain', { timeout: 20_000 }, () => {
     expect(visited.filter((path) => path.includes('redirect='))).toEqual([])
     wrapper.unmount()
   })
+
+  it('parentMain skips auth redirect while the logout navigation is pending', async () => {
+    mock.onGet('/parent/me').replyOnce(200, ME).onGet('/parent/me').reply(401, UNAUTHORIZED)
+    refreshMock.onPost('/parent/auth/refresh').reply(401, UNAUTHORIZED)
+    mock.onGet('/parent/children').reply(401, UNAUTHORIZED)
+    mock.onPost('/parent/auth/logout').reply(200, null)
+    const { router, pinia } = createParentApp({ history: historyAt('/more') })
+    await settle(router)
+    expect(router.currentRoute.value.fullPath).toBe('/more')
+    // 卡住登出流程的 router.replace('/login?logged_out=1')：登出 API 已回應、導頁尚未完成
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let reachedGate = false
+    router.beforeEach(async (to) => {
+      if (to.path === '/login' && to.query.logged_out === '1') {
+        reachedGate = true
+        await gate
+      }
+    })
+    const visited: string[] = []
+    router.afterEach((to) => {
+      visited.push(to.fullPath)
+    })
+    let logout: (() => Promise<void>) | null = null
+    const Host = defineComponent({
+      setup() {
+        logout = useParentLogout().logout
+        return () => null
+      },
+    })
+    const wrapper = mount(Host, { global: { plugins: [router, pinia] } })
+
+    const loggingOut = logout!()
+    await vi.waitFor(() => expect(reachedGate).toBe(true), { timeout: 10_000 })
+    expect(router.currentRoute.value.fullPath).toBe('/more')
+
+    // 導頁進行中，另一個在途請求 401 且 refresh 也 401
+    await expect(parentHttp.get('/parent/children')).rejects.toMatchObject({ status: 401 })
+    await flushPromises()
+
+    release()
+    await loggingOut
+    await flushPromises()
+
+    expect(router.currentRoute.value.fullPath).toBe('/login?logged_out=1')
+    expect(visited.filter((path) => path.includes('redirect='))).toEqual([])
+    wrapper.unmount()
+  })
 })
