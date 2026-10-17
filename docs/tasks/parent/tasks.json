@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 231,
-  "last_updated": "2026-10-17T07:51:35Z",
+  "version": 232,
+  "last_updated": "2026-10-17T07:52:30Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3582,7 +3582,7 @@
     },
     {
       "id": "PARENT-192",
-      "title": "家長端 api client 的路徑 id 一律 encodeURIComponent（與後台 api client 一致）",
+      "title": "家長端 api client 的路徑 id 一律 encodePathSegment（與後台 api client 一致）",
       "description": "家長端 `apps/web/src/parent/api/` 的 client 把路徑中的 id 都經 FRONTEND-308 `encodePathSegment`（`@/shared/utils/pathSegment`）編碼（PARENT-210）：例如 `getChildExam(childId, examId)` 的 `examId` 來自路由參數，傳入 `'../../../me'` 時不得打到 `/api/parent/me`；id 為 `''` / `'.'` / `'..'` 時 reject `ApiError(0, 'invalid_path_segment')`、不送出請求。涵蓋 `children.ts`、`pickupRequests.ts`、`pickupPersons.ts`、`pickupAuthorizations.ts`、`attendance.ts`、`exams.ts`、`homework.ts`、`notifications.ts`、`leaves.ts` 中所有把變數放進路徑的位置（做法比照後台 `apps/web/src/api/` 的 `xxxPath(id)` 小函式）。對一般 UUID 的請求 URL 完全不變。pathEncoding.spec.ts 另以 `import.meta.glob` 掃描 `parent/api/*.ts` 原始碼：template literal 的每個插值都必須是 `encodePathSegment(...)` 或 `*Path(...)`，且不得直接用 `encodeURIComponent`，之後新增的家長端 client 漏編碼會被這條擋下。\n\n**驗收標準**：每一條對應下列 red_case；各 client 既有 spec 全綠且斷言不變。",
       "granularity_unit": "api_client",
       "target_path": "apps/web/src/parent/api/exams.ts",

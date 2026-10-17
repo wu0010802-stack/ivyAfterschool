@@ -274,7 +274,7 @@ NFC 管理權限碼 `nfc:manage`（預設只有 admin）在 NFC 解除 blocked �
 | `/attendance/monthly` | 月出勤報表 + 匯出 | `attendance:read` | `FE:src/views/StudentAttendanceView.vue` |
 | `/leaves` | 請假列表 + 代登記 | `leaves:read` | `FE:src/views/StudentLeavesListView.vue` |
 | `/homework` | 作業進度看板（平板友善，逐生卡片；日期顯示 `YYYY/MM/DD`，不顯示星期） | `homework:read` | 新做 |
-| `/pickup` | 接送 POS（班級欄 / 學生卡 / 佇列 + 回覆預計時間；員工代建與回覆的預計時間選項上限為 `pickup.window` 的最晚時間，後台讀得到這個設定） | `pickup:read` | `FE:src/views/DismissalQueueView.vue`、`components/dismissal/pos/*` |
+| `/pickup` | 接送 POS（班級欄 / 學生卡 / 佇列 + 回覆預計時間；員工代建與回覆的預計時間選項上限為 `pickup.window` 的最晚時間，後台讀得到這個設定；快捷鈕 +10/+20/+30 的結果超過上限時取上限） | `pickup:read` | `FE:src/views/DismissalQueueView.vue`、`components/dismissal/pos/*` |
 | `/pickup/authorizations` | 代理接送核驗 | `pickup:read` | `FE:src/views/PickupAuthorizationsView.vue` |
 | `/exams` | 考試列表 | `exams:read` | 新做 |
 | `/exams/:id` | 成績輸入格 + 發布 + 各科平均 | `exams:read` | 新做 |
