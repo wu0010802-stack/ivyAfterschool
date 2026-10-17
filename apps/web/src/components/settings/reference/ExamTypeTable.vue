@@ -5,125 +5,74 @@
 // - 422 欄位錯誤與 409 名稱重複顯示在欄位下方、dialog 不關；寫入成功後重新載入並讓 lookups 的考試類型快取失效。
 // - 刪除被引用的類型時後端改為停用（deactivated），訊息依回傳值決定。
 import { Plus } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { computed, reactive, ref } from 'vue'
+import { computed } from 'vue'
 import { examTypesApi, type DeleteResult, type ExamType } from '@/api/referenceData'
 import EmptyState from '@/components/common/EmptyState.vue'
 import FormDialog from '@/components/common/FormDialog.vue'
-import { useConfirmDelete } from '@/composables/useConfirmDelete'
-import { useFormDirty } from '@/composables/useFormDirty'
+import { useReferenceTable } from '@/composables/useReferenceTable'
 import { PERMISSIONS } from '@/constants/permissions'
-import { isApiError } from '@/shared/types/api'
-import { errorMessage, validationFieldErrors } from '@/shared/utils/errorMessage'
 import { useLookupsStore } from '@/stores/lookups'
 import { usePermission } from '@/utils/permission'
 
-type FieldKey = 'name' | 'sort_order'
+interface ExamTypeForm {
+  name: string
+  sort_order: number
+  is_active: boolean
+}
 
 const { can } = usePermission()
 const canWrite = computed(() => can(PERMISSIONS.SETTINGS_WRITE))
 const lookups = useLookupsStore()
 
-const items = ref<ExamType[]>([])
-const loading = ref(false)
-const loadFailed = ref(false)
-let loadSeq = 0
+function toBody(form: ExamTypeForm): ExamTypeForm {
+  return { name: form.name.trim(), sort_order: form.sort_order, is_active: form.is_active }
+}
+
+const {
+  rows: items,
+  loading,
+  error: loadFailed,
+  reload: load,
+  open: dialogOpen,
+  editing,
+  form,
+  fieldErrors: errors,
+  saving,
+  isDirty,
+  openCreate,
+  openEdit,
+  submit,
+  remove: confirmDelete,
+} = useReferenceTable<ExamType, ExamTypeForm, 'name' | 'sort_order'>({
+  list: () => examTypesApi.list(),
+  create: (f) => examTypesApi.create(toBody(f)),
+  update: (row, f) => examTypesApi.update(row.id, toBody(f)),
+  remove: (row) => examTypesApi.remove(row.id),
+  fields: ['name', 'sort_order'],
+  toForm: (row, rows) => ({
+    name: row?.name ?? '',
+    sort_order: row?.sort_order ?? Math.max(0, ...rows.map((r) => r.sort_order)) + 1,
+    is_active: row?.is_active ?? true,
+  }),
+  validate: (f) => ({ name: f.name.trim() ? '' : '請輸入名稱' }),
+  conflictField: 'name',
+  confirmMessage: (row) => `確定要刪除考試類型「${row.name}」嗎？`,
+  deleteSuccessMessage: (result, row) =>
+    (result as DeleteResult).deactivated ? `「${row.name}」已有資料引用，已改為停用` : '已刪除',
+  onChanged: () => lookups.invalidate('examTypes'),
+})
 
 const sortedItems = computed(() =>
   [...items.value].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'zh-Hant')),
 )
 
-async function load(): Promise<void> {
-  const seq = ++loadSeq
-  loading.value = true
-  try {
-    const list = await examTypesApi.list()
-    if (seq !== loadSeq) return
-    items.value = list
-    loadFailed.value = false
-  } catch {
-    if (seq === loadSeq) loadFailed.value = true
-  } finally {
-    if (seq === loadSeq) loading.value = false
-  }
-}
-
-void load()
-
-function afterWrite(): void {
-  lookups.invalidate('examTypes')
-  void load()
-}
-
 function rowClass({ row }: { row: ExamType }): string {
   return row.is_active ? '' : 'ref-row-inactive'
-}
-
-// ---- 新增 / 編輯 dialog ----
-const dialogOpen = ref(false)
-const editing = ref<ExamType | null>(null)
-const saving = ref(false)
-const form = reactive<{ name: string; sort_order: number; is_active: boolean }>({
-  name: '',
-  sort_order: 0,
-  is_active: true,
-})
-const errors = reactive<Record<FieldKey, string>>({ name: '', sort_order: '' })
-const { isDirty, markClean } = useFormDirty(form)
-
-function openDialog(row: ExamType | null): void {
-  editing.value = row
-  const nextSort = Math.max(0, ...items.value.map((t) => t.sort_order)) + 1
-  Object.assign(form, {
-    name: row?.name ?? '',
-    sort_order: row?.sort_order ?? nextSort,
-    is_active: row?.is_active ?? true,
-  })
-  errors.name = ''
-  errors.sort_order = ''
-  markClean()
-  dialogOpen.value = true
 }
 
 function onSortOrder(value: number | null | undefined): void {
   form.sort_order = value ?? 0
 }
-
-async function submit(): Promise<void> {
-  const name = form.name.trim()
-  errors.name = name ? '' : '請輸入名稱'
-  if (errors.name) return
-  const body = { name, sort_order: form.sort_order, is_active: form.is_active }
-  const row = editing.value
-  saving.value = true
-  try {
-    if (row) await examTypesApi.update(row.id, body)
-    else await examTypesApi.create(body)
-    ElMessage.success(row ? '已更新' : '已新增')
-    dialogOpen.value = false
-    afterWrite()
-  } catch (err) {
-    if (isApiError(err) && err.status === 409) {
-      errors.name = err.message
-      return
-    }
-    const fieldErrors = validationFieldErrors(err)
-    const mapped = (['name', 'sort_order'] as FieldKey[]).filter((key) => fieldErrors[key])
-    for (const key of mapped) errors[key] = fieldErrors[key]!
-    if (!mapped.length) ElMessage.error(errorMessage(err, '儲存失敗，請稍後再試'))
-  } finally {
-    saving.value = false
-  }
-}
-
-// ---- 刪除 ----
-const { confirmDelete } = useConfirmDelete<ExamType>({
-  request: (row) => examTypesApi.remove(row.id),
-  confirmMessage: (row) => `確定要刪除考試類型「${row.name}」嗎？`,
-  successMessage: (result, row) =>
-    (result as DeleteResult).deactivated ? `「${row.name}」已有資料引用，已改為停用` : '已刪除',
-  onSuccess: afterWrite,
-})
 </script>
 
 <template>
@@ -136,7 +85,7 @@ const { confirmDelete } = useConfirmDelete<ExamType>({
         type="primary"
         :icon="Plus"
         :disabled="loadFailed"
-        @click="openDialog(null)"
+        @click="openCreate"
       >
         新增考試類型
       </el-button>
@@ -209,7 +158,7 @@ const { confirmDelete } = useConfirmDelete<ExamType>({
             <el-button
               link
               type="primary"
-              @click="openDialog(row)"
+              @click="openEdit(row)"
             >
               編輯
             </el-button>
@@ -235,7 +184,7 @@ const { confirmDelete } = useConfirmDelete<ExamType>({
             <el-button
               type="primary"
               :icon="Plus"
-              @click="openDialog(null)"
+              @click="openCreate"
             >
               新增考試類型
             </el-button>
