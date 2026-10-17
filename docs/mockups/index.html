@@ -54,7 +54,7 @@ code { font-size: 13px; }
   <h1>設計稿總覽</h1>
   <p class="lead">後台與家長端每張設計稿的狀態，待核可的稿集中在最上方。出稿、核可、改稿時同步更新（待核可與已核可分兩區，各自依檔名排序）（流程見 <code>.claude/skills/ui-design-preview/SKILL.md</code>）。</p>
 
-  <h2>待核可（0）</h2>
+  <h2>待核可（3）</h2>
   <p class="lead">這一區的稿需要你核可後才會進入實作。點稿名打開，右上「設計說明 / 待裁定」可看設計決策與待裁定題；稿已照推薦選項畫。</p>
   <div class="card">
     <table>
@@ -69,12 +69,35 @@ code { font-size: 13px; }
         </tr>
       </thead>
       <tbody>
-        <tr class="empty"><td colspan="6">目前沒有待核可的稿</td></tr>
+        <tr>
+          <td><a href="component-common-extra.html">component-common-extra.html</a></td>
+          <td class="tasks">FRONTEND-040, FRONTEND-043, FRONTEND-302</td>
+          <td class="route"><code>component:components/common/{FormDialog,StatCard}.vue</code></td>
+          <td class="note">1 題：「未儲存的變更」確認框按鈕是否一併改 44px（推薦 A：本輪不改）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
+        <tr>
+          <td><a href="parent-component-attendance-calendar.html">parent-component-attendance-calendar.html</a></td>
+          <td class="tasks">PARENT-131, PARENT-194, PARENT-207</td>
+          <td class="route"><code>component:parent/components/attendance/AttendanceCalendar.vue</code></td>
+          <td class="note">無待裁定（360 寬格寬 ≥ 44px 的做法請核可）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
+        <tr>
+          <td><a href="parent-page-attendance.html">parent-page-attendance.html</a></td>
+          <td class="tasks">PARENT-132, PARENT-207</td>
+          <td class="route"><code>/attendance</code></td>
+          <td class="note">無待裁定（月曆卡內距改左右 8px，與元件稿同一變更）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
       </tbody>
     </table>
   </div>
 
-  <h2>已核可（68）</h2>
+  <h2>已核可（65）</h2>
   <div class="card">
     <table>
       <thead>
@@ -97,13 +120,6 @@ code { font-size: 13px; }
         </tr>
         狀態 class：status--draft（待核可）/ status--approved（已核可）/ status--superseded（已取代）
         -->
-        <tr>
-          <td><a href="component-common-extra.html">component-common-extra.html</a></td>
-          <td class="tasks">FRONTEND-040, FRONTEND-043</td>
-          <td class="route"><code>component:components/common/{FormDialog,StatCard}.vue</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-03</td>
-        </tr>
         <tr>
           <td><a href="component-common.html">component-common.html</a></td>
           <td class="tasks">FRONTEND-039, FRONTEND-041, FRONTEND-042</td>
@@ -294,13 +310,6 @@ code { font-size: 13px; }
           <td>2026-10-16</td>
         </tr>
         <tr>
-          <td><a href="parent-component-attendance-calendar.html">parent-component-attendance-calendar.html</a></td>
-          <td class="tasks">PARENT-131, PARENT-194</td>
-          <td class="route"><code>component:parent/components/attendance/AttendanceCalendar.vue</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-16</td>
-        </tr>
-        <tr>
           <td><a href="parent-component-authorization-form.html">parent-component-authorization-form.html</a></td>
           <td class="tasks">PARENT-102</td>
           <td class="route"><code>component:parent/components/pickup/AuthorizationForm.vue</code></td>
@@ -365,10 +374,10 @@ code { font-size: 13px; }
         </tr>
         <tr>
           <td><a href="parent-component-exam-score-table.html">parent-component-exam-score-table.html</a></td>
-          <td class="tasks">PARENT-152</td>
+          <td class="tasks">PARENT-152, PARENT-209</td>
           <td class="route"><code>component:parent/components/exams/ExamScoreTable.vue</code></td>
           <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-05</td>
+          <td>2026-10-17</td>
         </tr>
         <tr>
           <td><a href="parent-component-homework-item-row.html">parent-component-homework-item-row.html</a></td>
@@ -481,13 +490,6 @@ code { font-size: 13px; }
           <td class="route"><code>component:parent/components/home/TodayStatusCard.vue</code></td>
           <td><span class="status status--approved">已核可</span></td>
           <td>2026-10-05</td>
-        </tr>
-        <tr>
-          <td><a href="parent-page-attendance.html">parent-page-attendance.html</a></td>
-          <td class="tasks">PARENT-132</td>
-          <td class="route"><code>/attendance</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-08</td>
         </tr>
         <tr>
           <td><a href="parent-page-bind.html">parent-page-bind.html</a></td>

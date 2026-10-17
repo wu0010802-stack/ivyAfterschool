@@ -13,9 +13,9 @@
      preview-updated: 最後更新日期 YYYY-MM-DD
      ============================================================ -->
 <meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="PARENT-152">
+<meta name="preview-tasks" content="PARENT-152,PARENT-209">
 <meta name="preview-route" content="component:parent/components/exams/ExamScoreTable.vue">
-<meta name="preview-updated" content="2026-10-05">
+<meta name="preview-updated" content="2026-10-17">
 
 <title>設計稿：家長端 ExamScoreTable 各科成績表</title>
 <script src="https://unpkg.com/vue@3.5.43/dist/vue.global.prod.js"></script>
@@ -1181,8 +1181,9 @@ const ParentEmptyState = {
 /* ============================================================
    本稿元件與稿件資料
    ============================================================ */
-/** 分數格式：整數不帶小數；非整數保留至多 1 位（92.5、88） */
-const fmtScore = (n) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10))
+/** 分數格式（PARENT-209，domain_spec M8）：照後端原值（Numeric(6,2)）顯示到兩位小數、去尾端 0，不四捨五入成一位
+ *  59.95 → 59.95、85.50 → 85.5、90.00 → 90。toFixed(2) 只用來消除浮點誤差（後端本來就最多兩位） */
+const fmtScore = (n) => String(Number(n.toFixed(2)))
 
 /** PARENT-152 ExamScoreTable */
 const ExamScoreTable = {
@@ -1226,21 +1227,22 @@ function pageSetup() {
     { value: 'loading', label: '頁面載入中' },
   ]
   const subjects = [
-    S({ subject_name: '國語', score: 92.5 }),
+    S({ subject_name: '國語', score: 85.5 }),
     S({ subject_name: '數學', is_absent: true, note: '請病假' }),
-    S({ subject_name: '英語', score: 88 }),
-    S({ subject_name: '自然', score: 100, note: '實驗題全對，表現很好！' }),
+    S({ subject_name: '英語', score: 59.95 }),
+    S({ subject_name: '自然', score: 90, note: '實驗題全對，表現很好！' }),
     S({ subject_name: '社會', score: null }),
   ]
   const otherSubjects = [
     S({ subject_name: '英語聽力', full_score: 50, score: 46 }),
-    S({ subject_name: '閱讀理解與寫作表達（綜合）', full_score: 120, score: 101.5, note: '作文部分由學校老師另行評分，成績公布後會再補登' }),
+    S({ subject_name: '閱讀理解與寫作表達（綜合）', full_score: 120, score: 101.25, note: '作文部分由學校老師另行評分，成績公布後會再補登' }),
     S({ subject_name: '數學', full_score: 100, score: null }),
+    S({ subject_name: '綜合測驗（最寬分數示意）', full_score: 1000, score: 999.95 }),
   ]
   const decisions = [
     '語意化 table：caption「各科成績」視覺隱藏；欄位「科目」「分數」「滿分」（th scope="col"、label-medium、on-surface-variant、底部 1px outline-variant）。表格寬 100%、table-layout: fixed；分數欄 84px、滿分欄 72px 靠右對齊，其餘寬度給科目。外層由宿主包 outlined 卡片（padding none）。',
     '每科一列（tr），列間 1px outline-variant；儲存格 padding 12px 16px、內容靠上對齊。科目 body-large；note 有值時放在同一格科目名稱下方（body-small、on-surface-variant、保留換行）——放在同一列而不是另起一列，螢幕閱讀器念到該科就會念到備註，也符合「第 2 列含缺考與備註」的驗收。',
-    '分數 title-medium + tabular-nums：整數不帶小數（88 而非 88.0），非整數至多 1 位（92.5）；滿分同規則、on-surface-variant。',
+    '分數 title-medium + tabular-nums：照後端原值顯示到兩位小數、去掉尾端 0，不四捨五入（59.95 → 59.95，不會顯示成 60；85.50 → 85.5；90.00 → 90）；滿分同規則、on-surface-variant（domain_spec M8，PARENT-209）。分數欄 84px 放得下最寬的 999.95。',
     '缺考：分數欄「缺考」error 色；score 為 null 且非缺考：「未登記」on-surface-variant、一般字重。只用文字表達，不另加圖示。',
     '不依分數高低上色、不顯示總分 / 平均 / 排名（domain_spec M8）。',
     'subjects 為空：不渲染 table，改用 ParentEmptyState（grading 圖示 +「這次考試尚無科目成績」，無說明、無按鈕）。',

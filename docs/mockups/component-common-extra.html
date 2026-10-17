@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
-<meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="FRONTEND-040,FRONTEND-043">
+<meta name="preview-status" content="draft">
+<meta name="preview-tasks" content="FRONTEND-040,FRONTEND-043,FRONTEND-302">
 <meta name="preview-route" content="component:components/common/{FormDialog,StatCard}.vue">
-<meta name="preview-updated" content="2026-10-03">
+<meta name="preview-updated" content="2026-10-17">
 
 <title>設計稿：共用元件（FormDialog / StatCard）</title>
 
@@ -48,11 +48,17 @@ body { font-family: var(--el-font-family); background: var(--el-bg-color-page); 
 .trigger-row .el-button + .el-button { margin-left: 0; }
 .log { margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--el-text-color-regular); }
 .area-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--el-text-color-regular); }
+.footer-compare { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-end; }
+.footer-compare > div { display: flex; flex-direction: column; gap: 8px; }
+.footer-compare__old { display: flex; gap: 8px; }
+.footer-compare__old .el-button + .el-button { margin-left: 0; }
 .form-hint { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--el-text-color-secondary); }
 
 /* ---------- FormDialog（FRONTEND-040） ---------- */
 .form-dialog__footer { display: flex; justify-content: flex-end; gap: 8px; }
 .form-dialog__footer .el-button + .el-button { margin-left: 0; }
+/* FRONTEND-302：footer 按鈕觸控目標 ≥ 44px（桌機、平板、手機滿版同一規則） */
+.form-dialog__footer .el-button { min-height: 44px; padding: 0 20px; }
 
 /* ---------- StatCard（FRONTEND-043） ---------- */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
@@ -124,6 +130,33 @@ body { font-family: var(--el-font-family); background: var(--el-bg-color-page); 
             <el-button @click="openDlg('loading')">送出中（loading：送出鈕轉圈、取消停用、X 隱藏）</el-button>
             <el-button @click="openDlg('disabled')">submitDisabled（送出鈕停用）</el-button>
             <el-button @click="openDlg('noFooter')">hideFooter（無 footer）</el-button>
+          </div>
+        </div>
+
+        <div class="demo-label">3. footer 觸控尺寸（FRONTEND-302）：左為 Element Plus 預設 32px（舊），右為 FormDialog footer 44px（新）</div>
+        <div class="demo-box">
+          <div class="footer-compare">
+            <div>
+              <div class="text-secondary">舊：預設 32px</div>
+              <div class="footer-compare__old">
+                <el-button>取消</el-button>
+                <el-button type="primary">儲存</el-button>
+              </div>
+            </div>
+            <div>
+              <div class="text-secondary">新：min-height 44px、左右 padding 20px</div>
+              <div class="form-dialog__footer" data-test="footer-preview">
+                <el-button>取消</el-button>
+                <el-button type="primary">儲存</el-button>
+              </div>
+            </div>
+            <div>
+              <div class="text-secondary">新：loading（送出鈕轉圈仍 44px）</div>
+              <div class="form-dialog__footer">
+                <el-button disabled>取消</el-button>
+                <el-button type="primary" loading disabled>儲存</el-button>
+              </div>
+            </div>
           </div>
         </div>
       </el-card>
@@ -406,6 +439,7 @@ const app = createApp({
     const decisions = [
       'FormDialog 標題靠左、右上 X；表單一律 label-position top（由使用端的 el-form 設定）。footer 靠右：「取消」（default）在左、送出（primary）在右，按鈕文字由 submitText / cancelText 決定。',
       'FormDialog 寬度 sm 420 / md 560 / lg 800；視窗寬 < 768 時 fullscreen，footer 仍固定在底部。',
+      'FormDialog footer 的「取消 / 送出」按鈕最小高 44px、左右 padding 20px（平板觸控目標），字級維持 14px；桌機、平板（1024×768）與手機滿版同一規則，不依視窗寬切換。只放大 footer 這兩顆按鈕，dialog body 內的按鈕與表單元件維持各自尺寸；按鈕順序、文字、間距 8px 與 fullscreen 貼底規則不變。loading 轉圈時高度不變。',
       'FormDialog 照規格把點遮罩也算關閉路徑（同取消、X、Esc）：乾淨的表單直接關，dirty 時先跳確認。確認框沿用 confirmDiscardChanges（FRONTEND-046）：標題「未儲存的變更」、內文「尚未儲存的變更將會遺失，確定要關閉嗎？」、按鈕「放棄變更」/「繼續編輯」。',
       'FormDialog loading 中：送出鈕轉圈且停用、「取消」停用、右上 X 隱藏（避免出現點了沒反應的按鈕），Esc 與點遮罩無效。',
       'FormDialog submitDisabled 只停用送出鈕，取消與關閉不受影響。hideFooter 時整個 footer 不渲染，只剩 X。',
@@ -418,7 +452,13 @@ const app = createApp({
       'StatCard loading：標籤照常顯示，數值換成 56×24 的 skeleton 條，hint 不顯示；loading 中仍可點（導頁或 emit click 照常）。',
       'StatCard 新增 clickable?: boolean（預設 false）：有 to 或 clickable 才可點；沒有 to 且 clickable 不為 true 時為靜態卡（沒有 role、tabindex、hover，點擊不 emit）。篩選 chip 用法傳 clickable + active。',
     ]
-    const openQuestions = []
+    const openQuestions = [
+      {
+        question: '關閉 dirty 表單時跳出的「未儲存的變更」確認框（ElMessageBox，FRONTEND-046）按鈕仍是 32px，要不要一起放大到 44px？',
+        optionA: '（推薦）本輪不改，只改 FormDialog footer；確認框另開 task 統一處理全站 ElMessageBox 的按鈕尺寸',
+        optionB: '本 task 一併改：confirmDiscardChanges 的「放棄變更 / 繼續編輯」也 ≥ 44px',
+      },
+    ]
 
     const mobile = ref(false)
     const blank = {

@@ -12,10 +12,10 @@
      preview-route  : 對應的家長端路由 path；元件稿寫 component:<相對路徑>
      preview-updated: 最後更新日期 YYYY-MM-DD
      ============================================================ -->
-<meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="PARENT-131,PARENT-194">
+<meta name="preview-status" content="draft">
+<meta name="preview-tasks" content="PARENT-131,PARENT-194,PARENT-207">
 <meta name="preview-route" content="component:parent/components/attendance/AttendanceCalendar.vue">
-<meta name="preview-updated" content="2026-10-16">
+<meta name="preview-updated" content="2026-10-17">
 
 <title>設計稿：家長端 AttendanceCalendar 月出勤日曆</title>
 <script src="https://unpkg.com/vue@3.5.43/dist/vue.global.prod.js"></script>
@@ -166,6 +166,7 @@ button { font: inherit; }
 .preview-tag.is-approved { background: var(--preview-success); }
 .stage { flex: 1; display: flex; align-items: flex-start; justify-content: center; gap: 32px; flex-wrap: wrap; padding: 32px 16px; }
 .device { flex: none; width: 390px; height: 844px; border-radius: 44px; overflow: hidden; outline: 10px solid var(--preview-device); box-shadow: var(--m3-elev-3); margin: 10px; }
+.device.device--360 { width: 360px; height: 780px; }
 .screen { position: relative; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: var(--m3-surface); color: var(--m3-on-surface); }
 .screen__content { flex: 1; overflow-y: auto; padding: 0 16px 24px; }
 .notes { flex: 0 1 420px; min-width: 300px; max-width: 100%; padding: 20px; border-radius: 8px; background: var(--preview-panel-bg); border: 1px solid var(--preview-border); font-size: 14px; line-height: 1.6; }
@@ -551,12 +552,13 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
    本稿元件
    ============================================================ */
 /* AttendanceCalendar（PARENT-131）：7 欄、週日開頭；每格 button = 日期數字 + 狀態標記 */
-.att-cal__weekdays, .att-cal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+/* PARENT-207：欄距 0、列距 4px；格子左右各 2px 透明框（background-clip: padding-box）畫出 4px 視覺欄距，觸控範圍是整欄寬 */
+.att-cal__weekdays, .att-cal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); column-gap: 0; row-gap: 4px; }
 .att-cal__wd { display: flex; align-items: center; justify-content: center; height: 32px; color: var(--m3-on-surface-variant); }
 .att-cal__pad { height: 52px; }
 .att-day {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  min-width: 0; height: 52px; padding: 0; border: none; border-radius: var(--m3-shape-small);
+  min-width: 0; height: 52px; padding: 0; border: solid transparent; border-width: 0 2px; background-clip: padding-box; border-radius: var(--m3-shape-small);
   background: transparent; color: var(--m3-on-surface); cursor: pointer; font-variant-numeric: tabular-nums;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--m3-dur-short-3) var(--m3-easing-standard), color var(--m3-dur-short-3) var(--m3-easing-standard);
@@ -575,7 +577,9 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
 .att-day.is-today .att-day__num { font-weight: 700; }
 .att-day.is-selected { background: var(--m3-primary); color: var(--m3-on-primary); }
 .att-day.is-selected.is-today { box-shadow: inset 0 0 0 2px var(--m3-primary), inset 0 0 0 4px var(--m3-on-primary); }
-.att-day:focus-visible { outline: 2px solid var(--m3-on-surface); outline-offset: 1px; }
+.att-day:focus-visible { outline: 2px solid var(--m3-on-surface); outline-offset: -1px; }
+/* PARENT-207：月曆卡內距上下 12px、左右 8px（M3Card padding="none" + 頁面自訂內距），360 寬時格寬仍 ≥ 44px */
+.att-cal-card { padding: 12px 8px; }
 .att-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--m3-outline-variant); }
 .att-legend__item { display: inline-flex; align-items: center; gap: 6px; color: var(--m3-on-surface-variant); }
 .att-legend__swatch { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; height: 24px; border-radius: var(--m3-shape-extra-small); }
@@ -603,14 +607,14 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
   </div>
 
   <div class="stage">
-    <div class="device">
+    <div class="device" :class="{ 'device--360': deviceWidth === 360 }" :data-device-width="deviceWidth">
       <div class="screen">
         <m3-top-app-bar title="出勤紀錄" :show-back="true"></m3-top-app-bar>
         <main class="screen__content">
           <div class="cap m3-label-large"><span>{{ currentMonth.caption }}</span></div>
 
           <template v-if="hostState === 'data'">
-            <m3-card variant="outlined" padding="sm">
+            <m3-card variant="outlined" padding="none" class="att-cal-card">
               <div class="host-month">
                 <span class="m3-title-medium">{{ currentMonth.title }}</span>
                 <span class="m3-label-small muted">月份切換屬 PARENT-132</span>
@@ -656,6 +660,9 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
       <h4>預覽選項</h4>
       <div class="notes__row">主題
         <span class="state-switch"><button type="button" :class="{ 'is-active': theme === 'light' }" @click="theme = 'light'">淺色</button><button type="button" :class="{ 'is-active': theme === 'dark' }" @click="theme = 'dark'">深色</button></span>
+      </div>
+      <div class="notes__row">裝置寬
+        <span class="state-switch" role="group" aria-label="裝置寬"><button type="button" :class="{ 'is-active': deviceWidth === 390 }" @click="deviceWidth = 390">390×844</button><button type="button" :class="{ 'is-active': deviceWidth === 360 }" @click="deviceWidth = 360">360×780</button></span>
       </div>
 
       <h4>設計決策</h4>
@@ -1389,8 +1396,8 @@ function pageSetup() {
   })
 
   const decisions = [
-    '版面：7 欄等寬、週日開頭，表頭「日 一 二 三 四 五 六」（label-medium、on-surface-variant，aria-hidden，因為每格 aria-label 已含日期）；欄距與列距 4px。月初前補空白格（span、aria-hidden、非 button）；月尾不補格。週六日不另外上色，是否休息一律看 is_service_day。',
-    '格子：整格是 button，高 52px、寬約 48px（390 寬手機）、圓角 8px；上方日期數字 body-medium（tabular-nums），下方 16px 狀態標記。觸控目標 ≥ 44px。點擊 emit select(date)，非營業日與無紀錄日也可點（頁面明細顯示「安親班休息」/「這天沒有出勤紀錄」）。',
+    '版面：7 欄等寬、週日開頭，表頭「日 一 二 三 四 五 六」（label-medium、on-surface-variant，aria-hidden，因為每格 aria-label 已含日期）；視覺上欄距與列距都是 4px：列距用 grid row-gap 4px，欄距改為 column-gap 0 + 每格左右各 2px 透明框（background-clip: padding-box，底色、今天內框、state layer 都只畫在框內），讓整欄寬都是觸控範圍。月初前補空白格（span、aria-hidden、非 button）；月尾不補格。週六日不另外上色，是否休息一律看 is_service_day。',
+    '格子：整格是 button，高 52px、圓角 8px；上方日期數字 body-medium（tabular-nums），下方 16px 狀態標記。觸控目標（button 外框）寬 = 月曆內容寬 ÷ 7：390 寬約 48.6×52（色塊約 44.6×52），360 寬約 44.3×52（色塊約 40.3×52），兩種寬度都 ≥ 44px、不產生水平捲動。宿主的月曆卡內距為上下 12px、左右 8px（PARENT-207；原為四邊 12px）。:focus-visible 外框 outline-offset -1px，不壓到隔壁格的色塊。點擊 emit select(date)，非營業日與無紀錄日也可點（頁面明細顯示「安親班休息」/「這天沒有出勤紀錄」）。',
     '狀態以「底色 + 圖示」雙重表達（不只靠顏色）：已到班 primary-container + check；已離班 secondary-container + done_all；請假 tertiary-container + event_busy（只在月曆格與圖例改用 tertiary，StatusPill 的 tone 仍照 FRONTEND-005，讓請假日不會淹沒在大量的已離班格中）；缺席 error-container + close；預計到班 warning-container + schedule；未登記 surface-container-high + remove（兩種日子都用這一格：今天以前仍是 expected 的日子，以及計入統計（後端 in_stats：營業日、不晚於今天、不早於入學日）卻沒有出勤列的日子，aria-label 如「10月15日 未登記」「10月14日 未登記」，與統計列 PARENT-132 的「未登記」數字一致；今天的 expected 仍是「預計到班」）；休息 無底色、數字 on-surface-variant、標記為「休」字；無紀錄（in_stats 為 false 且沒有出勤列：今天以後、入學日以前）無底色無標記。底色 / 文字沿用 StatusPill 同一組 container token，對比已在 status-pill 稿驗證。',
     '請假格不分假別上色（病假 / 事假 / 其他同一種樣式），假別只出現在 aria-label 與頁面的單日明細；aria-label：病假「10月5日 病假」、事假「10月13日 事假」、其他「10月20日 請假（其他）」（單寫「其他」聽不出是請假）。',
     'aria-label 其他規則：「10月2日 已到班」（取 FRONTEND-005 ATTENDANCE_STATUS_META 的 label）、非營業日「10月4日 休息」（非營業日一律休息，不看 in_stats）、無紀錄「10月23日 無紀錄」（未來日）、「10月1日 無紀錄」（入學日以前）。',
@@ -1417,7 +1424,8 @@ const app = createApp({
       if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark')
       else document.documentElement.removeAttribute('data-theme')
     })
-    return { meta, snack, theme, navItems: NAV_ITEMS, ...pageSetup({ snack }) }
+    const deviceWidth = ref(new URLSearchParams(location.search).get('w') === '360' ? 360 : 390)
+    return { meta, snack, theme, deviceWidth, navItems: NAV_ITEMS, ...pageSetup({ snack }) }
   },
 })
 
