@@ -940,6 +940,85 @@ describe('usePickupBoard', () => {
     expect(rosterStudent(board, 's2')?.attendance_status).toBe('left')
   })
 
+  it('usePickupBoard takes response when it is ahead of the request kept from reload', async () => {
+    const r1 = makeRequest()
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1]))
+    const { board } = await mountBoard()
+    const respond = deferredGet(QUEUE_URL)
+
+    const reloading = board.reload()
+    await settle()
+    serverMessage(socket(), 'pickup.request_updated', { ...r1, status: 'acknowledged', needs_reply: false })
+    await settle()
+    // 回應已是較後面的狀態（家長按到了的推播遺失）：狀態機順序較大的回應勝出
+    respond(200, makeQueue([{ ...r1, status: 'arrived', needs_reply: false, arrived_at: '2026-10-02T09:06:00Z' }]))
+    await reloading
+    await settle()
+
+    expect(board.queue.value?.open.find((r) => r.id === 'r1')?.status).toBe('arrived')
+    expect(board.counts.value.arrived).toBe(1)
+    expect(board.counts.value.acknowledged).toBe(0)
+  })
+
+  it('usePickupBoard keeps new day request created while midnight reload is pending', async () => {
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([makeRequest()]))
+    const { board } = await mountBoard()
+    const respond = deferredGet(QUEUE_URL)
+
+    // 台北 23:59 → 00:00，reload 卡住
+    vi.setSystemTime(Date.parse('2026-10-02T15:59:30Z'))
+    await vi.advanceTimersByTimeAsync(60_000)
+    await settle()
+    expect((gets(QUEUE_URL)[1]?.params as { date?: string }).date).toBe('2026-10-03')
+    // 換日後不再顯示昨天的請求
+    expect(openIds(board)).toEqual([])
+
+    const r9 = makeRequest({ id: 'r9', studentId: 's9', studentName: '林大同', service_date: '2026-10-03' })
+    serverMessage(socket(), 'pickup.request_updated', r9)
+    await settle()
+    expect(openIds(board)).toEqual(['r9'])
+
+    respond(200, { ...makeQueue([]), date: '2026-10-03' })
+    await settle()
+
+    expect(board.queue.value?.date).toBe('2026-10-03')
+    expect(openIds(board)).toEqual(['r9'])
+    expect(board.counts.value.pending).toBe(1)
+  })
+
+  it('usePickupBoard does not mix previous day roster into new day roster', async () => {
+    const yesterday = makeStudent({
+      ready_eta: '17:20',
+      open_request: { id: 'r1', status: 'pending', expected_arrival_at: '17:30', needs_reply: true },
+    })
+    mock.onGet(QUEUE_URL).reply(200, makeQueue([makeRequest()]))
+    mock.onGet(ROSTER_URL).replyOnce(200, makeRoster([yesterday]))
+    const { board } = await mountBoard({ withRoster: true })
+    const respond = deferredGet(ROSTER_URL)
+
+    vi.setSystemTime(Date.parse('2026-10-02T15:59:30Z'))
+    await vi.advanceTimersByTimeAsync(60_000)
+    await settle()
+    serverMessage(
+      socket(),
+      'attendance.updated',
+      makeAttendanceRow({ student_id: 's1', service_date: '2026-10-03', status: 'expected', check_in_at: null }),
+    )
+    await settle()
+
+    respond(200, {
+      ...makeRoster([makeStudent({ attendance_status: 'expected', check_in_at: null, homework_status: null, ready_eta: null })]),
+      date: '2026-10-03',
+    })
+    await settle()
+
+    const s1 = rosterStudent(board, 's1')
+    expect(board.roster.value?.date).toBe('2026-10-03')
+    expect(s1?.open_request).toBeNull()
+    expect(s1?.ready_eta).toBeNull()
+    expect(s1?.attendance_status).toBe('expected')
+  })
+
   it('usePickupBoard keeps latest response and reports load errors', async () => {
     mock
       .onGet(QUEUE_URL)
