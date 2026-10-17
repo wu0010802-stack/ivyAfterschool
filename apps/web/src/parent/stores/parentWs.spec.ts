@@ -8,6 +8,7 @@ import type { ChildSummary } from '../api/children'
 import { parentHttp } from '../api/http'
 import { useChildrenStore } from './children'
 import { useParentWsStore } from './parentWs'
+import ownSource from './parentWs.spec.ts?raw'
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = []
@@ -393,5 +394,33 @@ describe('parentWs store', () => {
     expect(store.status).toBe('open')
     lastSocket().serverClose(4401)
     expect(store.status).toBe('closed')
+  })
+})
+
+// PARENT-211：家長端 spec 一律用 src/test 的共用假 WebSocket（FRONTEND-312），不再各自定義
+const LOCAL_FAKE_SOCKET = /^\s*(?:export\s+)?class FakeWebSocket\b/m
+const parentSpecSources = import.meta.glob<string>('/src/parent/**/*.spec.ts', { query: '?raw', import: 'default', eager: true })
+
+describe('parentWs shared fake socket', () => {
+  it('parentWs spec uses shared fake socket', () => {
+    expect(ownSource).not.toMatch(LOCAL_FAKE_SOCKET)
+    expect(ownSource).toMatch(/import \{[^}]*\binstallFakeWebSocket\b[^}]*\} from '@\/test\/fakeWebSocket'/)
+  })
+
+  it('parentWs parent specs have no local fake socket', () => {
+    const files = Object.keys(parentSpecSources)
+    // 確認掃描真的讀到家長端各層的 spec（避免 glob 失效造成空轉）；vite 的 glob 不含本檔，本檔由上一條以 ?raw 檢查
+    for (const expected of [
+      '/src/parent/main.spec.ts',
+      '/src/parent/stores/notifications.spec.ts',
+      '/src/parent/views/PickupView.spec.ts',
+      '/src/parent/components/ConnectionBanner.spec.ts',
+    ]) {
+      expect(files).toContain(expected)
+    }
+    const offenders = Object.entries(parentSpecSources)
+      .filter(([, source]) => LOCAL_FAKE_SOCKET.test(source))
+      .map(([file]) => file)
+    expect(offenders).toEqual([])
   })
 })
