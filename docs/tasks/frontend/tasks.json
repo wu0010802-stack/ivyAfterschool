@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 379,
-  "last_updated": "2026-10-17T08:26:53Z",
+  "version": 380,
+  "last_updated": "2026-10-17T08:31:17Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6967,7 +6967,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ScoreGrid.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-234",
@@ -6994,9 +6994,9 @@
         "notes": "第 4、5、7 條 red_case 寫在 apps/web/src/views/ExamDetailView.spec.ts。 ExamDetailView.spec 的 ScoreGrid stub 加 `useReal` 旗標，這三條掛真正的 ScoreGrid（expose 以 getter 轉接）。第 5 條在原程式上就會綠（既有規則的回歸保護）。每個 session 記錄自己認定的考試狀態（status）：markPublished 時即改為已發布並把通知選擇設為 null；load() 只在認定狀態與回應不同時轉換，所以 markPublished 之後選的「通知家長」/「不通知」在重新載入拿到 published 後都保留。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-f2",
-        "notes": "5 條 red_case 都有同名測試且全綠；FRONTEND-234（20，含 301 的 flush / 序號 / 頁面文案案例）、235（19）、238（5）tdd.run 全綠；測試 33349b3 / c07bed3 先於實作 c9ef2b1（c07bed3 只把無 dirty 案例的工具列斷言從「尚未選擇」改成「所有變更已儲存」：markPublished 後成績格本機的考試仍是草稿，工具列不顯示通知選擇，符合實作）。突變：拿掉 view 的 markPublished → 路徑 A 測試紅；load() 不走 becamePublished、becamePublished 不排程 → 對應 ScoreGrid 測試紅。useReal 旗標以 getter 轉接 expose 掛真 ScoreGrid，做法可行。稿已列入本 task、decision 已補。web-lint 乾淨、web-typecheck exit 0。打回兩項見 risk_notes：選「不通知」後 reload 會再問一次；reloadAll('clean') 沒有測試（突變全綠）。"
+        "notes": "複審通過。紅燈 e311d68 先於修正 105389e：session 記錄認定的考試狀態，markPublished 只在認定為草稿時生效，load() 只在回應狀態與認定不同時轉換。上次打回的兩項現在都會轉紅：「不通知」重現路徑已成為 red_case『keeps skip choice after reload turns published』，拿掉 markPublished 寫入 session 狀態即轉紅；publish 改回 reloadAll() 時新 red_case『publish reloads grid without flush or discard prompt』轉紅。另構造的反例全部正確：選「通知家長」後 reload 回 published 仍以 true 送出、不再問；markPublished 後 load 回草稿照草稿語意（false、不問）；發布→取消發布→再發布會重新詢問；不經 markPublished、由 reload 看到已發布→草稿→已發布也會重新詢問；已發布 session 再呼叫 markPublished 保留原選擇；markPublished 前發出的舊草稿回應晚到時未以 false 靜默送出（開 dialog 等選擇）。FRONTEND-234（21）/ 235（20）/ 238（5）tdd.run 全綠，301 案例無回歸；235 description 已同步。web-lint 乾淨、web-typecheck exit 0。殘留：markPublished 的「只在認定為草稿時生效」條件沒有測試（拿掉條件仍全綠；考試頁只在草稿發布成功後呼叫，UI 上走不到），可順手補一條。"
       }
     },
     {
@@ -7048,7 +7048,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/exams/ExamSubjectsEditor.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-232",
@@ -7077,9 +7077,9 @@
         "notes": "第 4 條寫在 ExamFormDialog.spec.ts，第 5~7 條寫在 ScoreCell.spec.ts。 el-input-number（未設 precision）收到 99.755 不改值，三位小數由 isValidFullScore 擋下，red_case 3 照原文斷言。FRONTEND-236 既有案例「rejects out of range and extra decimals」的小數部分改為 88.255 拒絕（「最多兩位小數」）、88.25 接受。 0.01 兩條為純補測試：實作已正確，以突變（:min 改回 0.1）自證兩邊皆轉紅。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-f2",
-        "notes": "7 條 red_case 都有同名測試且全綠；FRONTEND-232（7）、233（10）、236 / 296（21）tdd.run 全綠；測試 775df77 先於實作 8fa4c5e。236 既有案例只把 88.25 拒絕／88.2 接受改成 88.255 拒絕（「最多兩位小數」）／88.25 接受，該測試其他斷言未動，沒有放寬。isValidFullScore 窮舉 0.01~1000 的所有兩位小數全接受、所有三位小數全拒絕；1.15、59.95、0.01、1000 接受，1.155、0、1000.01、0.005、999.995 拒絕。測試以真 el-input-number 輸入，99.755 未被元件改值。突變：容差改 Number.isInteger(v*100) → 浮點邊界紅；容差判斷改恆真 → 99.755 紅；ScoreCell 正規式改一位 / 三位門檻改四位 → 對應測試紅。Chromium 實測 ScoreCell 框寬 68px、內容寬 46px，999.95 文字寬 42.8px、scrollWidth == clientWidth，不裁切（寬度本身沒有 vitest 斷言，以實測驗收）。三張稿皆列入本 task 且 approved；domain_spec M8 已補。web-lint 乾淨、web-typecheck exit 0。打回：滿分最小值 0.01 沒有測試（突變全綠），見 risk_notes。"
+        "notes": "複審通過。ad05604 補兩條 0.01 滿分測試（純補測試）：ExamSubjectsEditor、ExamFormDialog 的 :min 改回 0.1 各自轉紅（el-input-number 夾成 0.1）。FRONTEND-232（8）/ 233（11）/ 236・296（21）tdd.run 全綠。前次審查已確認的部分不變：浮點邊界窮舉、88.25 / 88.255 既有案例改寫未放寬其他斷言、Chromium 實測 999.95 在 68px 框內不裁切、三張稿 approved、domain_spec M8 已補。web-typecheck exit 0。"
       }
     },
     {
