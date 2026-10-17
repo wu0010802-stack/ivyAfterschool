@@ -39,8 +39,22 @@ jobs:
       - name: 啟動 API 與 web dev server
         run: DEV_UP_SKIP_DB=1 scripts/dev_up.sh
 
+      # e2e admin 帳密每次 run 隨機產生（不使用 GitHub secret）；先 add-mask 再寫入 GITHUB_ENV
+      - name: 產生 e2e admin 帳密
+        run: |
+          password="$(openssl rand -base64 30 | tr -dc 'A-Za-z0-9')a1"
+          echo "::add-mask::$password"
+          echo "E2E_ADMIN_USERNAME=e2e-$(openssl rand -hex 4)" >> "$GITHUB_ENV"
+          echo "E2E_ADMIN_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: 建立 e2e admin
+        run: scripts/e2e_bootstrap_admin.sh
+
       - name: Playwright
         working-directory: apps/web
+        env:
+          E2E_ADMIN_USERNAME: ${{ env.E2E_ADMIN_USERNAME }}
+          E2E_ADMIN_PASSWORD: ${{ env.E2E_ADMIN_PASSWORD }}
         run: pnpm exec playwright test
 
       - name: 上傳失敗報告

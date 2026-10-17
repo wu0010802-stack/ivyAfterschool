@@ -22,17 +22,18 @@ export default defineConfig({
     baseURL,
     trace: 'on-first-retry',
   },
+  // testMatch 只收 *.spec.ts：同目錄的共用 helper（例如 e2e/parent/fixtures.ts）不可被當成測試檔載入
   projects: [
     {
       // 後台：桌面 Chrome
       name: 'admin-chromium',
-      testMatch: ['e2e/admin/**', 'e2e/smoke.spec.ts'],
+      testMatch: ['e2e/admin/**/*.spec.ts', 'e2e/smoke.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
     },
     {
       // 家長端（LIFF）：手機尺寸
       name: 'parent-mobile',
-      testMatch: ['e2e/parent/**'],
+      testMatch: ['e2e/parent/**/*.spec.ts'],
       use: { ...devices['Pixel 7'] },
     },
   ],

@@ -4,6 +4,7 @@ import AutoImport from 'unplugin-auto-import/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vite'
+import { OPTIMIZE_DEPS_INCLUDE } from './build/optimizeDeps.ts'
 import { parentModuleGraph } from './build/parentModuleGraph.ts'
 
 // 單一 Vite 專案、兩個 HTML 入口：index.html（後台）與 parent/index.html（家長端）
@@ -27,6 +28,10 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  // 冷快取時避免進新頁面才預打包 element-plus 樣式而整頁重載（INFRA-055）
+  optimizeDeps: {
+    include: [...OPTIMIZE_DEPS_INCLUDE],
   },
   build: {
     rollupOptions: {
