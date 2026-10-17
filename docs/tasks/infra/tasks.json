@@ -1,7 +1,7 @@
 {
   "area": "infra",
-  "version": 136,
-  "last_updated": "2026-10-17T07:58:26Z",
+  "version": 137,
+  "last_updated": "2026-10-17T08:07:57Z",
   "tasks": [
     {
       "id": "INFRA-001",
@@ -2030,7 +2030,7 @@
       "granularity_unit": "config",
       "target_path": ".github/workflows/e2e.yml",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "INFRA-014",
@@ -2038,7 +2038,7 @@
         "INFRA-051"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "本機共用 DB 禁止 `just db-reset`（第 11 輪共用規則）：本機模擬時略過重建 DB 那一步，建立 admin 腳本在既有 e2e.admin 上走「已存在即略過」路徑；全新 DB 的建立與改密碼路徑需協調者安排 db-reset 時段，或由協調者 push 後以 workflow_dispatch 實跑驗證。e2e 一律包在 `flock /tmp/afterschool_db.lock` 內，run 結束 globalTeardown 會停用 e2e.admin。登入限流每 IP 5 分鐘 20 次，腳本的登入也算在內。",
+      "risk_notes": "本機共用 DB 禁止 `just db-reset`（第 11 輪共用規則）：本機模擬時略過重建 DB 那一步，建立 admin 腳本在既有 e2e.admin 上走「已存在即略過」路徑；全新 DB 的建立與改密碼路徑需協調者安排 db-reset 時段，或由協調者 push 後以 workflow_dispatch 實跑驗證。e2e 一律包在 `flock /tmp/afterschool_db.lock` 內，run 結束 globalTeardown 會停用 e2e.admin。登入限流每 IP 5 分鐘 20 次，腳本的登入也算在內。\nreview-r11-e2 殘留（不擋）：(1) 全新 DB 的「建立 + 以 API 改密碼」路徑本機無法驗（禁止 db-reset），需協調者 push 後以 workflow_dispatch 實跑確認。(2) CI retries=1 且 trace on-first-retry：重試時 trace 會記錄 loginAsAdmin 填入的密碼，隨失敗報告 artifact 上傳，artifact 不受 add-mask 遮蔽。帳密每次 run 隨機產生、DB 隨 runner 銷毀，實際風險低；要再收緊可在 trace 排除該 fill，或改用 API 登入後注入 cookie。(3) 印密碼的靜態檢查只掃建立 admin 的 step 與腳本：產生帳密那一步不在掃描範圍（add-mask 之後印出也會被遮蔽）；xtrace 只抓 set -…x，抓不到 set -o xtrace。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "scripts/tests/test_ci_workflow.py",
@@ -2058,9 +2058,9 @@
         "notes": "test_playwright_config_test_match_only_specs 與 test_vite_config_optimize_deps_lists_every_element_plus_style 需要 apps/web/node_modules（Playwright、element-plus）與 pnpm / node，CI 的 unit job 不裝 node 時 skip（靜態版本照跑）；--list 不需要服務啟動。冷快取驗收：清除 vite cacheDir 後重啟 dev server，flock 內跑 `just e2e e2e/admin/exams.spec.ts -g \"exams flow\"`。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-e2",
+        "notes": "pass。commit 順序：4d4be20 / e4d3025 / 9fa737b（測試）先於 092e4fd（實作）。tdd.run 14 passed（含需要 node 的兩條）；INFRA-030 -k e2e_workflow 包含在內全綠；INFRA-051 -k \"service_logs or cleanup_tolerates\" 2 passed；INFRA-014 just e2e e2e/smoke.spec.ts -g smoke 2 passed。紅測試後來改的兩處沒有放寬：e4d3025 把 PASSWORD_VARS 從變數名改成變數展開（錯誤訊息只提到 E2E_ADMIN_PASSWORD 名稱不算外洩），set -x 改成 regex（原本的字串比對會誤判註解）；9fa737b 把「glob 字串」斷言換成以 node 實際載入、比對 node_modules 全部元件，因為 glob 方案已實測無效，新斷言更強。突變（改完以 cmp 還原）：拿掉 add-mask、add-mask 移到寫入 GITHUB_ENV 之後、腳本 echo $E2E_ADMIN_PASSWORD、腳本 set -euxo、parent testMatch 改回 e2e/parent/**、OPTIMIZE_DEPS_INCLUDE 少一項、bootstrap step 改成 true、Playwright env 寫字面密碼 → 各對應測試都紅。腳本失敗路徑實跑：缺帳密 exit 2；e2e.admin 已存在 exit 0（印出略過，不改密碼）；帳號格式不合法 exit 1（create-admin 422 → 印出錯誤訊息後 exit 1）。三份輸出都 grep 不到傳入的密碼，create-admin 失敗輸出只有 getpass 提示，沒有回顯輸入。密碼只經 stdin / env 傳遞，curl body 經 stdin，命令列參數看不到。CI unit job 會 skip 的兩條，都有靜態版本：test_playwright_config_test_match_static 斷言兩組 testMatch 的完整 pattern；test_vite_config_prebundles_element_plus_styles 斷言 import 與展開。只有 fs 列舉邏輯靠 node 測試，e2e workflow 本身也會跑到，足夠。optimizeDeps 冷啟動（同機、清 cacheDir、harness 與 vite.config.ts 相同但 dts:false，量到登入頁可操作）：不含 include 15.6 / 15.3 秒，且每次都有 1 次 reloading；含 include（118 項）10.8 / 12.8 秒、0 次 reloading。vite ready 0.7~1.1 秒，兩者差不多：啟動沒有變慢，第一頁反而較快。清 cacheDir 後重啟 dev server（含 include），flock 內 exams.spec.ts -g \"exams flow\" 一次 4 passed，dev server log 沒有 optimized dependencies changed. reloading，也沒有 Failed to fetch。本機模擬 CI：flock 內 pnpm exec playwright test（不帶 --project）跑 e2e/smoke.spec.ts、e2e/admin/support.spec.ts、e2e/parent/login-bind-pickup.spec.ts，11 passed。每次 run 後 owner 唯讀查：啟用員工 0、未封存學生 / 班級 / 監護人 0、exams 0、進行中接送 0、settings 11 / roles 4 / subjects 5 / exam_types 3，system_settings md5 不變。殘留見 risk_notes。"
       }
     }
   ]
