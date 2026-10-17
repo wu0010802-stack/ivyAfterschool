@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 354,
-  "last_updated": "2026-10-17T07:38:25Z",
+  "version": 355,
+  "last_updated": "2026-10-17T07:42:54Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6851,13 +6851,13 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/test/fakeWebSocket.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-004"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "useAttendanceBoard.spec.ts 與 useHomeworkBoard.spec.ts 尚未改用共用版：兩檔屬 FRONTEND-304 / 305（in_review，審查中不改），待其 done 後再替換（基準測試數於替換前重測）。其餘 9 個 spec 已替換（e879943），測試數不變。共用版的 close(code, reason) 同時是程式呼叫的 WebSocket API 與測試模擬斷線：會遞增 closeCalls、readyState 變 3 並觸發 onclose（createWsClient 先卸 handler 再 close，故程式端 close 不會觸發）。",
+      "risk_notes": "共用版的 close(code, reason) 同時是程式呼叫的 WebSocket API 與測試模擬斷線：會遞增 closeCalls、readyState 變 3 並觸發 onclose（createWsClient 先卸 handler 再 close，故程式端 close 不會觸發）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/test/fakeWebSocket.spec.ts",
@@ -6869,7 +6869,7 @@
           "fakeWebSocket dispatches message and close：onmessage 收到 message({type:'t'}) 的 event.data === '{\"type\":\"t\"}'；close(4401, 'x') → onclose 的 event.code === 4401、readyState === 3；還原函式呼叫後 globalThis.WebSocket 回到安裝前的值"
         ],
         "run": "just web-test src/test/fakeWebSocket.spec.ts -t \"fakeWebSocket\"",
-        "notes": "逐檔替換後各跑該 spec 的 tdd.run（測試數與替換前相同，回報列出每檔前後數字）。容器 CPU 有限，逐檔跑、不要同時跑全部。"
+        "notes": "逐檔替換後各跑該 spec 的 tdd.run（測試數與替換前相同，回報列出每檔前後數字）。容器 CPU 有限，逐檔跑、不要同時跑全部。 替換前後測試數：createWsClient 14/14、adminWs 12/12、notifications 14/14、AdminLayout 27/27、PickupAuthorizationsView 22/22、PickupPosView 17/17、App 8/8、usePickupBoard 25/25（基準量完後 FRONTEND-298 另加 1 條）、useAdminWsTopic 10/10、useAttendanceBoard 17/17、useHomeworkBoard 15/15。事件封包（type + data + sent_at）輔助留在各 spec。"
       },
       "review": {
         "status": "pending",
