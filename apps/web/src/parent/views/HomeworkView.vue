@@ -204,7 +204,7 @@ onMounted(() => {
                 v-if="current.note"
                 class="hws-note m3-body-medium"
               >
-                老師說明：{{ current.note }}
+                <span>老師說明：{{ current.note }}</span>
               </p>
             </div>
             <p
