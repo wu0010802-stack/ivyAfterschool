@@ -485,34 +485,174 @@ def test_e2e_workflow_playwright_env_has_admin_credentials() -> None:
         assert [line for line in text.splitlines() if literal.search(line)] == []
 
 
-def _echoes_password(line: str) -> bool:
-    stripped = line.strip()
-    if not re.match(r"(echo|printf)\b", stripped):
-        return False
-    if "::add-mask::" in stripped:
-        return False
-    # 只寫進檔案（>> "$GITHUB_ENV"）不算印到 stdout
-    if re.search(r">>?\s*\"?\$GITHUB_ENV", stripped):
-        return False
-    return any(var in stripped for var in PASSWORD_VARS)
+def password_print_lines(text: str) -> list[str]:
+    """回傳把密碼變數展開印到 stdout 的行（echo / printf）。
+
+    不算：`::add-mask::`（遮蔽用）、只寫進 `$GITHUB_ENV` 的行、註解。
+    """
+    found: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not re.match(r"(echo|printf)\b", stripped):
+            continue
+        if "::add-mask::" in stripped or re.search(r">>?\s*\"?\$GITHUB_ENV", stripped):
+            continue
+        if any(var in stripped for var in PASSWORD_VARS):
+            found.append(stripped)
+    return found
+
+
+XTRACE_PATTERNS = (
+    # set -x / set -ex / set -euxo pipefail（含組合旗標）
+    re.compile(r"(^|[;&|(]\s*)set\s+-[a-zA-Z]*x"),
+    # set -o xtrace
+    re.compile(r"(^|[;&|(]\s*)set\s+-o\s+xtrace\b"),
+    # bash -x / sh -ex / shell: bash -x {0}
+    re.compile(r"\b(bash|sh)\s+(-[a-zA-Z]+\s+)*-[a-zA-Z]*x"),
+    # SHELLOPTS=xtrace / export SHELLOPTS
+    re.compile(r"SHELLOPTS\s*=.*xtrace"),
+)
+
+
+def enables_xtrace(text: str) -> bool:
+    """非註解行開啟 xtrace（會把展開後的密碼印進 log）即 True。"""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if any(p.search(stripped) for p in XTRACE_PATTERNS):
+            return True
+    return False
+
+
+def e2e_run_blocks() -> list[str]:
+    """e2e.yml 所有 step 的 run 與 shell，以及 job / workflow 的 defaults.run.shell。"""
+    wf = workflow(E2E_YML)
+    blocks: list[str] = []
+    for spec in [wf, *wf["jobs"].values()]:
+        shell = spec.get("defaults", {}).get("run", {}).get("shell")
+        if shell:
+            blocks.append(f"shell: {shell}")
+    for step in steps_of("e2e", E2E_YML):
+        if step.get("shell"):
+            blocks.append(f"shell: {step['shell']}")
+        if step.get("run"):
+            blocks.append(str(step["run"]))
+    return blocks
 
 
 def test_e2e_workflow_bootstrap_masks_password() -> None:
     steps = steps_of("e2e", E2E_YML)
-    bootstrap = str(steps[bootstrap_step_index(steps)]["run"])
     script = E2E_ADMIN_SCRIPT.read_text(encoding="utf-8")
 
-    assert [
-        line for line in (bootstrap + "\n" + script).splitlines() if _echoes_password(line)
-    ] == []
-    # 不得開啟 xtrace（set -x / set -ex …）：會把展開後的密碼印進 log
-    assert re.search(r"^\s*set\s+-[a-z]*x", script, re.MULTILINE) is None
+    # 掃描對象：所有提到密碼的 run 區塊（含產生帳密那一步）、建立 admin 的 step 與腳本
+    password_blocks = [b for b in e2e_run_blocks() if "PASSWORD" in b or "password" in b]
+    assert password_blocks
+    bootstrap = str(steps[bootstrap_step_index(steps)]["run"])
+    scanned = [*password_blocks, bootstrap, script]
+    assert [line for b in scanned for line in password_print_lines(b)] == []
+    assert not enables_xtrace(script)
+    assert not any(enables_xtrace(b) for b in e2e_run_blocks())
     generate = [s for s in steps if "E2E_ADMIN_PASSWORD=" in str(s.get("run", ""))]
     assert len(generate) == 1
     run = str(generate[0]["run"])
     assert "::add-mask::" in run
     # add-mask 必須在寫入 GITHUB_ENV 之前
     assert run.index("::add-mask::") < run.index("E2E_ADMIN_PASSWORD=")
+
+
+def test_e2e_password_detector_flags_echo_in_generate_step() -> None:
+    steps = steps_of("e2e", E2E_YML)
+    generate = next(str(s["run"]) for s in steps if "E2E_ADMIN_PASSWORD=" in str(s.get("run", "")))
+
+    assert password_print_lines(generate + '\necho "$password"\n') == ['echo "$password"']
+    assert password_print_lines('printf "%s" "${E2E_ADMIN_PASSWORD}"') != []
+    # 只提到變數名稱、寫進 GITHUB_ENV、add-mask 都不算
+    assert password_print_lines('echo "缺少 E2E_ADMIN_PASSWORD" >&2') == []
+    assert password_print_lines('echo "E2E_ADMIN_PASSWORD=$password" >> "$GITHUB_ENV"') == []
+    assert password_print_lines('echo "::add-mask::$password"') == []
+    assert [line for b in e2e_run_blocks() for line in password_print_lines(b)] == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "set -x",
+        "set -ex",
+        "set -euxo pipefail",
+        "set -o xtrace",
+        "bash -x scripts/e2e_bootstrap_admin.sh",
+        "sh -ex scripts/e2e_bootstrap_admin.sh",
+        "shell: bash -x {0}",
+        "cd apps/api && set -x",
+        "export SHELLOPTS=xtrace",
+    ],
+)
+def test_e2e_xtrace_detector_variants(text: str) -> None:
+    assert enables_xtrace(text)
+
+
+def test_e2e_xtrace_detector_negatives_and_current_files() -> None:
+    for text in (
+        "set -euo pipefail",
+        "set +e",
+        "# 不開 set -x",
+        "bash scripts/e2e_bootstrap_admin.sh",
+        "shell: bash -e {0}",
+        "uv run --frozen python -m app.cli create-admin",
+    ):
+        assert not enables_xtrace(text), text
+    assert not any(enables_xtrace(b) for b in e2e_run_blocks())
+    assert not enables_xtrace(E2E_ADMIN_SCRIPT.read_text(encoding="utf-8"))
+
+
+E2E_DIR = WEB_DIR / "e2e"
+UI_LOGIN_FILE = E2E_DIR / "admin" / "support.spec.ts"
+
+
+def e2e_sources() -> dict[str, str]:
+    return {
+        str(path.relative_to(E2E_DIR)): path.read_text(encoding="utf-8")
+        for path in sorted(E2E_DIR.rglob("*.ts"))
+    }
+
+
+def test_e2e_specs_do_not_read_admin_password() -> None:
+    reading = re.compile(r"env(\.|\[['\"])E2E_ADMIN_PASSWORD")
+    readers = sorted(name for name, text in e2e_sources().items() if reading.search(text))
+
+    assert set(readers) <= {"support/global-setup.ts", "admin/support.spec.ts"}
+    assert "support/global-setup.ts" in readers
+
+
+def describe_blocks(text: str) -> list[str]:
+    """以括號配對取出每個 test.describe(...) 呼叫的完整文字。"""
+    blocks: list[str] = []
+    for match in re.finditer(r"test\.describe\(", text):
+        depth = 0
+        for index in range(match.end() - 1, len(text)):
+            if text[index] == "(":
+                depth += 1
+            elif text[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    blocks.append(text[match.start() : index + 1])
+                    break
+    return blocks
+
+
+def test_e2e_ui_login_describe_has_trace_off() -> None:
+    form = "getByPlaceholder('請輸入密碼')"
+    files = sorted(name for name, text in e2e_sources().items() if form in text)
+
+    assert files == ["admin/support.spec.ts"]
+    text = UI_LOGIN_FILE.read_text(encoding="utf-8")
+    helper = re.search(r"async function (\w+)\([^)]*\)[^{]*\{[^}]*" + re.escape(form), text)
+    assert helper, "UI 登入 helper 必須是同檔的具名函式"
+    callers = [b for b in describe_blocks(text) if f"{helper.group(1)}(" in b]
+    assert callers
+    for block in callers:
+        assert "test.use({ trace: 'off' })" in block
 
 
 def test_playwright_config_test_match_static() -> None:
