@@ -127,6 +127,35 @@ describe('ExamsView', () => {
     expect(wrapper.getComponent(PullToRefresh).props('disabled')).toBe(false)
   })
 
+  it('ExamsView skeleton rows match list item height', async () => {
+    const first = deferredReply()
+    mock.onGet(url('s1')).reply(first.reply)
+
+    const { wrapper } = await mountView('s1')
+
+    const skeletonRows = wrapper.findAll('.skeleton-row')
+    expect(skeletonRows).toHaveLength(4)
+    for (const row of skeletonRows) {
+      const style = (row.element as HTMLElement).style
+      expect(style.height).toBe('76px')
+      expect(style.minHeight).toBe('76px')
+    }
+  })
+
+  it('ExamsView skeleton disappears after load', async () => {
+    const first = deferredReply()
+    mock.onGet(url('s1')).reply(first.reply)
+
+    const { wrapper } = await mountView('s1')
+    expect(wrapper.findAll('.skeleton-row')).toHaveLength(4)
+
+    first.resolve([200, { items: exams(1, 3), total: 3 }])
+    await flushPromises()
+
+    expect(wrapper.findAll('.skeleton-row')).toHaveLength(0)
+    expect(rows(wrapper)).toHaveLength(3)
+  })
+
   it('ExamsView switch child reloads', async () => {
     const s1 = deferredReply()
     mock.onGet(url('s1')).reply(s1.reply)
