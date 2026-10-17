@@ -14,3 +14,10 @@ body {
   color: var(--el-text-color-primary);
   background: var(--el-bg-color-page);
 }
+
+/* FRONTEND-313：全站確認框（ElMessageBox confirm / prompt）按鈕觸控尺寸 ≥ 44px，與 FormDialog footer 同一規則。
+   命令式 ElMessageBox 掛在 body 下、scoped style 碰不到，所以寫在全域；只作用在確認框內的按鈕。 */
+.el-message-box__btns .el-button {
+  min-height: 44px;
+  padding: 0 20px;
+}
