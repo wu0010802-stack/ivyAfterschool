@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 351,
-  "last_updated": "2026-10-17T04:29:37Z",
+  "version": 352,
+  "last_updated": "2026-10-17T04:32:41Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6711,7 +6711,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/shared/utils/pathSegment.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-020"
@@ -6733,9 +6733,9 @@
         "notes": "靜態掃描的已知限制（字串串接、組合運算式）比照 PARENT-192，寫在 spec 註解。改到的 client 很多：只改路徑組字，不改其他行為，回報列出檔案清單。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f3",
+        "notes": "TDD 順序 7a6106a(test) → b02c932(impl) → ae9da12(tasks)。tdd.run 6 綠（pathSegment 2、pathEncoding 4），3 條 red_case 一對一（另有 uuid URL 不變、掃描器自測兩條）。14 個 client 既有 spec 94/94 綠，src/api/*.spec.ts 除新增 pathEncoding.spec.ts 外無任何改動（斷言不變）；FRONTEND-033/050/052/081/120/121/150/180/181/230 的 tdd.run 皆在其中。突變：roles.ts updateRole 改回 encodeURIComponent → static scan 轉紅並指出 ./roles.ts，還原後 git diff 乾淨。helper 本身的定義也在掃描範圍內，*Path 白名單只放行已被掃描的 helper；已知限制（字串串接、組合運算式、src/api 子目錄）寫在 spec 註解。referenceData 對固定字面值資源名也經 encodePathSegment：resource 為字面值聯集型別，'subjects'/'exam-types'/'schools'/'closed-days' 編碼前後相同、URL 不變，換來掃描器不需特例，可接受。throw 全發生在 async 函式內，呼叫端拿到 reject 的 ApiError，與 description 相符。被改 task 050/120/121/180 description 已同步。web-lint（變更檔）乾淨、web-typecheck 通過。殘留（不擋）：前端路由連結 StudentExamHistoryTab.vue:65、ExamsView.vue:181 仍以 encodeURIComponent 組 vue-router 路徑（id 來自後端 UUID、不打 API，屬一致性問題，不需另開 task，有空可順手改）；LeavesView.vue:263 是 query string 值，encodeURIComponent 本來就正確，不需改。"
       }
     },
     {
@@ -6745,7 +6745,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useReferenceTable.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-059",
@@ -6771,9 +6771,9 @@
         "notes": "red_case 的錯誤碼、文案以四張表現有實作為準；名稱不同時照實作寫進測試並在回報說明。 實作的 409 不依錯誤碼分流（現有實作：任何 409 → conflictField 顯示後端 message）；red_case 2 以 409 subject_name_taken、後端 message「名稱已存在」驗證。另補本地必填擋送出、建立時載入與新增表單排序初值、儲存成功關 dialog 並重新載入三條。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f3",
+        "notes": "TDD 順序 f7b9424(test 紅) → 157cfe4(test 型別) → f5f4ab2(refactor)。tdd.run：composable 6 綠（3 條 red_case 一對一 + 載入與表單初值、本地必填、儲存成功關 dialog 三條）、059~062 四張表 37 綠、063 ReferenceDataView 5 綠；四張表與 063 的 spec 未被改動。逐行比對四張表原實作：載入序號、失敗保留、openDialog 初值（下一排序值）、trim 後組 body、簡稱空白送 null、休息日編輯只送 reason 與每次 list 重算區間、409 → conflictField 顯示後端 message、422 只對應 fields、其他錯誤 ElMessage、刪除訊息與 onChanged（休息日不給）皆一致，template 只把 openDialog 換成 openCreate/openEdit，畫面不變。偏離（409 不依錯誤碼分流）：description 已寫明「任何 409 都把後端訊息顯示在 conflictField，與四張表原行為相同」，且 description 要求行為以四張表現有實作為準，可接受；red_case 2 以 409 subject_name_taken + 後端 message 驗證，tdd.notes 已說明。突變：拿掉 onChanged → 2 紅；409 分支失效 → composable 與 ClosedDayTable duplicate 兩紅；還原後 git diff 乾淨。059~062 description 已同步。web-lint 乾淨、web-typecheck 通過。"
       }
     },
     {
@@ -6783,7 +6783,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/utils/cannotGrantMessage.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-065",
@@ -6806,9 +6806,9 @@
         "notes": "三個元件目前的組字若有細微差異（例如前綴文字），以 RoleDetailPanel 為準並在回報列出差異；有差異時先回報協調者再統一。 實作時比對：三個元件原本的組字逐字相同（前綴、分隔、fallback 皆一致），無差異。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f3",
+        "notes": "TDD 順序 8cbe345(test 紅) → 31a4468(refactor)。tdd.run 42 綠（cannotGrantMessage 2 條 red_case 一對一，另斷言 permissions 全非字串時走 fallback），RoleDetailPanel / RoleCreateDialog / StaffUserFormDialog spec 未改動且全綠。三處原實作逐字相同（StaffUserFormDialog 的 label() 即 permissionLabels.get ?? code），改呼叫共用函式並傳 permissionLabels.value，行為等價。突變：三個元件改傳空 Map → 三個元件 spec 各一條轉紅（證明接線有測試保護），還原後乾淨。065/069/070 description 已同步。web-lint 乾淨、web-typecheck 通過。"
       }
     },
     {
@@ -6818,7 +6818,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/components/student/GuardianManager.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-091"
@@ -6839,9 +6839,9 @@
         "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 endpoint 路徑以 FRONTEND-081 guardians api client 實際組出的 url 為準。 已自證：開表單不更新 formStudentId → create 測試轉紅（POST 打到 s1）；load 改用 formStudentId → create / edit 兩條皆轉紅；還原後 git diff 只剩測試檔。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f3",
+        "notes": "純補測試 0c48b76，只改 GuardianManager.spec.ts。tdd.run 29 綠，2 條 red_case 一對一。重做突變：openForm 不更新 formStudentId → create after switching student 轉紅（POST 打到 s1）；load 改用 formStudentId → create / edit 兩條（及既有兩條）轉紅；還原後 cmp 與 git diff 乾淨。edit 條依 red_case 斷言 PATCH url 與重抓 s2 清單。測試資料為假資料。"
       }
     },
     {
