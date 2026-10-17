@@ -200,6 +200,16 @@ function mockAll(queue: PickupQueue, roster: PickupRoster = makeRoster([]), auth
   mock.onGet(AUTH_URL).reply(200, auths)
 }
 
+/** 由測試決定何時回應的 GET（模擬 reload 晚到） */
+function deferredGet(url: string): (status: number, body: unknown) => void {
+  let resolve: (value: [number, unknown]) => void = () => undefined
+  const gate = new Promise<[number, unknown]>((r) => {
+    resolve = r
+  })
+  mock.onGet(url).replyOnce(() => gate)
+  return (status, body) => resolve([status, body])
+}
+
 describe('usePickupBoard', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
@@ -849,6 +859,85 @@ describe('usePickupBoard', () => {
 
     expect(gets(QUEUE_URL)).toHaveLength(2)
     expect((gets(QUEUE_URL)[1]?.params as { date?: string }).date).toBe('2026-10-03')
+  })
+
+  it('usePickupBoard keeps request updated by ws during reload', async () => {
+    const r1 = makeRequest()
+    const r2 = makeRequest({ id: 'r2', studentId: 's2', studentName: '陳小美' })
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1, r2]))
+    const { board } = await mountBoard()
+    const respond = deferredGet(QUEUE_URL)
+
+    const reloading = board.reload()
+    await settle()
+    serverMessage(socket(), 'pickup.request_updated', { ...r1, status: 'arrived', arrived_at: '2026-10-02T09:05:00Z' })
+    await settle()
+    // 回應在 ws 之前就產生：r1 仍是 pending；r2 是 reload 期間沒動過的請求，取回應值
+    respond(200, makeQueue([r1, { ...r2, status: 'acknowledged', needs_reply: false }]))
+    await reloading
+    await settle()
+
+    expect(board.queue.value?.open.find((r) => r.id === 'r1')?.status).toBe('arrived')
+    expect(board.queue.value?.open.find((r) => r.id === 'r2')?.status).toBe('acknowledged')
+    expect(board.counts.value.arrived).toBe(1)
+    expect(board.counts.value.acknowledged).toBe(1)
+    expect(board.counts.value.pending).toBe(0)
+  })
+
+  it('usePickupBoard keeps request created during reload', async () => {
+    const r1 = makeRequest()
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1]))
+    const { board } = await mountBoard()
+    const respond = deferredGet(QUEUE_URL)
+
+    const reloading = board.reload()
+    await settle()
+    const r9 = makeRequest({ id: 'r9', studentId: 's9', studentName: '林大同' })
+    serverMessage(socket(), 'pickup.request_updated', r9)
+    await settle()
+    respond(200, makeQueue([r1]))
+    await reloading
+    await settle()
+
+    expect(openIds(board)).toEqual(['r1', 'r9'])
+    expect(board.counts.value.pending).toBe(2)
+
+    // reload 期間結束的請求：回應仍列在 open，合併後移到 closed
+    const respondAgain = deferredGet(QUEUE_URL)
+    const again = board.reload()
+    await settle()
+    serverMessage(socket(), 'pickup.request_updated', { ...r9, status: 'cancelled', cancelled_at: '2026-10-02T09:10:00Z' })
+    await settle()
+    respondAgain(200, makeQueue([r1, r9]))
+    await again
+    await settle()
+    expect(openIds(board)).toEqual(['r1'])
+    expect(board.queue.value?.closed.map((r) => r.id)).toEqual(['r9'])
+  })
+
+  it('usePickupBoard keeps roster student updated during reload', async () => {
+    const s1 = makeStudent({ attendance_status: 'present' })
+    const s2 = makeStudent({ student_id: 's2', student_no: 'S11302', name: '陳小美', attendance_status: 'present' })
+    mock.onGet(QUEUE_URL).reply(200, makeQueue())
+    mock.onGet(ROSTER_URL).replyOnce(200, makeRoster([s1, s2]))
+    const { board } = await mountBoard({ withRoster: true })
+    const respond = deferredGet(ROSTER_URL)
+
+    const reloading = board.reload()
+    await settle()
+    serverMessage(
+      socket(),
+      'attendance.updated',
+      makeAttendanceRow({ student_id: 's1', status: 'left', check_out_at: '2026-10-02T09:20:00Z' }),
+    )
+    await settle()
+    respond(200, makeRoster([s1, { ...s2, attendance_status: 'left' }]))
+    await reloading
+    await settle()
+
+    expect(rosterStudent(board, 's1')?.attendance_status).toBe('left')
+    // reload 期間沒更新過的學生取回應值
+    expect(rosterStudent(board, 's2')?.attendance_status).toBe('left')
   })
 
   it('usePickupBoard keeps latest response and reports load errors', async () => {
