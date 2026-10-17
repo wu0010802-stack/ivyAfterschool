@@ -538,4 +538,41 @@ describe('LeavesView', { timeout: 20_000 }, () => {
     // 預設日期區間不因換日改動
     expect(listParams().at(-1)).toMatchObject({ date_from: '2026-10-14', date_to: '2026-11-13' })
   })
+
+  it('LeavesView recomputes today on reload: reset keeps initial range, shortcuts use new today', async () => {
+    // 台北 2026-10-14 23:59 建立頁面
+    vi.setSystemTime(new Date('2026-10-14T15:59:00Z'))
+    mock.onGet(LIST_URL).reply(200, page([leave({ id: 'l1', start_date: '2026-10-15', end_date: '2026-10-15' })]))
+    const { wrapper } = await mountView()
+
+    // 台北 2026-10-15 00:01 重新整理
+    vi.setSystemTime(new Date('2026-10-14T16:01:00Z'))
+    await button(wrapper, '重新整理')!.trigger('click')
+    await settle()
+
+    // 「今天起 30 天」以新日期計算
+    const picker = wrapper.findComponent({ name: 'ElDatePicker' })
+    const shortcuts = picker.props('shortcuts') as { text: string; value: () => Date[] }[]
+    const next30 = shortcuts.find((sc) => sc.text === '今天起 30 天')!.value()
+    const ymd = (dt: Date) => [dt.getFullYear(), dt.getMonth() + 1, dt.getDate()]
+    expect(next30.map(ymd)).toEqual([
+      [2026, 10, 15],
+      [2026, 11, 14],
+    ])
+
+    // 改過篩選再按「重設」→ 回到頁面建立時的預設區間
+    picker.vm.$emit('update:modelValue', null)
+    await settle()
+    expect(button(wrapper, '重設')!.element.disabled).toBe(false)
+    await button(wrapper, '重設')!.trigger('click')
+    await settle()
+    expect(listParams().at(-1)).toEqual({
+      status: 'active',
+      date_from: '2026-10-14',
+      date_to: '2026-11-13',
+      page: 1,
+      page_size: 20,
+    })
+    expect(button(wrapper, '重設')!.element.disabled).toBe(true)
+  })
 })
