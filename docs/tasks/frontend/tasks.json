@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 352,
-  "last_updated": "2026-10-17T04:32:41Z",
+  "version": 353,
+  "last_updated": "2026-10-17T04:37:56Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6102,7 +6102,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/attendance.spec.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "FRONTEND-290",
@@ -6125,9 +6125,9 @@
         "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-e2",
+        "notes": "pass；驗證環境：reviewer 自起 API/Web（真時鐘 8393/5393；平移時鐘 8394/5394＝API get_clock 覆寫到 2026-10-19 週一 16:30 台北、瀏覽器 page.clock.install；晚時段 8395/5395＝同日 18:40），自己的 clock app 另關掉 scheduler（start_background=False），平移版 spec 只複製到 scratchpad，不改 repo 檔、不改 system_settings（跑前後 system_settings 內容 md5 相同）。impl 的 runshift.sh / mkshift.py / e2e_r11_clock_app.py 已讀過：只寫 scratchpad、只在自己的 API 行程覆寫 get_clock，沒有改 repo 檔或 system_settings（impl 版沒關 scheduler，屬自用環境、不影響判決）。真時鐘（今天週六）整組 3 skipped（今天不是營業日）；平移時鐘 3 passed。突變（只改 scratchpad 複本）：點「缺席」代替「到班」→ check-in 測試紅（Received 含「缺席」無「已到班」）；批次不選學生 → batch 測試紅（「確認到班」disabled、逾時）。純測試 task：4f1fef6 / 99a6667 只動 attendance.spec.ts，未碰 src。tsc（tsconfig.node 選項）/ eslint 指定檔 exit 0，just web-typecheck exit 0。每次 run 後 owner 唯讀查：啟用中員工 0、未封存學生 / 班級 / 監護人 0、exams 0、exam_scores 0、進行中接送請求 0、system_settings 11 / roles 4 / subjects 5 / exam_types 3。跑完 flock test_staff_user_service.py -k test_deactivate_concurrent_last_admins 1 passed。"
       }
     },
     {
@@ -6137,7 +6137,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/pickup.spec.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "FRONTEND-290",
@@ -6163,9 +6163,9 @@
         "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。非營業日，或「現在 +30 分」晚於佇列回應的 latest_expected_arrival（預設 19:00，即 18:30 之後）時整組 skip，要實際跑完四條需在營業日的這個時間之前執行。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-e2",
+        "notes": "pass；驗證環境：reviewer 自起 API/Web（真時鐘 8393/5393；平移時鐘 8394/5394＝API get_clock 覆寫到 2026-10-19 週一 16:30 台北、瀏覽器 page.clock.install；晚時段 8395/5395＝同日 18:40），自己的 clock app 另關掉 scheduler（start_background=False），平移版 spec 只複製到 scratchpad，不改 repo 檔、不改 system_settings（跑前後 system_settings 內容 md5 相同）。impl 的 runshift.sh / mkshift.py / e2e_r11_clock_app.py 已讀過：只寫 scratchpad、只在自己的 API 行程覆寫 get_clock，沒有改 repo 檔或 system_settings（impl 版沒關 scheduler，屬自用環境、不影響判決）。真時鐘整組 4 skipped；平移 16:30 4 passed；晚時段 18:40 整組 4 skipped，原因「現在 +30 分晚於最晚預計抵達時間 19:00，員工代建會被拒絕」（19:00 取自佇列回應的 latest_expected_arrival，程式未寫死，符合使用者裁定）。突變：取消勾選「同時確認此請求」改按「送出回覆」→ reply 測試紅（卡片仍「等待確認」）；時間判斷反向 → 18:40 時 beforeAll 紅（POST /api/admin/pickup/requests 422 expected_arrival_too_late，afterAll 照常 cleanup，無殘留），16:30 時整組 skip（反向只會讓 skip 判斷錯，屬預期）。afterAll 先取消仍進行中的請求再 cleanup：突變 run 中途失敗後請求被 cancelled、open 0。觀察：realtime 測試的 10 秒是從該測試開始算（回覆測試本身已等過頁面與 API），但 __e2eNoReload 標記證明未重新整理，且佇列只靠 ws 更新（usePickupBoard 只有 roster 在 ws denied 時輪詢），不擋。tsc / eslint 指定檔 exit 0，web-typecheck exit 0。每次 run 後 owner 唯讀查：啟用中員工 0、未封存學生 / 班級 / 監護人 0、exams 0、exam_scores 0、進行中接送請求 0、system_settings 11 / roles 4 / subjects 5 / exam_types 3。"
       }
     },
     {
@@ -6175,7 +6175,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/exams.spec.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "FRONTEND-290",
@@ -6183,7 +6183,7 @@
         "FRONTEND-234"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "review-r11-e2 打回：afterAll 清理在「已建立考試、但尚未從網址取得 examId」時失效，會在共用 DB 留下考試列，違反 description「不在共用 DB 留下考試與成績列」。實測：reviewer 第一次以剛啟動的 vite（冷快取）跑，按「建立」後 POST /api/admin/exams 201、PUT subjects 200，但 5 秒內網址沒變成 /#/exams/{id}?tab=scores（推測首次載入 ExamDetailView chunk 編譯過慢），toHaveURL 逾時 → examId 仍為空 → afterAll 不刪考試，DB 殘留 1 筆草稿考試（reviewer 已以 API DELETE 清掉）。impl 的 scratchpad cleanup_leak.sh 也手動清過同類殘留考試。修法建議：(1) 按「建立」前以 page.waitForResponse 攔 POST /api/admin/exams 的回應取 id（或 afterAll 以名稱「E2E 段考-{runId}」查 GET /api/admin/exams 補刪），不要只靠網址；(2) 建立後的 toHaveURL 給較長 timeout，容忍 dev server 冷編譯。修完以突變驗證：讓 toHaveURL 必定失敗後跑一次，DB exams 仍為 0。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/e2e/admin/exams.spec.ts",
@@ -6200,9 +6200,9 @@
         "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-e2",
+        "notes": "concern；驗證環境：reviewer 自起 API/Web（真時鐘 8393/5393；平移時鐘 8394/5394＝API get_clock 覆寫到 2026-10-19 週一 16:30 台北、瀏覽器 page.clock.install；晚時段 8395/5395＝同日 18:40），自己的 clock app 另關掉 scheduler（start_background=False），平移版 spec 只複製到 scratchpad，不改 repo 檔、不改 system_settings（跑前後 system_settings 內容 md5 相同）。impl 的 runshift.sh / mkshift.py / e2e_r11_clock_app.py 已讀過：只寫 scratchpad、只在自己的 API 行程覆寫 get_clock，沒有改 repo 檔或 system_settings（impl 版沒關 scheduler，屬自用環境、不影響判決）。暖快取下真時鐘 4 passed，跑完 DB 乾淨。突變：第二位數學 100 改 99（連同 poll 期望一起改，讓斷言落到平均）→ summary 測試紅（Received 93.5）。紅格以 title 屬性 + tooltip 顯示「需介於 0~100」，斷言 title 可接受。tsc / eslint 指定檔 exit 0，web-typecheck exit 0。打回項見 risk_notes：review-r11-e2 打回：afterAll 清理在「已建立考試、但尚未從網址取得 examId」時失效，會在共用 DB 留下考試列，違反 description「不在共用 DB 留下考試與成績列」。實測：reviewer 第一次以剛啟動的 vite（冷快取）跑，按「建立」後 POST /api/admin/exams 201、PUT subjects 200，但 5 秒內網址沒變成 /#/exams/{id}?tab=scores（推測首次載入 ExamDetailView chunk 編譯過慢），toHaveURL 逾時 → examId 仍為空 → afterAll 不刪考試，DB 殘留 1 筆草稿考試（reviewer 已以 API DELETE 清掉）。impl 的 scratchpad cleanup_leak.sh 也手動清過同類殘留考試。修法建議：(1) 按「建立」前以 page.waitForResponse 攔 POST /api/admin/exams 的回應取 id（或 afterAll 以名稱「E2E 段考-{runId}」查 GET /api/admin/exams 補刪），不要只靠網址；(2) 建立後的 toHaveURL 給較長 timeout，容忍 dev server 冷編譯。修完以突變驗證：讓 toHaveURL 必定失敗後跑一次，DB exams 仍為 0。"
       }
     },
     {
