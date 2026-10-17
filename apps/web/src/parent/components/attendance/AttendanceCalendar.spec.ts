@@ -508,10 +508,8 @@ describe('AttendanceCalendar', () => {
   })
 
   it('AttendanceCalendar grid and cell style follow design decisions', () => {
-    // 表頭與日期格同為 7 欄等寬、欄距列距 4px
-    expect(source).toMatch(
-      /\.att-cal__weekdays,\s*\.att-cal__grid \{[^}]*grid-template-columns: repeat\(7, minmax\(0, 1fr\)\);[^}]*gap: 4px/,
-    )
+    // 表頭與日期格同為 7 欄等寬（欄距 / 列距見 narrow layout rule）
+    expect(source).toMatch(/\.att-cal__weekdays,\s*\.att-cal__grid \{[^}]*grid-template-columns: repeat\(7, minmax\(0, 1fr\)\);/)
     expect(rule('.att-cal__pad')).toMatch(/height:\s*52px/)
 
     const dayStyle = rule('.att-day')
@@ -533,7 +531,34 @@ describe('AttendanceCalendar', () => {
     // 鍵盤焦點：2px on-surface 外框，與今天的 primary 內框區分
     const focus = rule('.att-day:focus-visible')
     expect(focus).toContain('outline: 2px solid var(--m3-on-surface)')
-    expect(focus).toContain('outline-offset: 1px')
+    expect(focus).toContain('outline-offset: -1px')
+  })
+
+  it('AttendanceCalendar narrow layout rule', () => {
+    // PARENT-207：欄距 0、列距 4px；格子左右各 2px 透明框畫出 4px 視覺欄距，整欄寬都是觸控範圍（所有寬度同一規則）
+    const grid = /\.att-cal__weekdays,\s*\.att-cal__grid \{([^}]*)\}/.exec(source)?.[1] ?? ''
+    expect(grid).toMatch(/column-gap:\s*0;/)
+    expect(grid).toMatch(/row-gap:\s*4px;/)
+    expect(grid).not.toMatch(/(^|[^-])gap:\s*4px/)
+    const dayStyle = rule('.att-day')
+    expect(dayStyle).toContain('border: solid transparent')
+    expect(dayStyle).toContain('border-width: 0 2px')
+    expect(dayStyle).toContain('background-clip: padding-box')
+    expect(dayStyle).not.toMatch(/border:\s*none/)
+    expect(source).not.toMatch(/@media/)
+    const focus = rule('.att-day:focus-visible')
+    expect(focus).toContain('outline: 2px solid var(--m3-on-surface)')
+    expect(focus).toContain('outline-offset: -1px')
+  })
+
+  it('AttendanceCalendar keeps seven columns', () => {
+    const wrapper = mountCalendar({ month: '2026-10', today: '2026-10-22', days: [day('2026-10-02', { status: 'present' })] })
+
+    expect(source).toMatch(/\.att-cal__weekdays,\s*\.att-cal__grid \{[^}]*grid-template-columns: repeat\(7, minmax\(0, 1fr\)\);/)
+    const cells = wrapper.findAll('.att-cal__grid > *').filter((el) => el.element.tagName === 'BUTTON')
+    expect(cells).toHaveLength(31)
+    expect(cells.every((c) => c.classes('att-day') && c.attributes('type') === 'button')).toBe(true)
+    expect(label(wrapper, 2)).toBe('10月2日 已到班')
   })
 
   it('AttendanceCalendar state layer follows the M3 rule', () => {

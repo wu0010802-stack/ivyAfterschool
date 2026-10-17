@@ -9,6 +9,7 @@ import PullToRefresh from '../components/PullToRefresh.vue'
 import { useChildrenStore } from '../stores/children'
 import { useSnackbarStore } from '../stores/snackbar'
 import AttendanceView from './AttendanceView.vue'
+import viewSource from './AttendanceView.vue?raw'
 
 // 系統時間固定 2026-10-02 09:00 台北（UTC 01:00）
 const NOW = new Date('2026-10-02T01:00:00Z')
@@ -511,5 +512,17 @@ describe('AttendanceView', () => {
     expect(useChildrenStore().selectedId).toBe('s1')
     expect(mock.history.get.map((r) => r.url)).toEqual(['/parent/children', '/parent/children/s1/attendance'])
     expect(statTexts(wrapper)[0]).toBe('上課日 21')
+  })
+
+  it('AttendanceView calendar card padding', async () => {
+    mock.onGet(url('s1'), { params: { month: '2026-10' } }).reply(200, monthData('2026-10', [PRESENT_TODAY]))
+
+    const { wrapper } = await mountView()
+
+    // PARENT-207：月曆卡內距上下 12px、左右 8px（M3Card padding none + 頁面自訂內距）
+    const calendarCard = wrapper.get('.att-cal').element.closest('.m3-card')
+    expect(calendarCard?.classList.contains('m3-card--pad-none')).toBe(true)
+    expect(calendarCard?.classList.contains('att-cal-card')).toBe(true)
+    expect(viewSource).toMatch(/\.att-cal-card \{[^}]*padding: 12px 8px;/)
   })
 })
