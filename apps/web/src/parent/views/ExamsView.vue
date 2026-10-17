@@ -156,6 +156,7 @@ onMounted(() => {
               v-else
               variant="row"
               :count="4"
+              height="76px"
             />
           </M3Card>
           <M3Button
