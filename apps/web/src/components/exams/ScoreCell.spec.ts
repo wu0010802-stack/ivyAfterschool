@@ -134,14 +134,39 @@ describe('ScoreCell', () => {
     expect(wrapper.classes()).toContain('is-invalid')
     expect(wrapper.emitted('change')).toBeUndefined()
 
-    await typeAndBlur(wrapper, '88.25')
-    expect(wrapper.attributes('title')).toContain('最多一位小數')
+    await typeAndBlur(wrapper, '88.255')
+    expect(wrapper.attributes('title')).toContain('最多兩位小數')
     expect(wrapper.emitted('change')).toBeUndefined()
 
     // 修正後恢復
-    await typeAndBlur(wrapper, '88.2')
+    await typeAndBlur(wrapper, '88.25')
     expect(wrapper.classes()).not.toContain('is-invalid')
-    expect(changes(wrapper)).toEqual([{ score: 88.2, is_absent: false, note: null }])
+    expect(changes(wrapper)).toEqual([{ score: 88.25, is_absent: false, note: null }])
+  })
+
+  it('ScoreCell accepts two decimal score', async () => {
+    const wrapper = await mountCell()
+    await typeAndBlur(wrapper, '59.95')
+    expect(wrapper.classes()).not.toContain('is-invalid')
+    expect(wrapper.attributes('title')).toBeFalsy()
+    expect(changes(wrapper)).toEqual([{ score: 59.95, is_absent: false, note: null }])
+  })
+
+  it('ScoreCell rejects three decimal score', async () => {
+    const wrapper = await mountCell()
+    await typeAndBlur(wrapper, '88.255')
+    expect(wrapper.classes()).toContain('is-invalid')
+    expect(wrapper.attributes('title')).toBe('最多兩位小數')
+    expect(wrapper.emitted('change')).toBeUndefined()
+  })
+
+  it('ScoreCell shows original value without trailing zeros', async () => {
+    const half = await mountCell({ score: 85.5 })
+    expect((half.find('input[inputmode=decimal]').element as HTMLInputElement).value).toBe('85.5')
+    const whole = await mountCell({ score: 90 })
+    expect((whole.find('input[inputmode=decimal]').element as HTMLInputElement).value).toBe('90')
+    const two = await mountCell({ score: 59.95 })
+    expect((two.find('input[inputmode=decimal]').element as HTMLInputElement).value).toBe('59.95')
   })
 
   it('ScoreCell commits on Enter and rejects non-numeric', async () => {

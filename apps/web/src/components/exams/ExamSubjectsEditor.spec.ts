@@ -226,6 +226,54 @@ describe('ExamSubjectsEditor', () => {
     expect(rowOf(wrapper, '國語').classes()).not.toContain('is-error-full')
   })
 
+  it('ExamSubjectsEditor accepts full score with two decimals', async () => {
+    mock.onPut('/admin/exams/e1/subjects').reply(200, makeExam())
+    const wrapper = await mountEditor()
+
+    await setFullScore(rowOf(wrapper, '國語'), '99.75')
+    await clickIn(wrapper, '儲存')
+
+    expect(rowOf(wrapper, '國語').classes()).not.toContain('is-error-full')
+    expect(putBodies()).toEqual([
+      {
+        items: [
+          { subject_id: 'sub1', full_score: 99.75, sort_order: 1 },
+          { subject_id: 'sub2', full_score: 100, sort_order: 2 },
+        ],
+      },
+    ])
+  })
+
+  it('ExamSubjectsEditor accepts float edge full scores', async () => {
+    for (const value of [1.15, 0.29, 999.99]) {
+      mock.reset()
+      mock.onGet('/admin/subjects').reply(200, SUBJECTS)
+      mock.onPut('/admin/exams/e1/subjects').reply(200, makeExam())
+      const wrapper = await mountEditor()
+
+      await setFullScore(rowOf(wrapper, '國語'), String(value))
+      await clickIn(wrapper, '儲存')
+
+      expect(rowOf(wrapper, '國語').classes(), String(value)).not.toContain('is-error-full')
+      expect((putBodies()[0] as { items: { full_score: number }[] } | undefined)?.items[0]?.full_score, String(value)).toBe(
+        value,
+      )
+      wrapper.unmount()
+    }
+  })
+
+  it('ExamSubjectsEditor rejects full score with three decimals', async () => {
+    mock.onPut('/admin/exams/e1/subjects').reply(200, makeExam())
+    const wrapper = await mountEditor()
+
+    await setFullScore(rowOf(wrapper, '國語'), '99.755')
+    await clickIn(wrapper, '儲存')
+
+    expect(rowOf(wrapper, '國語').classes()).toContain('is-error-full')
+    expect(rowOf(wrapper, '國語').text()).toContain('請輸入滿分（大於 0、最多 1000、最多兩位小數）')
+    expect(mock.history.put).toHaveLength(0)
+  })
+
   it('ExamSubjectsEditor empty guidance', async () => {
     const wrapper = await mountEditor({ exam: makeExam({ subjects: [] }) })
 

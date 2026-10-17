@@ -234,6 +234,32 @@ describe('ExamFormDialog', () => {
     expect(document.body.textContent).toContain('已建立考試')
   })
 
+  it('ExamFormDialog accepts full score with two decimals', async () => {
+    const created: Exam = { ...DRAFT, id: 'e9', subjects: [] }
+    mock.onPost('/admin/exams').reply(201, created)
+    mock.onPut('/admin/exams/e9/subjects').reply(200, created)
+    await mountDialog()
+    await fillCreateBasics()
+    await choose('年級', '三年級')
+    for (const name of ['數學', '英語', '自然']) await uncheckSubject(name)
+
+    const full = subjectBox('國語').find('.el-input-number input')
+    await full.setValue('99.755')
+    await full.trigger('change')
+    await settle()
+    await submit('建立')
+    expect(dialog().text()).toContain('請輸入勾選科目的滿分（大於 0、最多 1000、最多兩位小數）')
+    expect(mock.history.post).toHaveLength(0)
+
+    await full.setValue('99.75')
+    await full.trigger('change')
+    await settle()
+    await submit('建立')
+    expect(JSON.parse(mock.history.put[0]?.data as string)).toEqual({
+      items: [{ subject_id: 'sub1', full_score: 99.75, sort_order: 1 }],
+    })
+  })
+
   it('ExamFormDialog requires grade or class', async () => {
     const wrapper = await mountDialog()
 
