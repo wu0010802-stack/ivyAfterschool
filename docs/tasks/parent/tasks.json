@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 223,
-  "last_updated": "2026-10-17T04:22:11Z",
+  "version": 224,
+  "last_updated": "2026-10-17T04:22:23Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -4178,7 +4178,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/exams/ExamScoreTable.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-152"
@@ -4199,9 +4199,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p2",
+        "notes": "2 條 red_case 皆有同名測試（shows two decimals without rounding / trims trailing zeros），tdd.run 16/16 綠，名稱逐條比對；PARENT-152 三條 red_case 同檔同指令全綠、無回歸。6323421（只改 spec）先於 39bd5ac（只改 vue），實作 commit 未放寬斷言。實作者自述偏離核對：(1) 原「at most one decimal」改寫為「at most two decimals」、87.04/87.96/66.66 期望改原值並補 999.95 與滿分 120.25，符合使用者裁定（domain_spec M8），不是放寬；(2) 以舊格式化程式回放：第一條紅、第二條綠，第二條屬回歸保護，突變「toFixed(2) 不去尾端 0」使它轉紅，有效；(3) 後端 ParentExamSubjectScoreOut 的 score/full_score 為 JsonNumber（PlainSerializer(float)），parent/api/exams.ts 型別為 number / number|null，只處理 JSON number 正確。突變：回到一位小數四捨五入、不去尾端 0、滿分改 toFixed(1) 各有測試轉紅。description 與 PARENT-152 description 已同步為最終行為；核可稿 preview-tasks 含 PARENT-209、decision 與 fmtScore 同規則。其他家長端顯示分數處：ExamDetailView 只委派 ExamScoreTable、ExamListItem 不顯示分數、首頁卡片無考試資訊，沒有殘留舊格式。真實 Chromium 360/390：999.95 分數 57px 放進 84px 欄、滿分 120.25/999.95 50.7px 放進 72px 欄，各列單行 48.5~49px、無水平捲動。web-lint 乾淨；web-typecheck 5 個錯誤全在 pickup 相關 spec（latest_expected_arrival，他人進行中），與本 task 無關。殘留（不擋）：toFixed(2)「消除浮點誤差」無測試（改成 String(n) 仍全綠），但後端 float(Decimal) 輸出的是最短表示，實際資料觀察不到差異；後台 ExamSubjectsEditor / ExamFormDialog 滿分輸入只收一位小數而後端允許兩位，屬後台範圍。"
       }
     },
     {
