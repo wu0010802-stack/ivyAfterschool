@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 216,
-  "last_updated": "2026-10-17T04:12:29Z",
+  "version": 217,
+  "last_updated": "2026-10-17T04:12:30Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3870,14 +3870,14 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/main.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-013",
         "PARENT-033"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "【review-r11-p1 打回】補「登出導頁進行中」的測試並寫進 tdd.red_cases：登出 API 立即回 200，以 router.beforeEach 在 /login?logged_out=1 卡住導航（等待一個由測試釋放的 promise），卡住期間另一個請求 401 且 refresh 401 → 釋放後 currentRoute.fullPath === '/login?logged_out=1'，過程中沒有導向含 redirect= 的網址。必須能擋下突變「useParentLogout 在 await router.replace 之前就把 loggingOut 設回 false」（目前 main.spec / useParentLogout.spec 全綠）。可參考 /tmp/claude-0/-home-user/4dac8f28-c67e-5f3e-b7bd-b875fe5c1833/scratchpad/rv11p1_counter.spec.ts（reviewer 反例，現行實作綠、上述突變與拿掉 main.ts 判斷皆紅）。實作本身不需修改。",
+      "risk_notes": "loggingOut 為模組層級狀態：若登出流程的 router.replace 被其他導航取消或拒絕，finally 照常把狀態設回 false，之後的 401 會依當下頁面導向 /login?redirect=…（機率低，未另外處理）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/main.spec.ts",
@@ -3893,9 +3893,9 @@
         "notes": ""
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-p1",
-        "notes": "打回。實作正確：reviewer 構造的反例（登出 API 已回應、router.replace(/login?logged_out=1) 被 beforeEach 擋住尚未完成時，在途請求 401 且 refresh 401）在現行程式下最後停在 /login?logged_out=1、沒有導向 redirect=；拿掉 main.ts 的 isParentLoggingOut() 判斷則停在 /login?redirect=/more。但 description「現況」點名的視窗是「router.replace 完成前」，現有兩條測試只覆蓋「登出 API 尚未回應」：突變 useParentLogout 在 await router.replace 之前就把 loggingOut 設回 false，main.spec 12 條、useParentLogout.spec 8 條仍全綠，只有 reviewer 反例轉紅。其餘：測試 1afefd5 先於實作 62d76fd；PARENT-013 / 033 tdd.run 全綠、description 已同步；web-lint（僅既有的 one-component-per-file 警告）、web-typecheck 乾淨。"
+        "notes": "複審通過。c3dff66 只改 main.spec.ts，補「登出導頁進行中」案例（beforeEach 卡住 /login?logged_out=1，期間 401 + refresh 401），red_case 已追加（67fe90e）。突變：useParentLogout 在 await router.replace 之前把 loggingOut 設回 false → 新案例紅（停在 /login?redirect=/more）；拿掉 main.ts 的 isParentLoggingOut() 判斷 → 兩條 parentMain 登出案例皆紅；還原後 cmp 與 git diff 乾淨。main.spec 13 條、useParentLogout.spec 8 條全綠（PARENT-013 / 033 tdd.run）；web-lint 0 error；web-typecheck 只剩 FRONTEND-309 紅燈測試 useReferenceTable.spec.ts 的錯誤，與本 task 無關。初審已確認測試先於實作、013 / 033 description 已同步。"
       }
     },
     {
