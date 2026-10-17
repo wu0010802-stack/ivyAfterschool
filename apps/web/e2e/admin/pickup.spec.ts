@@ -1,5 +1,5 @@
 // FRONTEND-292：接送請求（員工代建）→ 員工回覆預計時間並確認 → 完成交付，另一個 context 經 ws 即時看到確認。
-// 接真實後端，種子 1 位學生由 ../support/admin.ts 經 API 建立並登記到班、afterAll 清理。
+// 接真實後端，種子 1 位學生由 ../support/admin.ts 經 API 建立並登記到班；afterAll 取消仍進行中的請求後清理。
 // e2e 只測員工代建流程；家長發起、「我到了」與「我已經到了」捷徑由元件測試與後端整合測試涵蓋。
 // 測試日不是營業日時整組 skip（以 GET /api/admin/attendance/daily 的 is_service_day 判斷）。
 // 登入有每 IP 5 分鐘 20 次的限流：整組共用一個以 UI 登入一次的 page（serial），不在每條測試重新登入。
@@ -50,8 +50,12 @@ async function openPos(p: Page): Promise<void> {
   if (p.url().endsWith('/#/pickup')) await p.reload()
   else await p.goto('/#/pickup')
   // ws 連上後才操作：連線建立時佇列可能重抓、重繪卡片
-  await expect(page.locator('.pos-conn')).toHaveText('即時')
-  await expect(queueCard(page, seed!.studentNames[0])).toBeVisible()
+  await expect(p.locator('.pos-conn')).toHaveText('即時')
+  await expect(queueCard(p, seed!.studentNames[0])).toBeVisible()
+  // 第一次 pointerdown 會啟用提示音並移除頂部提示列，版面上移：先點提示列本身，避免之後的點擊落到別的元素
+  const chimeHint = p.locator('.pos-hint')
+  await chimeHint.click()
+  await expect(chimeHint).toBeHidden()
 }
 
 test.describe('pickup flow', () => {
@@ -79,6 +83,17 @@ test.describe('pickup flow', () => {
   test.afterAll(async () => {
     await observerContext?.close()
     await staffContext?.close()
+    // 流程中途失敗時請求仍在進行中：先取消，否則封存學生後仍留在佇列，干擾下一次執行
+    if (requestId) {
+      try {
+        const queue = await api.get<{ open: PickupRequest[] }>('/api/admin/pickup/queue')
+        if (queue.open.some((r) => r.id === requestId)) {
+          await api.post(`/api/admin/pickup/requests/${requestId}/cancel`, { reason: 'e2e 清理' })
+        }
+      } catch (err) {
+        console.warn(`[e2e cleanup] 取消接送請求 ${requestId} 失敗：${String(err)}`)
+      }
+    }
     if (seed) await cleanup(api, seed)
     await context?.dispose()
   })
