@@ -165,6 +165,25 @@ describe('FormDialog', () => {
     expect(dialogEl().querySelector('.el-dialog__footer')).toBeNull()
   })
 
+  it('FormDialog footer buttons meet touch target', () => {
+    // happy-dom 不算版面：鎖住 scoped style 中 footer 按鈕的觸控尺寸宣告，實際高度以 Chromium 量測驗收
+    const scopedStyle = formDialogSource.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
+    const compact = scopedStyle.replace(/\s+/g, ' ')
+    const rule = compact.match(/\.form-dialog__footer :deep\(\.el-button\) \{([^}]*)\}/)?.[1] ?? ''
+    expect(rule).toMatch(/min-height: 44px;/)
+    expect(rule).toMatch(/padding: 0 20px;/)
+    // 字級維持 14px、不依視窗寬切換：規則不包在 media query 內
+    expect(rule).not.toMatch(/font-size/)
+    expect(scopedStyle).not.toMatch(/@media/)
+  })
+
+  it('FormDialog footer order unchanged', async () => {
+    await mountDialog({ submitText: '送出請假' })
+    expect(footerButtons().map((b) => b.textContent?.trim())).toEqual(['取消', '送出請假'])
+    expect(button('送出請假').classList.contains('el-button--primary')).toBe(true)
+    expect(button('取消').classList.contains('el-button--primary')).toBe(false)
+  })
+
   it('FormDialog sizes and mobile fullscreen', async () => {
     for (const [size, width] of [
       ['sm', '420px'],
