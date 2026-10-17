@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 382,
-  "last_updated": "2026-10-17T08:36:11Z",
+  "version": 383,
+  "last_updated": "2026-10-17T08:36:46Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6661,7 +6661,7 @@
         "FRONTEND-298"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "換日到新日期名單回應前 roster 為 null，期間的出勤 / 作業 ws 不保留，以新日期名單回應為準；新日期名單載入失敗時名單維持空白並顯示錯誤，直到下次 reload。授權清單跨日後到 reload 回應前仍是昨天的內容。reload 合併取回應較新的狀態時不觸發 onArrived（與 reload 一貫行為相同）。",
+      "risk_notes": "換日到新日期名單回應前 roster 為 null，期間的出勤 / 作業 ws 不保留，以新日期名單回應為準；新日期名單載入失敗時名單維持空白並顯示錯誤，直到下次 reload。授權清單跨日後到 reload 回應前仍是昨天的內容。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/composables/usePickupBoard.spec.ts",
@@ -7091,7 +7091,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePickupBoard.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-306"
@@ -7117,9 +7117,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f4",
+        "notes": "通過。紅燈 700b614 先於實作 be8fbb8；7 條 red_case 都對到同名測試，tdd.run（即 FRONTEND-188 全檔 -t usePickupBoard）38 條全綠；FRONTEND-188 description 已補「reload 補提示」段（4581cb8）。突變：拿掉 queueLoaded → day change 轉紅；拿掉合併前狀態比較 → refire 轉紅；拿掉 notify → upgraded / unseen 轉紅；被序號丟棄的回應也通知 → stale 轉紅；改成連 closed 的終態也通知 → terminal 轉紅。探針全守住：reload A/B 都帶回 arrived 只觸發 1 次、之後再 reload 與遲到 ws arrived 不重複；換日後第一次回應不觸發、第二次 reload 只對新升為 arrived 的 r10 觸發；reload 途中 ws arrived→completed、回應 arrived → 只有 ws 那 1 次且 r1 在 closed；ws 斷線 15 秒輪詢的 resync 帶回 arrived 觸發 1 次；409 invalid_pickup_status 後的 reload 帶回 arrived 觸發 1 次。PickupPosView 的 board.onArrived 與 transient pickup.arrived 都交給 chime.onArrived，chime 以 request id（arrivedIds）去重，focusArrival 也以 id 去重，不會雙重響鈴。web-typecheck exit 0。殘留：首次載入失敗、之後第一次成功的回應帶回的 arrived 不補提示（視同首次載入，保守）。"
       }
     }
   ]
