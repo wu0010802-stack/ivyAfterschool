@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 385,
-  "last_updated": "2026-10-17T08:42:57Z",
+  "version": 386,
+  "last_updated": "2026-10-17T08:44:26Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6133,7 +6133,7 @@
           "attendance flow batch check-in：選取第二位學生並確認 → 頁面出現 '已到班 1 位'，該卡片含 '已到班'"
         ],
         "run": "flock /tmp/afterschool_db.lock timeout 600 just e2e e2e/admin/attendance.spec.ts -g \"attendance flow\"",
-        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。"
+        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用；globalSetup 以 API 登入一次並存成 storageState，loginAsAdmin / adminApi 只用其中的 cookie、不送帳密（INFRA-056）。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。整組 serial、共用一個以 storageState 登入的 page；storageState 的 access cookie 15 分鐘過期，整個 run 要在此時間內跑完。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。"
       },
       "review": {
         "status": "pass",
@@ -6171,7 +6171,7 @@
           "pickup flow realtime update in second context：第二個 context 在步驟 3 前已開啟 /#/pickup，不重新整理 → 10 秒內該卡片含 '已確認'"
         ],
         "run": "flock /tmp/afterschool_db.lock timeout 600 just e2e e2e/admin/pickup.spec.ts -g \"pickup flow\"",
-        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。非營業日，或「現在 +30 分」晚於佇列回應的 latest_expected_arrival（預設 19:00，即 18:30 之後）時整組 skip，要實際跑完四條需在營業日的這個時間之前執行。"
+        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用；globalSetup 以 API 登入一次並存成 storageState，loginAsAdmin / adminApi 只用其中的 cookie、不送帳密（INFRA-056）。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。整組 serial、共用一個以 storageState 登入的 page；storageState 的 access cookie 15 分鐘過期，整個 run 要在此時間內跑完。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。非營業日，或「現在 +30 分」晚於佇列回應的 latest_expected_arrival（預設 19:00，即 18:30 之後）時整組 skip，要實際跑完四條需在營業日的這個時間之前執行。"
       },
       "review": {
         "status": "pass",
@@ -6208,7 +6208,7 @@
           "exams flow publish then edit asks renotify：發布後 header 含 '已發布'；修改分數後出現 '是否在修改後通知家長分數已更新？'，選 '不通知' 後工具列含 '所有變更已儲存'"
         ],
         "run": "flock /tmp/afterschool_db.lock timeout 600 just e2e e2e/admin/exams.spec.ts -g \"exams flow\"",
-        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。登入有每 IP 5 分鐘 20 次的限流：整組 serial、共用一個以 UI 登入一次的 page，短時間內重跑多次會 429。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。"
+        "notes": "執行前：`just up` 啟動本機 DB / SeaweedFS + API + Web（INFRA-016），並以 `uv run python -m app.cli create-admin`（BACKEND-065）建立 e2e 專用 admin（改好密碼，見 FRONTEND-290 tdd.notes），帳密放在 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數；e2e.admin 由 globalSetup / globalTeardown 只在 run 期間啟用；globalSetup 以 API 登入一次並存成 storageState，loginAsAdmin / adminApi 只用其中的 cookie、不送帳密（INFRA-056）。e2e 會在共用本機 DB 建立未封存的種子資料，一律包在 `flock /tmp/afterschool_db.lock` 內執行，避免與整合測試交錯。整組 serial、共用一個以 storageState 登入的 page；storageState 的 access cookie 15 分鐘過期，整個 run 要在此時間內跑完。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。"
       },
       "review": {
         "status": "pass",

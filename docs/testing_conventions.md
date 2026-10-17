@@ -66,7 +66,9 @@
 - 只打本機服務（INFRA-014 環境守衛）：先 `just up`，帳密放 `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` 環境變數（e2e 專用 admin 由 `uv run python -m app.cli create-admin` 建立並改好密碼；CI 由 `scripts/e2e_bootstrap_admin.sh` 建立、帳密每次 run 隨機產生）。密碼不寫進任何檔案、log 或 commit。
 - e2e.admin 只在 run 期間啟用（globalSetup 啟用、globalTeardown 停用，以 owner 只改 `staff_users.is_active`），其餘寫入一律經 API（app_backend）。
 - 會在共用本機 DB 建立未封存的種子資料：整個 Playwright run 包在 `flock /tmp/afterschool_db.lock timeout <秒>` 內，與整合測試輪流執行；run 後以 owner 唯讀確認沒有殘列（啟用中員工 0、未封存學生 / 班級 / 監護人 0、exams 0、進行中接送請求 0、種子表筆數不變）。run 被中止時 e2e.admin 會保持啟用，重跑一次任一 e2e 即可停用。
-- 員工登入有每 IP 5 分鐘 20 次的限流：spec 整組 serial、共用一個登入過的 page，不要每條測試各自登入；短時間重跑多次會 429。
+- 登入狀態用 storageState：globalSetup 啟用 e2e.admin 後以 API 登入一次，cookie 存到 OS 暫存目錄（`e2e/support/authState.ts::storageStatePath()`，不可放在 playwright-report / test-results / var/log 等失敗時會上傳的路徑），globalTeardown 停用帳號並刪檔。`loginAsAdmin` / `adminApi` 只用其中的 cookie、不送帳密，trace 因此不含密碼。
+- 會送出密碼的測試（走登入表單、teardown 後重新 globalSetup）只放在整檔 `test.use({ trace: 'off' })` 的 `e2e/admin/login-form.spec.ts`（trace 是 worker 層級選項，不能在 describe 內關）；其他 spec 不得讀 `E2E_ADMIN_PASSWORD`、不得關 trace。
+- storageState 的 access cookie 15 分鐘過期：整個 run 要在此時間內跑完。員工登入另有每 IP 5 分鐘 20 次的限流（UI 與 API 登入都算）：spec 整組 serial、共用一個登入過的 page；短時間重跑多次會 429。
 - 與時間有關的流程在條件不成立時整組 `test.skip` 並寫明原因（非營業日以 `GET /api/admin/attendance/daily` 的 `is_service_day` 判斷；接送代建以佇列回應的 `latest_expected_arrival` 判斷，不寫死時間）。skip 不算驗收：要在這些時段驗證，自起 API（`app.dependency_overrides[get_clock]` 覆寫時間、關 scheduler）與 Web、瀏覽器 `page.clock.install`，平移版的 spec 複本只放 scratchpad。
 - dev server 冷快取時，vite 若在換頁途中發現新依賴會重新預打包並整頁重載，打斷 e2e；`apps/web/build/optimizeDeps.ts` 的 `OPTIMIZE_DEPS_INCLUDE` 已列出 element-plus 全部元件樣式，出現「optimized dependencies changed. reloading」時把缺的依賴補進清單。
 - e2e 檔不在 `just web-typecheck` 範圍：以 tsconfig.node 的選項（`tsc --ignoreConfig`）指定檔案檢查。Playwright 的 testMatch 只收 `*.spec.ts`，共用 helper 放 `e2e/support/` 或同目錄非 spec 檔。

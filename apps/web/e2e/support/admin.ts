@@ -1,6 +1,6 @@
 // FRONTEND-290：後台 e2e 共用工具（FRONTEND-291~293）。接真實後端（本機 just up），種子資料一律經 API 建立：
 // - loginAsAdmin / adminApi：用 globalSetup 存下的 storageState cookie（./authState.ts），不碰帳密，trace 不會出現密碼；
-//   走登入表單的測試只有 e2e/admin/support.spec.ts 一條。
+//   會送出密碼的測試（走登入表單等）只在整檔關閉 trace 的 e2e/admin/login-form.spec.ts。
 // - seedBasic / cleanup：建立「E2E班-{runId}」與學生、監護人；結束後依序封存監護人、學生、班級（失敗只記 log）。
 // 型別在這裡自行宣告最小欄位（e2e 走 tsconfig.node，不引用 src 的 @/ 路徑）。
 import { expect, type APIRequestContext, type APIResponse, type Page } from '@playwright/test'

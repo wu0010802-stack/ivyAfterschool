@@ -14,16 +14,16 @@
 
 ## 目前狀態
 
-- 共 798 個 task（INFRA 56、DB 42、BACKEND 418、FRONTEND 177、PARENT 105）：done 761、blocked 27（全部 NFC）、superseded 8（BACKEND-544、DB-001、DB-034、DB-039、INFRA-003、INFRA-007、INFRA-037、INFRA-038）、pending 1（INFRA-054）、in_review 1（INFRA-056）。
+- 共 798 個 task（INFRA 56、DB 42、BACKEND 418、FRONTEND 177、PARENT 105）：done 762、blocked 27（全部 NFC）、superseded 8（BACKEND-544、DB-001、DB-034、DB-039、INFRA-003、INFRA-007、INFRA-037、INFRA-038）、pending 1（INFRA-054）。
 - 架構：DB 為 PostgreSQL（雲端 Railway Postgres、本機 `compose.yaml` 的 Postgres 17.11 + SeaweedFS 模擬 R2），migration 用 Alembic（forward-only、revision id = task id；已部署的 revision 不再修改，未部署的可直接修正），檔案存 Cloudflare R2，後端以最小權限角色 `app_backend` 連線、不使用 RLS。web → api 只走 IPv6（nginx resolver `ipv4=off`，INFRA-053）。細節見 `docs/architecture_decisions.md` §2~§5、§10、§11；部署流程與上線前驗證清單見 `docs/deployment.md`。
 - 各區域：
-  - INFRA（done 50）：未完成剩 INFRA-054（pending；committing_db_session 的 cleanup_tables 不得 cascade 到 seed 表，使用者指示之後再做）與 INFRA-056（in_review，見下）。INFRA-055 已完成：CI e2e workflow 以 `scripts/e2e_bootstrap_admin.sh` 建立 e2e admin（帳密每次 run 隨機產生、`::add-mask::`），Playwright 兩個 project 的 testMatch 只收 `*.spec.ts`，`vite.config.ts` 的 `optimizeDeps.include` 以 `build/optimizeDeps.ts` 列出 element-plus 全部元件樣式（冷快取不再中途重新預打包、整頁重載）。
+  - INFRA（done 51）：未完成剩 INFRA-054（pending；committing_db_session 的 cleanup_tables 不得 cascade 到 seed 表，使用者指示之後再做）。INFRA-056 已完成：後台 e2e 以 globalSetup 以 API 登入後存下的 storageState 登入（檔在 OS 暫存目錄、不在上傳路徑，globalTeardown 刪除），會送出密碼的測試只在整檔關 trace 的 `e2e/admin/login-form.spec.ts`，trace 不含 e2e admin 密碼；印密碼 / xtrace 靜態檢查涵蓋整份 e2e.yml。INFRA-055 已完成：CI e2e workflow 以 `scripts/e2e_bootstrap_admin.sh` 建立 e2e admin（帳密每次 run 隨機產生、`::add-mask::`），Playwright 兩個 project 的 testMatch 只收 `*.spec.ts`，`vite.config.ts` 的 `optimizeDeps.include` 以 `build/optimizeDeps.ts` 列出 element-plus 全部元件樣式（冷快取不再中途重新預打包、整頁重載）。
   - DB（done 37）：除 NFC（DB-032 / 033 blocked）外全部完成。目前 head = db040（鏈尾 … → db038 → db025 → db028 → db040）。`apps/api/tests/integration/db/test_schema_conventions.py` 動態檢查每張表的慣例。
   - BACKEND（done 398）：除 NFC（BACKEND-500~518 blocked）外全部完成。第 11 輪完成 563~569：佇列回應附 `latest_expected_arrival`（`pickup.window` 最晚預計抵達時間）、`homework_service.progress_view` 公開、commit 前去重推播抽成 `tx_hooks` 共用 helper（作業快照與接送請求共用）、作業項目 window 外可改 / 刪與核驗錯碼 / 鎖定推播補測試、committing 測試改用 seed 角色 `tutor` 建員工、升年級以 422 取代 assert。
   - FRONTEND（done 171）：除 NFC（FRONTEND-270~275 blocked）外全部完成。後台 e2e 接真實後端：290（`e2e/support`：admin 登入、API 種子資料與清理、globalSetup / globalTeardown 只在 run 期間啟用 e2e.admin）、291（今日出勤到班 / 離班 / 批次）、292（員工代建 → 回覆 → 確認 → 完成交付、第二個 context 驗 ws 即時）、293（建立考試 → 成績自動儲存 → 發布）。第 11 輪其他完成：298（回覆 / 代建時間上限改用 `latest_expected_arrival`，超過上限的快捷鈕取上限）、299~301、302 / 313（FormDialog 與全站 ElMessageBox 按鈕 ≥ 44px）、303、304~306 與 316 / 318（出勤 / 作業 / 接送 reload 晚到不覆蓋較新列、換日期途中的 ws 事件保留、合併取到較新的 arrived 也觸發 onArrived）、307（authGuard 以路由名稱判斷登入頁、刪除 PlaceholderView）、308（`encodePathSegment`，後台 api client 全面改用）、309~311、312（共用 FakeWebSocket 在 `src/test/`）、314（POS 提示列等第一下點擊完成才移除）、315（發布後成績格修改也詢問是否重新通知）、317（滿分與分數最多兩位小數）。
   - PARENT（done 105）：全部完成。第 11 輪完成 199~211：首頁「我到了」遇狀態已變更後重抓、登出中略過 401 導頁、通知未讀數取號、請假狀態膠囊共用 util、月曆 360 寬格寬 ≥ 44px、分數顯示到兩位小數不四捨五入、api client 改用 `encodePathSegment`、spec 改用共用 FakeWebSocket 等。
 - 設計稿（`docs/mockups/`）：68 張 approved，沒有 draft。`index.html` 分「待核可 / 已核可」兩區。元件稿是元件外觀的權威，頁面稿只負責版面並引用元件稿。家長端 warning 色使用 `m3-tokens.css` 的 `--m3-warning-container` / `--m3-on-warning-container`；家長端層級 z-index：頂部列 5、sheet 10、dialog 15、snackbar 20；家長端頁面自帶左右 16px、底部 24px 內距，ParentLayout 不再加。
-- 收工時尚未走完的 task：INFRA-056（in_review，實作 commit 3803782 / 6f7afc3 / 0fd04f3，尚待獨立 reviewer）。下一輪開工先 `docker compose ps` 確認本機 compose 服務，未起則 `flock /tmp/afterschool_db.lock timeout 300 just db-start`，並用 owner 唯讀確認 `alembic_version` 為 db040、`system_settings` 有 11 列、`roles` 4、`subjects` 5、`exam_types` 3、啟用中員工 0（e2e.admin 只在 e2e run 期間啟用）。新 session 先 `git status` / `git diff` 確認沒有被中斷的 agent 留下突變殘留（reviewer 突變驗證會暫時改壞原始檔；有殘留一律 `git diff` 檢視後交 reviewer 或實作者處理，不要直接 commit）。
+- 收工時沒有 in_review / in_progress 的 task。下一輪開工先 `docker compose ps` 確認本機 compose 服務，未起則 `flock /tmp/afterschool_db.lock timeout 300 just db-start`，並用 owner 唯讀確認 `alembic_version` 為 db040、`system_settings` 有 11 列、`roles` 4、`subjects` 5、`exam_types` 3、啟用中員工 0（e2e.admin 只在 e2e run 期間啟用）。新 session 先 `git status` / `git diff` 確認沒有被中斷的 agent 留下突變殘留（reviewer 突變驗證會暫時改壞原始檔；有殘留一律 `git diff` 檢視後交 reviewer 或實作者處理，不要直接 commit）。
 - 遠端：`origin = git@github.com:samjp6jp69898/ivy-afterschool.git`（main 追蹤 origin/main）。雲端容器的工作分支是 `claude/vigilant-franklin-85andq`；遠端該分支停在 c7f27a6，之後第 10 / 11 輪的 commit 尚未 push（push 由協調者做）。下一輪若在新容器開工，先 `git fetch` 比對遠端分支與本機 HEAD，確認成果已在 GitHub。
 - 工具版本基準：Python 3.13（uv）、TypeScript 鎖 `~6.0`、vite 8（rolldown）、vitest 5、pinia 4、vue-router 5、eslint 10、@playwright/test 1.63（本機已裝 chromium）；Postgres 映像 `postgres:17.11`、SeaweedFS `chrislusf/seaweedfs:4.48`；alembic 1.20、boto3 1.43、SQLAlchemy 2.1（`Select` 是 variadic generic）、FastAPI 0.142（`include_router` 是 lazy，`app.routes` 不攤平子路由，掃路由用 `fastapi.routing.iter_route_contexts(app.routes)` 或 `app.openapi()['paths']`）；starlette TestClient 回傳 `httpx2.Response`（測試型別標註用 httpx2），per-request `cookies=` 已棄用，改用 `headers={"Cookie": ...}` 或 `client.cookies`；TestClient 預設來源位址是 'testclient'（不是 IP），要驗 audit ip 用 `TestClient(app, client=("203.0.113.5", 50000))`；本機沒有 `psql`，DB 驗證用 `docker compose exec db psql -U postgres` 或 psycopg。
 - 實作慣例（踩過的坑）：
@@ -50,14 +50,13 @@
 
 ## 下一輪建議順序
 
-依賴都已寫進 `depends_on`，一律用 `python3 scripts/validate_tasks.py . --ready [AREA]` 查。**先確認上一輪收尾**：`--in-review` 與 `in_progress` 的 task 以 tasks.json 為準（收工時：INFRA-056 in_review）；服務起來後先用 owner 唯讀確認種子筆數（system_settings 11、roles 4、subjects 5、exam_types 3）與啟用中員工 0。
+依賴都已寫進 `depends_on`，一律用 `python3 scripts/validate_tasks.py . --ready [AREA]` 查。**先確認上一輪收尾**：`--in-review` 與 `in_progress` 的 task 以 tasks.json 為準（收工時：無）；服務起來後先用 owner 唯讀確認種子筆數（system_settings 11、roles 4、subjects 5、exam_types 3）與啟用中員工 0。
 
 0. **先處理遠端**：確認 `claude/vigilant-franklin-85andq` 已 push 到 GitHub（遠端停在 c7f27a6 就先 push），再開 draft PR。push 後以 `workflow_dispatch` 實跑一次 `.github/workflows/e2e.yml`，驗證 INFRA-055 在全新 DB 上「建立 e2e admin + 以 API 改密碼」的路徑（本機共用 DB 不能 db-reset，只驗過「已存在即略過」）。
-1. **INFRA-056 審查**：派全新 reviewer（e2e 類，在 flock 內實跑 `e2e/admin/` 全部 spec 與 `login-form.spec.ts`，確認 trace / report 內沒有密碼、storageState 檔不在上傳路徑）。通過後把「後台 spec 以 globalSetup 存下的 storageState 登入、會送出密碼的測試只在 `login-form.spec.ts` 且整檔關 trace」補進 `docs/testing_conventions.md` §3「後台 e2e」，並把 FRONTEND-291 / 292 / 293 tdd.notes 裡「共用一個以 UI 登入一次的 page」改成 storageState 的最終行為。
-2. **INFRA-054**（cleanup_tables 不得 cascade 到 seed 表；使用者指示之後再做，完成前遵守「協調者要注意的事」的規則）。
-3. **剩下的 low 殘留**（不擋，可開 chore task 或在相關 task 順手處理，見「已知待驗證 / 待決」）：前端路由連結仍以 `encodeURIComponent` 組 `/exams/{id}` 等路徑（未改 `encodePathSegment`）；FRONTEND-315 `markPublished` 只在認定草稿時生效的條件沒有測試（目前 UI 走不到）。
-4. **NFC 打卡**：機器到貨、使用者回答 `--blocked` 列出的待決問題後才解除（DB-032 / 033、BACKEND-500~518、FRONTEND-270~275）。
-5. **上線前**：`docs/deployment.md` 的上線前驗證清單（見「已知待驗證 / 待決」的部署項目）；LINE App 與外部瀏覽器實機確認 LIFF 轉址會原樣帶回 hash 內的 query（PARENT-030 / 033 / 197）。
+1. **INFRA-054**（cleanup_tables 不得 cascade 到 seed 表；使用者指示之後再做，完成前遵守「協調者要注意的事」的規則）。
+2. **剩下的 low 殘留**（不擋，可開 chore task 或在相關 task 順手處理，見「已知待驗證 / 待決」）：前端路由連結仍以 `encodeURIComponent` 組 `/exams/{id}` 等路徑（未改 `encodePathSegment`）；FRONTEND-315 `markPublished` 只在認定草稿時生效的條件沒有測試（目前 UI 走不到）。
+3. **NFC 打卡**：機器到貨、使用者回答 `--blocked` 列出的待決問題後才解除（DB-032 / 033、BACKEND-500~518、FRONTEND-270~275）。
+4. **上線前**：`docs/deployment.md` 的上線前驗證清單（見「已知待驗證 / 待決」的部署項目）；LINE App 與外部瀏覽器實機確認 LIFF 轉址會原樣帶回 hash 內的 query（PARENT-030 / 033 / 197）。
 
 ## 派工方式（每一輪都照做）
 
