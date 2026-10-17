@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 214,
-  "last_updated": "2026-10-17T04:08:16Z",
+  "version": 215,
+  "last_updated": "2026-10-17T04:10:17Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3870,7 +3870,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/main.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-013",
@@ -3886,7 +3886,8 @@
         ],
         "red_cases": [
           "parentMain skips auth redirect while logging out（apps/web/src/parent/main.spec.ts）：在 #/more 呼叫 logout()，登出 API 尚未回應時另一個請求 401 且 refresh 401 → 最後 currentRoute.fullPath === '/login?logged_out=1'，過程中沒有導向含 redirect= 的網址",
-          "useParentLogout exposes logging out state（apps/web/src/parent/composables/useParentLogout.spec.ts）：logout() 進行中 isParentLoggingOut() === true；完成後（含 API 失敗）為 false；兩個 useParentLogout() 實例共用同一狀態"
+          "useParentLogout exposes logging out state（apps/web/src/parent/composables/useParentLogout.spec.ts）：logout() 進行中 isParentLoggingOut() === true；完成後（含 API 失敗）為 false；兩個 useParentLogout() 實例共用同一狀態",
+          "parentMain skips auth redirect while the logout navigation is pending（apps/web/src/parent/main.spec.ts）：登出 API 已回 200，以 router.beforeEach 卡住 '/login?logged_out=1' 的導航；期間另一請求 401 且 refresh 401 → 放行後 currentRoute.fullPath === '/login?logged_out=1'，過程中沒有導向含 redirect= 的網址（突變：useParentLogout 在 await router.replace 之前就把 loggingOut 設回 false → 本案例轉紅）"
         ],
         "run": "just web-test src/parent/main.spec.ts -t \"parentMain\" && just web-test src/parent/composables/useParentLogout.spec.ts -t \"useParentLogout\"",
         "notes": ""
