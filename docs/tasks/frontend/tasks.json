@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 374,
-  "last_updated": "2026-10-17T08:16:11Z",
+  "version": 375,
+  "last_updated": "2026-10-17T08:16:55Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -4040,7 +4040,8 @@
           "useHomeworkBoard date change keeps ws snapshot for new date during reload：d1 載入 [s1] → 改 d2（卡住）→ ws homework.progress_updated s1（service_date d2、ready_eta '18:20'）→ d2 回應（s1 ready_eta null）到達後 s1.progress.ready_eta === '18:20'（FRONTEND-316）",
           "useHomeworkBoard date change ignores buffered student missing from response：改 d2 途中收到 s9（d2）snapshot → d2 回應沒有 s9 → board.students 不含 s9（FRONTEND-316）",
           "useHomeworkBoard deferred snapshot older than reload is discarded：s1 狀態切換 PATCH 進行中時收到 snapshot A（ready_eta '18:10'，被延後）→ 之後才發出的 reload 回應（ready_eta '18:30'）先套用 → PATCH 結束（回應不含 ready_eta 變更）後 s1.progress.ready_eta === '18:30'（FRONTEND-316）",
-          "useHomeworkBoard deferred snapshot received after reload start still applies：reload 發出後、回應前，s1 chain 進行中收到 snapshot B（ready_eta '18:40'，被延後）→ reload 回應（ready_eta null）→ chain 結束後 s1.progress.ready_eta === '18:40'（FRONTEND-316）"
+          "useHomeworkBoard deferred snapshot received after reload start still applies：reload 發出後、回應前，s1 chain 進行中收到 snapshot B（ready_eta '18:40'，被延後）→ reload 回應（ready_eta null）→ chain 結束後 s1.progress.ready_eta === '18:40'（FRONTEND-316）",
+          "useHomeworkBoard date change keeps ws snapshot for student not on previous board：d1 載入 [s1] → 改 d2（reload 卡住）→ ws 推 s2（service_date d2、ready_eta '18:20'）→ d2 回應 [s1, s2(ready_eta null)] 到達後 s2.progress.ready_eta === '18:20'（FRONTEND-316）"
         ],
         "run": "just web-test src/composables/useHomeworkBoard.spec.ts -t \"useHomeworkBoard\"",
         "notes": ""
@@ -4664,7 +4665,8 @@
           "PickupPosView retries focus when the card was not found yet：focusRequest 第一次回 false → transient r7 之後 ws r7 arrived → focusRequest 以 'r7' 呼叫 2 次",
           "PickupPosView passes the selected class to the toolbar create dialog：/pickup?class=c1 → PickupCreateDialog classFilter 深等於 {id:'c1',name:'低年級A班'}、presetStudent undefined；改為 /pickup 或 ?class=unassigned → classFilter undefined",
           "PickupPosView shows load error with retry：GET queue 第一次 500 → 文字含 '無法載入接送資料' 與後端訊息、沒有 DismissalPosBoard、計數「–」；按 '重試'（回應延遲）→ 不含 '無法載入接送資料'、有 DismissalPosBoard；回應後計數 '待回覆 0'",
-          "PickupPosView layout follows the approved mockup：原始碼 .touch.el-button min-height 44px、.pos-toolbar flex-wrap wrap 且 @media (min-width: 900px) nowrap、.pos-conn min-width 92px、.pos 依 20 / 16 / 12 抵銷外框 padding 並 height calc(100% + 兩倍 padding)"
+          "PickupPosView layout follows the approved mockup：原始碼 .touch.el-button min-height 44px、.pos-toolbar flex-wrap wrap 且 @media (min-width: 900px) nowrap、.pos-conn min-width 92px、.pos 依 20 / 16 / 12 抵銷外框 padding 並 height calc(100% + 兩倍 padding)",
+          "PickupPosView first tap still activates the tapped button: click.stop keeps hint until next completed click：在 @click.stop 的按鈕依序 pointerdown、pointerup、click → chime unlock 1 次、提示列仍在；之後在「回覆時間」完成一次點擊 → 回覆 dialog 開啟、提示列消失、unlock 仍 1 次（FRONTEND-314）"
         ],
         "run": "just web-test src/views/PickupPosView.spec.ts -t \"PickupPosView\"",
         "notes": ""
@@ -6928,7 +6930,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/views/PickupPosView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-189"
@@ -6946,10 +6948,11 @@
           "PickupPosView first tap still activates the tapped button：同一按鈕依序派發 pointerdown、pointerup、click → 回覆 dialog 開啟（dialog 標題可見），之後畫面不含「點一下畫面以啟用提示音」",
           "PickupPosView hint removed after pointercancel：第一次 pointerdown 後派發 pointercancel（不產生 click）→ 提示列消失；chime unlock 仍只呼叫 1 次",
           "PickupPosView unlock only once：第二次 pointerdown / click → chime unlock 呼叫次數維持 1",
-          "PickupPosView unlock only once: click without pointerdown keeps hint：只派發 click（鍵盤觸發，沒有 pointerdown）→ chime unlock 0 次、畫面仍含「點一下畫面以啟用提示音」"
+          "PickupPosView unlock only once: click without pointerdown keeps hint：只派發 click（鍵盤觸發，沒有 pointerdown）→ chime unlock 0 次、畫面仍含「點一下畫面以啟用提示音」",
+          "PickupPosView first tap still activates the tapped button: click.stop keeps hint until next completed click：在 @click.stop 的按鈕依序 pointerdown、pointerup、click → chime unlock 1 次、提示列仍在；之後在「回覆時間」完成一次點擊 → 回覆 dialog 開啟、提示列消失、unlock 仍 1 次"
         ],
         "run": "just web-test src/views/PickupPosView.spec.ts -t \"PickupPosView\"",
-        "notes": "happy-dom 沒有版面：單元測試只鎖事件時序（提示列移除在 click / pointercancel 之後、按鈕的 click 照常作用），實際「第一下不落空」以 Chromium 驗收。\nChromium 驗收（impl-frontend-r11b，2026-10-17）：以 dts: false 的 vite harness 掛真實 PickupPosView / DismissalPosBoard / QueueCard（API 以 axios-mock-adapter 回 1 筆 pending、needs_reply 請求），Chromium 1243、viewport 1024×768、hasTouch，進頁後直接 locator.tap() 佇列卡「回覆時間」→ 回覆 dialog「回覆預計可接送時間：王小明」開啟，提示列移除、按鈕在點擊完成後上移 50px（326 → 276）；同一 harness 換回修改前的 PickupPosView → dialog 不開（落空重現）。"
+        "notes": "happy-dom 沒有版面：單元測試只鎖事件時序（提示列移除在 click / pointercancel 之後、按鈕的 click 照常作用），實際「第一下不落空」以 Chromium 驗收。\nChromium 驗收（impl-frontend-r11b，2026-10-17）：以 dts: false 的 vite harness 掛真實 PickupPosView / DismissalPosBoard / QueueCard（API 以 axios-mock-adapter 回 1 筆 pending、needs_reply 請求），Chromium 1243、viewport 1024×768、hasTouch，進頁後直接 locator.tap() 佇列卡「回覆時間」→ 回覆 dialog「回覆預計可接送時間：王小明」開啟，提示列移除、按鈕在點擊完成後上移 50px（326 → 276）；同一 harness 換回修改前的 PickupPosView → dialog 不開（落空重現）。\n「click.stop keeps hint」為補測試：突變（根元素 @click 改 @click.capture）會轉紅。"
       },
       "review": {
         "status": "concern",
@@ -6997,11 +7000,11 @@
     {
       "id": "FRONTEND-316",
       "title": "今日出勤 / 作業看板：換日期途中的 ws 事件不被略過、延後的 ws snapshot 不蓋掉 reload 帶回的較新值",
-      "description": "修改 `apps/web/src/composables/useAttendanceBoard.ts`（FRONTEND-126、304）與 `apps/web/src/composables/useHomeworkBoard.ts`（FRONTEND-152、305）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：\n1. 換日期：`date` 改變觸發 `reload()`，回應到達前 `data` / `serverBoard` 仍是前一個日期。這期間新日期的 ws 事件會被丟掉——出勤 `applyRows` 以 `row.service_date !== current.date` 略過；作業看板 `onProgressUpdated` 通過 `service_date === date.value`，但 `patchStudent` 以 `current.date !== serviceDate` 略過（且先以舊看板的名單檢查學生）。reload 的回應若在該事件之前就已在伺服器產生（較舊），該筆變更就漏掉，直到下一次事件或重整。FRONTEND-304/305 的 touched 合併只涵蓋「已套用到畫面」的列，這些被略過的事件沒有進 touched。\n2. 作業看板延後的 snapshot（沿用 FRONTEND-152）：某生有狀態切換 chain 進行中時，`onProgressUpdated` 把 snapshot 放進 `deferredSnapshots`，chain 結束 `flushDeferred` 才套用。若延後期間 reload 回應已帶回較新的值，chain 結束後仍以較舊的 snapshot 蓋回。\n\n做法（兩支同一規則）：\n- 換篩選途中的暫存：事件 / 操作結果的 `service_date` 等於目前 `date`、但目前資料仍是別的日期（reload 尚未回來）時，不丟棄：依 student_id 暫存最新一筆，並記 `touched[student_id] = ++touchClock`。reload 回應到達時，暫存的列與 touched 一起參與 `mergeTouched`（touched > startedAt 的以暫存 / 目前值為準）。出勤：暫存列也要符合目前班級篩選，回應沒有的列依既有規則插入；作業看板：只覆蓋回應中有的學生（名單以回應為準，FRONTEND-305）。篩選鍵改變時清空暫存（與 touched 同時）；暫存日期與回應日期不同的一律丟棄。\n- 延後的 snapshot：放進 `deferredSnapshots` 時記下收到當下的 `touchClock`（不遞增 touched）；reload 回應套用時，丟棄收到序號 ≤ 該次 reload `startedAt` 的延後 snapshot（請求發出前收到的事件，伺服器狀態不會比回應新）；收到序號 > startedAt 的保留，chain 結束照常套用。換篩選時清空 `deferredSnapshots`。\n- 只換班級（日期不變）的合併行為維持 FRONTEND-304/305 的最終規則。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-126、152 的 tdd.run 全綠（即兩支 spec 全檔 -t 名稱）。",
+      "description": "修改 `apps/web/src/composables/useAttendanceBoard.ts`（FRONTEND-126、304）與 `apps/web/src/composables/useHomeworkBoard.ts`（FRONTEND-152、305）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：\n1. 換日期：`date` 改變觸發 `reload()`，回應到達前 `data` / `serverBoard` 仍是前一個日期。這期間新日期的 ws 事件會被丟掉——出勤 `applyRows` 以 `row.service_date !== current.date` 略過；作業看板 `onProgressUpdated` 通過 `service_date === date.value`，但 `patchStudent` 以 `current.date !== serviceDate` 略過（且先以舊看板的名單檢查學生）。reload 的回應若在該事件之前就已在伺服器產生（較舊），該筆變更就漏掉，直到下一次事件或重整。FRONTEND-304/305 的 touched 合併只涵蓋「已套用到畫面」的列，這些被略過的事件沒有進 touched。\n2. 作業看板延後的 snapshot（沿用 FRONTEND-152）：某生有狀態切換 chain 進行中時，`onProgressUpdated` 把 snapshot 放進 `deferredSnapshots`，chain 結束 `flushDeferred` 才套用。若延後期間 reload 回應已帶回較新的值，chain 結束後仍以較舊的 snapshot 蓋回。\n\n做法（兩支同一規則）：\n- 換篩選途中的暫存：事件 / 操作結果的 `service_date` 等於目前 `date`、但目前資料仍是別的日期（reload 尚未回來）時，不丟棄：依 student_id 暫存最新一筆，並記 `touched[student_id] = ++touchClock`。reload 回應到達時，暫存的列與 touched 一起參與 `mergeTouched`（touched > startedAt 的以暫存 / 目前值為準）。出勤：暫存列也要符合目前班級篩選，回應沒有的列依既有規則插入；作業看板：只覆蓋回應中有的學生（名單以回應為準，FRONTEND-305）。篩選鍵改變時清空暫存（與 touched 同時）；暫存日期與回應日期不同的一律丟棄。\n- 延後的 snapshot：放進 `deferredSnapshots` 時以 `++touchClock` 取收到序號，但不寫入 touched（只讀當下的 touchClock 時，reload 發出後才收到、其間沒有其他異動的 snapshot 序號會等於 startedAt 而被誤丟；不寫 touched 是因為 snapshot 尚未套用到畫面，不能讓回應保留舊列）；reload 回應套用時，丟棄收到序號 ≤ 該次 reload `startedAt` 的延後 snapshot（請求發出前收到的事件，伺服器狀態不會比回應新）；收到序號 > startedAt 的保留，chain 結束照常套用。換篩選時清空 `deferredSnapshots`。\n- 只換班級（日期不變）的合併行為維持 FRONTEND-304/305 的最終規則。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-126、152 的 tdd.run 全綠（即兩支 spec 全檔 -t 名稱）。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useAttendanceBoard.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11b",
       "depends_on": [
         "FRONTEND-304",
@@ -7024,10 +7027,11 @@
           "useHomeworkBoard deferred snapshot older than reload is discarded：s1 狀態切換 PATCH 進行中時收到 snapshot A（ready_eta '18:10'，被延後）→ 之後才發出的 reload 回應（ready_eta '18:30'）先套用 → PATCH 結束（回應不含 ready_eta 變更）後 s1.progress.ready_eta === '18:30'",
           "useHomeworkBoard deferred snapshot received after reload start still applies：reload 發出後、回應前，s1 chain 進行中收到 snapshot B（ready_eta '18:40'，被延後）→ reload 回應（ready_eta null）→ chain 結束後 s1.progress.ready_eta === '18:40'",
           "useAttendanceBoard date change keeps ws row for new date during reload: buffered row outside class filter is ignored：classId c1、d1 → d2 途中收到 c2 的 s9（d2）→ d2 回應後 items 仍為 ['s1']",
-          "useHomeworkBoard date change keeps ws snapshot for new date during reload: buffer of previous switch is dropped：d1 → d2（卡住）收到 s1 d2 snapshot（ready_eta '18:20'）→ 改 d3 → d3 回應後 s1.progress.ready_eta 為 null"
+          "useHomeworkBoard date change keeps ws snapshot for new date during reload: buffer of previous switch is dropped：d1 → d2（卡住）收到 s1 d2 snapshot（ready_eta '18:20'）→ 改 d3 → d3 回應後 s1.progress.ready_eta 為 null",
+          "useHomeworkBoard date change keeps ws snapshot for student not on previous board：d1 載入 [s1] → 改 d2（reload 卡住）→ ws 推 s2（service_date d2、ready_eta '18:20'）→ d2 回應 [s1, s2(ready_eta null)] 到達後 s2.progress.ready_eta === '18:20'"
         ],
         "run": "just web-test src/composables/useAttendanceBoard.spec.ts -t \"useAttendanceBoard\" && just web-test src/composables/useHomeworkBoard.spec.ts -t \"useHomeworkBoard\"",
-        "notes": "後四條 red_case 寫在 apps/web/src/composables/useHomeworkBoard.spec.ts。"
+        "notes": "第 4~7、9、10 條 red_case 寫在 apps/web/src/composables/useHomeworkBoard.spec.ts，其餘在 useAttendanceBoard.spec.ts。第 10 條為補測試：突變（onProgressUpdated 改回以舊看板名單過濾）會轉紅。"
       },
       "review": {
         "status": "concern",
