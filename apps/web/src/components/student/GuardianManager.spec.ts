@@ -541,6 +541,54 @@ describe('GuardianManager', () => {
     expect(mock.history.post.map((c) => c.url)).toEqual([LIST_URL])
   })
 
+  it('GuardianManager create after switching student', async () => {
+    mock.onGet(LIST_URL).reply(200, [BOUND])
+    mock.onGet('/admin/students/s2/guardians').reply(200, [])
+    mock.onPost('/admin/students/s2/guardians').reply(201, { ...UNBOUND, id: 'g9', student_id: 's2', name: '陳小華' })
+    const wrapper = await mountManager()
+
+    // 先切到另一位學生、等清單載入，再開表單
+    await wrapper.setProps({ studentId: 's2', studentName: '陳小美' })
+    await settle()
+    expect(listRequests('/admin/students/s2/guardians')).toBe(1)
+
+    await clickIn(wrapper.find('.guardian-toolbar'), '新增監護人')
+    const dialog = dialogByTitle('新增監護人')
+    await formItemIn(dialog, '姓名').find('input').setValue('陳小華')
+    await chooseOption(formItemIn(dialog, '關係'), '其他')
+    await clickIn(dialog, '儲存')
+
+    expect(mock.history.post.map((c) => c.url)).toEqual(['/admin/students/s2/guardians'])
+    expect(wrapper.emitted('change')).toHaveLength(1)
+    expect(listRequests('/admin/students/s2/guardians')).toBe(2)
+    expect(listRequests()).toBe(1)
+  })
+
+  it('GuardianManager edit after switching student', async () => {
+    const G5: Guardian = { ...CODE_ISSUED, id: 'g5', student_id: 's2', name: '陳爸爸', relation: 'father' }
+    mock.onGet(LIST_URL).reply(200, [BOUND])
+    mock.onGet('/admin/students/s2/guardians').reply(200, [G5])
+    mock.onPatch('/admin/guardians/g5').reply(200, { ...G5, phone: '0912-000-456' })
+    const wrapper = await mountManager()
+
+    await wrapper.setProps({ studentId: 's2', studentName: '陳小美' })
+    await settle()
+
+    await clickIn(card(wrapper, '陳爸爸'), '編輯')
+    const dialog = dialogByTitle('編輯監護人')
+    expect(formItemIn(dialog, '姓名').find<HTMLInputElement>('input').element.value).toBe('陳爸爸')
+    await formItemIn(dialog, '電話').find('input').setValue('0912-000-456')
+    await clickIn(dialog, '儲存')
+
+    expect(mock.history.patch.map((c) => [c.url, JSON.parse(c.data as string)])).toEqual([
+      ['/admin/guardians/g5', { phone: '0912-000-456' }],
+    ])
+    expect(wrapper.emitted('change')).toHaveLength(1)
+    // 成功後重抓的是 s2 的清單，不是原本的學生
+    expect(listRequests('/admin/students/s2/guardians')).toBe(2)
+    expect(listRequests()).toBe(1)
+  })
+
   it('GuardianManager shows initial guardians before loading latest', async () => {
     const { release } = deferredList([BOUND, UNBOUND])
     const wrapper = await mountManager({ props: { initial: [UNBOUND] } })
