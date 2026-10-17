@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 220,
-  "last_updated": "2026-10-17T04:17:27Z",
+  "version": 221,
+  "last_updated": "2026-10-17T04:17:49Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -4124,11 +4124,12 @@
           "vitest"
         ],
         "red_cases": [
-          "AttendanceCalendar narrow layout rule：以 ?raw 讀元件（或 AttendanceView）樣式 → 含核可稿指定的窄螢幕規則（例如 @media (max-width: 389px) 內的 padding / gap 值與稿相同）",
-          "AttendanceCalendar keeps seven columns：渲染 2026-10 月 → 格線容器的 grid-template-columns 為 7 欄、每格為 button 且 aria-label 不變"
+          "AttendanceCalendar narrow layout rule（核可稿 13c7054，所有寬度同一規則、不用 media query）：以 ?raw 讀元件樣式 → `.att-cal__weekdays, .att-cal__grid` 含 `column-gap: 0` 與 `row-gap: 4px`；`.att-day` 含 `border: solid transparent`、`border-width: 0 2px`、`background-clip: padding-box`；`.att-day:focus-visible` 為 `outline: 2px solid var(--m3-on-surface)` 與 `outline-offset: -1px`",
+          "AttendanceCalendar keeps seven columns：渲染 2026-10 月 → 格線容器樣式 grid-template-columns 為 repeat(7, minmax(0, 1fr))，31 格皆為 button 且 aria-label 不變（例如 '10月1日（四）…' 與既有案例相同）",
+          "AttendanceView calendar card padding（apps/web/src/parent/views/AttendanceView.spec.ts）：月曆所在 M3Card 為 padding none + class att-cal-card；以 ?raw 讀頁面樣式 `.att-cal-card` 含 `padding: 12px 8px`"
         ],
         "run": "just web-test src/parent/components/attendance/AttendanceCalendar.spec.ts -t \"AttendanceCalendar\" && just web-test src/parent/views/AttendanceView.spec.ts -t \"AttendanceView\"",
-        "notes": "red_case 的具體樣式值依核可稿填寫；實作者進 in_progress 時先把稿定案的數值寫進本條 red_case。"
+        "notes": "樣式值依核可稿 docs/mockups/parent-component-attendance-calendar.html 與 parent-page-attendance.html（13c7054 核可，PARENT-207 decisions）。另以 Chromium 360×780 與 390×844 量測月曆格寬（目標 360 寬 ≥ 44px、無水平捲動），數值寫進回報。"
       },
       "review": {
         "status": "pending",
