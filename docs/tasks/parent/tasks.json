@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 225,
-  "last_updated": "2026-10-17T04:26:31Z",
+  "version": 226,
+  "last_updated": "2026-10-17T04:29:28Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -2582,7 +2582,7 @@
     {
       "id": "PARENT-131",
       "title": "建立 AttendanceCalendar 元件：月出勤日曆格",
-      "description": "建立 `apps/web/src/parent/components/attendance/AttendanceCalendar.vue`：\n```ts\nprops: { month: string /* YYYY-MM */; days: AttendanceDay[]; today: string; selectedDate: string | null }\nemits: { select: [date: string] }\n```\n- 週日開頭的 7 欄格，表頭「日 一 二 三 四 五 六」；月初前補空格。日期與星期以純日期運算（`Date.UTC`）計算，不受時區影響、不用 `toISOString().slice`。\n- 每格為 `<button>`：日期數字 + 狀態以「底色 + 圖示」雙重表達（FRONTEND-005 statusLabels 的出勤顏色語意；`leave` 依 leave_type 顯示病假 / 事假 / 其他）。例外：請假格在月曆格與圖例改用 tertiary-container + event_busy，與已離班（secondary-container + done_all）明顯區分，StatusPill 的 tone 仍照 FRONTEND-005；今天以前（date < today）仍是 `expected` 的日子顯示為「未登記」（surface-container-high + remove，與統計列 PARENT-132 用詞一致），today 與之後的 `expected` 仍是「預計到班」；`is_service_day === false` 灰階且仍可點；today 加外框；selectedDate 為選中樣式。`aria-label` 為「10月2日 已到班」（無紀錄「10月2日 無紀錄」、非營業日「10月4日 休息」、過去日期的 expected「10月1日 未登記」）。\n- 格線（PARENT-207，所有寬度同一規則）：欄距 0、列距 4px；每格左右各 2px 透明框（`background-clip: padding-box`，狀態底色也只畫在框內）畫出 4px 視覺欄距，整欄寬都是觸控範圍；`:focus-visible` 外框 `outline-offset: -1px`，不壓到隔壁格。宿主月曆卡左右內距 8px 時，360 寬格子約 44.3×52、390 寬約 48.6×52。\n- 下方圖例：已到班 / 已離班 / 請假 / 缺席 / 預計到班 / 未登記 / 休息。\n\n移植 ivy `FE:src/parent/views/AttendanceView.vue::calendarDays` 的格子產生方式與 `cellClass` 的 today / selected 標示；狀態改為本專案五種出勤狀態。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-attendance-calendar.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：一整個月含五種狀態、非營業日、今天、選中日、月初不是週日的補格。可併入 `parent-page-attendance.html`。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/components/attendance/AttendanceCalendar.vue`：\n```ts\nprops: { month: string /* YYYY-MM */; days: AttendanceDay[]; today: string; selectedDate: string | null }\nemits: { select: [date: string] }\n```\n- 週日開頭的 7 欄格，表頭「日 一 二 三 四 五 六」；月初前補空格。日期與星期以純日期運算（`Date.UTC`）計算，不受時區影響、不用 `toISOString().slice`。\n- 每格為 `<button>`：日期數字 + 狀態以「底色 + 圖示」雙重表達（FRONTEND-005 statusLabels 的出勤顏色語意；`leave` 依 leave_type 顯示病假 / 事假 / 其他）。例外：請假格在月曆格與圖例改用 tertiary-container + event_busy，與已離班（secondary-container + done_all）明顯區分，StatusPill 的 tone 仍照 FRONTEND-005；今天以前（date < today）仍是 `expected` 的日子顯示為「未登記」（surface-container-high + remove，與統計列 PARENT-132 用詞一致），today 與之後的 `expected` 仍是「預計到班」；`is_service_day === false` 灰階且仍可點；today 加外框；selectedDate 為選中樣式。`aria-label` 為「10月2日 已到班」（無紀錄「10月2日 無紀錄」、非營業日「10月4日 休息」、過去日期的 expected「10月1日 未登記」）。\n- 格線（PARENT-207，所有寬度同一規則）：欄距 0、列距 4px；每格左右各 2px 透明框（基底 `background: transparent padding-box`，clip 寫在簡寫內；狀態與選中格只改 `background-color`，底色只畫在框內）畫出 4px 視覺欄距，整欄寬都是觸控範圍；`:focus-visible` 外框 `outline-offset: -1px`，不壓到隔壁格。宿主月曆卡左右內距 8px 時，360 寬格子約 44.3×52、390 寬約 48.6×52。\n- 下方圖例：已到班 / 已離班 / 請假 / 缺席 / 預計到班 / 未登記 / 休息。\n\n移植 ivy `FE:src/parent/views/AttendanceView.vue::calendarDays` 的格子產生方式與 `cellClass` 的 today / selected 標示；狀態改為本專案五種出勤狀態。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-attendance-calendar.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：一整個月含五種狀態、非營業日、今天、選中日、月初不是週日的補格。可併入 `parent-page-attendance.html`。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
       "source_ref": "FE:src/parent/views/AttendanceView.vue::calendarDays",
@@ -4105,11 +4105,11 @@
     {
       "id": "PARENT-207",
       "title": "家長端出勤月曆在 360 寬時格寬 ≥ 44px（需改稿並重新核可）",
-      "description": "修改 `apps/web/src/parent/components/attendance/AttendanceCalendar.vue`（PARENT-131）與（必要時）`apps/web/src/parent/views/AttendanceView.vue`（PARENT-132）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：月曆 7 欄格寬由宿主決定，390 寬為 44×52；360 寬時格寬 39.7px，低於 44px 觸控目標。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/parent-component-attendance-calendar.html`（與 `parent-page-attendance.html` 若涉及頁面內距）：在 360 寬下讓每格寬 ≥ 44px（例如縮小月曆卡在窄螢幕的左右 padding 或格間距；由設計稿決定，不得產生水平捲動），稿中加 360 寬預覽並寫進 decisions，把本 task id 加進 `preview-tasks`；改稿後 `preview-status` 改為 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。\n- 實作照核可稿（13c7054，使用者選「所有寬度同一規則」）：欄距 0、列距 4px，格子左右 2px 透明框 + `background-clip: padding-box`（狀態底色簡寫帶 padding-box，否則 background 簡寫會把 clip 重設為 border-box），focus `outline-offset: -1px`；月曆卡內距上下 12px、左右 8px。按鈕格寬 360 寬約 44.3×52、390 寬約 48.6×52（色塊約 40.3 / 44.6）。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-131 / 132 的 tdd.run 全綠，另以 Chromium 360×780 與 390×844 量測月曆格寬（回報附數值）。",
+      "description": "修改 `apps/web/src/parent/components/attendance/AttendanceCalendar.vue`（PARENT-131）與（必要時）`apps/web/src/parent/views/AttendanceView.vue`（PARENT-132）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：月曆 7 欄格寬由宿主決定，390 寬為 44×52；360 寬時格寬 39.7px，低於 44px 觸控目標。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/parent-component-attendance-calendar.html`（與 `parent-page-attendance.html` 若涉及頁面內距）：在 360 寬下讓每格寬 ≥ 44px（例如縮小月曆卡在窄螢幕的左右 padding 或格間距；由設計稿決定，不得產生水平捲動），稿中加 360 寬預覽並寫進 decisions，把本 task id 加進 `preview-tasks`；改稿後 `preview-status` 改為 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。\n- 實作照核可稿（13c7054，使用者選「所有寬度同一規則」）：欄距 0、列距 4px，格子左右 2px 透明框，基底 `background: transparent padding-box`（background 簡寫會重設 background-clip，故 clip 寫在簡寫內），狀態（present / left / leave / absent / expected / unrecorded）與選中格只用 `background-color`，focus `outline-offset: -1px`；月曆卡內距上下 12px、左右 8px。按鈕格寬 360 寬約 44.3×52、390 寬約 48.6×52（色塊約 40.3 / 44.6）。\n\n**驗收標準**：每一條對應下列 red_case；PARENT-131 / 132 的 tdd.run 全綠，另以 Chromium 360×780 與 390×844 量測月曆格寬（回報附數值）。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-131",
@@ -4124,8 +4124,9 @@
           "vitest"
         ],
         "red_cases": [
-          "AttendanceCalendar narrow layout rule（核可稿 13c7054，所有寬度同一規則、不用 media query）：以 ?raw 讀元件樣式 → `.att-cal__weekdays, .att-cal__grid` 含 `column-gap: 0` 與 `row-gap: 4px`；`.att-day` 含 `border: solid transparent`、`border-width: 0 2px`、`background-clip: padding-box`；`.att-day:focus-visible` 為 `outline: 2px solid var(--m3-on-surface)` 與 `outline-offset: -1px`",
-          "AttendanceCalendar keeps seven columns：渲染 2026-10 月 → 格線容器樣式 grid-template-columns 為 repeat(7, minmax(0, 1fr))，31 格皆為 button 且 aria-label 不變（例如 '10月1日（四）…' 與既有案例相同）",
+          "AttendanceCalendar narrow layout rule（核可稿 13c7054，所有寬度同一規則、不用 media query）：以 ?raw 讀元件樣式 → `.att-cal__weekdays, .att-cal__grid` 含 `column-gap: 0` 與 `row-gap: 4px`；`.att-day` 含 `border: solid transparent`、`border-width: 0 2px`、`background: transparent padding-box`；`.att-day:focus-visible` 為 `outline: 2px solid var(--m3-on-surface)` 與 `outline-offset: -1px`",
+          "AttendanceCalendar status colours stay inside the padding box：以 ?raw 讀元件樣式 → `.att-day--present/left/leave/absent/expected/unrecorded` 與 `.att-day.is-selected` 七條須為 `background-color` 長寫或帶 `padding-box` 的 background 簡寫；`.att-day` 基底規則之後作用在格子本身（非 ::before、非圖例色塊）的 background 簡寫都要帶 padding-box（突變：任一條改成不帶 padding-box 的 background 簡寫、或基底改回 `background: transparent` + 另寫 background-clip → 本案例轉紅）",
+          "AttendanceCalendar keeps seven columns：渲染 2026-10 月（today 2026-10-22、10/02 present）→ 格線容器樣式 grid-template-columns 為 repeat(7, minmax(0, 1fr))，31 格皆為 type=button 的 .att-day，10 月 2 日的 aria-label 仍為「10月2日 已到班」",
           "AttendanceView calendar card padding（apps/web/src/parent/views/AttendanceView.spec.ts）：月曆所在 M3Card 為 padding none + class att-cal-card；以 ?raw 讀頁面樣式 `.att-cal-card` 含 `padding: 12px 8px`"
         ],
         "run": "just web-test src/parent/components/attendance/AttendanceCalendar.spec.ts -t \"AttendanceCalendar\" && just web-test src/parent/views/AttendanceView.spec.ts -t \"AttendanceView\"",
