@@ -29,6 +29,8 @@ vi.mock('@/components/pickup/pos/DismissalPosBoard.vue', async () => {
         return () =>
           h('div', { class: 'board-stub' }, [
             h('button', { type: 'button', class: 'reply-stub', onClick: () => (replyOpen.value = true) }, '回覆時間'),
+            // 代表佇列卡 ⋮ 這類 @click.stop 的按鈕：click 不會冒泡到根元素
+            h('button', { type: 'button', class: 'stop-stub', onClick: (e: Event) => e.stopPropagation() }, '更多'),
             replyOpen.value ? h('div', { role: 'dialog', class: 'reply-dialog-stub' }, '回覆預計可接送時間') : null,
           ])
       },
@@ -360,6 +362,26 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     await fire(btn, 'click')
     expect(wrapper.find('.reply-dialog-stub').exists()).toBe(true)
     expect(wrapper.find('.reply-dialog-stub').text()).toBe('回覆預計可接送時間')
+    expect(wrapper.text()).not.toContain('點一下畫面以啟用提示音')
+    expect(unlockCalls()).toBe(1)
+  })
+
+  it('PickupPosView first tap still activates the tapped button: click.stop keeps hint until next completed click', async () => {
+    mockData()
+    const { wrapper } = await mountView()
+
+    const more = wrapper.find('.stop-stub').element
+    await fire(more, 'pointerdown')
+    await fire(more, 'pointerup')
+    await fire(more, 'click')
+    expect(unlockCalls()).toBe(1)
+    expect(wrapper.text()).toContain('點一下畫面以啟用提示音')
+
+    const btn = replyButton(wrapper)
+    await fire(btn, 'pointerdown')
+    await fire(btn, 'pointerup')
+    await fire(btn, 'click')
+    expect(wrapper.find('.reply-dialog-stub').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('點一下畫面以啟用提示音')
     expect(unlockCalls()).toBe(1)
   })
