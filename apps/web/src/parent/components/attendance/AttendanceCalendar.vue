@@ -224,8 +224,8 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
   border: solid transparent;
   border-width: 0 2px;
   border-radius: var(--m3-shape-small);
-  background: transparent;
-  background-clip: padding-box;
+  /* background 簡寫會重設 background-clip，所以 clip 寫在簡寫內；狀態 / 選中格只改 background-color */
+  background: transparent padding-box;
   color: var(--m3-on-surface);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -267,34 +267,34 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
 }
 
 /* 狀態底色 = StatusPill 同一組 container token；請假用 tertiary 與已離班區分。
-   background 簡寫會把 background-clip 重設為 border-box，所以底色一律帶 padding-box，色塊不畫進左右 2px 透明框 */
+   只用 background-color（沿用 .att-day 的 padding-box），色塊不畫進左右 2px 透明框 */
 .att-day--present {
-  background: var(--m3-primary-container) padding-box;
+  background-color: var(--m3-primary-container);
   color: var(--m3-on-primary-container);
 }
 
 .att-day--left {
-  background: var(--m3-secondary-container) padding-box;
+  background-color: var(--m3-secondary-container);
   color: var(--m3-on-secondary-container);
 }
 
 .att-day--leave {
-  background: var(--m3-tertiary-container) padding-box;
+  background-color: var(--m3-tertiary-container);
   color: var(--m3-on-tertiary-container);
 }
 
 .att-day--absent {
-  background: var(--m3-error-container) padding-box;
+  background-color: var(--m3-error-container);
   color: var(--m3-on-error-container);
 }
 
 .att-day--expected {
-  background: var(--m3-warning-container) padding-box;
+  background-color: var(--m3-warning-container);
   color: var(--m3-on-warning-container);
 }
 
 .att-day--unrecorded {
-  background: var(--m3-surface-container-high) padding-box;
+  background-color: var(--m3-surface-container-high);
   color: var(--m3-on-surface);
 }
 
@@ -315,7 +315,7 @@ const grid = computed<{ lead: number; days: DayCell[] }>(() => {
 }
 
 .att-day.is-selected {
-  background: var(--m3-primary) padding-box;
+  background-color: var(--m3-primary);
   color: var(--m3-on-primary);
 }
 
