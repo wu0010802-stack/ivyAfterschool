@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 212,
-  "last_updated": "2026-10-17T04:03:42Z",
+  "version": 213,
+  "last_updated": "2026-10-17T04:04:53Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -4172,28 +4172,26 @@
     {
       "id": "PARENT-209",
       "title": "家長端成績分數的顯示位數（待使用者決定）",
-      "description": "修改 `apps/web/src/parent/components/exams/ExamScoreTable.vue`（PARENT-152）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：後端 score 為 Numeric(6,2)，可到兩位小數；ExamScoreTable 依 description 與核可稿四捨五入到一位，59.95 會顯示 60（看起來像及格）。顯示規則需使用者決定（見 open_design_questions），決定後依結論改稿 `docs/mockups/parent-component-exam-score-table.html` 的 decision（把本 task id 加進 `preview-tasks`）並補 red_case，再解除 blocked。\n\n**驗收標準**：每一條對應下列 red_case（依決定結果改寫數值）。",
+      "description": "修改 `apps/web/src/parent/components/exams/ExamScoreTable.vue`（PARENT-152）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：後端 score 為 Numeric(6,2)，可到兩位小數；ExamScoreTable 依 description 與核可稿四捨五入到一位，59.95 會顯示 60（看起來像及格）。**使用者裁定**：照後端原值顯示到兩位小數、去掉尾端 0（59.95 → 59.95、85.50 → 85.5、90.00 → 90），不四捨五入（docs/domain_spec.md M8）；後台成績格本來就顯示輸入原值、各科平均維持現行位數，不在本 task 範圍。依此改稿 `docs/mockups/parent-component-exam-score-table.html` 的 decision（把本 task id 加進 `preview-tasks`）並補 red_case，再解除 blocked。\n\n**驗收標準**：每一條對應下列 red_case（依決定結果改寫數值）。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/exams/ExamScoreTable.vue",
       "source_ref": null,
-      "status": "blocked",
+      "status": "pending",
       "assignee_session": null,
       "depends_on": [
         "PARENT-152"
       ],
       "suggested_model": "sonnet-5",
       "risk_notes": "",
-      "open_design_questions": [
-        "家長端分數顯示位數：(A) 照後端原值顯示到兩位小數、去掉尾端 0（59.95 → 59.95、85.50 → 85.5）；(B) 維持一位但改無條件捨去（59.95 → 59.9）；(C) 維持四捨五入到一位（59.95 → 60，現況）。後台成績格與各科平均的位數是否一併比照，也請一起決定。"
-      ],
+      "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/exams/ExamScoreTable.spec.ts",
         "markers": [
           "vitest"
         ],
         "red_cases": [
-          "ExamScoreTable shows score per decided precision：score 59.95 → 顯示文字依決定（例如兩位小數 '59.95'，或捨去到一位 '59.9'）",
-          "ExamScoreTable integer score unchanged：score 85 → 顯示 '85'；score null 且缺考 → 「缺考」"
+          "ExamScoreTable shows two decimals without rounding：score 59.95 → 顯示 '59.95'；score 85.5（後端 '85.50'）→ 顯示 '85.5'",
+          "ExamScoreTable trims trailing zeros：score 90（後端 '90.00'）→ 顯示 '90'，缺考與未登記顯示不變"
         ],
         "run": "just web-test src/parent/components/exams/ExamScoreTable.spec.ts -t \"ExamScoreTable\"",
         "notes": ""
