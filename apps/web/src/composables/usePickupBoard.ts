@@ -11,8 +11,10 @@
 // - reload 晚到不倒退（FRONTEND-306，規則同 FRONTEND-304）：以本機異動序號判斷、不依賴伺服器時間。
 //   套用請求記 touched[request_id] = ++touchClock、更新名單學生記 touchedStudent[student_id]；佇列 / 名單請求發出時記 startedAt。
 //   佇列回應到達時 startedAt 之後套用過的請求保留目前版本（含回應中沒有的），依其狀態重新分組（與 applyRequest 相同的
-//   upsert 位置規則），其餘取回應；名單回應到達時 startedAt 之後更新過的學生保留目前的列。授權清單整包取代；
-//   latest_expected_arrival 取回應值。跨日時清空異動紀錄。
+//   upsert 位置規則），但回應中同一筆的狀態機順序較大時取回應（與 applyRequest 的單向守衛一致）；其餘取回應。
+//   名單回應到達時 startedAt 之後更新過的學生保留目前的列。授權清單整包取代；latest_expected_arrival 取回應值。
+//   跨日時清空異動紀錄，queue 換成新日期的空殼（沿用 latest_expected_arrival）、roster 設為 null，
+//   換日後的 ws 更新只落在新日期的資料上，不會與昨天的請求 / 名單混在一起。
 // - 授權事件（pickup.authorization_updated）只帶家長端形狀（BACKEND-420 PickupAuthorizationOut），沒有學生摘要、照片、
 //   錯誤次數與鎖定：收到當天的事件就重抓 B436 清單（序號防護），不就地合併；沒載入授權清單時不寫入，改重抓名單。
 import { ElMessage } from 'element-plus'
@@ -177,8 +179,11 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     if (!current || current.date !== res.date) return res
     let open = res.open
     let closed = res.closed
+    const fromResponse = new Map([...res.open, ...res.closed].map((r) => [r.id, r]))
     for (const req of [...current.open, ...current.closed]) {
       if ((touched.get(req.id) ?? 0) <= startedAt) continue
+      const responded = fromResponse.get(req.id)
+      if (responded && STATUS_RANK[responded.status] > STATUS_RANK[req.status]) continue
       if (isOpen(req.status)) {
         open = upsert(open, req, 'keep')
         closed = closed.filter((r) => r.id !== req.id)
@@ -193,7 +198,7 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
   /** 回應為準，startedAt 之後更新過的學生保留目前的列 */
   function mergeRoster(res: PickupRoster, startedAt: number): PickupRoster {
     const current = roster.value
-    if (!current) return res
+    if (!current || current.date !== res.date) return res
     const keep = (s: RosterStudent): RosterStudent => {
       if ((touchedStudent.get(s.student_id) ?? 0) <= startedAt) return s
       return findStudent(current, s.student_id) ?? s
@@ -464,6 +469,15 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     date = today
     touched.clear()
     touchedStudent.clear()
+    // 換日後的更新不可落在昨天的資料上：佇列換成新日期空殼，名單等新日期回應
+    queue.value = {
+      date,
+      open: [],
+      closed: [],
+      counts: countOpen([]),
+      latest_expected_arrival: queue.value?.latest_expected_arrival ?? null,
+    }
+    roster.value = null
     void reload()
   }, DAY_CHECK_INTERVAL_MS)
   onScopeDispose(() => clearInterval(dayTimer))
