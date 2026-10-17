@@ -13,45 +13,10 @@ import type { Notification } from '@/shared/types/api'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import AdminLayout from './AdminLayout.vue'
 import layoutSource from './AdminLayout.vue?raw'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
 const COLLAPSE_KEY = 'admin.sidebarCollapsed'
 const BANNER_TEXT = '即時連線中斷，畫面每 15 秒自動更新'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-
-  serverClose(code: number): void {
-    this.readyState = 3
-    this.onclose?.({ code, reason: '', wasClean: false } as CloseEvent)
-  }
-}
 
 const sockets = FakeWebSocket.instances
 
@@ -165,7 +130,7 @@ describe('AdminLayout', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     sockets.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     vi.stubGlobal('innerWidth', 1280)
     mock = createApiMock(adminHttp)
     mock.onGet('/admin/notifications').reply(200, { items: [], total: 0, unread_count: 0 })
@@ -199,7 +164,7 @@ describe('AdminLayout', () => {
 
   it('AdminLayout binds notification ws messages and unbinds them on unmount', async () => {
     const { wrapper } = await mountLayout()
-    lastSocket().serverOpen()
+    lastSocket().open()
     const notice = {
       id: 'n1',
       event: 'leave.created',
@@ -211,7 +176,7 @@ describe('AdminLayout', () => {
       deep_link: '/leaves',
     }
 
-    lastSocket().serverMessage({ type: 'notification.created', data: notice, sent_at: '2026-10-02T08:00:01Z' })
+    lastSocket().message({ type: 'notification.created', data: notice, sent_at: '2026-10-02T08:00:01Z' })
     await nextTick()
 
     const store = useNotificationsStore()
@@ -222,8 +187,8 @@ describe('AdminLayout', () => {
     wrapper.unmount()
     const ws = useAdminWsStore()
     ws.start()
-    lastSocket().serverOpen()
-    lastSocket().serverMessage({
+    lastSocket().open()
+    lastSocket().message({
       type: 'notification.created',
       data: { ...notice, id: 'n2' },
       sent_at: '2026-10-02T08:00:02Z',
@@ -249,11 +214,11 @@ describe('AdminLayout', () => {
 
   it('AdminLayout shows reconnect banner after 5 seconds', async () => {
     const { wrapper } = await mountLayout()
-    lastSocket().serverOpen()
+    lastSocket().open()
     await nextTick()
     expect(wrapper.text()).not.toContain('即時連線中斷')
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     await nextTick()
     expect(useAdminWsStore().status).toBe('reconnecting')
 
@@ -270,19 +235,19 @@ describe('AdminLayout', () => {
 
     // 重連 timer 於 1 秒時已建立第二條 socket
     expect(sockets).toHaveLength(2)
-    lastSocket().serverOpen()
+    lastSocket().open()
     await nextTick()
     expect(wrapper.text()).not.toContain('即時連線中斷')
   })
 
   it('AdminLayout does not show banner when the connection recovers within 5 seconds', async () => {
     const { wrapper } = await mountLayout()
-    lastSocket().serverOpen()
-    lastSocket().serverClose(1006)
+    lastSocket().open()
+    lastSocket().close(1006)
     await nextTick()
 
     await advance(3000)
-    lastSocket().serverOpen()
+    lastSocket().open()
     await nextTick()
     await advance(10_000)
 
@@ -301,13 +266,13 @@ describe('AdminLayout', () => {
 
   it('AdminLayout restarts the banner delay on each new disconnect', async () => {
     const { wrapper } = await mountLayout()
-    lastSocket().serverOpen()
-    lastSocket().serverClose(1006)
+    lastSocket().open()
+    lastSocket().close(1006)
     await advance(4000)
     // 第二條 socket（重連）連上後再斷：重新計 5 秒
-    lastSocket().serverOpen()
+    lastSocket().open()
     await nextTick()
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     await advance(4000)
     expect(wrapper.text()).not.toContain('即時連線中斷')
 
@@ -387,7 +352,7 @@ describe('AdminLayout', () => {
 
   it('AdminLayout stops ws on unmount', async () => {
     const { wrapper } = await mountLayout()
-    lastSocket().serverOpen()
+    lastSocket().open()
     const count = sockets.length
 
     wrapper.unmount()
@@ -499,8 +464,8 @@ describe('AdminLayout', () => {
 
   it('AdminLayout does not show a stale banner after remount', async () => {
     const first = await mountLayout()
-    lastSocket().serverOpen()
-    lastSocket().serverClose(1006)
+    lastSocket().open()
+    lastSocket().close(1006)
     await advance(6000)
     expect(first.wrapper.text()).toContain(BANNER_TEXT)
     first.wrapper.unmount()

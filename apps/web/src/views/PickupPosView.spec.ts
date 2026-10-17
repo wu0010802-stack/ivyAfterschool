@@ -12,6 +12,7 @@ import { useNotificationsStore } from '@/stores/notifications'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import viewSource from './PickupPosView.vue?raw'
 import PickupPosView from './PickupPosView.vue'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
 // DismissalPosBoard（FRONTEND-190）以 stub 取代：只檢查本頁傳入的資料與對 expose 的 focusRequest 呼叫
 const boardStub = vi.hoisted(() => ({ focusRequest: vi.fn<(id: string) => Promise<boolean>>() }))
@@ -29,44 +30,9 @@ vi.mock('@/components/pickup/pos/DismissalPosBoard.vue', async () => {
   }
 })
 
-/** 只模擬 adminWs store 需要的部分：開線、斷線、送訊息給頁面 */
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverClose(code = 1006): void {
-    this.readyState = 3
-    this.onclose?.({ code } as CloseEvent)
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: '2026-10-02T09:00:00Z' }) } as MessageEvent)
-  }
+/** 後端事件封包（type + data + sent_at） */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: '2026-10-02T09:00:00Z' })
 }
 
 /** 記錄畫了幾個音：新請求單音 1 個 oscillator、到達雙音 2 個 */
@@ -228,7 +194,7 @@ async function mountView(
   // 外框（AdminLayout）負責啟動 ws 與綁定個人通知
   useAdminWsStore(pinia).start()
   useNotificationsStore(pinia).bindWs()
-  socket().serverOpen()
+  socket().open()
   await settle()
   return { wrapper: wrapper as VueWrapper, router }
 }
@@ -267,9 +233,8 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
-    FakeWebSocket.instances.length = 0
     FakeAudioContext.oscillators = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     vi.stubGlobal('AudioContext', FakeAudioContext)
     vi.stubGlobal('speechSynthesis', speech)
     vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
@@ -313,7 +278,7 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     mockData()
     await mountView().then(({ wrapper }) => tap(wrapper))
 
-    socket().serverMessage('pickup.request_updated', makeRequest({ status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
     await settle()
 
     expect(spokenArrivals()).toBe(1)
@@ -335,7 +300,7 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
 
     // 靜音時到達不響
     await tap(wrapper)
-    socket().serverMessage('pickup.request_updated', makeRequest({ status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
     await settle()
     expect(spokenArrivals()).toBe(0)
     expect(FakeAudioContext.oscillators).toBe(0)
@@ -380,14 +345,14 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     const { wrapper } = await mountView()
     await tap(wrapper)
 
-    socket().serverMessage(
+    serverMessage(socket(), 
       'pickup.request_updated',
       makeRequest({ id: 'r5', status: 'arrived', expected_arrival_at: null, arrived_at: '2026-10-02T09:00:00Z' }),
     )
     await settle()
     expect(spokenArrivals()).toBe(1)
 
-    socket().serverMessage('notification.transient', arrivedTransient('r5'))
+    serverMessage(socket(), 'notification.transient', arrivedTransient('r5'))
     await settle()
     expect(spokenArrivals()).toBe(1)
   })
@@ -398,13 +363,13 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     await tap(wrapper)
 
     // pickup 推播還沒到：以名單查班級組語音
-    socket().serverMessage('notification.transient', arrivedTransient('r6'))
+    serverMessage(socket(), 'notification.transient', arrivedTransient('r6'))
     await settle()
     expect(spokenArrivals()).toBe(1)
     expect(boardStub.focusRequest).toHaveBeenCalledWith('r6')
 
     // 同一筆的 pickup 推播晚到：不重播
-    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r6', status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ id: 'r6', status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
     await settle()
     expect(spokenArrivals()).toBe(1)
   })
@@ -416,7 +381,7 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     const { wrapper } = await mountView()
     await tap(wrapper)
 
-    socket().serverMessage('notification.transient', arrivedTransient('r1'))
+    serverMessage(socket(), 'notification.transient', arrivedTransient('r1'))
     await settle()
     expect(spokenArrivals()).toBe(1)
   })
@@ -429,7 +394,7 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     expect(capsule().text()).toBe('即時')
     expect(capsule().classes()).toContain('is-open')
 
-    socket().serverClose()
+    socket().close(1006)
     await settle()
     expect(capsule().text()).toBe('重新連線中')
     expect(capsule().classes()).toContain('is-reconnecting')
@@ -486,11 +451,11 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     expect(mock.history.post.filter((r) => r.url === CREATE_URL)).toHaveLength(1)
     // 建立後定位到新請求
     expect(boardStub.focusRequest).toHaveBeenCalledWith('r9')
-    socket().serverMessage('pickup.request_updated', r9)
+    serverMessage(socket(), 'pickup.request_updated', r9)
     await settle()
     expect(FakeAudioContext.oscillators).toBe(0)
 
-    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r10', student: { ...r9.student, id: 's2', name: '陳小美' } }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ id: 'r10', student: { ...r9.student, id: 's2', name: '陳小美' } }))
     await settle()
     expect(FakeAudioContext.oscillators).toBe(1)
   })
@@ -500,9 +465,9 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     const { wrapper } = await mountView()
     await tap(wrapper)
 
-    socket().serverMessage('pickup.request_updated', makeRequest({ status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
     await settle()
-    socket().serverMessage('notification.transient', arrivedTransient('r1'))
+    serverMessage(socket(), 'notification.transient', arrivedTransient('r1'))
     await settle()
 
     expect(boardStub.focusRequest.mock.calls).toEqual([['r1']])
@@ -514,7 +479,7 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     await tap(wrapper)
     wrapper.unmount()
 
-    socket().serverMessage('notification.transient', arrivedTransient('r8'))
+    serverMessage(socket(), 'notification.transient', arrivedTransient('r8'))
     await settle()
     expect(spokenArrivals()).toBe(0)
     expect(boardStub.focusRequest).not.toHaveBeenCalled()
@@ -525,9 +490,9 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
     boardStub.focusRequest.mockResolvedValueOnce(false)
     await mountView()
 
-    socket().serverMessage('notification.transient', arrivedTransient('r7'))
+    serverMessage(socket(), 'notification.transient', arrivedTransient('r7'))
     await settle()
-    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r7', status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ id: 'r7', status: 'arrived', arrived_at: '2026-10-02T09:00:00Z' }))
     await settle()
 
     expect(boardStub.focusRequest.mock.calls).toEqual([['r7'], ['r7']])

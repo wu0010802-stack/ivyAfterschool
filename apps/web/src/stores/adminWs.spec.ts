@@ -2,45 +2,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetAdminHttpHandlers, setAdminHttpHandlers } from '@/api/http'
 import { useAdminWsStore } from './adminWs'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-
-  serverClose(code: number): void {
-    this.readyState = 3
-    this.onclose?.({ code, reason: '', wasClean: false } as CloseEvent)
-  }
-}
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
 const sockets = FakeWebSocket.instances
 
@@ -57,7 +19,7 @@ function sentMessages(socket: FakeWebSocket): { action: string; topics: string[]
 function startOpen() {
   const store = useAdminWsStore()
   store.start()
-  lastSocket().serverOpen()
+  lastSocket().open()
   return store
 }
 
@@ -65,7 +27,7 @@ describe('adminWs store', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     sockets.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     setActivePinia(createPinia())
   })
 
@@ -84,7 +46,7 @@ describe('adminWs store', () => {
     expect(sockets).toHaveLength(1)
     expect(lastSocket().url).toBe(`ws://${location.host}/api/ws/admin`)
     expect(store.status).toBe('connecting')
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(store.status).toBe('open')
   })
 
@@ -115,11 +77,11 @@ describe('adminWs store', () => {
     store.subscribe('pickup')
     store.subscribe('homework')
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(store.status).toBe('reconnecting')
     vi.advanceTimersByTime(1000)
     expect(sockets).toHaveLength(2)
-    lastSocket().serverOpen()
+    lastSocket().open()
 
     const first = sentMessages(lastSocket())[0]!
     expect(first.action).toBe('subscribe')
@@ -133,7 +95,7 @@ describe('adminWs store', () => {
     store.subscribe('attendance')
 
     expect(lastSocket().sent).toEqual([])
-    lastSocket().serverOpen()
+    lastSocket().open()
 
     expect(sentMessages(lastSocket())[0]).toEqual({ action: 'subscribe', topics: ['attendance'] })
   })
@@ -155,20 +117,20 @@ describe('adminWs store', () => {
     store.registerPoller(poller)
     const offReconnect = store.onReconnect(reconnect)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(poller).toHaveBeenCalledTimes(1)
     expect(failing).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(15000)
     expect(poller).toHaveBeenCalledTimes(2)
     expect(reconnect).not.toHaveBeenCalled()
 
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(reconnect).toHaveBeenCalledTimes(1)
 
     offReconnect()
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     vi.advanceTimersByTime(1000)
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(reconnect).toHaveBeenCalledTimes(1)
   })
 
@@ -178,7 +140,7 @@ describe('adminWs store', () => {
     const off = store.registerPoller(poller)
     off()
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
 
     expect(poller).not.toHaveBeenCalled()
   })
@@ -188,20 +150,20 @@ describe('adminWs store', () => {
     const handler = vi.fn()
     const off = store.on('pickup.request_updated', handler)
     store.start()
-    lastSocket().serverOpen()
+    lastSocket().open()
 
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'p1' }, sent_at: '2026-10-02T08:00:00Z' })
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'p1' }, sent_at: '2026-10-02T08:00:00Z' })
     expect(handler).toHaveBeenCalledTimes(1)
     expect(handler.mock.calls[0]?.[0]).toEqual({ id: 'p1' })
 
     store.stop()
     store.start()
-    lastSocket().serverOpen()
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'p2' }, sent_at: '2026-10-02T08:01:00Z' })
+    lastSocket().open()
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'p2' }, sent_at: '2026-10-02T08:01:00Z' })
     expect(handler).toHaveBeenCalledTimes(2)
 
     off()
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'p3' }, sent_at: '2026-10-02T08:02:00Z' })
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'p3' }, sent_at: '2026-10-02T08:02:00Z' })
     expect(handler).toHaveBeenCalledTimes(2)
   })
 
@@ -212,22 +174,22 @@ describe('adminWs store', () => {
     const offAll = store.on('*', all)
     store.on('homework.progress_updated', typed)
     store.start()
-    lastSocket().serverOpen()
+    lastSocket().open()
 
-    lastSocket().serverMessage({ type: 'pickup.request_updated', data: { id: 'p1' }, sent_at: '2026-10-02T08:00:00Z' })
-    lastSocket().serverMessage({ type: 'homework.progress_updated', data: { student_id: 's1' }, sent_at: '2026-10-02T08:00:01Z' })
+    lastSocket().message({ type: 'pickup.request_updated', data: { id: 'p1' }, sent_at: '2026-10-02T08:00:00Z' })
+    lastSocket().message({ type: 'homework.progress_updated', data: { student_id: 's1' }, sent_at: '2026-10-02T08:00:01Z' })
     expect(all.mock.calls.map((c) => c[0])).toEqual([{ id: 'p1' }, { student_id: 's1' }])
     expect(typed).toHaveBeenCalledTimes(1)
 
     store.stop()
     store.start()
-    lastSocket().serverOpen()
-    lastSocket().serverMessage({ type: 'notification.created', data: { id: 'n1' }, sent_at: '2026-10-02T08:01:00Z' })
+    lastSocket().open()
+    lastSocket().message({ type: 'notification.created', data: { id: 'n1' }, sent_at: '2026-10-02T08:01:00Z' })
     expect(all).toHaveBeenCalledTimes(3)
     expect(all.mock.calls[2]?.[0]).toEqual({ id: 'n1' })
 
     offAll()
-    lastSocket().serverMessage({ type: 'notification.created', data: { id: 'n2' }, sent_at: '2026-10-02T08:02:00Z' })
+    lastSocket().message({ type: 'notification.created', data: { id: 'n2' }, sent_at: '2026-10-02T08:02:00Z' })
     expect(all).toHaveBeenCalledTimes(3)
   })
 
@@ -236,12 +198,12 @@ describe('adminWs store', () => {
     store.subscribe('pickup')
     store.subscribe('attendance')
 
-    lastSocket().serverMessage({ type: 'error', code: 'permission_denied', topics: ['attendance'] })
+    lastSocket().message({ type: 'error', code: 'permission_denied', topics: ['attendance'] })
     expect(store.deniedTopics).toEqual(['attendance'])
-    lastSocket().serverMessage({ type: 'error', code: 'permission_denied', topics: ['attendance'] })
+    lastSocket().message({ type: 'error', code: 'permission_denied', topics: ['attendance'] })
     expect(store.deniedTopics).toEqual(['attendance'])
 
-    lastSocket().serverMessage({ type: 'unsubscribed', topics: ['pickup'], reason: 'permission_revoked' })
+    lastSocket().message({ type: 'unsubscribed', topics: ['pickup'], reason: 'permission_revoked' })
     expect(store.topics.pickup).toBe(0)
     expect(store.topics.attendance).toBe(1)
     expect(document.body.textContent).toContain('權限已變更，部分即時更新已停止')
@@ -255,7 +217,7 @@ describe('adminWs store', () => {
   it('adminWs store stop resets counts and denied topics', () => {
     const store = startOpen()
     store.subscribe('pickup')
-    lastSocket().serverMessage({ type: 'error', code: 'permission_denied', topics: ['homework'] })
+    lastSocket().message({ type: 'error', code: 'permission_denied', topics: ['homework'] })
 
     store.stop()
 
@@ -269,7 +231,7 @@ describe('adminWs store', () => {
     setAdminHttpHandlers({ authFailure })
     const store = startOpen()
 
-    lastSocket().serverClose(4401)
+    lastSocket().close(4401)
 
     expect(authFailure).toHaveBeenCalledTimes(1)
     expect(store.status).toBe('closed')

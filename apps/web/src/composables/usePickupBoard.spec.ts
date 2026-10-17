@@ -11,43 +11,11 @@ import type { PickupQueue, PickupRequest, PickupRoster, RosterStudent } from '@/
 import { useAdminWsStore } from '@/stores/adminWs'
 import { createApiMock } from '@/test/helpers'
 import { usePickupBoard, type AuthorizationEvent } from './usePickupBoard'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: '2026-10-02T08:00:00Z' }) } as MessageEvent)
-  }
-
-  serverControl(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
+/** 後端事件封包（type + data + sent_at） */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: '2026-10-02T08:00:00Z' })
 }
 
 const QUEUE_URL = '/admin/pickup/queue'
@@ -236,14 +204,13 @@ describe('usePickupBoard', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
     vi.setSystemTime(NOW)
-    FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     pinia = createPinia()
     setActivePinia(pinia)
     mock = createApiMock(adminHttp)
     const store = useAdminWsStore()
     store.start()
-    socket().serverOpen()
+    socket().open()
   })
 
   afterEach(() => {
@@ -284,7 +251,7 @@ describe('usePickupBoard', () => {
     const { board } = await mountBoard()
     expect(board.queue.value).toBeNull()
 
-    socket().serverMessage('pickup.request_updated', makeRequest())
+    serverMessage(socket(), 'pickup.request_updated', makeRequest())
     await settle()
 
     expect(openIds(board)).toEqual(['r1'])
@@ -316,7 +283,7 @@ describe('usePickupBoard', () => {
     const { board } = await mountBoard({ withRoster: true })
     expect(board.queue.value?.closed.map((r) => r.id)).toEqual(['r0'])
 
-    socket().serverMessage('pickup.request_updated', {
+    serverMessage(socket(), 'pickup.request_updated', {
       ...r1,
       status: 'completed',
       completed_at: '2026-10-02T09:20:00Z',
@@ -342,7 +309,7 @@ describe('usePickupBoard', () => {
     const { board } = await mountBoard({ withRoster: true })
 
     // 同一學生稍早那筆（不在佇列）的終態晚到：只收進 closed，不可清掉名單上較新的進行中請求
-    socket().serverMessage(
+    serverMessage(socket(), 
       'pickup.request_updated',
       makeRequest({ id: 'r1', status: 'cancelled', cancelled_at: '2026-10-02T08:50:00Z', created_at: '2026-10-02T07:00:00Z' }),
     )
@@ -360,7 +327,7 @@ describe('usePickupBoard', () => {
     mockAll(makeQueue([r1]), makeRoster([s1]))
     const { board } = await mountBoard({ withRoster: true })
 
-    socket().serverMessage('pickup.request_updated', {
+    serverMessage(socket(), 'pickup.request_updated', {
       ...r1,
       status: 'acknowledged',
       needs_reply: false,
@@ -382,7 +349,7 @@ describe('usePickupBoard', () => {
     expect(board.counts.value).toEqual({ pending: 0, acknowledged: 1, arrived: 0, needs_reply: 0 })
 
     // 非今天的請求忽略
-    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r8', studentId: 's8', service_date: '2026-10-01' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ id: 'r8', studentId: 's8', service_date: '2026-10-01' }))
     await settle()
     expect(openIds(board)).toEqual(['r1'])
   })
@@ -392,9 +359,9 @@ describe('usePickupBoard', () => {
     mockAll(makeQueue([r1]))
     const { board } = await mountBoard()
 
-    socket().serverMessage('pickup.request_updated', { ...r1, status: 'completed', completed_at: '2026-10-02T09:20:00Z' })
+    serverMessage(socket(), 'pickup.request_updated', { ...r1, status: 'completed', completed_at: '2026-10-02T09:20:00Z' })
     await settle()
-    socket().serverMessage('pickup.request_updated', { ...r1, status: 'acknowledged', needs_reply: false })
+    serverMessage(socket(), 'pickup.request_updated', { ...r1, status: 'acknowledged', needs_reply: false })
     await settle()
 
     expect(openIds(board)).toEqual([])
@@ -408,7 +375,7 @@ describe('usePickupBoard', () => {
     mockAll(makeQueue([r1]))
     const { board } = await mountBoard()
 
-    socket().serverMessage('pickup.request_updated', { ...r1, status: 'acknowledged', arrived_at: null })
+    serverMessage(socket(), 'pickup.request_updated', { ...r1, status: 'acknowledged', arrived_at: null })
     await settle()
 
     expect(board.queue.value?.open[0]?.status).toBe('arrived')
@@ -424,24 +391,24 @@ describe('usePickupBoard', () => {
     board.onNewRequest(fn)
 
     const r2 = makeRequest({ id: 'r2', studentId: 's2', studentName: '陳小美' })
-    socket().serverMessage('pickup.request_updated', r2)
+    serverMessage(socket(), 'pickup.request_updated', r2)
     await settle()
     expect(fn).toHaveBeenCalledTimes(1)
     expect(fn.mock.calls[0]?.[0]?.id).toBe('r2')
     expect(fa).not.toHaveBeenCalled()
 
     // 同一筆 pending 再收到一次（例如回覆更新）不再當新請求
-    socket().serverMessage('pickup.request_updated', { ...r2, reply_message: '預計 17:45 可接送', reply_source: 'auto' })
+    serverMessage(socket(), 'pickup.request_updated', { ...r2, reply_message: '預計 17:45 可接送', reply_source: 'auto' })
     await settle()
     expect(fn).toHaveBeenCalledTimes(1)
 
     const arrived = { ...r2, status: 'arrived', arrived_at: '2026-10-02T09:10:00Z', needs_reply: false }
-    socket().serverMessage('pickup.request_updated', arrived)
+    serverMessage(socket(), 'pickup.request_updated', arrived)
     await settle()
     expect(fa).toHaveBeenCalledTimes(1)
     expect(fa.mock.calls[0]?.[0]?.id).toBe('r2')
 
-    socket().serverMessage('pickup.request_updated', arrived)
+    serverMessage(socket(), 'pickup.request_updated', arrived)
     await settle()
     expect(fa).toHaveBeenCalledTimes(1)
     expect(fn).toHaveBeenCalledTimes(1)
@@ -450,7 +417,7 @@ describe('usePickupBoard', () => {
     const offArrived = board.onArrived(vi.fn())
     offArrived()
     const r3 = makeRequest({ id: 'r3', studentId: 's3', status: 'arrived', arrived_at: '2026-10-02T09:15:00Z' })
-    socket().serverMessage('pickup.request_updated', r3)
+    serverMessage(socket(), 'pickup.request_updated', r3)
     await settle()
     expect(fa).toHaveBeenCalledTimes(2)
   })
@@ -472,7 +439,7 @@ describe('usePickupBoard', () => {
     )
     const creating = board.create({ student_id: 's9' })
     await settle()
-    socket().serverMessage('pickup.request_updated', r9)
+    serverMessage(socket(), 'pickup.request_updated', r9)
     await settle()
     release()
     expect((await creating)?.id).toBe('r9')
@@ -484,14 +451,14 @@ describe('usePickupBoard', () => {
     const r8 = makeRequest({ id: 'r8', studentId: 's8', studentName: '林小華', source: 'staff', requested_by_type: 'staff' })
     mock.onPost('/admin/pickup/requests').replyOnce(201, r8)
     await board.create({ student_id: 's8' })
-    socket().serverMessage('pickup.request_updated', r8)
+    serverMessage(socket(), 'pickup.request_updated', r8)
     await settle()
     expect(fn).not.toHaveBeenCalled()
 
     // create 結束後（成功或失敗）不再壓制：該生之後的新請求照常通知
-    socket().serverMessage('pickup.request_updated', { ...r9, status: 'cancelled', cancelled_at: '2026-10-02T09:05:00Z' })
+    serverMessage(socket(), 'pickup.request_updated', { ...r9, status: 'cancelled', cancelled_at: '2026-10-02T09:05:00Z' })
     await settle()
-    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r11', studentId: 's9', studentName: '陳小美' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ id: 'r11', studentId: 's9', studentName: '陳小美' }))
     await settle()
     expect(fn.mock.calls.map((c) => (c[0] as PickupRequest).id)).toEqual(['r11'])
 
@@ -499,7 +466,7 @@ describe('usePickupBoard', () => {
       error: { code: 'pickup_request_exists', message: '今天已有進行中的接送請求', details: null },
     })
     await expect(board.create({ student_id: 's7' })).rejects.toMatchObject({ code: 'pickup_request_exists' })
-    socket().serverMessage('pickup.request_updated', makeRequest({ id: 'r12', studentId: 's7', studentName: '張語晴' }))
+    serverMessage(socket(), 'pickup.request_updated', makeRequest({ id: 'r12', studentId: 's7', studentName: '張語晴' }))
     await settle()
     expect(fn.mock.calls.map((c) => (c[0] as PickupRequest).id)).toEqual(['r11', 'r12'])
   })
@@ -514,7 +481,7 @@ describe('usePickupBoard', () => {
     board.onNewRequest(fn)
     expect(board.counts.value.arrived).toBe(0)
 
-    socket().serverMessage('pickup.request_updated', {
+    serverMessage(socket(), 'pickup.request_updated', {
       ...makeRequest({ id: 'r5', studentId: 's5', studentName: '李承恩' }),
       status: 'arrived',
       expected_arrival_at: null,
@@ -645,7 +612,7 @@ describe('usePickupBoard', () => {
     mockAll(makeQueue(), makeRoster([s1, s2]))
     const { board } = await mountBoard({ withRoster: true })
 
-    socket().serverMessage(
+    serverMessage(socket(), 
       'attendance.updated',
       makeAttendanceRow({ student_id: 's2', status: 'present', check_in_at: '2026-10-02T08:30:00Z' }),
     )
@@ -653,7 +620,7 @@ describe('usePickupBoard', () => {
     expect(rosterStudent(board, 's2')?.attendance_status).toBe('present')
     expect(rosterStudent(board, 's2')?.check_in_at).toBe('2026-10-02T08:30:00Z')
 
-    socket().serverMessage('attendance.batch_updated', {
+    serverMessage(socket(), 'attendance.batch_updated', {
       items: [
         makeAttendanceRow({
           student_id: 's1',
@@ -667,11 +634,11 @@ describe('usePickupBoard', () => {
     expect(rosterStudent(board, 's1')?.leave_type).toBe('sick')
 
     // 非今天的出勤變動忽略
-    socket().serverMessage('attendance.updated', makeAttendanceRow({ student_id: 's2', status: 'absent', service_date: '2026-10-01' }))
+    serverMessage(socket(), 'attendance.updated', makeAttendanceRow({ student_id: 's2', status: 'absent', service_date: '2026-10-01' }))
     await settle()
     expect(rosterStudent(board, 's2')?.attendance_status).toBe('present')
 
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's2',
       service_date: DATE,
       items: [],
@@ -691,7 +658,7 @@ describe('usePickupBoard', () => {
 
     // 請假套用（bulk_updated）含今天 → 重抓名單
     expect(gets(ROSTER_URL)).toHaveLength(1)
-    socket().serverMessage('attendance.bulk_updated', { student_id: 's1', dates: [DATE, '2026-10-03'] })
+    serverMessage(socket(), 'attendance.bulk_updated', { student_id: 's1', dates: [DATE, '2026-10-03'] })
     await settle()
     expect(gets(ROSTER_URL)).toHaveLength(2)
     expect(gets(QUEUE_URL)).toHaveLength(1)
@@ -702,7 +669,7 @@ describe('usePickupBoard', () => {
     await mountBoard({ withRoster: true })
     expect(gets(ROSTER_URL)).toHaveLength(1)
 
-    socket().serverControl({ type: 'error', code: 'permission_denied', topics: ['homework'] })
+    socket().message({ type: 'error', code: 'permission_denied', topics: ['homework'] })
     await settle()
 
     await vi.advanceTimersByTimeAsync(60_000)
@@ -743,7 +710,7 @@ describe('usePickupBoard', () => {
     expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(1)
 
     // 另一台平板核驗成功：後端推的是家長端形狀（沒有 student / photo_url / code_attempts / locked / verified_by_name）
-    socket().serverMessage(
+    serverMessage(socket(), 
       'pickup.authorization_updated',
       makeAuthorizationEvent({ status: 'completed', effective_status: 'completed', verification_method: 'code', verified_at: '2026-10-02T09:05:00Z' }),
     )
@@ -764,7 +731,7 @@ describe('usePickupBoard', () => {
     expect(gets(ROSTER_URL)).toHaveLength(1)
 
     // 非今天的授權事件忽略
-    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent({ id: 'pa3', service_date: '2026-10-03' }))
+    serverMessage(socket(), 'pickup.authorization_updated', makeAuthorizationEvent({ id: 'pa3', service_date: '2026-10-03' }))
     await settle()
     expect(gets(AUTH_URL)).toHaveLength(2)
   })
@@ -784,8 +751,8 @@ describe('usePickupBoard', () => {
     const { board } = await mountBoard({ withAuthorizations: true })
     expect(board.authorizations.value[0]?.code_attempts).toBe(0)
 
-    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent())
-    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent())
+    serverMessage(socket(), 'pickup.authorization_updated', makeAuthorizationEvent())
+    serverMessage(socket(), 'pickup.authorization_updated', makeAuthorizationEvent())
     await settle()
     expect(gets(AUTH_URL)).toHaveLength(3)
 
@@ -814,7 +781,7 @@ describe('usePickupBoard', () => {
     const { board } = first
     expect(rosterStudent(board, 's1')?.active_authorization_count).toBe(0)
 
-    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent())
+    serverMessage(socket(), 'pickup.authorization_updated', makeAuthorizationEvent())
     await settle()
 
     expect(gets(ROSTER_URL)).toHaveLength(2)
@@ -832,7 +799,7 @@ describe('usePickupBoard', () => {
 
     // 兩者皆未載入：事件忽略，不寫進清單也不重抓
     const bare = await mountBoard()
-    socket().serverMessage('pickup.authorization_updated', makeAuthorizationEvent({ id: 'pa9' }))
+    serverMessage(socket(), 'pickup.authorization_updated', makeAuthorizationEvent({ id: 'pa9' }))
     await settle()
     expect(bare.board.authorizations.value).toEqual([])
     expect(gets(ROSTER_URL)).toHaveLength(3)

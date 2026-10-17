@@ -10,40 +10,11 @@ import type { PickupRequest } from '@/api/pickupRequests'
 import { useAdminWsStore } from '@/stores/adminWs'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import PickupAuthorizationsView from './PickupAuthorizationsView.vue'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
-/** 只模擬 adminWs store 需要的部分：開線、送訊息給頁面 */
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: '2026-10-06T08:30:00Z' }) } as MessageEvent)
-  }
+/** 後端事件封包（type + data + sent_at） */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: '2026-10-06T08:30:00Z' })
 }
 
 const AUTH_URL = '/admin/pickup/authorizations'
@@ -232,8 +203,7 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     // 台北 2026-10-06（二）16:30
     vi.setSystemTime(new Date('2026-10-06T08:30:00Z'))
-    FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     mock = createApiMock(adminHttp)
     mock.onGet(QUEUE_URL).reply(200, { date: TODAY, open: [], closed: [], counts: {} })
   })
@@ -539,7 +509,7 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
       },
     })
     useAdminWsStore(pinia).start()
-    socket().serverOpen()
+    socket().open()
     await settle()
 
     await verifyButtons(wrapper as VueWrapper)[0]!.trigger('click')
@@ -551,7 +521,7 @@ describe('PickupAuthorizationsView', { timeout: 20_000 }, () => {
     attempts = 3
     const event: Record<string, unknown> = { ...CHEN }
     for (const key of ['student', 'photo_url', 'code_attempts', 'locked', 'verified_by_name']) delete event[key]
-    socket().serverMessage('pickup.authorization_updated', event)
+    serverMessage(socket(), 'pickup.authorization_updated', event)
     await settle()
 
     expect(authGets().length).toBeGreaterThanOrEqual(2)

@@ -1,46 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createWsClient, type WsClient, type WsClientOptions } from './createWsClient'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  closeCalls = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.closeCalls += 1
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(data: string): void {
-    this.onmessage?.({ data } as MessageEvent)
-  }
-
-  serverClose(code: number): void {
-    this.readyState = 3
-    this.onclose?.({ code, reason: '', wasClean: false } as CloseEvent)
-  }
-}
+import { FakeWebSocket } from '@/test/fakeWebSocket'
 
 const sockets = FakeWebSocket.instances
 const lastSocket = (): FakeWebSocket => {
@@ -126,10 +86,10 @@ describe('createWsClient', () => {
     client.on('homework.progress_updated', onHomework)
     client.on('*', onAny)
     client.start()
-    lastSocket().serverOpen()
+    lastSocket().open()
 
     const raw = '{"type":"pickup.request_updated","data":{"id":"r1"},"sent_at":"2026-10-02T08:00:00Z"}'
-    lastSocket().serverMessage(raw)
+    lastSocket().message(raw)
 
     expect(onRequest).toHaveBeenCalledTimes(1)
     expect(onRequest.mock.calls[0]?.[0]).toEqual({ id: 'r1' })
@@ -142,9 +102,9 @@ describe('createWsClient', () => {
     expect(onAny).toHaveBeenCalledTimes(1)
     expect(consoleError).toHaveBeenCalledTimes(1)
 
-    expect(() => lastSocket().serverMessage('not-json')).not.toThrow()
-    expect(() => lastSocket().serverMessage('{"data":{}}')).not.toThrow()
-    expect(() => lastSocket().serverMessage('null')).not.toThrow()
+    expect(() => lastSocket().message('not-json')).not.toThrow()
+    expect(() => lastSocket().message('{"data":{}}')).not.toThrow()
+    expect(() => lastSocket().message('null')).not.toThrow()
     expect(onAny).toHaveBeenCalledTimes(1)
   })
 
@@ -153,10 +113,10 @@ describe('createWsClient', () => {
     const handler = vi.fn()
     const off = client.on('ready', handler)
     client.start()
-    lastSocket().serverOpen()
-    lastSocket().serverMessage('{"type":"ready","data":{},"sent_at":"2026-10-02T08:00:00Z"}')
+    lastSocket().open()
+    lastSocket().message('{"type":"ready","data":{},"sent_at":"2026-10-02T08:00:00Z"}')
     off()
-    lastSocket().serverMessage('{"type":"ready","data":{},"sent_at":"2026-10-02T08:00:01Z"}')
+    lastSocket().message('{"type":"ready","data":{},"sent_at":"2026-10-02T08:00:01Z"}')
 
     expect(handler).toHaveBeenCalledTimes(1)
   })
@@ -165,21 +125,21 @@ describe('createWsClient', () => {
     const { client } = makeClient()
     client.start()
     expect(client.status.value).toBe('connecting')
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(client.status.value).toBe('open')
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(client.status.value).toBe('reconnecting')
     expectReconnectAfter(1000)
     expect(sockets.length).toBe(2)
     expect(client.status.value).toBe('reconnecting')
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expectReconnectAfter(2000)
     expect(sockets.length).toBe(3)
     expect(client.status.value).toBe('reconnecting')
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expectReconnectAfter(4000)
     expect(sockets.length).toBe(4)
     expect(client.status.value).toBe('reconnecting')
@@ -188,33 +148,33 @@ describe('createWsClient', () => {
   it('createWsClient caps backoff and resets after open', () => {
     const { client } = makeClient()
     client.start()
-    lastSocket().serverOpen()
+    lastSocket().open()
 
     for (const delay of [1000, 2000, 4000, 8000, 16000, 30000]) {
-      lastSocket().serverClose(1006)
+      lastSocket().close(1006)
       expectReconnectAfter(delay)
     }
     // 連續失敗 6 次後，第 7 次仍為上限
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expectReconnectAfter(30000)
 
-    lastSocket().serverOpen()
-    lastSocket().serverClose(1006)
+    lastSocket().open()
+    lastSocket().close(1006)
     expectReconnectAfter(1000)
   })
 
   it('createWsClient polls while disconnected', () => {
     const { client, onPoll } = makeClient()
     client.start()
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(onPoll).toHaveBeenCalledTimes(0)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(onPoll).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(45000)
     expect(onPoll).toHaveBeenCalledTimes(4)
 
-    lastSocket().serverOpen()
+    lastSocket().open()
     vi.advanceTimersByTime(60000)
     expect(onPoll).toHaveBeenCalledTimes(4)
   })
@@ -224,7 +184,7 @@ describe('createWsClient', () => {
     client.start()
     expect(onPoll).toHaveBeenCalledTimes(0)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(client.status.value).toBe('reconnecting')
     expect(onPoll).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(5000)
@@ -236,9 +196,9 @@ describe('createWsClient', () => {
       sockets.length = 0
       const { client, onPoll, onAuthClose } = makeClient()
       client.start()
-      lastSocket().serverOpen()
+      lastSocket().open()
 
-      lastSocket().serverClose(code)
+      lastSocket().close(code)
 
       expect(onAuthClose).toHaveBeenCalledWith(code)
       expect(client.status.value).toBe('closed')
@@ -275,8 +235,8 @@ describe('createWsClient', () => {
   it('createWsClient stop clears reconnect and poll timers', () => {
     const { client, onPoll } = makeClient()
     client.start()
-    lastSocket().serverOpen()
-    lastSocket().serverClose(1006)
+    lastSocket().open()
+    lastSocket().close(1006)
     expect(onPoll).toHaveBeenCalledTimes(1)
 
     client.stop()
@@ -289,12 +249,12 @@ describe('createWsClient', () => {
   it('createWsClient onOpen reports reconnect', () => {
     const { client, onOpen } = makeClient()
     client.start()
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(onOpen).toHaveBeenLastCalledWith({ isReconnect: false })
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     vi.advanceTimersByTime(1000)
-    lastSocket().serverOpen()
+    lastSocket().open()
 
     expect(onOpen).toHaveBeenCalledTimes(2)
     expect(onOpen).toHaveBeenLastCalledWith({ isReconnect: true })
@@ -308,7 +268,7 @@ describe('createWsClient', () => {
     expect(client.send({ action: 'subscribe' })).toBe(false)
     expect(lastSocket().sent).toEqual([])
 
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(client.send({ action: 'subscribe' })).toBe(true)
     expect(lastSocket().sent[0]).toBe('{"action":"subscribe"}')
   })
@@ -317,7 +277,7 @@ describe('createWsClient', () => {
     const { client, onPoll } = makeClient()
     client.start()
     const first = lastSocket()
-    first.serverOpen()
+    first.open()
 
     setHidden(true)
 
@@ -338,8 +298,8 @@ describe('createWsClient', () => {
   it('createWsClient hidden page stops polling and pending reconnect', () => {
     const { client, onPoll } = makeClient()
     client.start()
-    lastSocket().serverOpen()
-    lastSocket().serverClose(1006)
+    lastSocket().open()
+    lastSocket().close(1006)
     expect(onPoll).toHaveBeenCalledTimes(1)
 
     setHidden(true)

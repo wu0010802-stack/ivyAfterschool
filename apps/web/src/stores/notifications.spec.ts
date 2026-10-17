@@ -7,40 +7,7 @@ import { ApiError, type Notification } from '@/shared/types/api'
 import { useAdminWsStore } from '@/stores/adminWs'
 import { createApiMock } from '@/test/helpers'
 import { useNotificationsStore } from './notifications'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-}
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
 function lastSocket(): FakeWebSocket {
   const s = FakeWebSocket.instances.at(-1)
@@ -83,7 +50,7 @@ interface InboxBody {
 function startWsAndBind() {
   const store = useNotificationsStore()
   useAdminWsStore().start()
-  lastSocket().serverOpen()
+  lastSocket().open()
   store.bindWs()
   return store
 }
@@ -92,8 +59,7 @@ describe('notifications store', () => {
   let mock: MockAdapter
 
   beforeEach(() => {
-    FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     setActivePinia(createPinia())
     mock = createApiMock(adminHttp)
   })
@@ -234,7 +200,7 @@ describe('notifications store', () => {
     const transient = vi.fn()
     store.onTransient(transient)
 
-    lastSocket().serverMessage({ type: 'notification.created', data: makeNotification('n1'), sent_at: '2026-10-07T08:00:00Z' })
+    lastSocket().message({ type: 'notification.created', data: makeNotification('n1'), sent_at: '2026-10-07T08:00:00Z' })
 
     expect(store.items).toHaveLength(1)
     expect(store.items[0]?.id).toBe('n1')
@@ -242,7 +208,7 @@ describe('notifications store', () => {
     expect(store.total).toBe(1)
 
     // transient 沒有 id 去重：綁了兩次會收到兩次，這裡確認只有一次
-    lastSocket().serverMessage({
+    lastSocket().message({
       type: 'notification.transient',
       data: { event: 'pickup.arrived', title: '王小明家長已到', body: '', payload: { request_id: 'r1' } },
       sent_at: '2026-10-07T08:00:30Z',
@@ -251,11 +217,11 @@ describe('notifications store', () => {
 
     // 解除後不再收；再綁一次恢復
     off()
-    lastSocket().serverMessage({ type: 'notification.created', data: makeNotification('n2'), sent_at: '2026-10-07T08:01:00Z' })
+    lastSocket().message({ type: 'notification.created', data: makeNotification('n2'), sent_at: '2026-10-07T08:01:00Z' })
     expect(store.items).toHaveLength(1)
 
     store.bindWs()
-    lastSocket().serverMessage({ type: 'notification.created', data: makeNotification('n3'), sent_at: '2026-10-07T08:02:00Z' })
+    lastSocket().message({ type: 'notification.created', data: makeNotification('n3'), sent_at: '2026-10-07T08:02:00Z' })
     expect(store.items.map((n) => n.id)).toEqual(['n3', 'n1'])
   })
 
@@ -269,7 +235,7 @@ describe('notifications store', () => {
     store.onTransient(failing)
     const off = store.onTransient(listener)
 
-    lastSocket().serverMessage({
+    lastSocket().message({
       type: 'notification.transient',
       data: { event: 'pickup.arrived', title: '王小明家長已到', body: '', payload: { request_id: 'r1' } },
       sent_at: '2026-10-07T08:00:00Z',
@@ -290,7 +256,7 @@ describe('notifications store', () => {
     expect(store.unreadCount).toBe(0)
 
     off()
-    lastSocket().serverMessage({
+    lastSocket().message({
       type: 'notification.transient',
       data: { event: 'pickup.arrived', title: '林小華家長已到', body: '', payload: { request_id: 'r2' } },
       sent_at: '2026-10-07T08:01:00Z',

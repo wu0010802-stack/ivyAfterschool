@@ -13,6 +13,7 @@ import { useAdminWsStore } from '@/stores/adminWs'
 import { useNotificationsStore } from '@/stores/notifications'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import App from './App.vue'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
 // 預設把 AdminLayout 換成只渲染 default slot 的 stub；layoutMode.real 為 true 時改用真正的 AdminLayout（驗證卸載行為）
 const layoutMode = vi.hoisted(() => ({ real: false }))
@@ -40,33 +41,6 @@ vi.mock('@/router/viewLoaders', async () => {
   return { VIEW_LOADERS: new Proxy({}, { get: () => () => Promise.resolve(ViewStub) }) }
 })
 
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(): void {}
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-}
-
 const sockets = FakeWebSocket.instances
 
 const USER: StaffMe = {
@@ -93,7 +67,7 @@ describe('App shell', () => {
   beforeEach(() => {
     layoutMode.real = false
     sockets.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     mock = createApiMock(adminHttp)
     mock.onGet('/admin/notifications').reply(200, { items: [], total: 0, unread_count: 0 })
   })
@@ -232,7 +206,7 @@ describe('App shell', () => {
     const notifications = useNotificationsStore()
     expect(wrapper.find('[data-test=admin-sidebar]').exists()).toBe(true)
     expect(sockets).toHaveLength(1)
-    sockets[0]?.serverOpen()
+    sockets[0]?.open()
     expect(adminWs.status).toBe('open')
     expect(notifications.items.map((n) => n.id)).toEqual(['n1'])
 

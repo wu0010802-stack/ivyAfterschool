@@ -4,45 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { useAdminWsStore, type Topic } from '@/stores/adminWs'
 import { useAdminWsTopic } from './useAdminWsTopic'
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(message: object): void {
-    this.onmessage?.({ data: JSON.stringify(message) } as MessageEvent)
-  }
-
-  serverClose(code: number): void {
-    this.readyState = 3
-    this.onclose?.({ code, reason: '', wasClean: false } as CloseEvent)
-  }
-}
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
 const sockets = FakeWebSocket.instances
 
@@ -82,7 +44,7 @@ function mountTopic(
 function startOpen() {
   const store = useAdminWsStore()
   store.start()
-  lastSocket().serverOpen()
+  lastSocket().open()
   return store
 }
 
@@ -95,7 +57,7 @@ describe('useAdminWsTopic', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     sockets.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     pinia = createPinia()
     setActivePinia(pinia)
   })
@@ -134,7 +96,7 @@ describe('useAdminWsTopic', () => {
 
     expect(result.status.value).toBe('connecting')
     expect(wrapper.text()).toBe('connecting')
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(result.status.value).toBe('open')
     await nextTick()
     expect(wrapper.text()).toBe('open')
@@ -151,12 +113,12 @@ describe('useAdminWsTopic', () => {
       'homework.other': other,
     })
 
-    lastSocket().serverMessage({
+    lastSocket().message({
       type: 'homework.progress_updated',
       data: { student_id: 's1', service_date: '2026-10-07' },
       sent_at: '2026-10-07T08:00:00Z',
     })
-    lastSocket().serverMessage({
+    lastSocket().message({
       type: 'pickup.request_updated',
       data: { id: 'p1' },
       sent_at: '2026-10-07T08:00:01Z',
@@ -167,7 +129,7 @@ describe('useAdminWsTopic', () => {
     expect(other).not.toHaveBeenCalled()
 
     wrapper.unmount()
-    lastSocket().serverMessage({
+    lastSocket().message({
       type: 'homework.progress_updated',
       data: { student_id: 's1', service_date: '2026-10-07' },
       sent_at: '2026-10-07T08:00:02Z',
@@ -182,7 +144,7 @@ describe('useAdminWsTopic', () => {
     expect(resync).not.toHaveBeenCalled()
 
     // 斷線：立刻輪詢一次
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(resync).toHaveBeenCalledTimes(1)
 
     // 200ms 內再觸發輪詢（分頁切回前景）：上一輪還在跑，不併發
@@ -193,7 +155,7 @@ describe('useAdminWsTopic', () => {
     // 上一輪完成後重連成功：補抓一次
     await vi.advanceTimersByTimeAsync(500)
     expect(sockets).toHaveLength(2)
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(resync).toHaveBeenCalledTimes(2)
   })
 
@@ -203,13 +165,13 @@ describe('useAdminWsTopic', () => {
     mountTopic('attendance', {}, resync)
 
     // t=0 斷線：輪詢立刻送出 R1（伺服器快照停在 t=0）
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(resync).toHaveBeenCalledTimes(1)
 
     // t=1000 重連成功：R1 仍在跑，不併發，記為待補
     await vi.advanceTimersByTimeAsync(1000)
     expect(sockets).toHaveLength(2)
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(resync).toHaveBeenCalledTimes(1)
 
     // 分頁重新可見再觸發一次輪詢：合併進同一次待補
@@ -242,10 +204,10 @@ describe('useAdminWsTopic', () => {
       .mockImplementation(() => Promise.resolve())
     mountTopic('attendance', {}, resync)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(resync).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(1000)
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(resync).toHaveBeenCalledTimes(1)
 
     // R1 在重連成功之後才失敗（網路剛恢復時常見）：仍要補跑一次，重連後至少有一次成功的補抓
@@ -271,7 +233,7 @@ describe('useAdminWsTopic', () => {
       .mockImplementation(() => Promise.resolve())
     mountTopic('attendance', {}, resync)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
 
     // 失敗後立刻補跑恰好一次
     expect(resync).toHaveBeenCalledTimes(2)
@@ -285,10 +247,10 @@ describe('useAdminWsTopic', () => {
     const resync = vi.fn(() => new Promise<void>((resolve) => setTimeout(resolve, 2000)))
     const { wrapper } = mountTopic('attendance', {}, resync)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(resync).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(1000)
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(resync).toHaveBeenCalledTimes(1)
 
     // 待補期間離開頁面：上一輪完成後不再補跑
@@ -311,7 +273,7 @@ describe('useAdminWsTopic', () => {
       .mockImplementation(() => undefined)
     const { wrapper } = mountTopic('attendance', {}, resync)
 
-    lastSocket().serverClose(1006)
+    lastSocket().close(1006)
     expect(resync).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(15000)
     expect(resync).toHaveBeenCalledTimes(2)
@@ -321,7 +283,7 @@ describe('useAdminWsTopic', () => {
     // 卸載後不再輪詢、也不在重連時補抓
     wrapper.unmount()
     await vi.advanceTimersByTimeAsync(15000)
-    lastSocket().serverOpen()
+    lastSocket().open()
     expect(resync).toHaveBeenCalledTimes(3)
   })
 
@@ -331,7 +293,7 @@ describe('useAdminWsTopic', () => {
     const pickup = mountTopic('pickup')
     expect(attendance.result.denied.value).toBe(false)
 
-    lastSocket().serverMessage({ type: 'error', code: 'permission_denied', topics: ['attendance'] })
+    lastSocket().message({ type: 'error', code: 'permission_denied', topics: ['attendance'] })
 
     expect(attendance.result.denied.value).toBe(true)
     await nextTick()
