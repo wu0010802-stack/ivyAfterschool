@@ -15,6 +15,9 @@
 //   名單回應到達時 startedAt 之後更新過的學生保留目前的列。授權清單整包取代；latest_expected_arrival 取回應值。
 //   跨日時清空異動紀錄，queue 換成新日期的空殼（沿用 latest_expected_arrival）、roster 設為 null，
 //   換日後的 ws 更新只落在新日期的資料上，不會與昨天的請求 / 名單混在一起。
+// - reload 補提示（FRONTEND-318）：同一服務日已採用過佇列回應後，再次採用回應時比對合併前後的佇列，合併後為 arrived、
+//   合併前不存在或狀態機順序在 arrived 之前的請求各觸發一次 onArrived（斷線期間遺失的「家長到了」推播由 reload 補回）。
+//   首次載入與換日後的第一次回應、合併前已是 arrived、回應已是終態、被序號丟棄的回應都不觸發。
 // - 授權事件（pickup.authorization_updated）只帶家長端形狀（BACKEND-420 PickupAuthorizationOut），沒有學生摘要、照片、
 //   錯誤次數與鎖定：收到當天的事件就重抓 B436 清單（序號防護），不就地合併；沒載入授權清單時不寫入，改重抓名單。
 import { ElMessage } from 'element-plus'
@@ -162,6 +165,8 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
   let touchClock = 0
   const touched = new Map<string, number>()
   const touchedStudent = new Map<string, number>()
+  /** 目前服務日是否已採用過佇列回應（首次載入與換日後的第一次回應不補 onArrived） */
+  let queueLoaded = false
   /** 本機 create 進行中的 student_id（引用計數） */
   const localCreates = new Map<string, number>()
 
@@ -210,7 +215,23 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     const mySeq = ++queueSeq
     const startedAt = touchClock
     const res = await fetchPickupQueue(date)
-    if (mySeq === queueSeq) queue.value = mergeQueue(res, startedAt)
+    if (mySeq !== queueSeq) return
+    const before = queue.value
+    const merged = mergeQueue(res, startedAt)
+    const notify = queueLoaded && before !== null && before.date === merged.date
+    queue.value = merged
+    queueLoaded = true
+    if (notify) notifyArrivedFromReload(before, merged)
+  }
+
+  /** reload 帶回、合併前尚未到 arrived 的請求補觸發 onArrived（每筆一次） */
+  function notifyArrivedFromReload(before: PickupQueue, after: PickupQueue): void {
+    const previous = new Map([...before.open, ...before.closed].map((r) => [r.id, r]))
+    for (const req of after.open) {
+      if (req.status !== 'arrived') continue
+      const prev = previous.get(req.id)
+      if (!prev || STATUS_RANK[prev.status] < STATUS_RANK.arrived) runListeners(arrivedListeners, req)
+    }
   }
 
   async function loadRoster(): Promise<void> {
@@ -469,6 +490,7 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
     date = today
     touched.clear()
     touchedStudent.clear()
+    queueLoaded = false
     // 換日後的更新不可落在昨天的資料上：佇列換成新日期空殼，名單等新日期回應
     queue.value = {
       date,
