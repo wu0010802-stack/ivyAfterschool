@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 338,
-  "last_updated": "2026-10-17T04:08:08Z",
+  "version": 339,
+  "last_updated": "2026-10-17T04:15:47",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6494,7 +6494,7 @@
     {
       "id": "FRONTEND-302",
       "title": "FormDialog 平板觸控：footer 按鈕高度 ≥ 44px（需改稿並重新核可）",
-      "description": "修改 `apps/web/src/components/common/FormDialog.vue`（FRONTEND-040）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：footer 的「取消 / 送出」為 Element Plus 預設 32px 高，平板（1024×768 POS、作業看板、今日出勤）的 dialog 觸控目標不足 44px。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/component-common-extra.html` 的 FormDialog 段：footer 按鈕最小高 44px（建議 `min-height: 44px` 與左右 padding，桌機與手機 fullscreen 同一規則），在 decisions 寫明，並把本 task id 加進 `preview-tasks`；改稿後 `preview-status` 改為 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。各頁面稿引用的 FormDialog 不逐張改，以元件稿為準。\n- 實作：只改 FormDialog footer 的樣式（scoped 或既有 `.form-dialog__footer` 規則），不改按鈕順序、文字與行為；fullscreen 貼底規則不變。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-040 tdd.run 全綠，另以真實 Chromium 量測 1024×768 下 footer 兩顆按鈕高度 ≥ 44px（回報附數值）。",
+      "description": "修改 `apps/web/src/components/common/FormDialog.vue`（FRONTEND-040）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：footer 的「取消 / 送出」為 Element Plus 預設 32px 高，平板（1024×768 POS、作業看板、今日出勤）的 dialog 觸控目標不足 44px。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/component-common-extra.html` 的 FormDialog 段：footer 按鈕最小高 44px（建議 `min-height: 44px` 與左右 padding，桌機與手機 fullscreen 同一規則），在 decisions 寫明，並把本 task id 加進 `preview-tasks`；改稿後 `preview-status` 改為 `draft`，取得使用者核可（`approved`）才能進 `in_progress`。各頁面稿引用的 FormDialog 不逐張改，以元件稿為準。\n- 實作：只改 FormDialog footer 的樣式（scoped 或既有 `.form-dialog__footer` 規則），不改按鈕順序、文字與行為；fullscreen 貼底規則不變。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-040 tdd.run 全綠，另以真實 Chromium 量測 1024×768 下 footer 兩顆按鈕高度 ≥ 44px（回報附數值）。\n\n範圍（使用者 2026-10-17 核可稿時裁定）：「未儲存的變更」確認框（`confirmDiscardChanges`）的按鈕尺寸不在本 task，由 FRONTEND-313 處理。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/common/FormDialog.vue",
       "source_ref": null,
@@ -6862,6 +6862,39 @@
         ],
         "run": "just web-test src/test/fakeWebSocket.spec.ts -t \"fakeWebSocket\"",
         "notes": "逐檔替換後各跑該 spec 的 tdd.run（測試數與替換前相同，回報列出每檔前後數字）。容器 CPU 有限，逐檔跑、不要同時跑全部。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
+      }
+    },
+    {
+      "id": "FRONTEND-313",
+      "title": "全站確認框（ElMessageBox.confirm）按鈕觸控尺寸 ≥ 44px（需改稿並重新核可）",
+      "description": "使用者 2026-10-17 核可 FRONTEND-302 稿時裁定：FormDialog footer 以外的確認框按鈕另開本 task 統一處理。\n\n現況：`apps/web/src/composables/useFormDirty.ts::confirmDiscardChanges`（「放棄變更 / 繼續編輯」）與各頁以 `ElMessageBox.confirm` 開的確認框按鈕為 Element Plus 預設 32px 高，平板觸控目標不足 44px。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/component-common-extra.html`，新增確認框段：按鈕最小高 44px（與 FormDialog footer 同一規則），decisions 寫明套用範圍（全站 ElMessageBox confirm 的按鈕；用全域 class 或 `customClass` 二選一由設計稿定），本 task id 加進 `preview-tasks`，`preview-status` 改 `draft`，取得使用者核可才能進 `in_progress`。\n- 實作：只改按鈕尺寸樣式，不改文案、按鈕順序與行為。\n\n**驗收標準**：每一條對應下列 red_case；以真實 Chromium 量測 1024×768 下 confirmDiscardChanges 確認框兩顆按鈕高度 ≥ 44px（回報附數值）。",
+      "granularity_unit": "component",
+      "target_path": "apps/web/src/composables/useFormDirty.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-302"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/useFormDirty.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "confirmDiscardChanges buttons meet touch target：呼叫 confirmDiscardChanges → ElMessageBox.confirm 選項帶設計稿指定的觸控尺寸 class，且該 class 的樣式宣告含 min-height: 44px",
+          "confirmDiscardChanges copy unchanged：確認鈕「放棄變更」、取消鈕「繼續編輯」，按確認回 true、按取消回 false"
+        ],
+        "run": "just web-test src/composables/useFormDirty.spec.ts -t \"confirmDiscardChanges\"",
+        "notes": "happy-dom 量不到版面：單元測試只鎖 class 與樣式宣告，實際高度以 Chromium 量測驗收。"
       },
       "review": {
         "status": "pending",
