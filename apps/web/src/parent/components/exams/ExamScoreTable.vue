@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * 單次考試各科成績（純展示）：語意化 table，欄位「科目」「分數」「滿分」，caption「各科成績」視覺隱藏。
- * 分數：缺考優先 →「缺考」（error 色）；沒有分數且非缺考 →「未登記」；其餘為數字（整數不帶小數，
- * 非整數至多 1 位）。科目備註放在同一列、科目名稱下方，螢幕閱讀器念到該科就會念到備註。
+ * 分數：缺考優先 →「缺考」（error 色）；沒有分數且非缺考 →「未登記」；其餘照後端原值（Numeric(6,2)）
+ * 顯示到兩位小數、去尾端 0，不四捨五入（domain_spec M8）。科目備註放在同一列、科目名稱下方，螢幕閱讀器念到該科就會念到備註。
  * 不依分數高低上色、不顯示總分 / 平均 / 排名（domain_spec M8：不做排名，平均只在後台）。
  * subjects 為空時不渲染 table，改用共用空狀態。
  */
@@ -14,9 +14,12 @@ const props = defineProps<{ subjects: ParentExamDetail['subjects'] }>()
 
 type Subject = ParentExamDetail['subjects'][number]
 
-/** 整數不帶小數（88 而非 88.0），非整數至多 1 位（92.5） */
+/**
+ * 照原值到兩位小數、去尾端 0：59.95 → 59.95、85.50 → 85.5、90.00 → 90。
+ * 後端本來就最多兩位，toFixed(2) 只用來消除浮點誤差，不會把 59.95 進位成 60。
+ */
 function formatScore(n: number): string {
-  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10)
+  return String(Number(n.toFixed(2)))
 }
 
 function scoreCell(s: Subject): { text: string; state: string } {
