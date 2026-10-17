@@ -1021,6 +1021,142 @@ describe('usePickupBoard', () => {
     expect(s1?.attendance_status).toBe('expected')
   })
 
+  it('usePickupBoard reload fires arrived for request upgraded by response', async () => {
+    const r1 = makeRequest({ status: 'acknowledged', needs_reply: false })
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1]))
+    const { board } = await mountBoard()
+    const fa = vi.fn()
+    board.onArrived(fa)
+
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([{ ...r1, status: 'arrived', arrived_at: '2026-10-02T09:06:00Z' }]))
+    await board.reload()
+    await settle()
+
+    expect(fa).toHaveBeenCalledTimes(1)
+    expect(fa.mock.calls[0]?.[0]?.id).toBe('r1')
+    expect(board.queue.value?.open.find((r) => r.id === 'r1')?.status).toBe('arrived')
+  })
+
+  it('usePickupBoard reload fires arrived for unseen arrived request', async () => {
+    const r1 = makeRequest()
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1]))
+    const { board } = await mountBoard()
+    const fa = vi.fn()
+    board.onArrived(fa)
+
+    const r2 = makeRequest({
+      id: 'r2',
+      studentId: 's2',
+      studentName: '陳小美',
+      status: 'arrived',
+      needs_reply: false,
+      arrived_at: '2026-10-02T09:06:00Z',
+    })
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r2, r1]))
+    await board.reload()
+    await settle()
+
+    expect(fa).toHaveBeenCalledTimes(1)
+    expect(fa.mock.calls[0]?.[0]?.id).toBe('r2')
+  })
+
+  it('usePickupBoard initial load does not fire arrived', async () => {
+    const respond = deferredGet(QUEUE_URL)
+    const { board } = await mountBoard()
+    const fa = vi.fn()
+    board.onArrived(fa)
+
+    respond(200, makeQueue([makeRequest({ status: 'arrived', needs_reply: false, arrived_at: '2026-10-02T09:06:00Z' })]))
+    await settle()
+
+    expect(openIds(board)).toEqual(['r1'])
+    expect(fa).not.toHaveBeenCalled()
+  })
+
+  it('usePickupBoard reload does not refire arrived already applied by ws', async () => {
+    const r1 = makeRequest()
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1]))
+    const { board } = await mountBoard()
+    const fa = vi.fn()
+    board.onArrived(fa)
+
+    const arrived = { ...r1, status: 'arrived' as const, needs_reply: false, arrived_at: '2026-10-02T09:06:00Z' }
+    serverMessage(socket(), 'pickup.request_updated', arrived)
+    await settle()
+    expect(fa).toHaveBeenCalledTimes(1)
+
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([arrived]))
+    await board.reload()
+    await settle()
+
+    expect(fa).toHaveBeenCalledTimes(1)
+  })
+
+  it('usePickupBoard reload does not fire arrived for terminal response', async () => {
+    const r1 = makeRequest({ status: 'acknowledged', needs_reply: false })
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1]))
+    const { board } = await mountBoard()
+    const fa = vi.fn()
+    board.onArrived(fa)
+
+    mock
+      .onGet(QUEUE_URL)
+      .replyOnce(200, makeQueue([], [{ ...r1, status: 'completed', arrived_at: '2026-10-02T09:06:00Z', completed_at: '2026-10-02T09:08:00Z' }]))
+    await board.reload()
+    await settle()
+
+    expect(fa).not.toHaveBeenCalled()
+    expect(board.queue.value?.closed.map((r) => r.id)).toEqual(['r1'])
+  })
+
+  it('usePickupBoard stale reload response does not fire arrived', async () => {
+    const r1 = makeRequest({ status: 'acknowledged', needs_reply: false })
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([r1]))
+    const { board } = await mountBoard()
+    const fa = vi.fn()
+    board.onArrived(fa)
+
+    const respondA = deferredGet(QUEUE_URL)
+    const respondB = deferredGet(QUEUE_URL)
+    const a = board.reload()
+    const b = board.reload()
+    await settle()
+    respondB(200, makeQueue([r1]))
+    await b
+    respondA(200, makeQueue([{ ...r1, status: 'arrived', arrived_at: '2026-10-02T09:06:00Z' }]))
+    await a
+    await settle()
+
+    expect(fa).not.toHaveBeenCalled()
+    expect(board.queue.value?.open.find((r) => r.id === 'r1')?.status).toBe('acknowledged')
+  })
+
+  it('usePickupBoard day change reload does not fire arrived', async () => {
+    mock.onGet(QUEUE_URL).replyOnce(200, makeQueue([makeRequest()]))
+    const { board } = await mountBoard()
+    const fa = vi.fn()
+    board.onArrived(fa)
+    const respond = deferredGet(QUEUE_URL)
+
+    vi.setSystemTime(Date.parse('2026-10-02T15:59:30Z'))
+    await vi.advanceTimersByTimeAsync(60_000)
+    await settle()
+    const r9 = makeRequest({
+      id: 'r9',
+      studentId: 's9',
+      studentName: '林大同',
+      service_date: '2026-10-03',
+      status: 'arrived',
+      needs_reply: false,
+      arrived_at: '2026-10-02T16:00:10Z',
+    })
+    respond(200, { ...makeQueue([r9]), date: '2026-10-03' })
+    await settle()
+
+    expect(openIds(board)).toEqual(['r9'])
+    expect(fa).not.toHaveBeenCalled()
+  })
+
   it('usePickupBoard keeps latest response and reports load errors', async () => {
     mock
       .onGet(QUEUE_URL)
