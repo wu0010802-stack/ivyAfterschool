@@ -9,39 +9,11 @@ import { adminHttp } from '@/api/http'
 import { useAdminWsStore } from '@/stores/adminWs'
 import { createApiMock } from '@/test/helpers'
 import { useAttendanceBoard } from './useAttendanceBoard'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: '2026-10-02T08:00:00Z' }) } as MessageEvent)
-  }
+/** 後端事件封包（type + data + sent_at） */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: '2026-10-02T08:00:00Z' })
 }
 
 const DAILY_URL = '/admin/attendance/daily'
@@ -121,14 +93,13 @@ function dailyGets(): AxiosRequestConfig[] {
 
 describe('useAttendanceBoard', () => {
   beforeEach(() => {
-    FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     pinia = createPinia()
     setActivePinia(pinia)
     mock = createApiMock(adminHttp)
     const store = useAdminWsStore()
     store.start()
-    socket().serverOpen()
+    socket().open()
   })
 
   afterEach(() => {
@@ -213,23 +184,23 @@ describe('useAttendanceBoard', () => {
     const { board } = await mountBoard(ref(DATE), ref('c1'))
     expect(dailyGets()[0]?.params).toEqual({ date: DATE, class_id: 'c1' })
 
-    socket().serverMessage('attendance.updated', { ...S2, status: 'present', check_in_at: '2026-10-02T06:10:00Z' })
+    serverMessage(socket(), 'attendance.updated', { ...S2, status: 'present', check_in_at: '2026-10-02T06:10:00Z' })
     await settle()
     expect(statusOf(board, 's2')).toBe('present')
     expect(board.data.value?.summary.present).toBe(1)
     expect(board.data.value?.summary.expected).toBe(1)
 
     const before = board.data.value?.items
-    socket().serverMessage('attendance.updated', { ...S2, class_id: 'c9', status: 'absent' })
+    serverMessage(socket(), 'attendance.updated', { ...S2, class_id: 'c9', status: 'absent' })
     await settle()
     expect(board.data.value?.items).toEqual(before)
 
-    socket().serverMessage('attendance.updated', { ...S2, service_date: '2026-10-01', status: 'left' })
+    serverMessage(socket(), 'attendance.updated', { ...S2, service_date: '2026-10-01', status: 'left' })
     await settle()
     expect(board.data.value?.items).toEqual(before)
 
     // batch_updated 逐筆套用同樣的日期 / 班級條件
-    socket().serverMessage('attendance.batch_updated', {
+    serverMessage(socket(), 'attendance.batch_updated', {
       items: [
         { ...S1, status: 'present' },
         { ...S2, class_id: 'c9', status: 'absent' },
@@ -250,9 +221,9 @@ describe('useAttendanceBoard', () => {
     mock.onGet(DAILY_URL).reply(200, daily([c1a, c1b, c2a]))
     const { board } = await mountBoard()
 
-    socket().serverMessage('attendance.updated', makeRow({ id: 'a5', student_id: 's5', student_no: 'S11302', class_id: 'c3' }))
-    socket().serverMessage('attendance.updated', makeRow({ id: 'a6', student_id: 's6', student_no: 'S11399', class_id: 'c1' }))
-    socket().serverMessage('attendance.updated', makeRow({ id: 'a7', student_id: 's7', student_no: 'S11201', class_id: 'c8' }))
+    serverMessage(socket(), 'attendance.updated', makeRow({ id: 'a5', student_id: 's5', student_no: 'S11302', class_id: 'c3' }))
+    serverMessage(socket(), 'attendance.updated', makeRow({ id: 'a6', student_id: 's6', student_no: 'S11399', class_id: 'c1' }))
+    serverMessage(socket(), 'attendance.updated', makeRow({ id: 'a7', student_id: 's7', student_no: 'S11201', class_id: 'c8' }))
     await settle()
 
     expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s1', 's5', 's3', 's4', 's6', 's7'])
@@ -264,11 +235,11 @@ describe('useAttendanceBoard', () => {
     await mountBoard()
     expect(dailyGets()).toHaveLength(1)
 
-    socket().serverMessage('attendance.bulk_updated', { student_id: 's3', dates: ['2026-10-02', '2026-10-03'] })
+    serverMessage(socket(), 'attendance.bulk_updated', { student_id: 's3', dates: ['2026-10-02', '2026-10-03'] })
     await settle()
     expect(dailyGets()).toHaveLength(2)
 
-    socket().serverMessage('attendance.bulk_updated', { student_id: 's3', dates: ['2026-10-05'] })
+    serverMessage(socket(), 'attendance.bulk_updated', { student_id: 's3', dates: ['2026-10-05'] })
     await settle()
     expect(dailyGets()).toHaveLength(2)
   })
@@ -485,7 +456,7 @@ describe('useAttendanceBoard', () => {
     // 切回今天、今天的清單尚未回來時收到今天的 ws 列：不套用到畫面上過去日期的清單
     date.value = DATE
     await settle()
-    socket().serverMessage('attendance.updated', { ...S2, status: 'present' })
+    serverMessage(socket(), 'attendance.updated', { ...S2, status: 'present' })
     await settle()
     expect(board.data.value?.date).toBe(PAST)
     expect(board.data.value?.items.map((r) => r.student_id)).toEqual(['s1'])
@@ -512,7 +483,7 @@ describe('useAttendanceBoard', () => {
 
     const reloading = board.reload()
     await settle()
-    socket().serverMessage('attendance.updated', { ...S1, status: 'present', check_in_at: '2026-10-02T06:05:00Z' })
+    serverMessage(socket(), 'attendance.updated', { ...S1, status: 'present', check_in_at: '2026-10-02T06:05:00Z' })
     await settle()
     expect(statusOf(board, 's1')).toBe('present')
 
@@ -543,7 +514,7 @@ describe('useAttendanceBoard', () => {
 
     const reloading = board.reload()
     await settle()
-    socket().serverMessage('attendance.updated', S3)
+    serverMessage(socket(), 'attendance.updated', S3)
     await settle()
     release()
     await reloading
@@ -562,7 +533,7 @@ describe('useAttendanceBoard', () => {
     const { board } = await mountBoard()
 
     // reload 之前 ws 改過 s1
-    socket().serverMessage('attendance.updated', { ...S1, status: 'present' })
+    serverMessage(socket(), 'attendance.updated', { ...S1, status: 'present' })
     await settle()
     expect(statusOf(board, 's1')).toBe('present')
 
@@ -617,7 +588,7 @@ describe('useAttendanceBoard', () => {
     // 只換班級（日期不變）：新篩選的 reload 途中收到符合新篩選的 ws 列
     classId.value = 'c1'
     await settle()
-    socket().serverMessage('attendance.updated', { ...S1, status: 'present' })
+    serverMessage(socket(), 'attendance.updated', { ...S1, status: 'present' })
     await settle()
     expect(statusOf(board, 's1')).toBe('present')
 

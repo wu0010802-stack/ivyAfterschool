@@ -9,39 +9,11 @@ import { adminHttp } from '@/api/http'
 import { useAdminWsStore } from '@/stores/adminWs'
 import { createApiMock } from '@/test/helpers'
 import { useHomeworkBoard } from './useHomeworkBoard'
+import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = []
-
-  readonly url: string
-  readyState = 0
-  sent: string[] = []
-  onopen: ((ev: Event) => void) | null = null
-  onmessage: ((ev: MessageEvent) => void) | null = null
-  onclose: ((ev: CloseEvent) => void) | null = null
-  onerror: ((ev: Event) => void) | null = null
-
-  constructor(url: string) {
-    this.url = url
-    FakeWebSocket.instances.push(this)
-  }
-
-  send(data: string): void {
-    this.sent.push(data)
-  }
-
-  close(): void {
-    this.readyState = 3
-  }
-
-  serverOpen(): void {
-    this.readyState = 1
-    this.onopen?.(new Event('open'))
-  }
-
-  serverMessage(type: string, data: unknown): void {
-    this.onmessage?.({ data: JSON.stringify({ type, data, sent_at: '2026-10-02T08:00:00Z' }) } as MessageEvent)
-  }
+/** 後端事件封包（type + data + sent_at） */
+function serverMessage(socket: FakeWebSocket, type: string, data: unknown): void {
+  socket.message({ type, data, sent_at: '2026-10-02T08:00:00Z' })
 }
 
 const BOARD_URL = '/admin/homework/board'
@@ -156,13 +128,12 @@ function deferred<T>(): { promise: Promise<T>; resolve: (v: T) => void } {
 
 describe('useHomeworkBoard', () => {
   beforeEach(() => {
-    FakeWebSocket.instances.length = 0
-    vi.stubGlobal('WebSocket', FakeWebSocket)
+    installFakeWebSocket()
     pinia = createPinia()
     setActivePinia(pinia)
     mock = createApiMock(adminHttp)
     useAdminWsStore().start()
-    socket().serverOpen()
+    socket().open()
   })
 
   afterEach(() => {
@@ -287,7 +258,7 @@ describe('useHomeworkBoard', () => {
       makeItem({ id: 'h2', status: 'done', sort_order: 2 }),
       makeItem({ id: 'h3', title: '英語單字', status: 'todo', sort_order: 3 }),
     ]
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's1',
       service_date: DATE,
       items: threeItems,
@@ -297,14 +268,14 @@ describe('useHomeworkBoard', () => {
     expect(studentOf(board)?.items).toHaveLength(3)
     expect(studentOf(board)?.progress.ready_eta).toBe('18:00')
 
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's1',
       service_date: '2026-10-01',
       items: [],
       progress: makeProgress({ service_date: '2026-10-01', overall_status: 'done', ready_eta: '16:00' }),
     })
     // 不在看板中的學生忽略
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's9',
       service_date: DATE,
       items: [makeItem({ id: 'h9', student_id: 's9' })],
@@ -328,7 +299,7 @@ describe('useHomeworkBoard', () => {
 
     const pending = board.setItemStatus(H1, 'done')
     // 另一位老師在這期間替 s1 新增了 h3
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's1',
       service_date: DATE,
       items: [{ ...H1, status: 'done' }, H2, makeItem({ id: 'h3', title: '英語單字', sort_order: 3 })],
@@ -504,7 +475,7 @@ describe('useHomeworkBoard', () => {
     const reloading = board.reload()
     await settle()
     const doneItems = [makeItem({ id: 'h1', status: 'done', sort_order: 1 }), { ...H2 }]
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's1',
       service_date: DATE,
       items: doneItems,
@@ -555,7 +526,7 @@ describe('useHomeworkBoard', () => {
     const board = await mountBoard()
 
     // reload 之前 ws 改過 s2；reload 發出後沒有新事件 → 回應整列取代
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's2',
       service_date: DATE,
       items: [makeItem({ id: 'h5', student_id: 's2', status: 'doing' })],
@@ -582,7 +553,7 @@ describe('useHomeworkBoard', () => {
     // 只換班級（日期不變）：新篩選的 reload 途中收到 ws 快照
     classId.value = 'c1'
     await settle()
-    socket().serverMessage('homework.progress_updated', {
+    serverMessage(socket(), 'homework.progress_updated', {
       student_id: 's1',
       service_date: DATE,
       items: [H1, H2],
