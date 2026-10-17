@@ -1,7 +1,7 @@
 {
   "area": "infra",
-  "version": 145,
-  "last_updated": "2026-10-17T15:14:02Z",
+  "version": 146,
+  "last_updated": "2026-10-17T15:18:40Z",
   "tasks": [
     {
       "id": "INFRA-001",
@@ -2108,14 +2108,14 @@
       "granularity_unit": "config",
       "target_path": "apps/api/Dockerfile",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-infra-deploy",
       "depends_on": [
         "INFRA-031",
         "INFRA-053"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "行為測試在 macOS 本機綁定所有介面，系統防火牆開啟時可能跳出允許連線的詢問；CI（Linux）不受影響。",
+      "risk_notes": "行為測試在 macOS 本機綁定所有介面，系統防火牆開啟時可能跳出允許連線的詢問；CI（Linux）不受影響。\n【review-deploy-infra 打回】刪除 INFRA-031 open_design_questions (3) 後仍有三處留著舊決策，需改為最終敘述：(a) INFRA-032 risk_notes「api 只監聽 IPv6，Railway healthcheck 是否經 IPv6 連入屬 INFRA-031 open_design_questions (3)，上線實測。」；(b) INFRA-040 risk_notes「api 只監聽 IPv6，與 Railway private DNS 雙棧解析的處理方式屬 INFRA-031 open_design_questions (3)（docs/deployment.md §11 已列為待驗證）。」——(a)(b) 都與 `--host ''` 雙棧矛盾且指向已刪除的問題 (3)，刪除該句或改寫為最終行為；(c) scripts/tests/test_deploy_configs.py `_NginxProbe.start` 註解「與正式環境一致：後端只監聽 IPv6」已不符正式環境，改為說明探針後端只監聽 IPv6 是用來偵測 nginx 是否只走 IPv6。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "scripts/tests/test_deploy_configs.py",
@@ -2130,9 +2130,9 @@
         "notes": "另跑 just test scripts/tests/test_deploy_configs.py -k \"api_docker or api_uvicorn\" 確認 INFRA-031 不退化。部署驗證：push main 後 `railway deployment list --service api --json` 最新一筆 status 為 SUCCESS，且 `just smoke https://<web 網域>` 全部 OK。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-deploy-infra",
+        "notes": "不通過（concern）：實作與測試正確，打回原因僅為文件同步缺漏（見 risk_notes 追加項）。(1) 兩條 red_case 皆有對應測試且斷言具體值：_api_host() == '' 且 CMD 不含 '--host ::'；雙棧組回傳 {'ipv4': '200 127.0.0.1', 'ipv6': '200 ::1'}，對照組 --host :: 為 {'ipv4': None, 'ipv6': '200 ::1'}（None 只在 httpx.ConnectError 時成立）。(2) 實跑 just test scripts/tests/test_deploy_configs.py -k dual_stack：2 passed；--collect-only -q 選到 test_api_dockerfile_listens_dual_stack 與 test_api_uvicorn_dual_stack_accepts_ipv4_and_ipv6（2/35）。回歸 -k \"api_docker or api_uvicorn\" 9 passed；just test scripts/tests/test_deployment_doc.py 14 passed。(3) 暫把 Dockerfile CMD 改回 --host :: 跑 -k dual_stack：2 failed（'::' == ''；ipv4 None != '200 127.0.0.1'），已 git checkout -- apps/api/Dockerfile 還原、工作區乾淨；測試 commit 5e531c89 早於實作 453da3f5，5e531c89 樹的 CMD 為 --host ::。(4) 原始碼確認：uvicorn 0.54.0 在 --workers 1、無 reload 時 main.run → server.run() → startup(sockets=None) → loop.create_server(host=config.host)；asyncio base_events.create_server 對 host == '' 設 hosts=[None]，以 AI_PASSIVE getaddrinfo 取得 0.0.0.0 與 ::，各建一個 socket，AF_INET6 設 IPV6_V6ONLY。config.host 其餘用途只有 Config.bind_socket（僅 reload / workers>1 才走，空字串時只綁 IPv4；--workers 1 由 test_api_dockerfile_single_worker 守住，且 --workers 明給時 WEB_CONCURRENCY 不生效）與啟動 log（顯示 http://:8080，僅外觀）。(5) 信任範圍不變：ENV FORWARDED_ALLOW_IPS=fd12::/16 未動；uvicorn _TrustedHosts('fd12::/16') 對 10.1.2.3、100.64.0.5、127.0.0.1、::ffff:10.1.2.3 皆 False、fd12:1::5 為 True；IPv4 socket 的 client 為純 IPv4 位址，其 X-Forwarded-For 被忽略（test_api_uvicorn_ignores_spoofed_forwarded_for 綠）；app 不自行解析 XFF（app/core/request_meta.py）。無 secret 外洩。(6) just lint 與 just typecheck scripts/tests/test_deploy_configs.py 皆乾淨。(7) architecture_decisions §2、deployment §11、kickoff、INFRA-031 description / open_design_questions、INFRA-040 description、INFRA-053 description / risk_notes 與實作一致，只寫最終決策。給協調者：deployment.md §11 該項標 [x] 並寫「web → api … 實測連得到」、kickoff 寫「兩者已於首次部署實測」，web → api 連通要等 push 後 just smoke 通過才算實證，smoke 失敗時需一併改回；部署驗證一條不在本判決範圍。"
       }
     }
   ]
