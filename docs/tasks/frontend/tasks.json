@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 346,
-  "last_updated": "2026-10-17T04:23:58Z",
+  "version": 347,
+  "last_updated": "2026-10-17T04:26:26Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -1854,7 +1854,7 @@
     {
       "id": "FRONTEND-059",
       "title": "實作 components/settings/reference/SubjectTable.vue：科目管理表格",
-      "description": "建立 `apps/web/src/components/settings/reference/SubjectTable.vue`，參考資料頁（FRONTEND-063）的「科目」分頁。資料來源 FRONTEND-051 `subjectsApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：名稱、排序（sort_order）、狀態（啟用 / 停用 tag）；依 sort_order 排序。表單：名稱（必填，≤20）、排序（整數 ≥0）、啟用（switch）。\n- 有 `settings:write`：右上「新增科目」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；以 `successMessage` 函式依回傳值決定訊息：`deactivated: true` →「「{name}」已有資料引用，已改為停用」，`deleted: true` →「已刪除」（useConfirmDelete 一律以 ElMessage.success 顯示）；完成後重新載入。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（名稱重複）的後端 message 顯示在名稱欄位下方，dialog 不關閉。\n- 寫入（新增 / 編輯 / 刪除）成功後由本元件呼叫 `useLookupsStore().invalidate('subjects')`（FRONTEND-083），讓其他頁的下拉選單更新（依稿 decision；參考資料頁 FRONTEND-063 不重複呼叫）。\n- 空清單：`EmptyState`「尚未建立科目」（有寫入權限時附新增按鈕）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/settings/reference/SubjectTable.vue`，參考資料頁（FRONTEND-063）的「科目」分頁。資料來源 FRONTEND-051 `subjectsApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：名稱、排序（sort_order）、狀態（啟用 / 停用 tag）；依 sort_order 排序。表單：名稱（必填，≤20）、排序（整數 ≥0）、啟用（switch）。\n- 有 `settings:write`：右上「新增科目」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；以 `successMessage` 函式依回傳值決定訊息：`deactivated: true` →「「{name}」已有資料引用，已改為停用」，`deleted: true` →「已刪除」（useConfirmDelete 一律以 ElMessage.success 顯示）；完成後重新載入。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（名稱重複）的後端 message 顯示在名稱欄位下方，dialog 不關閉。\n- 寫入（新增 / 編輯 / 刪除）成功後由本元件呼叫 `useLookupsStore().invalidate('subjects')`（FRONTEND-083），讓其他頁的下拉選單更新（依稿 decision；參考資料頁 FRONTEND-063 不重複呼叫）。\n- 空清單：`EmptyState`「尚未建立科目」（有寫入權限時附新增按鈕）。\n- 列表載入 / 重試、新增與編輯 dialog、本地必填、422 欄位錯誤、409 衝突欄位、刪除確認與寫入後重新載入由 `useReferenceTable`（FRONTEND-309）提供，本元件只定義欄位、表格欄與 opts。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/reference/SubjectTable.vue",
       "source_ref": null,
@@ -1894,7 +1894,7 @@
     {
       "id": "FRONTEND-060",
       "title": "實作 components/settings/reference/ExamTypeTable.vue：考試類型管理表格",
-      "description": "建立 `apps/web/src/components/settings/reference/ExamTypeTable.vue`，參考資料頁（FRONTEND-063）的「考試類型」分頁。資料來源 FRONTEND-051 `examTypesApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：名稱、排序、狀態；依 sort_order 排序。表單：名稱（必填，≤20）、排序、啟用。\n- 有 `settings:write`：右上「新增考試類型」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；以 `successMessage` 函式依回傳值決定訊息：`deactivated: true` →「「{name}」已有資料引用，已改為停用」，`deleted: true` →「已刪除」（useConfirmDelete 一律以 ElMessage.success 顯示）；完成後重新載入。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（名稱重複）的後端 message 顯示在名稱欄位下方，dialog 不關閉。\n- 寫入（新增 / 編輯 / 刪除）成功後由本元件呼叫 `useLookupsStore().invalidate('examTypes')`（FRONTEND-083），讓其他頁的下拉選單更新（依稿 decision；參考資料頁 FRONTEND-063 不重複呼叫）。\n- 空清單：`EmptyState`「尚未建立考試類型」（有寫入權限時附新增按鈕）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/settings/reference/ExamTypeTable.vue`，參考資料頁（FRONTEND-063）的「考試類型」分頁。資料來源 FRONTEND-051 `examTypesApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：名稱、排序、狀態；依 sort_order 排序。表單：名稱（必填，≤20）、排序、啟用。\n- 有 `settings:write`：右上「新增考試類型」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；以 `successMessage` 函式依回傳值決定訊息：`deactivated: true` →「「{name}」已有資料引用，已改為停用」，`deleted: true` →「已刪除」（useConfirmDelete 一律以 ElMessage.success 顯示）；完成後重新載入。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（名稱重複）的後端 message 顯示在名稱欄位下方，dialog 不關閉。\n- 寫入（新增 / 編輯 / 刪除）成功後由本元件呼叫 `useLookupsStore().invalidate('examTypes')`（FRONTEND-083），讓其他頁的下拉選單更新（依稿 decision；參考資料頁 FRONTEND-063 不重複呼叫）。\n- 空清單：`EmptyState`「尚未建立考試類型」（有寫入權限時附新增按鈕）。\n- 列表載入 / 重試、新增與編輯 dialog、本地必填、422 欄位錯誤、409 衝突欄位、刪除確認與寫入後重新載入由 `useReferenceTable`（FRONTEND-309）提供，本元件只定義欄位、表格欄與 opts。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/reference/ExamTypeTable.vue",
       "source_ref": null,
@@ -1933,7 +1933,7 @@
     {
       "id": "FRONTEND-061",
       "title": "實作 components/settings/reference/SchoolTable.vue：合作國小管理表格",
-      "description": "建立 `apps/web/src/components/settings/reference/SchoolTable.vue`，參考資料頁（FRONTEND-063）的「合作國小」分頁。資料來源 FRONTEND-051 `schoolsApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：名稱、簡稱、狀態；依名稱排序。表單：名稱（必填，≤50）、簡稱（≤20，學生列表與家長端顯示用）、啟用。\n- 有 `settings:write`：右上「新增合作國小」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；以 `successMessage` 函式依回傳值決定訊息：`deactivated: true` →「「{name}」已有資料引用，已改為停用」，`deleted: true` →「已刪除」（useConfirmDelete 一律以 ElMessage.success 顯示）；完成後重新載入。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（名稱重複）的後端 message 顯示在名稱欄位下方，dialog 不關閉。\n- 寫入（新增 / 編輯 / 刪除）成功後由本元件呼叫 `useLookupsStore().invalidate('schools')`（FRONTEND-083），讓其他頁的下拉選單更新（依稿 decision；參考資料頁 FRONTEND-063 不重複呼叫）。\n- 空清單：`EmptyState`「尚未建立合作國小」（有寫入權限時附新增按鈕）。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/settings/reference/SchoolTable.vue`，參考資料頁（FRONTEND-063）的「合作國小」分頁。資料來源 FRONTEND-051 `schoolsApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：名稱、簡稱、狀態；依名稱排序。表單：名稱（必填，≤50）、簡稱（≤20，學生列表與家長端顯示用）、啟用。\n- 有 `settings:write`：右上「新增合作國小」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；以 `successMessage` 函式依回傳值決定訊息：`deactivated: true` →「「{name}」已有資料引用，已改為停用」，`deleted: true` →「已刪除」（useConfirmDelete 一律以 ElMessage.success 顯示）；完成後重新載入。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（名稱重複）的後端 message 顯示在名稱欄位下方，dialog 不關閉。\n- 寫入（新增 / 編輯 / 刪除）成功後由本元件呼叫 `useLookupsStore().invalidate('schools')`（FRONTEND-083），讓其他頁的下拉選單更新（依稿 decision；參考資料頁 FRONTEND-063 不重複呼叫）。\n- 空清單：`EmptyState`「尚未建立合作國小」（有寫入權限時附新增按鈕）。\n- 列表載入 / 重試、新增與編輯 dialog、本地必填、422 欄位錯誤、409 衝突欄位、刪除確認與寫入後重新載入由 `useReferenceTable`（FRONTEND-309）提供，本元件只定義欄位、表格欄與 opts。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/reference/SchoolTable.vue",
       "source_ref": null,
@@ -1972,7 +1972,7 @@
     {
       "id": "FRONTEND-062",
       "title": "實作 components/settings/reference/ClosedDayTable.vue：休息日管理表格",
-      "description": "建立 `apps/web/src/components/settings/reference/ClosedDayTable.vue`，參考資料頁（FRONTEND-063）的「休息日」分頁。資料來源 FRONTEND-051 `closedDaysApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：日期（`formatDateWithWeekday`）、原因；預設顯示今天起 12 個月內（`date_from = todayTaipei()`、`date_to = addDays(+365)`），可切換「顯示過去日期」（date_from 往前 1 年）。表單：日期（新增時必填，編輯時唯讀）、原因（≤100）。\n- 有 `settings:write`：右上「新增休息日」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；成功 →「已刪除」並重新載入（休息日不會因被引用而改為停用，BACKEND-114 `deactivate_when_referenced=False`）。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（`closed_day_exists`）的後端 message 顯示在日期欄位下方，dialog 不關閉。\n- 空清單：`EmptyState`「尚未建立休息日」（有寫入權限時附新增按鈕）。\n- 休息日影響每日出勤初始化（後端跳過這些日期），新增時在 dialog 內提示「設定為休息日後，當天不會建立出勤名單」。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/settings/reference/ClosedDayTable.vue`，參考資料頁（FRONTEND-063）的「休息日」分頁。資料來源 FRONTEND-051 `closedDaysApi`。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-reference.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現四個分頁的表格、新增 / 編輯 dialog、刪除被引用時改為停用的提示、只有 settings:read 時的唯讀樣式、空清單。\n\n**內容**\n- 表格欄位：日期（`formatDateWithWeekday`）、原因；預設顯示今天起 12 個月內（`date_from = todayTaipei()`、`date_to = addDays(+365)`），可切換「顯示過去日期」（date_from 往前 1 年）。表單：日期（新增時必填，編輯時唯讀）、原因（≤100）。\n- 有 `settings:write`：右上「新增休息日」、每列「編輯」「刪除」；新增 / 編輯用 `FormDialog`（FRONTEND-040）。無 `settings:write`：不顯示這些按鈕。\n- 刪除：`useConfirmDelete`（FRONTEND-044）；成功 →「已刪除」並重新載入（休息日不會因被引用而改為停用，BACKEND-114 `deactivate_when_referenced=False`）。\n- 422 欄位錯誤以 `validationFieldErrors` 顯示在對應欄位；409（`closed_day_exists`）的後端 message 顯示在日期欄位下方，dialog 不關閉。\n- 空清單：`EmptyState`「尚未建立休息日」（有寫入權限時附新增按鈕）。\n- 休息日影響每日出勤初始化（後端跳過這些日期），新增時在 dialog 內提示「設定為休息日後，當天不會建立出勤名單」。\n- 列表載入 / 重試、新增與編輯 dialog、本地必填、422 欄位錯誤、409 衝突欄位、刪除確認與寫入後重新載入由 `useReferenceTable`（FRONTEND-309）提供，本元件只定義欄位、表格欄與 opts。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/reference/ClosedDayTable.vue",
       "source_ref": null,
@@ -2108,7 +2108,7 @@
     {
       "id": "FRONTEND-065",
       "title": "實作 components/settings/StaffUserFormDialog.vue：建立 / 編輯員工帳號（角色與個別權限調整）",
-      "description": "建立 `apps/web/src/components/settings/StaffUserFormDialog.vue`。移植 ivy `FE:src/components/settings/SettingsAccountsTab.vue` 建立 / 編輯表單與角色卡選擇（RoleCardsGrid）；**去掉** 自訂密碼欄位、portal-only 角色。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-accounts.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：列表（啟用 / 停用 / 需改密碼 tag）、篩選、建立 / 編輯 dialog（含個別權限調整）、臨時密碼只顯示一次的 dialog、停用與重新啟用確認、只有 staff:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue: boolean`、`user?: StaffUser`（有值 = 編輯）、`roles: Role[]`、`catalog: PermissionCatalog`；emits `update:modelValue`、`created({user, temp_password})`、`updated(user)`。\n**表單**\n- 帳號（建立時必填，3~30 碼小寫英數與 `._-` 且以英數開頭（後端 USERNAME_PATTERN），輸入時自動轉小寫，編輯時唯讀純文字）、姓名（必填 ≤30）、電話（≤20）、Email（格式檢查「Email 格式不正確」）；電話 / Email 空白送 null。\n- 角色：`RoleCardsGrid`（FRONTEND-067）單選，必填。\n- 個別權限調整（摺疊區，預設收合，有調整時展開）：以 `PermissionPicker`（FRONTEND-068）呈現「最終有效權限」——預設勾選 = 所選角色的 effective_permissions；使用者取消勾選角色內的碼 → 進 `revoked_permissions`，勾選角色外的碼 → 進 `extra_permissions`。切換角色時重新計算（保留仍然有意義的 extra / revoked）。區塊下方摘要「額外授予 N 項、移除 M 項」。\n- 編輯自己：角色與個別權限區 disabled，提示「不可修改自己的權限」（後端 cannot_modify_self_permissions）。\n- 送出：建立 → `createStaffUser` → emit `created` 並關閉；編輯 → 只送有變更的欄位（角色與勾選都沒變時不送 `extra_permissions` / `revoked_permissions`；有變時只送與原值不同的那幾個）→ `updateStaffUser` → ElMessage.success「已更新」、emit `updated` 並關閉。編輯沒有變更時「儲存」disabled；有變更時關閉 dialog 先 `confirmDiscardChanges`（FormDialog dirty）。\n- 無法授出的權限即時提示：所選角色的 effective_permissions 加上 extra_permissions、扣掉 revoked_permissions 之後，只要含目前登入者 `auth.permissions` 沒有、且不是目標帳號原本就有的碼（建立時原本為空；與後端 BACKEND-089 / 090 只限制新授出的碼一致），角色卡下方立即顯示橘字（warning）「包含你沒有的 N 項權限（{中文標籤以「、」串接}），送出時會被拒絕。請改選其他角色，或在「個別權限調整」取消勾選這些權限。」；調整到不含這些碼後提示消失。提示不阻擋送出（仍以後端 cannot_grant_permissions 為準）。\n- 錯誤：`username_taken` → 帳號欄位「帳號已被使用」；`cannot_grant_permissions` → 自動展開個別權限調整，在 PermissionPicker 上方可關閉的紅色 alert 列出 `details.permissions` 的中文標籤「你沒有以下權限，無法授出：…」；422 欄位錯誤對應（帳號、姓名、電話、Email、角色）；其他 ElMessage.error。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/settings/StaffUserFormDialog.vue`。移植 ivy `FE:src/components/settings/SettingsAccountsTab.vue` 建立 / 編輯表單與角色卡選擇（RoleCardsGrid）；**去掉** 自訂密碼欄位、portal-only 角色。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-accounts.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：列表（啟用 / 停用 / 需改密碼 tag）、篩選、建立 / 編輯 dialog（含個別權限調整）、臨時密碼只顯示一次的 dialog、停用與重新啟用確認、只有 staff:read 時的唯讀樣式、空清單。\n\n**props / emits**：`modelValue: boolean`、`user?: StaffUser`（有值 = 編輯）、`roles: Role[]`、`catalog: PermissionCatalog`；emits `update:modelValue`、`created({user, temp_password})`、`updated(user)`。\n**表單**\n- 帳號（建立時必填，3~30 碼小寫英數與 `._-` 且以英數開頭（後端 USERNAME_PATTERN），輸入時自動轉小寫，編輯時唯讀純文字）、姓名（必填 ≤30）、電話（≤20）、Email（格式檢查「Email 格式不正確」）；電話 / Email 空白送 null。\n- 角色：`RoleCardsGrid`（FRONTEND-067）單選，必填。\n- 個別權限調整（摺疊區，預設收合，有調整時展開）：以 `PermissionPicker`（FRONTEND-068）呈現「最終有效權限」——預設勾選 = 所選角色的 effective_permissions；使用者取消勾選角色內的碼 → 進 `revoked_permissions`，勾選角色外的碼 → 進 `extra_permissions`。切換角色時重新計算（保留仍然有意義的 extra / revoked）。區塊下方摘要「額外授予 N 項、移除 M 項」。\n- 編輯自己：角色與個別權限區 disabled，提示「不可修改自己的權限」（後端 cannot_modify_self_permissions）。\n- 送出：建立 → `createStaffUser` → emit `created` 並關閉；編輯 → 只送有變更的欄位（角色與勾選都沒變時不送 `extra_permissions` / `revoked_permissions`；有變時只送與原值不同的那幾個）→ `updateStaffUser` → ElMessage.success「已更新」、emit `updated` 並關閉。編輯沒有變更時「儲存」disabled；有變更時關閉 dialog 先 `confirmDiscardChanges`（FormDialog dirty）。\n- 無法授出的權限即時提示：所選角色的 effective_permissions 加上 extra_permissions、扣掉 revoked_permissions 之後，只要含目前登入者 `auth.permissions` 沒有、且不是目標帳號原本就有的碼（建立時原本為空；與後端 BACKEND-089 / 090 只限制新授出的碼一致），角色卡下方立即顯示橘字（warning）「包含你沒有的 N 項權限（{中文標籤以「、」串接}），送出時會被拒絕。請改選其他角色，或在「個別權限調整」取消勾選這些權限。」；調整到不含這些碼後提示消失。提示不阻擋送出（仍以後端 cannot_grant_permissions 為準）。\n- 錯誤：`username_taken` → 帳號欄位「帳號已被使用」；`cannot_grant_permissions` → 自動展開個別權限調整，在 PermissionPicker 上方可關閉的紅色 alert 列出 `details.permissions` 的中文標籤「你沒有以下權限，無法授出：…」；422 欄位錯誤對應（帳號、姓名、電話、Email、角色）；其他 ElMessage.error。\n- 403 `cannot_grant_permissions` 的 alert 文字由 `cannotGrantMessage(err, 權限中文名稱表)`（FRONTEND-310，`apps/web/src/utils/cannotGrantMessage.ts`）組成。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/StaffUserFormDialog.vue",
       "source_ref": "FE:src/components/settings/SettingsAccountsTab.vue::default",
@@ -2264,7 +2264,7 @@
     {
       "id": "FRONTEND-069",
       "title": "實作 components/settings/RoleDetailPanel.vue：角色詳情（名稱、說明、權限編輯、刪除）",
-      "description": "建立 `apps/web/src/components/settings/RoleDetailPanel.vue`。移植 ivy `FE:src/components/settings/roles/RoleDetailPanel.vue` 的「表單 + PermissionPicker + 儲存 / 刪除」結構；**去掉** ApprovalChainEditor、super admin / parent / portal-only flag。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n**props / emits**：`role: Role`、`catalog: PermissionCatalog`；emits `saved(role)`、`deleted(roleId)`；expose `isDirty`。\n**行為**\n- 顯示 code（唯讀）、名稱（1~50，對齊 BACKEND-076）、說明（≤200）、權限 `PermissionPicker`（grantable = auth.permissions）。\n- `role.code === 'admin'`：全部唯讀，提示「管理員角色擁有全部權限（含未來新增），不可修改」。\n- 無 `roles:write`：全部唯讀，不顯示按鈕。\n- 儲存：只送變更欄位 → `updateRole` → `ElMessage.success('角色已更新')` → emit saved。錯誤：`cannot_grant_permissions`（「你沒有以下權限，無法授出：」+ details.permissions 的中文標籤以「、」串接）、`last_role_manager` / `last_staff_manager`（顯示後端 message）這兩類顯示在表單頂端可關閉的紅色 el-alert（使用者要對照勾選清單修改）；其他 ElMessage.error。\n- 刪除（非系統角色才顯示）：`useConfirmDelete`，訊息「確定要刪除角色「{name}」嗎？」；`role.staff_count > 0`（只算啟用帳號）時按鈕 disabled，hover el-tooltip「仍有 {staff_count} 位員工使用此角色，請先調整他們的角色」；後端 409 `role_in_use` 的人數含停用帳號（BACKEND-080 details.staff_count），staff_count 為 0 仍可能被擋，此時 ElMessage.error「仍有 {details.staff_count} 位員工（含已停用的帳號）使用此角色，請先調整他們的角色」。成功 emit deleted。\n- 權限變更提示：「權限變更會在員工下一次操作時立即生效」。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/settings/RoleDetailPanel.vue`。移植 ivy `FE:src/components/settings/roles/RoleDetailPanel.vue` 的「表單 + PermissionPicker + 儲存 / 刪除」結構；**去掉** ApprovalChainEditor、super admin / parent / portal-only flag。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n**props / emits**：`role: Role`、`catalog: PermissionCatalog`；emits `saved(role)`、`deleted(roleId)`；expose `isDirty`。\n**行為**\n- 顯示 code（唯讀）、名稱（1~50，對齊 BACKEND-076）、說明（≤200）、權限 `PermissionPicker`（grantable = auth.permissions）。\n- `role.code === 'admin'`：全部唯讀，提示「管理員角色擁有全部權限（含未來新增），不可修改」。\n- 無 `roles:write`：全部唯讀，不顯示按鈕。\n- 儲存：只送變更欄位 → `updateRole` → `ElMessage.success('角色已更新')` → emit saved。錯誤：`cannot_grant_permissions`（「你沒有以下權限，無法授出：」+ details.permissions 的中文標籤以「、」串接）、`last_role_manager` / `last_staff_manager`（顯示後端 message）這兩類顯示在表單頂端可關閉的紅色 el-alert（使用者要對照勾選清單修改）；其他 ElMessage.error。\n- 刪除（非系統角色才顯示）：`useConfirmDelete`，訊息「確定要刪除角色「{name}」嗎？」；`role.staff_count > 0`（只算啟用帳號）時按鈕 disabled，hover el-tooltip「仍有 {staff_count} 位員工使用此角色，請先調整他們的角色」；後端 409 `role_in_use` 的人數含停用帳號（BACKEND-080 details.staff_count），staff_count 為 0 仍可能被擋，此時 ElMessage.error「仍有 {details.staff_count} 位員工（含已停用的帳號）使用此角色，請先調整他們的角色」。成功 emit deleted。\n- 權限變更提示：「權限變更會在員工下一次操作時立即生效」。\n- 403 `cannot_grant_permissions` 的 alert 文字由 `cannotGrantMessage(err, 權限中文名稱表)`（FRONTEND-310，`apps/web/src/utils/cannotGrantMessage.ts`）組成。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/RoleDetailPanel.vue",
       "source_ref": "FE:src/components/settings/roles/RoleDetailPanel.vue::default",
@@ -2303,7 +2303,7 @@
     {
       "id": "FRONTEND-070",
       "title": "實作 components/settings/RoleCreateDialog.vue：新增自訂角色（可從既有角色複製權限）",
-      "description": "建立 `apps/web/src/components/settings/RoleCreateDialog.vue`。參考 ivy `FE:src/views/settings/SettingsRolesView.vue` 的新增角色流程。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n**props / emits**：`modelValue`、`roles: Role[]`、`catalog`；emits `update:modelValue`、`created(role)`。\n- 欄位：代碼 code（必填，`^[a-z][a-z0-9_]{1,31}$`，對齊 BACKEND-076 與 DB-003 CHECK；格式錯誤「只能用小寫英文、數字與底線，並以英文字母開頭（2~32 字）」；提示「建立後不可修改」）、名稱（必填 1~50）、說明、從既有角色複製（el-select，選了即把該角色 effective_permissions 中屬於 grantable 的碼帶入；不可授出的碼略過並提示「已略過 N 項你沒有的權限」）、權限 `PermissionPicker`。\n- 送出 `createRole` → emit created；`role_code_taken` → 代碼欄位「代碼已被使用」；`cannot_grant_permissions` 同 FRONTEND-069。\n\n**驗收標準**\n- 建立 body 正確；複製權限時略過不可授出的碼。\n- 代碼格式與重複錯誤顯示在欄位。",
+      "description": "建立 `apps/web/src/components/settings/RoleCreateDialog.vue`。參考 ivy `FE:src/views/settings/SettingsRolesView.vue` 的新增角色流程。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/page-settings-roles.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。稿需呈現：角色卡列表（系統角色 / 自訂角色、使用人數）、角色詳情（admin 不可編輯、其他可改名稱說明與權限）、權限勾選器（無法授出的碼 disabled 與提示）、新增角色、刪除使用中角色的錯誤、只有 roles:read 時唯讀。\n\n**props / emits**：`modelValue`、`roles: Role[]`、`catalog`；emits `update:modelValue`、`created(role)`。\n- 欄位：代碼 code（必填，`^[a-z][a-z0-9_]{1,31}$`，對齊 BACKEND-076 與 DB-003 CHECK；格式錯誤「只能用小寫英文、數字與底線，並以英文字母開頭（2~32 字）」；提示「建立後不可修改」）、名稱（必填 1~50）、說明、從既有角色複製（el-select，選了即把該角色 effective_permissions 中屬於 grantable 的碼帶入；不可授出的碼略過並提示「已略過 N 項你沒有的權限」）、權限 `PermissionPicker`。\n- 送出 `createRole` → emit created；`role_code_taken` → 代碼欄位「代碼已被使用」；`cannot_grant_permissions` 同 FRONTEND-069。\n- 403 `cannot_grant_permissions` 的 alert 文字由 `cannotGrantMessage(err, 權限中文名稱表)`（FRONTEND-310，`apps/web/src/utils/cannotGrantMessage.ts`）組成。\n\n**驗收標準**\n- 建立 body 正確；複製權限時略過不可授出的碼。\n- 代碼格式與重複錯誤顯示在欄位。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/settings/RoleCreateDialog.vue",
       "source_ref": "FE:src/views/settings/SettingsRolesView.vue::default",
@@ -6739,11 +6739,11 @@
     {
       "id": "FRONTEND-309",
       "title": "參考資料四張管理表抽共用 composable（科目 / 考試類型 / 合作國小 / 休息日）",
-      "description": "新增 `apps/web/src/composables/useReferenceTable.ts`，改寫 `apps/web/src/components/settings/reference/{SubjectTable,ExamTypeTable,SchoolTable,ClosedDayTable}.vue`（FRONTEND-059~062）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：四張表各自內建載入 / 錯誤重試 / 新增與編輯 dialog / 422 欄位錯誤 / 409 / 刪除確認 / 通知 ReferenceDataView invalidate，科目與考試類型幾乎逐行相同（約 4×120 行重複），改規則要四處同步。\n- `useReferenceTable<Row, Form>(opts)`：opts 給 list / create / update / remove 的 api 函式、表單初值與 row → form 轉換、409 錯誤碼與對應欄位 / 訊息、刪除確認文案；回傳 rows / loading / error / reload、dialog 狀態（open、editing、form、fieldErrors、saving）、openCreate / openEdit / submit / remove。行為以四張表目前的實作為準，不新增功能、不改文案。\n- 四個元件只保留各自的欄位、表格欄與 opts；外部 props / emits 不變（ReferenceDataView 不需改）。\n- 設計稿關卡：`docs/mockups/page-settings-reference.html`（approved，`preview-tasks` 已列入本 task）。畫面不變。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-059~063 的 tdd.run 全綠且斷言不變。",
+      "description": "新增 `apps/web/src/composables/useReferenceTable.ts`，改寫 `apps/web/src/components/settings/reference/{SubjectTable,ExamTypeTable,SchoolTable,ClosedDayTable}.vue`（FRONTEND-059~062）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況：四張表各自內建載入 / 錯誤重試 / 新增與編輯 dialog / 422 欄位錯誤 / 409 / 刪除確認 / 通知 ReferenceDataView invalidate，科目與考試類型幾乎逐行相同（約 4×120 行重複），改規則要四處同步。\n- `useReferenceTable<Row, Form>(opts)`：opts 給 list / create(form) / update(row, form) / remove(row)（各元件在 lambda 內組 body）、fields（顯示錯誤的欄位）、toForm(row | null, rows)（表單初值與 row → form 轉換）、validate（本地必填）、conflictField（任何 409 都把後端訊息顯示在這個欄位，與四張表原行為相同，不依錯誤碼分流）、confirmMessage / deleteSuccessMessage、onChanged（寫入成功後呼叫，例如 lookups invalidate；休息日不給）；回傳 rows / loading / error / reload、dialog 狀態（open、editing、form、fieldErrors、saving、isDirty）、openCreate / openEdit / submit / remove；建立時立即載入（immediate 預設 true）。休息日的日期區間在 list lambda 內每次重算，「顯示過去日期」切換時由元件 watch 呼叫 reload。行為以四張表目前的實作為準，不新增功能、不改文案。\n- 四個元件只保留各自的欄位、表格欄與 opts；外部 props / emits 不變（ReferenceDataView 不需改）。\n- 設計稿關卡：`docs/mockups/page-settings-reference.html`（approved，`preview-tasks` 已列入本 task）。畫面不變。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-059~063 的 tdd.run 全綠且斷言不變。",
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/useReferenceTable.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-059",
@@ -6766,7 +6766,7 @@
           "useReferenceTable reloads and emits changed after remove：remove(row) 確認後 DELETE 成功 → list 再被呼叫 1 次、onChanged 被呼叫 1 次"
         ],
         "run": "just web-test src/composables/useReferenceTable.spec.ts -t \"useReferenceTable\" && just web-test src/components/settings/reference/SubjectTable.spec.ts -t \"SubjectTable\" && just web-test src/components/settings/reference/ExamTypeTable.spec.ts -t \"ExamTypeTable\" && just web-test src/components/settings/reference/SchoolTable.spec.ts -t \"SchoolTable\" && just web-test src/components/settings/reference/ClosedDayTable.spec.ts -t \"ClosedDayTable\"",
-        "notes": "red_case 的錯誤碼、文案以四張表現有實作為準；名稱不同時照實作寫進測試並在回報說明。"
+        "notes": "red_case 的錯誤碼、文案以四張表現有實作為準；名稱不同時照實作寫進測試並在回報說明。 實作的 409 不依錯誤碼分流（現有實作：任何 409 → conflictField 顯示後端 message）；red_case 2 以 409 subject_name_taken、後端 message「名稱已存在」驗證。另補本地必填擋送出、建立時載入與新增表單排序初值、儲存成功關 dialog 並重新載入三條。"
       },
       "review": {
         "status": "pending",
@@ -6781,7 +6781,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/utils/cannotGrantMessage.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-065",
@@ -6801,7 +6801,7 @@
           "cannotGrantMessage falls back without list：details 為 null、message '權限不足' → '權限不足'；非 ApiError → '你沒有部分權限，無法授出'"
         ],
         "run": "just web-test src/utils/cannotGrantMessage.spec.ts -t \"cannotGrantMessage\" && just web-test src/components/settings/RoleDetailPanel.spec.ts -t \"RoleDetailPanel\" && just web-test src/components/settings/RoleCreateDialog.spec.ts -t \"RoleCreateDialog\" && just web-test src/components/settings/StaffUserFormDialog.spec.ts -t \"StaffUserFormDialog\"",
-        "notes": "三個元件目前的組字若有細微差異（例如前綴文字），以 RoleDetailPanel 為準並在回報列出差異；有差異時先回報協調者再統一。"
+        "notes": "三個元件目前的組字若有細微差異（例如前綴文字），以 RoleDetailPanel 為準並在回報列出差異；有差異時先回報協調者再統一。 實作時比對：三個元件原本的組字逐字相同（前綴、分隔、fallback 皆一致），無差異。"
       },
       "review": {
         "status": "pending",
@@ -6816,7 +6816,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/components/student/GuardianManager.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-091"
@@ -6834,7 +6834,7 @@
           "GuardianManager edit after switching student：切到 's2' 後編輯 s2 的監護人 g5 → PATCH url 含 'g5'、成功後重抓的是 s2 的清單"
         ],
         "run": "just web-test src/components/student/GuardianManager.spec.ts -t \"GuardianManager\"",
-        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 endpoint 路徑以 FRONTEND-081 guardians api client 實際組出的 url 為準。"
+        "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 endpoint 路徑以 FRONTEND-081 guardians api client 實際組出的 url 為準。 已自證：開表單不更新 formStudentId → create 測試轉紅（POST 打到 s1）；load 改用 formStudentId → create / edit 兩條皆轉紅；還原後 git diff 只剩測試檔。"
       },
       "review": {
         "status": "pending",
@@ -6855,7 +6855,7 @@
         "FRONTEND-004"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "useAttendanceBoard.spec.ts 與 useHomeworkBoard.spec.ts 尚未改用共用版：兩檔屬 FRONTEND-304 / 305（in_review，審查中不改），待其 done 後再替換（基準測試數於替換前重測）。其餘 9 個 spec 已替換（e879943），測試數不變。共用版的 close(code, reason) 同時是程式呼叫的 WebSocket API 與測試模擬斷線：會遞增 closeCalls、readyState 變 3 並觸發 onclose（createWsClient 先卸 handler 再 close，故程式端 close 不會觸發）。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/test/fakeWebSocket.spec.ts",
