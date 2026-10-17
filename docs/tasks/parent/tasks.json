@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 219,
-  "last_updated": "2026-10-17T04:16:19Z",
+  "version": 220,
+  "last_updated": "2026-10-17T04:17:27Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3939,7 +3939,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/HomeworkView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-073"
@@ -3960,9 +3960,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。測試 81a1053 先於實作 d0c5581；2 條 red_case 同名測試被選到，HomeworkView 17 條全綠（PARENT-073 tdd.run）。突變：拿掉 <span> 還原舊模板 → 兩條新案例皆紅（textContent 帶開頭/結尾空白）。073 description 已同步；稿 parent-page-homework（approved，preview-tasks 含 202）老師說明選擇器已修正。web-lint、web-typecheck 乾淨。"
       }
     },
     {
@@ -4005,7 +4005,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/utils/leaveStatus.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-136",
@@ -4027,9 +4027,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。測試 ca19544 先於實作 5ded3a3；leaveStatusPill 2 條、LeaveListItem 14、LeaveDetailSheet 18 全綠（PARENT-136 / 137 tdd.run）。突變：拿掉 cancelled 優先 → cancelled wins 紅；已排定 tone 改 warning → util 與兩個元件既有 tone 測試各 1 條紅（證明兩個元件確實改走共用 util）。判斷順序與舊實作相同，詳情 sheet 無 leave 時沿用「已取消」與舊行為一致。136 / 137 description 已同步，兩張稿 preview-tasks 含 204。"
       }
     },
     {
@@ -4039,7 +4039,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/parent/views/PickupProxyView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-104"
@@ -4064,9 +4064,9 @@
         "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。 各案例的文案與 API 路徑以現有實作與 PARENT-104 review.notes 為準。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。75d9858 只改 PickupProxyView.spec.ts，6 條 red_case 同名測試被選到，27 條全綠（即 PARENT-104 tdd.run）。第 3 條改為「upserts created authorization」符合 PARENT-104 review 原意：該 review 列的存活突變是「建立成功 upsert（done 後重抓遮蔽）」，指新增代理接送授權；104 規格對新增接送人本來就是「關閉、重抓清單」，原「upserts created person」是誤寫，不需改行為。reviewer 重做 6 條突變各自只讓對應案例轉紅：排序改反向、新增接送人不看 personView、建立授權不 upsert、刪除一般錯誤關對話框、新增代理接送不看 selectedId、離頁不 resolve 前一次；還原後 cmp 乾淨。"
       }
     },
     {
@@ -4076,7 +4076,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/ArrivalTimePicker.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-096"
@@ -4097,9 +4097,9 @@
         "notes": "happy-dom 量不到版面，以樣式宣告鎖住；reviewer 以 Chromium 390 寬量測兩列選項間距 12px。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。測試 36356be（另 8b6fccf 解析前去註解，仍屬測試）先於實作 c9f64e7；ArrivalTimePicker 18 條全綠（PARENT-096 tdd.run）。突變：gap 還原 8px → 兩條紅；額外加 column-gap: 4px → 第 2 條紅。Chromium 390×844 實測（harness 於 scratchpad，未用 unplugin）：computed row-gap 12px / column-gap 8px，5 個選項排成 3 列，列頂 40/84/128、列底 72/116，列距正好 12px，欄距 8px，scrollWidth 390 無水平捲動；320 寬同樣 12px。元件稿已改 gap: 12px 8px，與接送頁稿 row-gap 12px 一致。096 description 已同步。"
       }
     },
     {
@@ -4143,7 +4143,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamsView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-153",
@@ -4165,9 +4165,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。測試 dcb7149 先於實作 950c4cb；ExamsView 22 條全綠（PARENT-153 tdd.run）。突變：拿掉 height=\"76px\" → skeleton rows match list item height 紅；第二條 skeleton disappears after load 舊程式即綠，屬回歸保護，description 未要求其為紅。153 description 與稿 parent-page-exams decision / 示範骨架 76px 已同步。"
       }
     },
     {
