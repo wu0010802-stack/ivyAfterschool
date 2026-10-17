@@ -77,6 +77,8 @@ interface ExamSession {
   initial: ShallowRef<ScoreCellData[]>
   /** 草稿固定 false；已發布從 null（尚未選擇）開始 */
   notifyParents: Ref<boolean | null>
+  /** 本 session 認定的考試狀態（null = 尚未載入）；markPublished 之後即為已發布，與 notifyParents 的選擇分開記 */
+  status: Exam['status'] | null
   autosave: UseScoreAutosave
   scope: EffectScope
 }
@@ -87,7 +89,7 @@ function createSession(examId: string): ExamSession {
   const initial = shallowRef<ScoreCellData[]>([])
   const notifyParents = ref<boolean | null>(false)
   const autosave = scope.run(() => useScoreAutosave({ examId: ref(examId), initial, notifyParents }))!
-  return { examId, initial, notifyParents, autosave, scope }
+  return { examId, initial, notifyParents, autosave, scope, status: null }
 }
 
 /** 丟棄前一場考試尚未送出的格子：送出迴圈看到 null 就不再送出，停止 scope 清掉 debounce 與 watcher */
@@ -124,17 +126,21 @@ async function load(): Promise<void> {
   try {
     const data = await fetchScoreGrid(s.examId)
     if (seq !== loadSeq) return
-    const previous = exam.value
     exam.value = data.exam
     students.value = data.students
     subjects.value = [...data.subjects].sort((a, b) => a.sort_order - b.sort_order)
     s.initial.value = data.cells
-    // 第一次載入或發布狀態改變：重新決定是否需要選擇通知；同一場已發布考試維持本次編輯期間的選擇
-    if (!previous) {
+    // 第一次載入或 session 認定的狀態改變：重新決定是否需要選擇通知；同一場已發布考試維持本次編輯期間的選擇
+    // （markPublished 之後 session 已認定為已發布，重新載入拿到 published 不再重設）
+    if (s.status === null) {
+      s.status = data.exam.status
       s.notifyParents.value = data.exam.status === 'published' ? null : false
-    } else if (previous.status !== data.exam.status) {
+    } else if (s.status !== data.exam.status) {
       if (data.exam.status === 'published') becamePublished(s)
-      else s.notifyParents.value = false
+      else {
+        s.status = data.exam.status
+        s.notifyParents.value = false
+      }
     }
     state.value = 'ready'
   } catch (err) {
@@ -145,11 +151,12 @@ async function load(): Promise<void> {
 }
 
 /**
- * 草稿變成已發布：還沒選擇通知（草稿的 false）改成 null；markPublished 之後已選過的選擇保留。
+ * session 由草稿變成已發布：通知選擇改為 null（尚未選擇），之後重新載入拿到 published 不再重設（已選的保留）。
  * 有未送出的格子時以同一個 debounce 開 RenotifyChoiceDialog（發布當下尚未送出的修改也要詢問）。
  */
 function becamePublished(s: ExamSession): void {
-  if (s.notifyParents.value === false) s.notifyParents.value = null
+  s.status = 'published'
+  s.notifyParents.value = null
   if (s.autosave.hasUnsaved.value) schedulePrompt()
 }
 
@@ -367,7 +374,7 @@ async function flush(): Promise<void> {
 
 /** 考試頁發布成功後呼叫（成績格重新載入前）：之後的修改都等待通知選擇 */
 function markPublished(): void {
-  becamePublished(session.value)
+  if (session.value.status === 'draft') becamePublished(session.value)
 }
 
 // 卸載時停止目前 session 的 debounce 與 watcher（考試頁離開前已 flush）
