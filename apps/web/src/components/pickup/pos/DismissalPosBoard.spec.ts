@@ -106,6 +106,7 @@ function makeQueue(open: PickupRequest[], closed: PickupRequest[] = []): PickupQ
       arrived: open.filter((r) => r.status === 'arrived').length,
       needs_reply: open.filter((r) => r.needs_reply).length,
     },
+    latest_expected_arrival: '19:00',
   }
 }
 

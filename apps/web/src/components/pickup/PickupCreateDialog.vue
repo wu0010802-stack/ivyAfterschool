@@ -3,13 +3,14 @@
 // 設計稿：docs/mockups/page-pickup-pos.html（代建 dialog 段）。
 // - FormDialog sm「代建接送請求」，送出鈕「建立請求」。從學生卡進入時學生唯讀；從工具列進入用 StudentSelect，
 //   POS 選了班級時只查該班。
-// - 家長預計抵達時間選填：el-time-select 5 分一格，最早為開啟當下「現在 − 5 分」進位到 5 分，到 21:00；不選就不送。
+// - 家長預計抵達時間選填：el-time-select 5 分一格，最早為開啟當下「現在 − 5 分」進位到 5 分，
+//   最晚為 pickup.window 的最晚預計抵達時間（佇列回應的 latest_expected_arrival，未載入時用預設）；不選就不送。
 // - 送出走 board.create（FRONTEND-188）：成功提示並 emit created、關閉；回 null 表示 board 已提示並重新整理，直接關閉；
 //   其他錯誤顯示在表單上方（pickup_request_exists 用固定文案，其餘顯示後端訊息）。
 import { InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, reactive, ref, watch } from 'vue'
-import type { PickupRequest, PickupRequestCreate } from '@/api/pickupRequests'
+import { DEFAULT_LATEST_EXPECTED_ARRIVAL, type PickupRequest, type PickupRequestCreate } from '@/api/pickupRequests'
 import FormDialog from '@/components/common/FormDialog.vue'
 import StudentSelect from '@/components/student/StudentSelect.vue'
 import type { PickupBoard } from '@/composables/usePickupBoard'
@@ -31,7 +32,7 @@ const props = withDefaults(
     presetStudent?: PickupCreatePresetStudent
     /** POS 中欄目前選的班級；全部班級時不傳 */
     classFilter?: { id: string; name: string }
-    board: Pick<PickupBoard, 'create'>
+    board: Pick<PickupBoard, 'create' | 'queue'>
   }>(),
   { presetStudent: undefined, classFilter: undefined },
 )
@@ -44,7 +45,6 @@ const emit = defineEmits<{
 const STEP_MINUTES = 5
 /** 家長預計抵達最早可選「現在 − 5 分」 */
 const EARLIEST_OFFSET_MINUTES = 5
-const LATEST = '21:00'
 const EXISTS_MESSAGE = '此學生今天已有進行中的接送請求'
 
 interface CreateForm {
@@ -57,6 +57,7 @@ const studentError = ref('')
 const submitError = ref('')
 const saving = ref(false)
 const arrivalStart = ref<HHMM>('00:00')
+const arrivalEnd = computed<HHMM>(() => props.board.queue.value?.latest_expected_arrival ?? DEFAULT_LATEST_EXPECTED_ARRIVAL)
 const { isDirty, markClean } = useFormDirty(form)
 
 function toMinutes(hhmm: HHMM): number {
@@ -175,7 +176,7 @@ async function submit(): Promise<void> {
           v-model="form.expected_arrival_at"
           class="create-dialog__full"
           :start="arrivalStart"
-          :end="LATEST"
+          :end="arrivalEnd"
           step="00:05"
           placeholder="不指定"
           clearable

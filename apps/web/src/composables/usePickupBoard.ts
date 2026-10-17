@@ -234,7 +234,7 @@ export function usePickupBoard(opts: PickupBoardOptions = {}): PickupBoard {
 
   function applyRequest(req: PickupRequest): void {
     if (req.service_date !== date) return
-    const current = queue.value ?? { date, open: [], closed: [], counts: countOpen([]) }
+    const current = queue.value ?? { date, open: [], closed: [], counts: countOpen([]), latest_expected_arrival: null }
     const previous = current.open.find((r) => r.id === req.id) ?? current.closed.find((r) => r.id === req.id)
     if (previous && STATUS_RANK[req.status] < STATUS_RANK[previous.status]) return
 

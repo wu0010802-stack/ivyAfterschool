@@ -80,7 +80,15 @@ export interface PickupQueue {
   /** 終態（completed / cancelled / expired），新到舊 */
   closed: PickupRequest[]
   counts: PickupQueueCounts
+  /**
+   * pickup.window 的最晚預計抵達時間（BACKEND-563）：員工代建 / 回覆的時間選項上限。
+   * 後端一定回值；null 只出現在佇列尚未載入、由 ws 事件建立的空 queue（usePickupBoard）。
+   */
+  latest_expected_arrival: HHMM | null
 }
+
+/** 佇列尚未載入時的上限：pickup.window 種子預設值的最晚預計抵達時間（apps/api/app/core/settings_registry.py 的 pickup.window 預設） */
+export const DEFAULT_LATEST_EXPECTED_ARRIVAL: HHMM = '19:00'
 
 export interface RosterOpenRequest {
   id: string

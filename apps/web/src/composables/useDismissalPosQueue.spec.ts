@@ -55,7 +55,7 @@ function makeQueue(open: PickupRequest[] = [], closed: PickupRequest[] = []): Pi
     if (r.status === 'pending' || r.status === 'acknowledged' || r.status === 'arrived') counts[r.status] += 1
     if (r.needs_reply) counts.needs_reply += 1
   }
-  return { date: DATE, open, closed, counts }
+  return { date: DATE, open, closed, counts, latest_expected_arrival: '19:00' }
 }
 
 const STUDENT = { id: 's1', name: '王小明', className: '低年級A班' }

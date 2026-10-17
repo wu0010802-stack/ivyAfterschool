@@ -7,7 +7,7 @@
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, ref, watch } from 'vue'
-import type { PickupReply, PickupRequest } from '@/api/pickupRequests'
+import { DEFAULT_LATEST_EXPECTED_ARRIVAL, type PickupReply, type PickupRequest } from '@/api/pickupRequests'
 import FormDialog from '@/components/common/FormDialog.vue'
 import { etaRelativeText, formatWaited, useNowClock, waitedMinutes } from '@/composables/useDismissalUrgency'
 import type { PickupBoard } from '@/composables/usePickupBoard'
@@ -19,7 +19,7 @@ import { errorMessage } from '@/shared/utils/errorMessage'
 const props = defineProps<{
   modelValue: boolean
   request: PickupRequest
-  board: Pick<PickupBoard, 'reply' | 'acknowledge'>
+  board: Pick<PickupBoard, 'reply' | 'acknowledge' | 'queue'>
 }>()
 
 const emit = defineEmits<{
@@ -28,7 +28,6 @@ const emit = defineEmits<{
 }>()
 
 const STEP_MINUTES = 5
-const LAST_MINUTES = 23 * 60 + 55
 const QUICK_MINUTES = [10, 20, 30] as const
 const REQUIRED_MESSAGE = '請填寫預計時間或訊息'
 
@@ -97,6 +96,8 @@ const submitText = computed(() => {
   return showAcknowledge.value && acknowledge.value ? '回覆並確認' : '送出回覆'
 })
 const timeStart = computed(() => toHHMM(roundUp(openedAtMinutes.value)))
+/** 選項與快捷的上限：pickup.window 的最晚預計抵達時間（佇列回應帶回，未載入時用預設） */
+const timeEnd = computed<HHMM>(() => props.board.queue.value?.latest_expected_arrival ?? DEFAULT_LATEST_EXPECTED_ARRIVAL)
 const messagePlaceholder = computed(() =>
   eta.value ? `預計 ${eta.value} 可接送` : '例如：數學訂正中，訂正完就可以接',
 )
@@ -118,7 +119,7 @@ const replySourceText = computed(() =>
 )
 
 function applyQuick(minutes: number): void {
-  eta.value = toHHMM(Math.min(roundUp(toMinutes(nowHHMM()) + minutes), LAST_MINUTES))
+  eta.value = toHHMM(Math.min(roundUp(toMinutes(nowHHMM()) + minutes), toMinutes(timeEnd.value)))
 }
 
 function close(): void {
@@ -274,7 +275,7 @@ async function onSubmit(): Promise<void> {
           v-model="eta"
           class="reply-dialog__full"
           :start="timeStart"
-          end="21:00"
+          :end="timeEnd"
           step="00:05"
           placeholder="選擇時間"
           clearable
