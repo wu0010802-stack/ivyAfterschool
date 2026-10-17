@@ -638,7 +638,7 @@ describe('ScoreGrid', { timeout: 30000 }, () => {
     gridVm(wrapper).markPublished()
     await tick(800)
     expect(dialogOpen(wrapper)).toBe(false)
-    expect(toolbarText(wrapper)).toContain('尚未選擇')
+    expect(toolbarText(wrapper)).toContain('所有變更已儲存')
 
     await typeAndBlur(wrapper, 1, 0, '70')
     await tick(800)
