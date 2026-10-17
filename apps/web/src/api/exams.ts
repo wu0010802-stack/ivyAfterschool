@@ -4,6 +4,7 @@
 // 409 exam_published / full_score_below_existing / exam_already_published / exam_not_published。
 import type { ExamStatus, ISODate, ISODateTime, Page } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface ExamTypeBrief {
   id: string
@@ -157,7 +158,7 @@ export interface ExamHistoryItem {
   scores: ExamHistoryScore[]
 }
 
-const examPath = (id: string) => `/admin/exams/${encodeURIComponent(id)}`
+const examPath = (id: string) => `/admin/exams/${encodePathSegment(id)}`
 
 export async function listExams(params: ExamListParams = {}): Promise<Page<Exam>> {
   const res = await adminHttp.get<Page<Exam>>('/admin/exams', { params })
@@ -216,6 +217,6 @@ export async function fetchExamSummary(id: string): Promise<ExamSummary> {
 }
 
 export async function fetchStudentExamHistory(studentId: string): Promise<ExamHistoryItem[]> {
-  const res = await adminHttp.get<ExamHistoryItem[]>(`/admin/students/${encodeURIComponent(studentId)}/exam-history`)
+  const res = await adminHttp.get<ExamHistoryItem[]>(`/admin/students/${encodePathSegment(studentId)}/exam-history`)
   return res.data
 }

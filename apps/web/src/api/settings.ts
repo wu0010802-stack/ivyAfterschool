@@ -2,6 +2,7 @@
 // 分組與 key 由後端 settings registry 驅動，前端不列舉；表單依 json_schema 產生。
 import type { ISODateTime } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 /** registry 驅動（目前為 org / pickup / homework / leave / notification / line） */
 export type SettingGroup = string
@@ -47,6 +48,6 @@ export async function listSettings(): Promise<Setting[]> {
 
 /** 422 invalid_setting_value 的 details 為 Pydantic 錯誤清單，由 ApiError 原樣帶出 */
 export async function updateSetting(key: string, value: Record<string, unknown>): Promise<Setting> {
-  const res = await adminHttp.put<Setting>(`/admin/settings/${encodeURIComponent(key)}`, { value })
+  const res = await adminHttp.put<Setting>(`/admin/settings/${encodePathSegment(key)}`, { value })
   return res.data
 }

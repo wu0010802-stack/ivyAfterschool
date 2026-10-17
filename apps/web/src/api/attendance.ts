@@ -14,6 +14,7 @@ import type {
   LeaveType,
 } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 /** 出勤列上的請假摘要（status 為 leave 時才有） */
 export interface AttendanceLeaveBrief {
@@ -145,7 +146,7 @@ export interface MonthlyAttendance {
   totals: MonthlyStats
 }
 
-const attendancePath = (id: string) => `/admin/attendance/${encodeURIComponent(id)}`
+const attendancePath = (id: string) => `/admin/attendance/${encodePathSegment(id)}`
 
 /** 空白備註視為沒有：後端以 coalesce(:note, note) 寫入，送空字串會把既有備註蓋成空白 */
 function noteBody(note?: string): { note?: string } {

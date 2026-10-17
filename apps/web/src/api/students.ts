@@ -10,6 +10,7 @@ import { buildFormData } from '@/shared/http/upload'
 import type { AxiosResponse } from 'axios'
 import type { Guardian } from './guardians'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface StudentSchoolBrief {
   id: string
@@ -145,7 +146,7 @@ export interface PurgeResult {
   anonymized_student_no: string
 }
 
-const studentPath = (id: string) => `/admin/students/${encodeURIComponent(id)}`
+const studentPath = (id: string) => `/admin/students/${encodePathSegment(id)}`
 
 export async function listStudents(params: StudentListParams = {}): Promise<Page<StudentListItem>> {
   const res = await adminHttp.get<Page<StudentListItem>>('/admin/students', { params })

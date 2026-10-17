@@ -8,6 +8,7 @@
 import type { StaffRole } from '@/api/auth'
 import type { ISODateTime, Page } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface StaffUser {
   id: string
@@ -72,7 +73,7 @@ export interface StaffOption {
   display_name: string
 }
 
-const staffPath = (id: string) => `/admin/staff-users/${encodeURIComponent(id)}`
+const staffPath = (id: string) => `/admin/staff-users/${encodePathSegment(id)}`
 
 export async function listStaffUsers(params: StaffUserListParams = {}): Promise<Page<StaffUser>> {
   const res = await adminHttp.get<Page<StaffUser>>('/admin/staff-users', { params })

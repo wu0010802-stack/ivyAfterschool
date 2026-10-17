@@ -1,6 +1,7 @@
 // FRONTEND-033：員工站內通知 api client（BACKEND-214~216）。
 import type { Notification, NotificationPage } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface NotificationQuery {
   unread_only?: boolean
@@ -14,7 +15,7 @@ export async function listNotifications(params: NotificationQuery = {}): Promise
 }
 
 export async function markNotificationRead(id: string): Promise<Notification> {
-  const res = await adminHttp.post<Notification>(`/admin/notifications/${encodeURIComponent(id)}/read`)
+  const res = await adminHttp.post<Notification>(`/admin/notifications/${encodePathSegment(id)}/read`)
   return res.data
 }
 

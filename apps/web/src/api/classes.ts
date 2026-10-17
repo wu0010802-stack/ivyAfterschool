@@ -3,6 +3,7 @@
 // 409 class_has_students（details.student_count）/ class_name_taken、422 invalid_staff 由 adminHttp 轉成 ApiError。
 import type { ClassStaffRole, ISODateTime } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface ClassStaff {
   staff_user_id: string
@@ -44,7 +45,7 @@ export interface ClassStaffInput {
   role: ClassStaffRole
 }
 
-const classPath = (id: string) => `/admin/classes/${encodeURIComponent(id)}`
+const classPath = (id: string) => `/admin/classes/${encodePathSegment(id)}`
 
 export async function listClasses(params: ClassListParams = {}): Promise<ClassItem[]> {
   const res = await adminHttp.get<ClassItem[]>('/admin/classes', { params })

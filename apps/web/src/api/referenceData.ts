@@ -2,6 +2,7 @@
 // 四個資源共用同一組 endpoint 形狀，以 factory 產生。
 import type { ISODate } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export type ReferenceResource = 'subjects' | 'exam-types' | 'schools' | 'closed-days'
 
@@ -77,8 +78,8 @@ export interface ReferenceApi<Item, CreateBody, UpdateBody> {
 export function createReferenceApi<Item, CreateBody, UpdateBody>(
   resource: ReferenceResource,
 ): ReferenceApi<Item, CreateBody, UpdateBody> {
-  const base = `/admin/${resource}`
-  const itemPath = (id: string) => `${base}/${encodeURIComponent(id)}`
+  const base = `/admin/${encodePathSegment(resource)}`
+  const itemPath = (id: string) => `/admin/${encodePathSegment(resource)}/${encodePathSegment(id)}`
   return {
     async list(params = {}) {
       const res = await adminHttp.get<Item[]>(base, { params })

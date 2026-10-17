@@ -20,6 +20,7 @@ import type {
   PickupSource,
 } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface PickupStudent {
   id: string
@@ -156,7 +157,7 @@ export interface PickupRequestExistsDetails {
   status: PickupOpenStatus
 }
 
-const requestPath = (id: string) => `/admin/pickup/requests/${encodeURIComponent(id)}`
+const requestPath = (id: string) => `/admin/pickup/requests/${encodePathSegment(id)}`
 
 /** 空白原因視為沒有 */
 function reasonBody(reason?: string): { reason?: string } {

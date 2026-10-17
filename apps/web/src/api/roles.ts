@@ -4,6 +4,7 @@
 // 由 adminHttp 轉成 ApiError 往上拋。
 import type { ISODateTime } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface Role {
   id: string
@@ -52,12 +53,12 @@ export async function createRole(body: RoleCreateBody): Promise<Role> {
 }
 
 export async function updateRole(id: string, body: RoleUpdateBody): Promise<Role> {
-  const res = await adminHttp.patch<Role>(`/admin/roles/${encodeURIComponent(id)}`, body)
+  const res = await adminHttp.patch<Role>(`/admin/roles/${encodePathSegment(id)}`, body)
   return res.data
 }
 
 export async function deleteRole(id: string): Promise<void> {
-  await adminHttp.delete(`/admin/roles/${encodeURIComponent(id)}`)
+  await adminHttp.delete(`/admin/roles/${encodePathSegment(id)}`)
 }
 
 export async function fetchPermissionCatalog(): Promise<PermissionCatalog> {

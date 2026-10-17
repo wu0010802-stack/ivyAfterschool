@@ -10,6 +10,7 @@ import type {
   ISODateTime,
 } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface HomeworkItem {
   id: string
@@ -124,7 +125,7 @@ export interface HomeworkProgressUpdate {
   note?: string | null
 }
 
-const itemPath = (id: string) => `/admin/homework/items/${encodeURIComponent(id)}`
+const itemPath = (id: string) => `/admin/homework/items/${encodePathSegment(id)}`
 
 export async function fetchHomeworkBoard(params: HomeworkBoardParams = {}): Promise<HomeworkBoard> {
   const res = await adminHttp.get<HomeworkBoard>('/admin/homework/board', { params })
@@ -153,6 +154,6 @@ export async function deleteHomeworkItem(id: string): Promise<HomeworkDeleteResu
 }
 
 export async function updateHomeworkProgress(studentId: string, body: HomeworkProgressUpdate): Promise<Progress> {
-  const res = await adminHttp.put<Progress>(`/admin/homework/progress/${encodeURIComponent(studentId)}`, body)
+  const res = await adminHttp.put<Progress>(`/admin/homework/progress/${encodePathSegment(studentId)}`, body)
   return res.data
 }

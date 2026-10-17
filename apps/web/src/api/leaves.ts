@@ -11,6 +11,7 @@ import type {
   Page,
 } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface LeaveStudent {
   id: string
@@ -86,7 +87,7 @@ export interface LeaveOverlapDetails {
   end_date: ISODate
 }
 
-const leavePath = (id: string) => `/admin/leaves/${encodeURIComponent(id)}`
+const leavePath = (id: string) => `/admin/leaves/${encodePathSegment(id)}`
 
 export async function listLeaves(q: LeaveQuery = {}): Promise<Page<Leave>> {
   const res = await adminHttp.get<Page<Leave>>('/admin/leaves', { params: q })
@@ -110,7 +111,7 @@ export async function cancelLeave(id: string, scope: LeaveCancelScope = 'remaini
 /** 短效網址：每次呼叫都重新請求，不快取 */
 export async function fetchLeaveAttachmentUrl(leaveId: string, attachmentId: string): Promise<LeaveAttachmentUrl> {
   const res = await adminHttp.get<LeaveAttachmentUrl>(
-    `${leavePath(leaveId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    `${leavePath(leaveId)}/attachments/${encodePathSegment(attachmentId)}`,
   )
   return res.data
 }

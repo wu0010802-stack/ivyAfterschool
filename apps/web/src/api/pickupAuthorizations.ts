@@ -12,6 +12,7 @@ import type {
 } from '@/shared/types/api'
 import { adminHttp } from './http'
 import type { PickupRequest, PickupStudent } from './pickupRequests'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface StaffAuthorization {
   id: string
@@ -55,7 +56,7 @@ export interface CodeMismatchDetails {
   remaining_attempts: number
 }
 
-const authorizationPath = (id: string) => `/admin/pickup/authorizations/${encodeURIComponent(id)}`
+const authorizationPath = (id: string) => `/admin/pickup/authorizations/${encodePathSegment(id)}`
 
 export async function listPickupAuthorizations(
   params: PickupAuthorizationListParams = {},

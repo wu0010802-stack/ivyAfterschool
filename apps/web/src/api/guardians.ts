@@ -4,6 +4,7 @@
 // 409 guardian_already_bound / guardian_not_bound / student_archived 由 adminHttp 轉成 ApiError。
 import type { BindingStatus, GuardianRelation, ISODateTime } from '@/shared/types/api'
 import { adminHttp } from './http'
+import { encodePathSegment } from '@/shared/utils/pathSegment'
 
 export interface GuardianBinding {
   status: BindingStatus
@@ -41,8 +42,8 @@ export interface IssuedBindingCode {
   expires_at: ISODateTime
 }
 
-const guardianPath = (id: string) => `/admin/guardians/${encodeURIComponent(id)}`
-const studentGuardiansPath = (studentId: string) => `/admin/students/${encodeURIComponent(studentId)}/guardians`
+const guardianPath = (id: string) => `/admin/guardians/${encodePathSegment(id)}`
+const studentGuardiansPath = (studentId: string) => `/admin/students/${encodePathSegment(studentId)}/guardians`
 
 export async function listGuardians(studentId: string): Promise<Guardian[]> {
   const res = await adminHttp.get<Guardian[]>(studentGuardiansPath(studentId))
