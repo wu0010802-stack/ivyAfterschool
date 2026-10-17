@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 215,
-  "last_updated": "2026-10-17T04:10:17Z",
+  "version": 216,
+  "last_updated": "2026-10-17T04:12:29Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -1780,7 +1780,7 @@
     {
       "id": "PARENT-073",
       "title": "建立 HomeworkView：今日作業明細（每項狀態、整體狀態、預計可接送時間、老師說明）",
-      "description": "建立 `apps/web/src/parent/views/HomeworkView.vue`（路由 `/homework`，底部導覽「作業」；頂部列「今日作業」由 ParentLayout 負責）。外觀與互動以已核可稿 `docs/mockups/parent-page-homework.html` 為準。\n\n**版面**（頁面自帶左右 16px、上 8px、底部 24px 內距，區塊間距 12px；整頁內容包在 PARENT-027 PullToRefresh 內）：PARENT-050 ChildContextHeader → 小標「作業進度」+ 右側日期（`homework.date`，「MM/DD（X）」，FRONTEND-003；尚無資料時不顯示）→ 錯誤列（見下）→ 摘要卡 → 小標「作業項目」+ 右側「共 {n} 項」（無項目時不顯示）→ 項目卡。\n\n- **小孩清單**：掛載時呼叫 `children.load()`（PARENT-010；深層連結直接進入時尚未載入）；`children.loading` 且 items 為空 → 身分卡位置 PARENT-028 SkeletonBlock `variant=\"row\"`（高 80px）。切換 → `children.select(id)`。 沒有選中的小孩時不呼叫作業 API：清單載入中 → 摘要與項目位置照「載入」顯示骨架；清單載入失敗（沒有任何小孩可選）→ 摘要與項目位置顯示 ParentEmptyState error「作業進度載入失敗」/「請檢查網路連線後再試一次」/「重試」，重試改呼叫 `children.load(true)`；清單已載入但沒有任何小孩 → 項目卡內「今天還沒有作業項目」空狀態（同 ExamsView / LeavesView / AttendanceView 的處理）。\n- **資料**：依 `children.selectedId` 呼叫 PARENT-071 `homeworkToday.load(id, { force: true })`（掛載與切換時），畫面讀 `get(id)`；ws 更新由 store 原地套用，畫面直接反映，不重新請求、不顯示骨架。\n- **摘要卡**（PARENT-017 M3Card elevated、padding none，兩個區塊以 1px outline-variant 分隔）：\n  - 第一區：「已完成 {done}/{total} 項」（done = status 為 done 的項目數，數字 tabular-nums）+ 右側整體狀態 PARENT-051 StatusPill（FRONTEND-005 `HOMEWORK_OVERALL_STATUS_META`）+ 4px primary 進度條（aria-hidden）；items 為空時文字改「今日作業」、不畫進度條。\n  - 第二區（預計可接送）：overall done → filled check_circle（primary）+「作業已完成，可以來接送了」；否則 `ready_eta` 有值 → schedule 圖示 +「預計 HH:MM 可接送」；否則「老師尚未提供預計時間」（on-surface-variant）。`note` 有值 → 下方「老師說明：{note}」（保留換行、純文字）。\n  - 卡片底部 `updated_at` 有值 →「最後更新 HH:MM」（FRONTEND-003，台北時間）。\n- **項目卡**：outlined M3Card 內 `<ul role=\"list\" aria-label=\"今日作業項目\">` + PARENT-072 HomeworkItemRow，依後端順序，不另排序。\n- **空狀態**（卡內 PARENT-029 ParentEmptyState）：items 為空且 overall 非 done →（assignment）「今天還沒有作業項目」/「老師登記作業後會顯示在這裡」；items 為空且 overall done →（done_all）「老師已標記今日作業完成」，此時摘要卡照常顯示「作業已完成，可以來接送了」與老師說明。\n- **載入**：這個小孩尚無資料且載入中 → 摘要卡位置 SkeletonBlock `variant=\"card\"`（高 168px）+ 項目卡內 SkeletonBlock `variant=\"row\"` count 3；已有資料（切回看過的小孩、下拉重新整理、ws 斷線輪詢）→ 照常顯示並背景重抓，不顯示骨架。\n- **錯誤**：`errorByChild[id]` 有值且這個小孩沒有資料 → 摘要與項目卡換成 ParentEmptyState error「作業進度載入失敗」/「請檢查網路連線後再試一次」/「重試」（→ `load(id, { force: true })`，重試期間回到骨架）；有舊資料 → 照常顯示舊資料，摘要卡上方加錯誤列（error-container、filled error 圖示、「作業進度載入失敗」、右側 48px 文字按鈕「重試」，`role=\"alert\"`，同首頁錯誤列）；PullToRefresh 失敗只以錯誤列呈現，不另跳 snackbar。\n- PullToRefresh：`homeworkToday.load(selectedId, { force: true })`。本頁只呈現，沒有可點的列。\n\n新寫頁面（domain_spec §4 家長端 `/homework`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-homework.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：進行中（多項不同狀態 + ready_eta + 老師說明 + 最後更新）、全部完成、無項目、老師標記完成但無項目、首次載入骨架、載入失敗、有舊資料時的錯誤列、多位小孩切換。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `HomeworkView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；PullToRefresh 以 `findComponent(PullToRefresh).props('onRefresh')()` 觸發）。",
+      "description": "建立 `apps/web/src/parent/views/HomeworkView.vue`（路由 `/homework`，底部導覽「作業」；頂部列「今日作業」由 ParentLayout 負責）。外觀與互動以已核可稿 `docs/mockups/parent-page-homework.html` 為準。\n\n**版面**（頁面自帶左右 16px、上 8px、底部 24px 內距，區塊間距 12px；整頁內容包在 PARENT-027 PullToRefresh 內）：PARENT-050 ChildContextHeader → 小標「作業進度」+ 右側日期（`homework.date`，「MM/DD（X）」，FRONTEND-003；尚無資料時不顯示）→ 錯誤列（見下）→ 摘要卡 → 小標「作業項目」+ 右側「共 {n} 項」（無項目時不顯示）→ 項目卡。\n\n- **小孩清單**：掛載時呼叫 `children.load()`（PARENT-010；深層連結直接進入時尚未載入）；`children.loading` 且 items 為空 → 身分卡位置 PARENT-028 SkeletonBlock `variant=\"row\"`（高 80px）。切換 → `children.select(id)`。 沒有選中的小孩時不呼叫作業 API：清單載入中 → 摘要與項目位置照「載入」顯示骨架；清單載入失敗（沒有任何小孩可選）→ 摘要與項目位置顯示 ParentEmptyState error「作業進度載入失敗」/「請檢查網路連線後再試一次」/「重試」，重試改呼叫 `children.load(true)`；清單已載入但沒有任何小孩 → 項目卡內「今天還沒有作業項目」空狀態（同 ExamsView / LeavesView / AttendanceView 的處理）。\n- **資料**：依 `children.selectedId` 呼叫 PARENT-071 `homeworkToday.load(id, { force: true })`（掛載與切換時），畫面讀 `get(id)`；ws 更新由 store 原地套用，畫面直接反映，不重新請求、不顯示骨架。\n- **摘要卡**（PARENT-017 M3Card elevated、padding none，兩個區塊以 1px outline-variant 分隔）：\n  - 第一區：「已完成 {done}/{total} 項」（done = status 為 done 的項目數，數字 tabular-nums）+ 右側整體狀態 PARENT-051 StatusPill（FRONTEND-005 `HOMEWORK_OVERALL_STATUS_META`）+ 4px primary 進度條（aria-hidden）；items 為空時文字改「今日作業」、不畫進度條。\n  - 第二區（預計可接送）：overall done → filled check_circle（primary）+「作業已完成，可以來接送了」；否則 `ready_eta` 有值 → schedule 圖示 +「預計 HH:MM 可接送」；否則「老師尚未提供預計時間」（on-surface-variant）。`note` 有值 → 下方「老師說明：{note}」（保留換行、純文字；文字以 `<span>` 包住，不帶模板縮排留下的開頭空白）。\n  - 卡片底部 `updated_at` 有值 →「最後更新 HH:MM」（FRONTEND-003，台北時間）。\n- **項目卡**：outlined M3Card 內 `<ul role=\"list\" aria-label=\"今日作業項目\">` + PARENT-072 HomeworkItemRow，依後端順序，不另排序。\n- **空狀態**（卡內 PARENT-029 ParentEmptyState）：items 為空且 overall 非 done →（assignment）「今天還沒有作業項目」/「老師登記作業後會顯示在這裡」；items 為空且 overall done →（done_all）「老師已標記今日作業完成」，此時摘要卡照常顯示「作業已完成，可以來接送了」與老師說明。\n- **載入**：這個小孩尚無資料且載入中 → 摘要卡位置 SkeletonBlock `variant=\"card\"`（高 168px）+ 項目卡內 SkeletonBlock `variant=\"row\"` count 3；已有資料（切回看過的小孩、下拉重新整理、ws 斷線輪詢）→ 照常顯示並背景重抓，不顯示骨架。\n- **錯誤**：`errorByChild[id]` 有值且這個小孩沒有資料 → 摘要與項目卡換成 ParentEmptyState error「作業進度載入失敗」/「請檢查網路連線後再試一次」/「重試」（→ `load(id, { force: true })`，重試期間回到骨架）；有舊資料 → 照常顯示舊資料，摘要卡上方加錯誤列（error-container、filled error 圖示、「作業進度載入失敗」、右側 48px 文字按鈕「重試」，`role=\"alert\"`，同首頁錯誤列）；PullToRefresh 失敗只以錯誤列呈現，不另跳 snackbar。\n- PullToRefresh：`homeworkToday.load(selectedId, { force: true })`。本頁只呈現，沒有可點的列。\n\n新寫頁面（domain_spec §4 家長端 `/homework`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-homework.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：進行中（多項不同狀態 + ready_eta + 老師說明 + 最後更新）、全部完成、無項目、老師標記完成但無項目、首次載入骨架、載入失敗、有舊資料時的錯誤列、多位小孩切換。（稿已核可，實作需符合稿中 decisions）\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `HomeworkView.vue`。\n\n**驗收標準**：每一條對應 red_case（axios-mock-adapter mock API；PullToRefresh 以 `findComponent(PullToRefresh).props('onRefresh')()` 觸發）。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/HomeworkView.vue",
       "source_ref": null,
@@ -2086,7 +2086,7 @@
     {
       "id": "PARENT-096",
       "title": "建立 ArrivalTimePicker 元件：選擇預計抵達時間（可不指定）",
-      "description": "建立 `apps/web/src/parent/components/pickup/ArrivalTimePicker.vue`：\n```ts\nprops: { modelValue: string | null /* 'HH:MM' 台北時間 */; now?: Date /* 測試注入，預設 new Date() */ }\nemits: { 'update:modelValue': [string | null] }\n```\n- 選項（PARENT-019 M3Chip filter，單選）：「不指定」（null，預設）、「約 10 分鐘後」、「約 20 分鐘後」、「約 30 分鐘後」、「自選時間」。相對選項以 now（台北時間，FRONTEND-003）加分鐘、秒數無條件進位到分鐘，轉成 'HH:MM'，chip 旁顯示換算結果（例如「約 10 分鐘後 · 17:42」）。\n- 「自選時間」展開 `type=\"time\"` 欄位（PARENT-018，label「抵達時間」），展開時預填「約 10 分鐘後」的換算時刻並立即 emit（該選項跨午夜時預填空白、emit null）；以分鐘比較，早於 now 的時:分 → 欄位錯誤「預計抵達時間不能早於現在」且 emit null（同一分鐘可以）；清空欄位 → emit null。最晚時間由後端 `pickup.window` 判斷（錯誤 `expected_arrival_too_late` 由 PARENT-097 顯示）。\n- 跨午夜（now + 分鐘超過 23:59）的相對選項停用（chip 不顯示換算時刻）；目前選中的相對選項因此停用時回到「不指定」並 emit null。\n- **時間更新**：未傳 `now` 時元件以 `setInterval` 每 60 秒重算 now（unmount 清除）；傳入 `now` 時不啟動計時器，以 prop 為準、prop 改變即重算。重算後 chip 換算時刻更新、已選的相對選項同步 emit 新值；自選時間被時間追過 → 顯示上述欄位錯誤並 emit null。\n- 整組 `role=\"group\"` + `aria-labelledby` 指向小標「預計抵達時間」；chip 以 `aria-pressed` 表達選取。\n- **受控值同步**：`modelValue` 初值非 null 時初始化為「自選時間」並以該值為欄位內容；父層把 `modelValue` 清成 null（且元件上次 emit 的不是 null）時回到「不指定」。\n\n參考 ivy `FE:src/parent/views/PickupNoticeView.vue::selectPreset` 的快捷分鐘選項；本專案後端收絕對時間 HH:MM，因此改為前端換算；**去掉** 滾輪選擇器。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-arrival-time-picker.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：預設不指定、選相對時間（顯示換算時刻）、自選時間展開、自選早於現在的錯誤、接近午夜時相對選項停用。（稿已核可，實作需符合稿中 decisions）\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/components/pickup/ArrivalTimePicker.vue`：\n```ts\nprops: { modelValue: string | null /* 'HH:MM' 台北時間 */; now?: Date /* 測試注入，預設 new Date() */ }\nemits: { 'update:modelValue': [string | null] }\n```\n- 選項（PARENT-019 M3Chip filter，單選）：「不指定」（null，預設）、「約 10 分鐘後」、「約 20 分鐘後」、「約 30 分鐘後」、「自選時間」。相對選項以 now（台北時間，FRONTEND-003）加分鐘、秒數無條件進位到分鐘，轉成 'HH:MM'，chip 旁顯示換算結果（例如「約 10 分鐘後 · 17:42」）。\n- 「自選時間」展開 `type=\"time\"` 欄位（PARENT-018，label「抵達時間」），展開時預填「約 10 分鐘後」的換算時刻並立即 emit（該選項跨午夜時預填空白、emit null）；以分鐘比較，早於 now 的時:分 → 欄位錯誤「預計抵達時間不能早於現在」且 emit null（同一分鐘可以）；清空欄位 → emit null。最晚時間由後端 `pickup.window` 判斷（錯誤 `expected_arrival_too_late` 由 PARENT-097 顯示）。\n- 跨午夜（now + 分鐘超過 23:59）的相對選項停用（chip 不顯示換算時刻）；目前選中的相對選項因此停用時回到「不指定」並 emit null。\n- **時間更新**：未傳 `now` 時元件以 `setInterval` 每 60 秒重算 now（unmount 清除）；傳入 `now` 時不啟動計時器，以 prop 為準、prop 改變即重算。重算後 chip 換算時刻更新、已選的相對選項同步 emit 新值；自選時間被時間追過 → 顯示上述欄位錯誤並 emit null。\n- 選項列 `.arrival__chips` 為 `gap: 12px 8px`（換行列距 12px，同接送頁稿；欄距 8px）。\n- 整組 `role=\"group\"` + `aria-labelledby` 指向小標「預計抵達時間」；chip 以 `aria-pressed` 表達選取。\n- **受控值同步**：`modelValue` 初值非 null 時初始化為「自選時間」並以該值為欄位內容；父層把 `modelValue` 清成 null（且元件上次 emit 的不是 null）時回到「不指定」。\n\n參考 ivy `FE:src/parent/views/PickupNoticeView.vue::selectPreset` 的快捷分鐘選項；本專案後端收絕對時間 HH:MM，因此改為前端換算；**去掉** 滾輪選擇器。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-arrival-time-picker.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：預設不指定、選相對時間（顯示換算時刻）、自選時間展開、自選早於現在的錯誤、接近午夜時相對選項停用。（稿已核可，實作需符合稿中 decisions）\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/ArrivalTimePicker.vue",
       "source_ref": "FE:src/parent/views/PickupNoticeView.vue::selectPreset",
@@ -2805,7 +2805,7 @@
     {
       "id": "PARENT-136",
       "title": "移植 LeaveListItem 元件：請假紀錄列（假別、期間、狀態、取消入口）",
-      "description": "建立 `apps/web/src/parent/components/leaves/LeaveListItem.vue`：\n```ts\nprops: { leave: ParentLeave; today: string }\nemits: { open: [leave: ParentLeave]; cancel: [leave: ParentLeave] }\n```\n- 根元素 `<li>`，整列可點 emit open。顯示 `leave_type_label`、期間（同一天「10/05（一）」，多天「10/05（一）～10/07（三）」，FRONTEND-003）、事由首行截斷、附件數圖示（> 0 時）。\n- 狀態 StatusPill（`cancelled` 優先於日期判斷：員工可能從後台整筆取消已結束的請假）：`cancelled` →「已取消」；`active` 且 `end_date < today` →「已結束」；`active` 且 `start_date > today` →「已排定」；其餘 active →「請假中」。\n- 取消按鈕只在 `can_cancel` 為 true 時顯示（點擊 emit cancel、不觸發 open）：`start_date >= today` 文字「取消請假」（整筆取消）；`start_date < today` 文字「取消剩餘日子」（後端把 end_date 改為昨天，BACKEND-357）。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveListCard.vue` 的 click / cancel 雙事件；**去掉** review_note 與審核狀態色（本專案送出即生效）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-leave-list-item.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：已排定（取消請假）、請假中（取消剩餘日子）、已結束、已取消、單日 / 多日、有附件。可併入 `parent-page-leaves.html`。\n\n**驗收標準**：每一條對應 red_case（today 固定 '2026-10-02'）。",
+      "description": "建立 `apps/web/src/parent/components/leaves/LeaveListItem.vue`：\n```ts\nprops: { leave: ParentLeave; today: string }\nemits: { open: [leave: ParentLeave]; cancel: [leave: ParentLeave] }\n```\n- 根元素 `<li>`，整列可點 emit open。顯示 `leave_type_label`、期間（同一天「10/05（一）」，多天「10/05（一）～10/07（三）」，FRONTEND-003）、事由首行截斷、附件數圖示（> 0 時）。\n- 狀態 StatusPill（`cancelled` 優先於日期判斷：員工可能從後台整筆取消已結束的請假）：`cancelled` →「已取消」；`active` 且 `end_date < today` →「已結束」；`active` 且 `start_date > today` →「已排定」；其餘 active →「請假中」。判斷由 PARENT-204 `leaveStatusPill`（`apps/web/src/parent/utils/leaveStatus.ts`）提供。\n- 取消按鈕只在 `can_cancel` 為 true 時顯示（點擊 emit cancel、不觸發 open）：`start_date >= today` 文字「取消請假」（整筆取消）；`start_date < today` 文字「取消剩餘日子」（後端把 end_date 改為昨天，BACKEND-357）。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveListCard.vue` 的 click / cancel 雙事件；**去掉** review_note 與審核狀態色（本專案送出即生效）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-component-leave-list-item.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：已排定（取消請假）、請假中（取消剩餘日子）、已結束、已取消、單日 / 多日、有附件。可併入 `parent-page-leaves.html`。\n\n**驗收標準**：每一條對應 red_case（today 固定 '2026-10-02'）。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveListItem.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveListCard.vue::emit",
@@ -2844,7 +2844,7 @@
     {
       "id": "PARENT-137",
       "title": "移植 LeaveDetailSheet 元件：請假詳情（附件補上傳、依 can_cancel 呈現取消）",
-      "description": "建立 `apps/web/src/parent/components/leaves/LeaveDetailSheet.vue`：\n```ts\nprops: { modelValue: boolean; leave: ParentLeave | null; studentName: string; today: string; limits: ParentLimits; uploading?: boolean }\nemits: { 'update:modelValue': [boolean]; cancel: [leave: ParentLeave]; upload: [file: File] }\n```\n- PARENT-025 ParentBottomSheet，標題「請假詳情」（高度自適應）。頂部摘要：假別圖示（同 PARENT-136）+ 假別 + 狀態 PARENT-051 StatusPill（同 PARENT-136 的規則與 tone），下一行期間與天數「10/05（一）～10/07（三）· 共 3 天」（含首尾日曆天；單日「10/12（一）· 共 1 天」）。明細：小孩姓名、事由（無則「未填寫」）、申請者（`created_by_type` parent →「家長申請」、staff →「安親班代為登記」）、申請時間、取消時間（有值時；兩者以 FRONTEND-003 `formatDateTime` 顯示）。已取消的請假摘要淡化（同 PARENT-136）。\n- 附件：PARENT-135，`editable` = `status === 'active'`（已結束但仍 active 的請假也能補附件）；數量上限交給 LeaveAttachmentList 的 `max`（已滿時不顯示新增、顯示「已達 {max} 個附件上限」），`max` / `maxMb` 取自 limits，`uploading` 原樣傳入，upload 事件往上 emit。\n- `can_cancel` 為 true 時 footer 顯示 outlined 全寬取消按鈕（文字規則同 PARENT-136），點擊 emit cancel(leave)（確認對話框屬於頁面）；`start_date < today` 時按鈕上方 info 圖示小字「將取消今天（MM/DD）起的請假，之前的日子仍保留為請假」。`can_cancel` 為 false 時沒有 footer。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveDetailSheet.vue` 的 sheet + 附件版面；**去掉** timelineSteps 審核流程、review_note、刪除附件。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。本元件的稿併入 `docs/mockups/parent-page-leaves.html`（`preview-tasks` 含 PARENT-137；稿內標示 PARENT-137 的 CSS / JS 區段與右側「元件規格」一節為本元件規格），呈現：未開始可整筆取消、進行中可取消剩餘（含說明）、已結束 / 已取消（無按鈕）、安親班代登記、附件可補上傳 / 已滿。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/components/leaves/LeaveDetailSheet.vue`：\n```ts\nprops: { modelValue: boolean; leave: ParentLeave | null; studentName: string; today: string; limits: ParentLimits; uploading?: boolean }\nemits: { 'update:modelValue': [boolean]; cancel: [leave: ParentLeave]; upload: [file: File] }\n```\n- PARENT-025 ParentBottomSheet，標題「請假詳情」（高度自適應）。頂部摘要：假別圖示（同 PARENT-136）+ 假別 + 狀態 PARENT-051 StatusPill（同 PARENT-136 的規則與 tone，呼叫 PARENT-204 `leaveStatusPill`），下一行期間與天數「10/05（一）～10/07（三）· 共 3 天」（含首尾日曆天；單日「10/12（一）· 共 1 天」）。明細：小孩姓名、事由（無則「未填寫」）、申請者（`created_by_type` parent →「家長申請」、staff →「安親班代為登記」）、申請時間、取消時間（有值時；兩者以 FRONTEND-003 `formatDateTime` 顯示）。已取消的請假摘要淡化（同 PARENT-136）。\n- 附件：PARENT-135，`editable` = `status === 'active'`（已結束但仍 active 的請假也能補附件）；數量上限交給 LeaveAttachmentList 的 `max`（已滿時不顯示新增、顯示「已達 {max} 個附件上限」），`max` / `maxMb` 取自 limits，`uploading` 原樣傳入，upload 事件往上 emit。\n- `can_cancel` 為 true 時 footer 顯示 outlined 全寬取消按鈕（文字規則同 PARENT-136），點擊 emit cancel(leave)（確認對話框屬於頁面）；`start_date < today` 時按鈕上方 info 圖示小字「將取消今天（MM/DD）起的請假，之前的日子仍保留為請假」。`can_cancel` 為 false 時沒有 footer。\n\n移植 ivy `FE:src/parent/components/leaves/LeaveDetailSheet.vue` 的 sheet + 附件版面；**去掉** timelineSteps 審核流程、review_note、刪除附件。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。本元件的稿併入 `docs/mockups/parent-page-leaves.html`（`preview-tasks` 含 PARENT-137；稿內標示 PARENT-137 的 CSS / JS 區段與右側「元件規格」一節為本元件規格），呈現：未開始可整筆取消、進行中可取消剩餘（含說明）、已結束 / 已取消（無按鈕）、安親班代登記、附件可補上傳 / 已滿。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/leaves/LeaveDetailSheet.vue",
       "source_ref": "FE:src/parent/components/leaves/LeaveDetailSheet.vue::emit",
@@ -3056,7 +3056,7 @@
     {
       "id": "PARENT-153",
       "title": "建立 ExamsView：成績列表（只有已發布的考試）",
-      "description": "建立 `apps/web/src/parent/views/ExamsView.vue`（路由 `/exams`，底部導覽「成績」）。版面與文案以已核可稿 `docs/mockups/parent-page-exams.html`（含其 decisions）為準。\n\n- 頂部 PARENT-050 ChildContextHeader；依 `children.selectedId` 呼叫 `listChildExams(id, 1)`（PARENT-150），依後端順序（考試日期新到舊）以 PARENT-151 列在卡片內的 `<ul role=\"list\">`，不另加區塊標題或筆數；整頁內容包在 PARENT-027 PullToRefresh 內。\n- `items.length < total` 顯示「載入更多」（outlined 全寬，載入中 loading）：取下一頁並以 `exam_id` 去重後附加；失敗 → PARENT-011 snackbar（error）「載入更多失敗，請稍後再試」，已載入的清單與按鈕保留；下一頁回空陣列時視為已無更多，不再顯示「載入更多」。切換小孩重置分頁、顯示骨架並以序號丟棄過期回應。\n- 小孩清單：掛載時呼叫 `children.load()`（PARENT-010；深層連結直接進入時尚未載入）。沒有選中的小孩時不呼叫 API：清單載入中顯示骨架、載入失敗顯示錯誤（重試重新載入小孩清單）、載入完成但沒有小孩視為沒有成績（空狀態）。\n- 空 → ParentEmptyState（icon `grading`）「目前沒有已公布的成績」/「安親班公布考試成績後會通知您」。\n- 首次載入 SkeletonBlock（row × 4）；失敗 → ParentEmptyState error「成績載入失敗」+ 重試。PullToRefresh 重抓第一頁（重置分頁），期間保留內容；失敗時保留內容並以 snackbar（error）顯示「更新失敗，請稍後再試」；載入中停用下拉。\n\n新寫頁面（domain_spec §4 家長端 `/exams`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-exams.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：有多筆考試、載入更多、空清單、首次載入、載入失敗、多位小孩切換。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `ExamsView.vue`。\n\n**驗收標準**：每一條對應 red_case。",
+      "description": "建立 `apps/web/src/parent/views/ExamsView.vue`（路由 `/exams`，底部導覽「成績」）。版面與文案以已核可稿 `docs/mockups/parent-page-exams.html`（含其 decisions）為準。\n\n- 頂部 PARENT-050 ChildContextHeader；依 `children.selectedId` 呼叫 `listChildExams(id, 1)`（PARENT-150），依後端順序（考試日期新到舊）以 PARENT-151 列在卡片內的 `<ul role=\"list\">`，不另加區塊標題或筆數；整頁內容包在 PARENT-027 PullToRefresh 內。\n- `items.length < total` 顯示「載入更多」（outlined 全寬，載入中 loading）：取下一頁並以 `exam_id` 去重後附加；失敗 → PARENT-011 snackbar（error）「載入更多失敗，請稍後再試」，已載入的清單與按鈕保留；下一頁回空陣列時視為已無更多，不再顯示「載入更多」。切換小孩重置分頁、顯示骨架並以序號丟棄過期回應。\n- 小孩清單：掛載時呼叫 `children.load()`（PARENT-010；深層連結直接進入時尚未載入）。沒有選中的小孩時不呼叫 API：清單載入中顯示骨架、載入失敗顯示錯誤（重試重新載入小孩清單）、載入完成但沒有小孩視為沒有成績（空狀態）。\n- 空 → ParentEmptyState（icon `grading`）「目前沒有已公布的成績」/「安親班公布考試成績後會通知您」。\n- 首次載入 SkeletonBlock（row × 4，每列 `height=\"76px\"`，與 ExamListItem 單行列高一致）；失敗 → ParentEmptyState error「成績載入失敗」+ 重試。PullToRefresh 重抓第一頁（重置分頁），期間保留內容；失敗時保留內容並以 snackbar（error）顯示「更新失敗，請稍後再試」；載入中停用下拉。\n\n新寫頁面（domain_spec §4 家長端 `/exams`）。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/parent-page-exams.html`，以 390×844 手機尺寸設計，`preview-status` 為 `approved` 後才能進 `in_progress`。稿必須呈現：有多筆考試、載入更多、空清單、首次載入、載入失敗、多位小孩切換。\n\n本 task 覆寫 PARENT-012 建立的佔位檔 `ExamsView.vue`。\n\n**驗收標準**：每一條對應 red_case。",
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamsView.vue",
       "source_ref": null,
@@ -3939,7 +3939,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/HomeworkView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-073"
@@ -4005,7 +4005,7 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/utils/leaveStatus.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-136",
@@ -4039,7 +4039,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/parent/views/PickupProxyView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-104"
@@ -4055,7 +4055,7 @@
         "red_cases": [
           "PickupProxyView sorts authorizations by service date：授權 service_date 依序回 10/16、10/14、10/15 → 畫面依 10/14、10/15、10/16 排列（突變：排序改反向）",
           "PickupProxyView disables add person until persons load：接送人清單未回應或回 500 時「新增接送人」disabled，成功後可按（突變：不看載入狀態）",
-          "PickupProxyView upserts created person：新增接送人 POST 成功回 p9 → 清單立即含 p9，且不需等重抓回應（突變：建立後只靠重抓）",
+          "PickupProxyView upserts created authorization：新增代理接送 POST 成功回 a2 → 接送碼 sheet 仍開著、尚未重抓授權時，有效授權清單已含 a2（突變：建立後只靠重抓）",
           "PickupProxyView keeps delete dialog on generic error：刪除接送人回 500 → 確認對話框仍開啟並顯示錯誤（突變：失敗時關閉）",
           "PickupProxyView disables add authorization without child：沒有選定小孩 → 「新增代理接送」disabled（突變：拿掉判斷）",
           "PickupProxyView resolves pending leave confirm as false：離頁確認未回答時再次觸發離頁 → 前一次確認 resolve(false)（突變：不 resolve 前一次）"
@@ -4076,7 +4076,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/pickup/ArrivalTimePicker.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-096"
@@ -4143,7 +4143,7 @@
       "granularity_unit": "view",
       "target_path": "apps/web/src/parent/views/ExamsView.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "PARENT-153",
