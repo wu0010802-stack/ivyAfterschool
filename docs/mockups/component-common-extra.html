@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
-<meta name="preview-status" content="draft">
+<meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="FRONTEND-040,FRONTEND-043,FRONTEND-302,FRONTEND-313">
 <meta name="preview-route" content="component:components/common/{FormDialog,StatCard}.vue">
 <meta name="preview-updated" content="2026-10-17">
@@ -468,7 +468,7 @@ const app = createApp({
       'FormDialog 開啟動畫結束後聚焦 body 內第一個可輸入的 input / textarea（略過 disabled、readonly、checkbox / radio，也略過下拉與日期等 picker，避免一開就彈出選單；同 ivy）；沒有可輸入欄位時不搶焦點。',
       'FormDialog 欄位錯誤（前端 rules 或後端 422 validationFieldErrors）顯示在 el-form-item 下方，由使用端負責；FormDialog 本身不顯示錯誤訊息。',
       '確認框（FRONTEND-313）：全站 ElMessageBox 的底部按鈕（confirm 的取消 / 確認，以及 prompt 的兩顆）最小高 44px、左右 padding 20px，字級 14px，與 FormDialog footer 同一規則；不分桌機 / 平板 / 手機。只改尺寸，文案、按鈕順序、type 圖示、Esc / X / 點遮罩行為都不變。涵蓋 confirmDiscardChanges、useConfirmDelete 與各頁直接呼叫的 ElMessageBox.confirm / prompt（目前 15 處）。',
-      '確認框套用方式：在後台全域樣式 apps/web/src/styles/base.css 加 `.el-message-box__btns .el-button { min-height: 44px; padding: 0 20px; }`（命令式 ElMessageBox 掛在 body，scoped style 碰不到）。不採 customClass：customClass 要在 15 個呼叫點逐一加參數，新呼叫點容易漏掉而回到 32px；全域規則一次涵蓋現在與以後的確認框，且只作用在 .el-message-box 內，不影響其他 el-button。家長端不使用 ElMessageBox，不受影響。',
+      '確認框套用方式（使用者裁定，FRONTEND-313）：在後台全域樣式 apps/web/src/styles/base.css 加 `.el-message-box__btns .el-button { min-height: 44px; padding: 0 20px; }`（命令式 ElMessageBox 掛在 body，scoped style 碰不到）。不採 customClass：customClass 要在 15 個呼叫點逐一加參數，新呼叫點容易漏掉而回到 32px；全域規則一次涵蓋現在與以後的確認框，且只作用在 .el-message-box 內，不影響其他 el-button。家長端不使用 ElMessageBox，不受影響。',
       'StatCard 版面：標籤 13px 次要色在上，數值 28px 粗體（tabular 數字）在中，hint 12px 次要色在下；卡片圓角 8、細框、白底，最小高 88px（同時滿足平板觸控）。多張卡用 auto-fill grid（最小寬 160px）排列。',
       'StatCard tone 只改數值顏色：success → success-dark-2、warning → warning-dark-2、danger → danger、info → 主要文字色（info 代表「沒有特殊狀態」，不上色）。顏色不是唯一資訊，標籤文字本身已說明意義。',
       'StatCard 有 to 時：標籤列右側灰色箭頭，hover 時邊框轉主色淡色並浮起淡陰影、箭頭轉主色；role="link"、可 Tab 聚焦、Enter 觸發。沒有 to 也不可點的卡完全靜態（無箭頭、無 hover、不可聚焦），例如儀表板上沒有對應權限的區塊。',
@@ -476,13 +476,7 @@ const app = createApp({
       'StatCard loading：標籤照常顯示，數值換成 56×24 的 skeleton 條，hint 不顯示；loading 中仍可點（導頁或 emit click 照常）。',
       'StatCard 新增 clickable?: boolean（預設 false）：有 to 或 clickable 才可點；沒有 to 且 clickable 不為 true 時為靜態卡（沒有 role、tabindex、hover，點擊不 emit）。篩選 chip 用法傳 clickable + active。',
     ]
-    const openQuestions = [
-      {
-        question: 'FRONTEND-313：確認框按鈕 44px 要用哪種方式套到全站？',
-        optionA: '（推薦，稿已照此畫）後台全域樣式 base.css 加 .el-message-box__btns .el-button 規則：一次涵蓋 15 個呼叫點與以後新增的確認框，呼叫端不用改；只作用在確認框內',
-        optionB: '各呼叫點傳 customClass（例如 touch-message-box）再寫對應樣式：作用範圍明確，但 15 處都要改，新呼叫點忘了加就會回到 32px',
-      },
-    ]
+    const openQuestions = []
 
     const mobile = ref(false)
     const blank = {
