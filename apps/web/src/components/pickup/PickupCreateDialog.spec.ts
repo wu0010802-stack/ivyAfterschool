@@ -199,6 +199,16 @@ describe('PickupCreateDialog', () => {
     expect(options.at(-1)).toBe('17:00')
   })
 
+  it('PickupCreateDialog falls back to default latest when queue missing', async () => {
+    const board = makeBoard()
+    board.queue.value = null
+    await mountDialog({ presetStudent: PRESET, board })
+
+    const options = (await openTimeOptions()).map((o) => o.textContent?.trim())
+    expect(options[0]).toBe('16:00')
+    expect(options.at(-1)).toBe('19:00')
+  })
+
   it('PickupCreateDialog has no arrival options after latest', async () => {
     vi.setSystemTime(new Date('2026-10-02T11:40:00Z')) // 台北 19:40
     mock.onPost(CREATE_URL).reply(201, createdRequest({ expected_arrival_at: null }))
