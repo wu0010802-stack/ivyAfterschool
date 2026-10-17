@@ -1,5 +1,6 @@
 import type MockAdapter from 'axios-mock-adapter'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { ApiError } from '@/shared/types/api'
 import { createApiMock } from '@/test/helpers'
 import { getChildAttendance } from './attendance'
 import { getChild, getChildToday } from './children'
@@ -8,6 +9,12 @@ import { getChildHomework } from './homework'
 import { parentHttp } from './http'
 import { cancelLeave, listChildLeaves, uploadLeaveAttachment } from './leaves'
 import { markNotificationRead } from './notifications'
+import {
+  cancelPickupAuthorization,
+  createPickupAuthorization,
+  listPickupAuthorizations,
+  regeneratePickupCode,
+} from './pickupAuthorizations'
 import { createPickupPerson, deletePickupPerson, listPickupPersons } from './pickupPersons'
 import { cancelPickupRequest, markPickupArrived } from './pickupRequests'
 
@@ -97,6 +104,30 @@ const CASES: PathCase[] = [
     call: (id) => listChildLeaves(id),
     url: (s) => `/parent/children/${s}/leaves`,
   },
+  {
+    name: 'listPickupAuthorizations',
+    method: 'get',
+    call: (id) => listPickupAuthorizations(id),
+    url: (s) => `/parent/children/${s}/pickup-authorizations`,
+  },
+  {
+    name: 'createPickupAuthorization',
+    method: 'post',
+    call: (id) => createPickupAuthorization(id, { service_date: '2026-10-02', proxy_name: '李阿姨', proxy_phone: '0912000123' }),
+    url: (s) => `/parent/children/${s}/pickup-authorizations`,
+  },
+  {
+    name: 'cancelPickupAuthorization',
+    method: 'post',
+    call: (id) => cancelPickupAuthorization(id),
+    url: (s) => `/parent/pickup-authorizations/${s}/cancel`,
+  },
+  {
+    name: 'regeneratePickupCode',
+    method: 'post',
+    call: (id) => regeneratePickupCode(id),
+    url: (s) => `/parent/pickup-authorizations/${s}/regenerate-code`,
+  },
   { name: 'cancelLeave', method: 'post', call: (id) => cancelLeave(id), url: (s) => `/parent/leaves/${s}/cancel` },
   {
     name: 'uploadLeaveAttachment',
@@ -108,7 +139,11 @@ const CASES: PathCase[] = [
 
 /**
  * 找出 api client 原始碼中不安全的路徑插值：template literal 的每個 `${...}` 都必須是
- * encodeURIComponent(...) 或 *Path(...)（把 id 編碼後組路徑的小函式）。先去掉註解，避免註解裡的反引號干擾。
+ * encodePathSegment(...)（FRONTEND-308，拒絕 '' / '.' / '..'）或 *Path(...)（把 id 編碼後組路徑的小函式）。
+ * 先去掉註解，避免註解裡的反引號干擾。
+ *
+ * 已知限制：只看 template literal；用 '+' 串接字串、或插值內是組合運算式
+ * （例如 `${a ? encodePathSegment(b) : c}`、巢狀 template）不會被正確判斷，新增 client 時不要用這些寫法組路徑。
  */
 function unsafeInterpolations(source: string): string[] {
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1')
@@ -116,7 +151,7 @@ function unsafeInterpolations(source: string): string[] {
   for (const literal of code.matchAll(/`([^`]*)`/g)) {
     for (const expression of (literal[1] ?? '').matchAll(/\$\{([^}]*)\}/g)) {
       const text = (expression[1] ?? '').trim()
-      if (!/^(encodeURIComponent|\w+Path)\(.+\)$/.test(text)) offenders.push(text)
+      if (!/^(encodePathSegment|\w+Path)\(.+\)$/.test(text)) offenders.push(text)
     }
   }
   return offenders
@@ -165,7 +200,7 @@ describe('parent api path encoding', () => {
     }
   })
 
-  it('parent api path encoding has no raw interpolation in api paths', () => {
+  it('parent api path encoding static scan', () => {
     const clientFiles = Object.entries(sources).filter(([file]) => !file.endsWith('.spec.ts'))
 
     // 確認掃描真的讀到各個 client（避免 glob 失效造成空轉）
@@ -177,19 +212,35 @@ describe('parent api path encoding', () => {
       'homework.ts',
       'leaves.ts',
       'notifications.ts',
+      'pickupAuthorizations.ts',
       'pickupPersons.ts',
       'pickupRequests.ts',
     ]
     for (const name of expected) expect(names).toContain(name)
-    for (const [file, source] of clientFiles) {
-      expect(unsafeInterpolations(source), file).toEqual([])
+    const offenders = clientFiles.flatMap(([file, source]) => unsafeInterpolations(source).map((e) => `${file}: ${e}`))
+    expect(offenders).toEqual([])
+    // 不再直接用 encodeURIComponent 組路徑（它不擋 '.' / '..'）
+    for (const [file, source] of clientFiles) expect(source, file).not.toMatch(/\$\{\s*encodeURIComponent\(/)
+  })
+
+  it('parent api path encoding rejects dot ids', async () => {
+    for (const c of CASES) {
+      for (const id of ['..', '.', '']) {
+        const err = await c.call(id).catch((e: unknown) => e)
+        expect(err, `${c.name} ${JSON.stringify(id)}`).toBeInstanceOf(ApiError)
+        expect((err as ApiError).code, `${c.name} ${JSON.stringify(id)}`).toBe('invalid_path_segment')
+      }
     }
+    expect(mock.history.get).toEqual([])
+    expect(mock.history.post).toEqual([])
+    expect(mock.history.delete).toEqual([])
   })
 
   it('parent api path encoding checker flags raw interpolation', () => {
     expect(unsafeInterpolations('const p = `/parent/x/${id}`')).toEqual(['id'])
-    expect(unsafeInterpolations('const p = `/parent/x/${encodeURIComponent(a)}/${b}`')).toEqual(['b'])
-    expect(unsafeInterpolations('const p = `/parent/x/${encodeURIComponent(id)}/y`')).toEqual([])
+    expect(unsafeInterpolations('const p = `/parent/x/${encodePathSegment(a)}/${b}`')).toEqual(['b'])
+    expect(unsafeInterpolations('const p = `/parent/x/${encodePathSegment(id)}/y`')).toEqual([])
+    expect(unsafeInterpolations('const p = `/parent/x/${encodeURIComponent(id)}`')).toEqual(['encodeURIComponent(id)'])
     expect(unsafeInterpolations('const p = `${leavePath(id)}/cancel`')).toEqual([])
     expect(unsafeInterpolations('const p = `/parent/x/${id.toString()}`')).toEqual(['id.toString()'])
     // 註解裡的反引號與插值不算
