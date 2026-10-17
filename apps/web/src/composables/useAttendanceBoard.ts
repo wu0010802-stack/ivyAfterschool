@@ -117,7 +117,7 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     try {
       const res = await fetchDailyAttendance(query)
       if (mySeq !== seq) return
-      const items = mergeTouched(res.items, startedAt, key)
+      const items = mergeTouched(res.items, startedAt)
       data.value = { ...res, items, summary: summarize(items) }
       loadedKey = key
       error.value = null
@@ -133,10 +133,14 @@ export function useAttendanceBoard(params: AttendanceBoardParams): AttendanceBoa
     }
   }
 
-  /** 回應列與目前資料合併：startedAt 之後在本機套用過的列保留目前值（回應沒有的依班級、學號插入） */
-  function mergeTouched(responseItems: AttendanceRow[], startedAt: number, key: string): AttendanceRow[] {
+  /**
+   * 回應列與目前資料合併：startedAt 之後在本機套用過的列保留目前值（回應沒有的依班級、學號插入）。
+   * reload 開頭已在篩選鍵改變時清空 touched，startedAt 之後的 touched 都是在目前篩選下套用的列，
+   * 所以只換班級時（目前資料仍是前一個篩選的清單）也照常合併，只取 touched 的列。
+   */
+  function mergeTouched(responseItems: AttendanceRow[], startedAt: number): AttendanceRow[] {
     const current = data.value
-    if (!current || loadedKey !== key) return responseItems
+    if (!current) return responseItems
     const newer = current.items.filter((r) => (touched.get(r.student_id) ?? 0) > startedAt)
     if (!newer.length) return responseItems
     const items = [...responseItems]

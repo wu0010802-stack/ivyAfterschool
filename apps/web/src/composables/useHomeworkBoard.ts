@@ -163,7 +163,7 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
     try {
       const res = await fetchHomeworkBoard(query)
       if (mySeq !== seq) return
-      serverBoard.value = mergeTouched(res, startedAt, key)
+      serverBoard.value = mergeTouched(res, startedAt)
       loadedKey = key
       error.value = null
     } catch (err) {
@@ -178,10 +178,13 @@ export function useHomeworkBoard(params: HomeworkBoardParamsRefs): UseHomeworkBo
     }
   }
 
-  /** 回應與目前 serverBoard 合併：startedAt 之後更新過的學生保留目前的列 */
-  function mergeTouched(res: HomeworkBoard, startedAt: number, key: string): HomeworkBoard {
+  /**
+   * 回應與目前 serverBoard 合併：回應中有、且 startedAt 之後更新過的學生保留目前的列。
+   * reload 開頭已在篩選鍵改變時清空 touched，所以只換班級時（serverBoard 仍是前一個篩選的看板）也照常合併。
+   */
+  function mergeTouched(res: HomeworkBoard, startedAt: number): HomeworkBoard {
     const current = serverBoard.value
-    if (!current || loadedKey !== key) return res
+    if (!current) return res
     const newer = new Map(
       current.students
         .filter((s) => (touched.get(s.student_id) ?? 0) > startedAt)
