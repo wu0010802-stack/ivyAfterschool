@@ -592,24 +592,25 @@ textarea.m3-tf__input { display: block; height: auto; padding: 16px; resize: non
 .att-cal__pad { height: 52px; }
 .att-day {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  min-width: 0; height: 52px; padding: 0; border: solid transparent; border-width: 0 2px; background-clip: padding-box; border-radius: var(--m3-shape-small);
-  background: transparent; color: var(--m3-on-surface); cursor: pointer; font-variant-numeric: tabular-nums;
+  min-width: 0; height: 52px; padding: 0; border: solid transparent; border-width: 0 2px; border-radius: var(--m3-shape-small);
+  /* 簡寫 background 會重設 background-clip，故 clip 寫在簡寫內；狀態 / 選中格只改 background-color */
+  background: transparent padding-box; color: var(--m3-on-surface); cursor: pointer; font-variant-numeric: tabular-nums;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--m3-dur-short-3) var(--m3-easing-standard), color var(--m3-dur-short-3) var(--m3-easing-standard);
 }
 .att-day__mark { display: inline-flex; align-items: center; justify-content: center; height: 16px; }
 /* 狀態底色 = StatusPill 同一組 container / on-container token（對比已在 status-pill 稿驗過） */
-.att-day--present { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
-.att-day--left { background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
-.att-day--leave { background: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container); }
-.att-day--absent { background: var(--m3-error-container); color: var(--m3-on-error-container); }
-.att-day--expected { background: var(--m3-warning-container); color: var(--m3-on-warning-container); }
-.att-day--unrecorded { background: var(--m3-surface-container-high); color: var(--m3-on-surface); }
+.att-day--present { background-color: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+.att-day--left { background-color: var(--m3-secondary-container); color: var(--m3-on-secondary-container); }
+.att-day--leave { background-color: var(--m3-tertiary-container); color: var(--m3-on-tertiary-container); }
+.att-day--absent { background-color: var(--m3-error-container); color: var(--m3-on-error-container); }
+.att-day--expected { background-color: var(--m3-warning-container); color: var(--m3-on-warning-container); }
+.att-day--unrecorded { background-color: var(--m3-surface-container-high); color: var(--m3-on-surface); }
 .att-day--closed { color: var(--m3-on-surface-variant); }
 .att-day--none { color: var(--m3-on-surface); }
 .att-day.is-today { box-shadow: inset 0 0 0 2px var(--m3-primary); }
 .att-day.is-today .att-day__num { font-weight: 700; }
-.att-day.is-selected { background: var(--m3-primary); color: var(--m3-on-primary); }
+.att-day.is-selected { background-color: var(--m3-primary); color: var(--m3-on-primary); }
 .att-day.is-selected.is-today { box-shadow: inset 0 0 0 2px var(--m3-primary), inset 0 0 0 4px var(--m3-on-primary); }
 .att-day:focus-visible { outline: 2px solid var(--m3-on-surface); outline-offset: -1px; }
 /* PARENT-207：月曆卡內距上下 12px、左右 8px（M3Card padding="none" + 頁面自訂內距），360 寬時格寬仍 ≥ 44px */
