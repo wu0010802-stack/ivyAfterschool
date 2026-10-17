@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 343,
-  "last_updated": "2026-10-17T04:19:20Z",
+  "version": 344,
+  "last_updated": "2026-10-17T04:20:19Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6098,7 +6098,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/attendance.spec.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "FRONTEND-290",
@@ -6129,11 +6129,11 @@
     {
       "id": "FRONTEND-292",
       "title": "撰寫 e2e：接送請求 → 員工回覆預計時間 → 確認 → 完成交付",
-      "description": "建立 `apps/web/e2e/admin/pickup.spec.ts`。種子資料 1 位學生並先以 API 登記到班（`POST /api/admin/attendance/{id}/check-in`）。\n\n**流程**\n1. 建立接送請求：以 API 呼叫 `POST /api/admin/pickup/requests`（員工代建，`expected_arrival_at` 為現在 +30 分）。e2e 只測員工代建流程，不做家長 LIFF 登入；家長發起、「我到了」與「我已經到了」捷徑由元件測試（FRONTEND-188 / 195 及 PARENT 區域）與後端整合測試涵蓋。\n2. `loginAsAdmin` → `/#/pickup`；右欄出現該生的佇列卡（「員工代建」）。\n3. 點「回覆時間」→ 選現在 +20 分、訊息「數學訂正中」、保留「同時確認此請求」→ 送出 → 卡片顯示「已確認」與回覆內容。\n4. 點「完成交付」→ 選種子的監護人 → 送出 → 卡片移到「今日已結束」，學生卡顯示「已離班」。\n5. 另開一個 browser context 登入同頁面，驗證步驟 3 的狀態變更透過 ws 即時出現（不重新整理，10 秒內）。\n- 非營業日 skip（同 FRONTEND-291）；afterAll cleanup。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/e2e/admin/pickup.spec.ts`。種子資料 1 位學生並先以 API 登記到班（`POST /api/admin/attendance/{id}/check-in`）。\n\n**流程**\n1. 建立接送請求：以 API 呼叫 `POST /api/admin/pickup/requests`（員工代建，`expected_arrival_at` 為現在 +30 分）。e2e 只測員工代建流程，不做家長 LIFF 登入；家長發起、「我到了」與「我已經到了」捷徑由元件測試（FRONTEND-188 / 195 及 PARENT 區域）與後端整合測試涵蓋。\n2. `loginAsAdmin` → `/#/pickup`；右欄出現該生的佇列卡（「員工代建」）。\n3. 點「回覆時間」→ 選現在 +20 分、訊息「數學訂正中」、保留「同時確認此請求」→ 送出 → 卡片顯示「已確認」與回覆內容。\n4. 點「完成交付」→ 選種子的監護人 → 送出 → 卡片移到「今日已結束」，學生卡顯示「已離班」。\n5. 另開一個 browser context 登入同頁面，驗證步驟 3 的狀態變更透過 ws 即時出現（不重新整理，10 秒內）。\n- 非營業日 skip（同 FRONTEND-291）；afterAll 先取消仍進行中的請求（`POST /api/admin/pickup/requests/{id}/cancel`）再 cleanup。\n- POS 頁第一次 pointerdown 會移除「點一下畫面以啟用提示音」提示列、版面上移：進頁後先點提示列本身再操作卡片。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/pickup.spec.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "FRONTEND-290",
@@ -6173,7 +6173,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/exams.spec.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "FRONTEND-290",
