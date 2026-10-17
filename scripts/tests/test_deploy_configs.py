@@ -326,7 +326,8 @@ class _NginxProbe:
 
     def start(self) -> None:
         mounts = _nginx_mounts()
-        # 與正式環境一致：後端只監聽 IPv6，network 啟用 IPv6 讓 docker DNS 回 AAAA
+        # 記錄後端只監聽 IPv6：nginx 取到 IPv4 位址就連不到，藉此確認 web → api 只走 IPv6；
+        # network 啟用 IPv6 讓 docker DNS 回 AAAA
         self._docker(
             "network", "create", "--ipv6", "--subnet", f"fd00:{self.suffix}::/64", self.network
         )

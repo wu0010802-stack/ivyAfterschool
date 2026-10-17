@@ -1,7 +1,7 @@
 {
   "area": "infra",
-  "version": 146,
-  "last_updated": "2026-10-17T15:18:40Z",
+  "version": 147,
+  "last_updated": "2026-10-17T15:19:29Z",
   "tasks": [
     {
       "id": "INFRA-001",
@@ -1165,7 +1165,7 @@
         "BACKEND-535"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "/api/health 由 BACKEND-021（pending）實作，完成前 api 部署的 healthcheck 會失敗；api 只監聽 IPv6，Railway healthcheck 是否經 IPv6 連入屬 INFRA-031 open_design_questions (3)，上線實測。",
+      "risk_notes": "/api/health 由 BACKEND-021（pending）實作，完成前 api 部署的 healthcheck 會失敗。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "scripts/tests/test_deploy_configs.py",
@@ -1465,7 +1465,7 @@
         "BACKEND-535"
       ],
       "suggested_model": "opus-5",
-      "risk_notes": "BACKEND-021 / 048 / 065 尚未實作，完成前 api healthcheck、smoke 與建立初始管理員都會失敗；api 只監聽 IPv6，與 Railway private DNS 雙棧解析的處理方式屬 INFRA-031 open_design_questions (3)（docs/deployment.md §11 已列為待驗證）。",
+      "risk_notes": "BACKEND-021 / 048 / 065 尚未實作，完成前 api healthcheck、smoke 與建立初始管理員都會失敗。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "scripts/tests/test_deployment_doc.py",
@@ -2108,7 +2108,7 @@
       "granularity_unit": "config",
       "target_path": "apps/api/Dockerfile",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-infra-deploy",
       "depends_on": [
         "INFRA-031",
