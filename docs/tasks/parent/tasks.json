@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 213,
-  "last_updated": "2026-10-17T04:04:53Z",
+  "version": 214,
+  "last_updated": "2026-10-17T04:08:16Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -3832,7 +3832,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/views/ChildHubView.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-054",
@@ -3858,9 +3858,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。測試 8785327 先於實作 1fe5649；5 條 red_case 同名測試皆被 tdd.run 選到且全綠（ChildHubView 26、useArriveNow 16）。突變：ChildHubView onStale 改 no-op → 兩條 ChildHubView 新案例紅；STALE_CODES 拿掉 pickup_request_not_found → missing request 案例紅；拿掉 onStale 的 try/catch → swallow 案例紅；deferred refresh 期間先斷言 snackbar，可擋「先 onStale 後 snackbar」的順序錯。PARENT-054 / 105 / 052 tdd.run 全綠，054 / 105 description 與稿 parent-page-child-hub decision 6（preview-tasks 含 PARENT-199）已同步。web-lint、web-typecheck 乾淨。"
       }
     },
     {
@@ -3870,14 +3870,14 @@
       "granularity_unit": "method",
       "target_path": "apps/web/src/parent/main.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-013",
         "PARENT-033"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "【review-r11-p1 打回】補「登出導頁進行中」的測試並寫進 tdd.red_cases：登出 API 立即回 200，以 router.beforeEach 在 /login?logged_out=1 卡住導航（等待一個由測試釋放的 promise），卡住期間另一個請求 401 且 refresh 401 → 釋放後 currentRoute.fullPath === '/login?logged_out=1'，過程中沒有導向含 redirect= 的網址。必須能擋下突變「useParentLogout 在 await router.replace 之前就把 loggingOut 設回 false」（目前 main.spec / useParentLogout.spec 全綠）。可參考 /tmp/claude-0/-home-user/4dac8f28-c67e-5f3e-b7bd-b875fe5c1833/scratchpad/rv11p1_counter.spec.ts（reviewer 反例，現行實作綠、上述突變與拿掉 main.ts 判斷皆紅）。實作本身不需修改。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/main.spec.ts",
@@ -3892,9 +3892,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-p1",
+        "notes": "打回。實作正確：reviewer 構造的反例（登出 API 已回應、router.replace(/login?logged_out=1) 被 beforeEach 擋住尚未完成時，在途請求 401 且 refresh 401）在現行程式下最後停在 /login?logged_out=1、沒有導向 redirect=；拿掉 main.ts 的 isParentLoggingOut() 判斷則停在 /login?redirect=/more。但 description「現況」點名的視窗是「router.replace 完成前」，現有兩條測試只覆蓋「登出 API 尚未回應」：突變 useParentLogout 在 await router.replace 之前就把 loggingOut 設回 false，main.spec 12 條、useParentLogout.spec 8 條仍全綠，只有 reviewer 反例轉紅。其餘：測試 1afefd5 先於實作 62d76fd；PARENT-013 / 033 tdd.run 全綠、description 已同步；web-lint（僅既有的 one-component-per-file 警告）、web-typecheck 乾淨。"
       }
     },
     {
@@ -3904,7 +3904,7 @@
       "granularity_unit": "store",
       "target_path": "apps/web/src/parent/stores/notifications.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-172"
@@ -3926,9 +3926,9 @@
         "notes": ""
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。測試 b3ff15e 先於實作 4261baf；3 條 red_case 同名測試被選到、23 條全綠。突變：adjustUnread 不推進 unreadApplied → 3 條新案例與既有 clear 案例共 4 條紅；ws 案例另驗本地增減後新發的 refreshUnread 照常套用（擋「推進過頭」）。PARENT-172 description 已同步，tdd.run 全綠。"
       }
     },
     {
@@ -3971,7 +3971,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/parent/services/liff.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-197"
@@ -3992,9 +3992,9 @@
         "notes": "純補測試：實作已正確，新測試在現有程式上就會綠。紅燈以突變自證——依各 red_case 括號內的突變暫時改壞程式，確認該測試轉紅後還原（還原後 `git diff` 只剩測試檔）；reviewer 會重做突變。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-p1",
+        "notes": "通過。只改 liff.spec.ts（2eca66a，純測試）；改寫案例改為直接 await initLiff() 並設單一測試逾時 2000ms，?raw 斷言 spec 不含 setTimeout(…,100) / Promise.race（regex 字面不會自我命中，已核）。突變：liff.ts 的 withLoginOnExternalBrowser 改 true → 改寫案例以 2000ms 逾時失敗、既有 does not auto login 案例斷言失敗；還原後 git diff 乾淨。tdd.run 11 條全綠。"
       }
     },
     {
