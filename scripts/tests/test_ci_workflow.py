@@ -6,6 +6,7 @@ helper：
 - `run_lines(name, file)`：展開該 job 所有 step 的 `run`（多行 run 拆成逐行、去掉前後空白）。
 """
 
+import json
 import os
 import re
 import shutil
@@ -561,9 +562,37 @@ def test_playwright_config_test_match_only_specs() -> None:
 def test_vite_config_prebundles_element_plus_styles() -> None:
     """unplugin 依「這次用到的元件」才 import element-plus 樣式：冷快取時進新頁面才發現新依賴，
     vite 重新預打包並整頁重載，打斷 e2e 換頁。dev server 啟動時就要預打包全部元件樣式。"""
-    shared = (WEB_DIR / "build" / "optimizeDeps.ts").read_text(encoding="utf-8")
     config = (WEB_DIR / "vite.config.ts").read_text(encoding="utf-8")
 
-    assert "'element-plus/es/components/*/style/css'" in shared
     assert re.search(r"optimizeDeps:\s*\{\s*include:\s*\[\s*\.\.\.OPTIMIZE_DEPS_INCLUDE", config)
     assert "from './build/optimizeDeps.ts'" in config
+
+
+@pytest.mark.skipif(
+    not (WEB_DIR / "node_modules" / "element-plus").is_dir() or shutil.which("node") is None,
+    reason="需要 apps/web/node_modules 的 element-plus 與 node（CI 的 unit job 不裝 node）",
+)
+def test_vite_config_optimize_deps_lists_every_element_plus_style() -> None:
+    node = shutil.which("node")
+    assert node is not None
+    script = (
+        "import('./build/optimizeDeps.ts')"
+        ".then((m) => console.log(JSON.stringify(m.OPTIMIZE_DEPS_INCLUDE)))"
+    )
+    # 固定指令、無外部輸入
+    result = subprocess.run(  # noqa: S603
+        [node, "-e", script], cwd=WEB_DIR, capture_output=True, text=True, timeout=60, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    deps = json.loads(result.stdout)
+
+    components = WEB_DIR / "node_modules" / "element-plus" / "es" / "components"
+    expected = sorted(
+        f"element-plus/es/components/{d.name}/style/css"
+        for d in components.iterdir()
+        if (d / "style" / "css.mjs").is_file()
+    )
+    # e2e 實際用到、冷快取時曾觸發重載的樣式（form / table / tabs …）都要在內
+    assert deps == expected
+    for name in ("form", "input", "table", "date-picker", "dialog", "tabs", "radio-group"):
+        assert f"element-plus/es/components/{name}/style/css" in deps
