@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 472,
-  "last_updated": "2026-10-17T04:20:04Z",
+  "version": 473,
+  "last_updated": "2026-10-17T04:20:53Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15728,7 +15728,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/core/tx_hooks.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r11b",
       "depends_on": [
         "BACKEND-374",
@@ -15754,9 +15754,9 @@
         "notes": "flush 以收集呼叫參數的假函式驗證具體 dict 內容，不只斷言被呼叫。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-b3",
-        "notes": "打回（只缺測試，實作本身正確）。5caa608（測試）先於 f2e3681（實作），實作 commit 未動任何測試；565 三條 red_case 與 374（4 條）/404（8 條）/545（tx_hooks 10 條 + test_enqueue_inside）tdd.run 共 26 條全綠；just lint / typecheck 對 tx_hooks.py、homework_service.py、pickup/views.py、test_tx_hooks.py 乾淨；374 / 404 description 已改寫為以 collect_before_commit 登記。突變（scratch，已還原、cmp 確認）：savepoint 的 before_commit 不跳過 → 1 紅；最外層 rollback 不清除 → 3 紅；key 不去重 → 7 紅；先登記者勝 → 1 紅；flush 後不 pop → 2 紅；登記前不 begin → 3 紅。存活兩個：(1) savepoint rollback 也清除登記 → 全綠；(2) 每次登記都 event.listen → 全綠（pop 使多餘 listener 不重複 flush，只洩漏 listener），description 這兩條行為沒有測試。『同 name 後續 flush 被忽略、以第一次為準』可接受：全 repo 只有兩個呼叫端，各用模組常數 name（homework_broadcast / pickup_publish_request）配固定的模組級 flush，不會有同 name 不同 flush 而靜默失效；且已寫進 description 實作備註與 tx_hooks docstring。"
+        "notes": "複審通過。打回的兩條已由 be9f11a 補上（只改 test_tx_hooks.py，新增 test_collect_before_commit_keeps_entries_on_savepoint_rollback 與 test_collect_before_commit_listens_once_per_name，red_cases 已同步），實作檔 tx_hooks.py / homework_service.py / pickup/views.py 自上次審查（0784fb5）後無改動，其餘結論沿用。565 五條 + 374 / 404 / 545 tx_hooks 共 27 條全綠；lint / typecheck 對測試檔乾淨。突變（scratch，已還原、cmp 確認）：savepoint rollback 也 pop → keeps_entries 轉紅；每次登記都 event.listen → listens_once 轉紅。首審已驗：TDD 順序（5caa608 先於 f2e3681、實作未動測試）；savepoint before_commit 不跳過 / 最外層 rollback 不清除 / key 不去重 / 先登記者勝 / flush 後不 pop / 登記前不 begin 皆轉紅；同 name 後續 flush 被忽略可接受（僅兩個呼叫端，各用模組常數 name 配固定模組級 flush，已寫進 description 與 docstring）。殘留：flush 的查詢在 before_commit 執行，失敗會讓 commit 失敗（既有取捨，description 已註明）。"
       }
     },
     {
