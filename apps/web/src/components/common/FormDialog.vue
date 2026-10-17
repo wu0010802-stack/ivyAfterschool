@@ -121,6 +121,12 @@ function focusFirstField(): void {
 .form-dialog__footer :deep(.el-button + .el-button) {
   margin-left: 0;
 }
+
+/* FRONTEND-302：取消 / 送出觸控目標 ≥ 44px；桌機、平板、手機滿版同一規則，字級沿用 14px，loading 時高度不變 */
+.form-dialog__footer :deep(.el-button) {
+  min-height: 44px;
+  padding: 0 20px;
+}
 </style>
 
 <style>
