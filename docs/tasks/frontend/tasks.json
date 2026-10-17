@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 361,
-  "last_updated": "2026-10-17T07:53:11Z",
+  "version": 362,
+  "last_updated": "2026-10-17T07:55:14Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6886,13 +6886,13 @@
     },
     {
       "id": "FRONTEND-313",
-      "title": "全站確認框（ElMessageBox.confirm）按鈕觸控尺寸 ≥ 44px（需改稿並重新核可）",
-      "description": "使用者 2026-10-17 核可 FRONTEND-302 稿時裁定：FormDialog footer 以外的確認框按鈕另開本 task 統一處理。\n\n現況：`apps/web/src/composables/useFormDirty.ts::confirmDiscardChanges`（「放棄變更 / 繼續編輯」）與各頁以 `ElMessageBox.confirm` 開的確認框按鈕為 Element Plus 預設 32px 高，平板觸控目標不足 44px。\n- **先改稿**：以 `.claude/skills/ui-design-preview` 修改 `docs/mockups/component-common-extra.html`，新增確認框段：按鈕最小高 44px（與 FormDialog footer 同一規則），decisions 寫明套用範圍（全站 ElMessageBox confirm 的按鈕；用全域 class 或 `customClass` 二選一由設計稿定），本 task id 加進 `preview-tasks`，`preview-status` 改 `draft`，取得使用者核可才能進 `in_progress`。\n- 實作：只改按鈕尺寸樣式，不改文案、按鈕順序與行為。\n\n**驗收標準**：每一條對應下列 red_case；以真實 Chromium 量測 1024×768 下 confirmDiscardChanges 確認框兩顆按鈕高度 ≥ 44px（回報附數值）。",
+      "title": "全站確認框（ElMessageBox）按鈕觸控尺寸 ≥ 44px",
+      "description": "使用者 2026-10-17 核可稿 `docs/mockups/component-common-extra.html` 的「確認框（ElMessageBox）」段：全站 ElMessageBox 的 confirm 與 prompt 按鈕最小高 44px、左右 padding 20px（與 FormDialog footer 同一規則，不分裝置）。\n\n現況：`confirmDiscardChanges`（`apps/web/src/composables/useFormDirty.ts`）、`useConfirmDelete` 與各頁以 `ElMessageBox.confirm` / `prompt` 開的確認框（約 15 處）按鈕為 Element Plus 預設 32px 高。\n- 做法（使用者裁定）：寫在後台全域樣式 `apps/web/src/styles/base.css`：`.el-message-box__btns .el-button { min-height: 44px; padding: 0 20px; }`。命令式 ElMessageBox 掛在 body 下，scoped style 碰不到，所以不用 scoped；呼叫端不改、不傳 customClass。家長端未使用 ElMessageBox，不受影響。\n- 不改文案、按鈕順序、type 圖示與 Esc / X / 點遮罩行為；規則只作用在確認框內的按鈕。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-046（useFormDirty）tdd.run 全綠；以真實 Chromium 量測 1024×768 與 390×844 下 confirmDiscardChanges 確認框兩顆按鈕高度 ≥ 44px、同列、確認框在畫面內（回報附數值），並抽查一個刪除確認框。",
       "granularity_unit": "component",
-      "target_path": "apps/web/src/composables/useFormDirty.ts",
+      "target_path": "apps/web/src/styles/base.css",
       "source_ref": null,
-      "status": "pending",
-      "assignee_session": null,
+      "status": "in_progress",
+      "assignee_session": "impl-parent-r11b",
       "depends_on": [
         "FRONTEND-302"
       ],
@@ -6900,16 +6900,16 @@
       "risk_notes": "",
       "open_design_questions": [],
       "tdd": {
-        "test_path": "apps/web/src/composables/useFormDirty.spec.ts",
+        "test_path": "apps/web/src/styles/base.spec.ts",
         "markers": [
           "vitest"
         ],
         "red_cases": [
-          "confirmDiscardChanges buttons meet touch target：呼叫 confirmDiscardChanges → ElMessageBox.confirm 選項帶設計稿指定的觸控尺寸 class，且該 class 的樣式宣告含 min-height: 44px",
-          "confirmDiscardChanges copy unchanged：確認鈕「放棄變更」、取消鈕「繼續編輯」，按確認回 true、按取消回 false"
+          "message box buttons meet touch target：以 ?raw 讀 base.css → 含 `.el-message-box__btns .el-button` 規則，宣告 min-height: 44px 與 padding: 0 20px",
+          "message box rule is not scoped to a component：該規則位於全域 base.css（非 .vue scoped 區塊），且 selector 以 .el-message-box__btns 起始、不影響其他 .el-button"
         ],
-        "run": "just web-test src/composables/useFormDirty.spec.ts -t \"confirmDiscardChanges\"",
-        "notes": "happy-dom 量不到版面：單元測試只鎖 class 與樣式宣告，實際高度以 Chromium 量測驗收。"
+        "run": "just web-test src/styles/base.spec.ts -t \"message box\"",
+        "notes": "happy-dom 量不到版面：單元測試只鎖樣式宣告，實際高度以 Chromium 量測驗收。"
       },
       "review": {
         "status": "pending",
