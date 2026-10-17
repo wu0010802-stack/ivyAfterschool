@@ -614,6 +614,28 @@ describe('useHomeworkBoard', () => {
       expect(studentOf(board)?.progress.ready_eta).toBe('18:20')
     })
 
+    it('useHomeworkBoard date change keeps ws snapshot for student not on previous board', async () => {
+      const S2 = makeStudent({ student_id: 's2', student_no: 'S11302', name: '陳小美', progress: makeProgress({ student_id: 's2' }) })
+      const gates = gatedByDate({ [DATE]: [S1], [D2]: [onDate(S1, D2), onDate(S2, D2)] })
+      const date = ref(DATE)
+      const board = await mountBoard(date)
+
+      date.value = D2
+      await settle()
+      // s2 不在 d1 的舊看板中，但在 d2 的回應中
+      serverMessage(socket(), 'homework.progress_updated', {
+        student_id: 's2',
+        service_date: D2,
+        items: [],
+        progress: makeProgress({ student_id: 's2', service_date: D2, ready_eta: '18:20' }),
+      })
+      await settle()
+      gates[D2]?.()
+      await settle()
+      expect(board.board.value?.students.map((s) => s.student_id)).toEqual(['s1', 's2'])
+      expect(studentOf(board, 's2')?.progress.ready_eta).toBe('18:20')
+    })
+
     it('useHomeworkBoard date change ignores buffered student missing from response', async () => {
       const gates = gatedByDate({ [DATE]: [S1], [D2]: [onDate(S1, D2)] })
       const date = ref(DATE)
