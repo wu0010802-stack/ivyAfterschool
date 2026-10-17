@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 368,
-  "last_updated": "2026-10-17T08:04:01Z",
+  "version": 369,
+  "last_updated": "2026-10-17T08:05:42Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6650,7 +6650,7 @@
       "granularity_unit": "composable",
       "target_path": "apps/web/src/composables/usePickupBoard.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-188",
@@ -6670,7 +6670,7 @@
           "usePickupBoard keeps roster student updated during reload：withRoster、reload 發出後 ws attendance.updated 把 s1 改為 left → 名單回應（s1 present）到達後 s1.attendance_status === 'left'",
           "usePickupBoard takes response when it is ahead of the request kept from reload：reload 發出後 ws 派發 r1 acknowledged → 回應 r1 arrived → r1.status === 'arrived'、counts.arrived === 1、counts.acknowledged === 0",
           "usePickupBoard keeps new day request created while midnight reload is pending：台北跨午夜、佇列 reload 卡住 → openIds 為 []；ws 派發 2026-10-03 的 r9 → 回應 {date:'2026-10-03', open:[]} 到達後 openIds 為 ['r9']、counts.pending === 1",
-          "usePickupBoard does not mix previous day roster into new day roster：withRoster，舊名單 s1.open_request 為 r1、ready_eta '17:20' → 跨午夜、名單 reload 卡住 → ws attendance.updated s1（2026-10-03）→ 新日期回應 s1 open_request null、ready_eta null → 合併後 roster.date '2026-10-03'、s1.open_request null、ready_eta null"
+          "usePickupBoard does not mix previous day roster into new day roster：withRoster，舊名單 s1.open_request 為 r1、ready_eta '17:20' → 跨午夜、名單 reload 卡住 → 尚未回應時 board.roster.value 為 null → ws attendance.updated s1（2026-10-03）→ 新日期回應 s1 open_request null、ready_eta null → 合併後 roster.date '2026-10-03'、s1.open_request null、ready_eta null"
         ],
         "run": "just web-test src/composables/usePickupBoard.spec.ts -t \"usePickupBoard\"",
         "notes": ""
