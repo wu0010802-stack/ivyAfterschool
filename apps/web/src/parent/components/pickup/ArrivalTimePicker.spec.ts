@@ -197,10 +197,10 @@ describe('ArrivalTimePicker', () => {
   })
 })
 
-/** 取出元件樣式中 `.arrival__chips {` 規則的宣告內容（happy-dom 量不到版面，以宣告鎖住） */
+/** 取出元件樣式中 `.arrival__chips {` 規則的宣告內容（去掉註解；happy-dom 量不到版面，以宣告鎖住） */
 function chipsRule(): string {
   const style = pickerSource.slice(pickerSource.indexOf('<style'))
   const start = style.indexOf('.arrival__chips {')
   if (start < 0) throw new Error('找不到 .arrival__chips 規則')
-  return style.slice(style.indexOf('{', start) + 1, style.indexOf('}', start))
+  return style.slice(style.indexOf('{', start) + 1, style.indexOf('}', start)).replace(/\/\*[\s\S]*?\*\//g, '')
 }
