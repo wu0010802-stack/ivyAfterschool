@@ -607,7 +607,7 @@ def test_e2e_xtrace_detector_negatives_and_current_files() -> None:
 
 
 E2E_DIR = WEB_DIR / "e2e"
-UI_LOGIN_FILE = E2E_DIR / "admin" / "support.spec.ts"
+UI_LOGIN_FILE = E2E_DIR / "admin" / "login-form.spec.ts"
 
 
 def e2e_sources() -> dict[str, str]:
@@ -621,7 +621,7 @@ def test_e2e_specs_do_not_read_admin_password() -> None:
     reading = re.compile(r"env(\.|\[['\"])E2E_ADMIN_PASSWORD")
     readers = sorted(name for name, text in e2e_sources().items() if reading.search(text))
 
-    assert set(readers) <= {"support/global-setup.ts", "admin/support.spec.ts"}
+    assert set(readers) <= {"support/global-setup.ts", "admin/login-form.spec.ts"}
     assert "support/global-setup.ts" in readers
 
 
@@ -645,14 +645,20 @@ def test_e2e_ui_login_describe_has_trace_off() -> None:
     form = "getByPlaceholder('請輸入密碼')"
     files = sorted(name for name, text in e2e_sources().items() if form in text)
 
-    assert files == ["admin/support.spec.ts"]
+    assert files == ["admin/login-form.spec.ts"]
     text = UI_LOGIN_FILE.read_text(encoding="utf-8")
     helper = re.search(r"async function (\w+)\([^)]*\)[^{]*\{[^}]*" + re.escape(form), text)
     assert helper, "UI 登入 helper 必須是同檔的具名函式"
     callers = [b for b in describe_blocks(text) if f"{helper.group(1)}(" in b]
     assert callers
-    for block in callers:
-        assert "test.use({ trace: 'off' })" in block
+    # trace 是 worker 層級選項，Playwright 不允許在 describe 內 use：
+    # 只能整檔關閉（檔案頂層、不在任何 describe 內）
+    top_level_off = re.search(r"^test\.use\(\{ trace: 'off' \}\)", text, re.MULTILINE)
+    assert top_level_off
+    assert all(top_level_off.start() < text.index(b) for b in callers)
+    # 其他 spec 不得關閉 trace（關閉範圍只限走登入表單的檔案）
+    others = [n for n, t in e2e_sources().items() if "trace: 'off'" in t]
+    assert others == ["admin/login-form.spec.ts"]
 
 
 def test_playwright_config_test_match_static() -> None:
