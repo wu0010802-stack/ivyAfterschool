@@ -1,7 +1,7 @@
 {
   "area": "infra",
-  "version": 142,
-  "last_updated": "2026-10-17T08:44:26Z",
+  "version": 143,
+  "last_updated": "2026-10-17T08:44:56Z",
   "tasks": [
     {
       "id": "INFRA-001",
@@ -2076,7 +2076,7 @@
         "INFRA-055"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "本機跑 e2e 一律包在 `flock /tmp/afterschool_db.lock` 內，run 結束 globalTeardown 會停用 e2e.admin；驗收用的已知密碼只放在當次 shell env，不寫進任何檔案或 commit。storageState 檔若落在 repo 內，必須確認已被 .gitignore 排除且不在 upload-artifact 的 path 底下。\nreview-r11-e2 殘留（不擋）：(1) apps/web/e2e/support/admin.ts 檔頭註解仍寫「走登入表單的測試只有 e2e/admin/support.spec.ts 一條」，實際在 login-form.spec.ts，需以 chore 修正。(2) 靜態檢查是啟發式：解構讀取 `const { E2E_ADMIN_PASSWORD } = process.env`、以其他 selector 填密碼欄（例如 `locator('input[type=password]').fill`）都抓不到（實測突變仍綠）。真正的防線是 trace.zip 搜尋驗收，要收緊可改成「白名單外的 e2e 檔非註解行出現 E2E_ADMIN_PASSWORD 即紅」。(3) access cookie 15 分鐘到期：adminApi 用固定的 Cookie header、不會 refresh，run 超過 15 分鐘會 401；多個 browser context 共用同一組 refresh token，同時 refresh 時，5 秒內的第二個請求回 409 refresh_in_progress，超過 5 秒則觸發 refresh_reused、撤銷整個 family。目前後台全量約 1 分鐘、失敗時是明確的 401，不需處理；後台 e2e 增長到接近 15 分鐘時，改為每個 spec 檔（或 worker）重新登入產生 storageState。",
+      "risk_notes": "本機跑 e2e 一律包在 `flock /tmp/afterschool_db.lock` 內，run 結束 globalTeardown 會停用 e2e.admin；驗收用的已知密碼只放在當次 shell env，不寫進任何檔案或 commit。storageState 檔若落在 repo 內，必須確認已被 .gitignore 排除且不在 upload-artifact 的 path 底下。\nreview-r11-e2 殘留（不擋）：(1) 靜態檢查是啟發式：解構讀取 `const { E2E_ADMIN_PASSWORD } = process.env`、以其他 selector 填密碼欄（例如 `locator('input[type=password]').fill`）都抓不到（實測突變仍綠）。真正的防線是 trace.zip 搜尋驗收，要收緊可改成「白名單外的 e2e 檔非註解行出現 E2E_ADMIN_PASSWORD 即紅」。(2) access cookie 15 分鐘到期：adminApi 用固定的 Cookie header、不會 refresh，run 超過 15 分鐘會 401；多個 browser context 共用同一組 refresh token，同時 refresh 時，5 秒內的第二個請求回 409 refresh_in_progress，超過 5 秒則觸發 refresh_reused、撤銷整個 family。目前後台全量約 1 分鐘、失敗時是明確的 401，不需處理；後台 e2e 增長到接近 15 分鐘時，改為每個 spec 檔（或 worker）重新登入產生 storageState。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "scripts/tests/test_ci_workflow.py",
@@ -2098,7 +2098,7 @@
       "review": {
         "status": "pass",
         "reviewer": "review-r11-e2",
-        "notes": "pass。commit 順序：3803782 / 6f7afc3（測試）先於 0fd04f3（實作）。6f7afc3 把 UI 登入檔改到 login-form.spec.ts、改成檢查頂層 test.use，並新增「其他 spec 不得關 trace」，是收緊、不是放寬。tdd.run 全綠：pytest -k 涵蓋 e2e_workflow / e2e_password / e2e_xtrace / e2e_specs / e2e_ui_login / playwright_config / vite_config / service_logs / cleanup_tolerates，28 passed（INFRA-030 / 051 / 055 的 tdd.run 都在內）；flock 內 just e2e login-form + support -g \"e2e support\" 6 passed，也就是 FRONTEND-290 的 tdd.run。trace 驗收：E2E_ADMIN_PASSWORD 為已知值，flock 內 playwright test --trace on 跑 support + exams + login-form，10 passed、產生 8 個 trace.zip，全部解開後以密碼字串搜尋 0 筆（base64 形式也 0 筆）。同一批 trace 有內容：種子姓名 37 檔、staff_access 22 檔、e2e.admin 9 檔。對照組：照 loginViaForm 寫的自含 spec、不關 trace，--trace on 跑出的 trace 搜到密碼 3 筆，證明搜尋方法有效。login-form.spec 在 --trace on 下沒有產生任何輸出或 trace，檔頂 test.use 會蓋過 CLI 設定。突變（改完以 cmp 還原）：產生帳密 step 加 echo \"$password\"、bootstrap step 改 bash -x、admin.ts 讀 env.E2E_ADMIN_PASSWORD、exams.spec 用 getByPlaceholder('請輸入密碼') 填值、login-form 拿掉 test.use 或改成 trace on → 各對應測試都紅（偵測空隙見 risk_notes）。storageState：每次 run 後 /tmp/afterschool-e2e 只剩空目錄，檔案已刪，路徑不在上傳路徑下。以平移時鐘實跑 attendance 3 passed、pickup 4 passed（staff 與 observer 兩個 context 共用 storageState），e2e/admin 全部改用 storageState 登入正常。e2e 指定檔 tsc（tsconfig.node 選項）/ eslint exit 0，ruff test_ci_workflow.py exit 0。15 分鐘 cookie 上限與 refresh 重用的評估見 risk_notes：目前不需處理。每次 run 後 owner 唯讀查：啟用員工 0、未封存學生 / 班級 / 監護人 0、exams 0、進行中接送 0、settings 11 / roles 4 / subjects 5 / exam_types 3，system_settings md5 不變。"
+        "notes": "pass。commit 順序：3803782 / 6f7afc3（測試）先於 0fd04f3（實作）。6f7afc3 把 UI 登入檔改到 login-form.spec.ts、改成檢查頂層 test.use，並新增「其他 spec 不得關 trace」，是收緊、不是放寬。tdd.run 全綠：pytest -k 涵蓋 e2e_workflow / e2e_password / e2e_xtrace / e2e_specs / e2e_ui_login / playwright_config / vite_config / service_logs / cleanup_tolerates，28 passed（INFRA-030 / 051 / 055 的 tdd.run 都在內）；flock 內 just e2e login-form + support -g \"e2e support\" 6 passed，也就是 FRONTEND-290 的 tdd.run。trace 驗收：E2E_ADMIN_PASSWORD 為已知值，flock 內 playwright test --trace on 跑 support + exams + login-form，10 passed、產生 8 個 trace.zip，全部解開後以密碼字串搜尋 0 筆（base64 形式也 0 筆）。同一批 trace 有內容：種子姓名 37 檔、staff_access 22 檔、e2e.admin 9 檔。對照組：照 loginViaForm 寫的自含 spec、不關 trace，--trace on 跑出的 trace 搜到密碼 3 筆，證明搜尋方法有效。login-form.spec 在 --trace on 下沒有產生任何輸出或 trace，檔頂 test.use 會蓋過 CLI 設定。突變（改完以 cmp 還原）：產生帳密 step 加 echo \"$password\"、bootstrap step 改 bash -x、admin.ts 讀 env.E2E_ADMIN_PASSWORD、exams.spec 用 getByPlaceholder('請輸入密碼') 填值、login-form 拿掉 test.use 或改成 trace on → 各對應測試都紅（偵測空隙見 risk_notes）。storageState：每次 run 後 /tmp/afterschool-e2e 只剩空目錄，檔案已刪，路徑不在上傳路徑下。以平移時鐘實跑 attendance 3 passed、pickup 4 passed（staff 與 observer 兩個 context 共用 storageState），e2e/admin 全部改用 storageState 登入正常。e2e 指定檔 tsc（tsconfig.node 選項）/ eslint exit 0，ruff test_ci_workflow.py exit 0。15 分鐘 cookie 上限與 refresh 重用的評估見 risk_notes：目前不需處理。每次 run 後 owner 唯讀查：啟用員工 0、未封存學生 / 班級 / 監護人 0、exams 0、進行中接送 0、settings 11 / roles 4 / subjects 5 / exam_types 3，system_settings md5 不變。另確認同步 commit 4f1c34a：FRONTEND-291 / 292 / 293 的 tdd.notes 已改成 storageState 登入、15 分鐘內跑完（已無「以 UI 登入一次」的敘述）；testing_conventions §3 補上 storageState 路徑、login-form.spec 整檔關 trace、其他 spec 不得讀密碼或關 trace、15 分鐘與限流規則；kickoff 狀態同步；admin.ts 檔頭註解已改指 login-form.spec.ts。內容與實作一致，只記錄最終行為。"
       }
     }
   ]
