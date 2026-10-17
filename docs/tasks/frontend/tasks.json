@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 377,
-  "last_updated": "2026-10-17T08:23:55Z",
+  "version": 378,
+  "last_updated": "2026-10-17T08:26:21Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -7080,6 +7080,44 @@
         "status": "concern",
         "reviewer": "review-r11-f2",
         "notes": "7 條 red_case 都有同名測試且全綠；FRONTEND-232（7）、233（10）、236 / 296（21）tdd.run 全綠；測試 775df77 先於實作 8fa4c5e。236 既有案例只把 88.25 拒絕／88.2 接受改成 88.255 拒絕（「最多兩位小數」）／88.25 接受，該測試其他斷言未動，沒有放寬。isValidFullScore 窮舉 0.01~1000 的所有兩位小數全接受、所有三位小數全拒絕；1.15、59.95、0.01、1000 接受，1.155、0、1000.01、0.005、999.995 拒絕。測試以真 el-input-number 輸入，99.755 未被元件改值。突變：容差改 Number.isInteger(v*100) → 浮點邊界紅；容差判斷改恆真 → 99.755 紅；ScoreCell 正規式改一位 / 三位門檻改四位 → 對應測試紅。Chromium 實測 ScoreCell 框寬 68px、內容寬 46px，999.95 文字寬 42.8px、scrollWidth == clientWidth，不裁切（寬度本身沒有 vitest 斷言，以實測驗收）。三張稿皆列入本 task 且 approved；domain_spec M8 已補。web-lint 乾淨、web-typecheck exit 0。打回：滿分最小值 0.01 沒有測試（突變全綠），見 risk_notes。"
+      }
+    },
+    {
+      "id": "FRONTEND-318",
+      "title": "接送 POS：reload 合併取到較新的 arrived 時也觸發「家長已到」提示（onArrived）",
+      "description": "修改 `apps/web/src/composables/usePickupBoard.ts`（FRONTEND-188、306）。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況（來源：FRONTEND-306 risk_notes「reload 合併取回應較新的狀態時不觸發 onArrived（與 reload 一貫行為相同）」）：\n- `onArrived` 監聽只在 `applyRequest`（ws `pickup.*` 事件與本機操作結果）看到狀態由非 arrived 變成 arrived 時觸發；PickupPosView 把它交給 `chime.onArrived`（雙音 + 語音「{班級} {姓名} 家長到了」，chime 以 request id 去重）。\n- `loadQueue` → `mergeQueue` 只合併資料、不觸發任何監聽。ws 斷線期間家長按「我到了」、該推播遺失時，重連 resync（`reload`）或斷線輪詢帶回的 arrived 只會讓卡片變成「家長已到」，員工聽不到提示音；PickupPosView 另外訂閱的 transient `pickup.arrived` 通知同樣在斷線期間遺失。\n\n做法（建議）：\n- `loadQueue` 採用回應時（序號防護通過後），以合併前的 `queue.value` 與合併後的結果比對：同一服務日、合併前已有佇列時，合併後狀態為 arrived、且合併前該請求不存在或 `STATUS_RANK` 小於 arrived 的請求，每筆觸發一次 `arrivedListeners`（`runListeners`）。\n- 不觸發的情況：首次載入（合併前 `queue.value` 為 null）、換日（合併前佇列日期與回應不同，`mergeQueue` 直接採用回應的情況）——避免進頁或跨日時對既有 arrived 誤觸發；合併前已是 arrived（含已由 ws 觸發過）；回應直接是 completed / cancelled / expired（已結束，不再提示）。\n- 同一筆之後若再收到遲到的 ws arrived，`applyRequest` 因合併後已是 arrived 而不再觸發（既有 `previous?.status !== 'arrived'` 判斷），chime 的 id 去重也會擋掉重複。\n- `onNewRequest`（新請求單音）在 reload 帶回的新 pending 不觸發，維持現行，不在本 task。\n- 本 task 只改 composable 行為，不改提示音與畫面；若實作需要改提示音或 POS 畫面（例如補提示時另加視覺提示），屬 UI 異動，要先以 `.claude/skills/ui-design-preview` 改 `docs/mockups/page-pickup-pos.html` 並取得核可。\n\n**驗收標準**：每一條對應下列 red_case；FRONTEND-188 tdd.run 全綠（即 usePickupBoard.spec.ts 全檔 -t 名稱）。",
+      "granularity_unit": "composable",
+      "target_path": "apps/web/src/composables/usePickupBoard.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "FRONTEND-306"
+      ],
+      "suggested_model": "opus-5",
+      "risk_notes": "比對要用合併前後的佇列，不可只看回應：startedAt 之後由 ws 套用、已觸發過的 arrived 在合併後仍是 arrived，不可再觸發；較早發出、較晚回來而被序號丟棄的回應不可觸發。",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "apps/web/src/composables/usePickupBoard.spec.ts",
+        "markers": [
+          "vitest"
+        ],
+        "red_cases": [
+          "usePickupBoard reload fires arrived for request upgraded by response：佇列已載入 r1（acknowledged）→ reload 回應 r1 arrived → onArrived 監聽收到 1 次、參數 id === 'r1'；畫面 r1.status === 'arrived'",
+          "usePickupBoard reload fires arrived for unseen arrived request：佇列已載入（不含 r2）→ reload 回應含 r2 arrived → onArrived 收到 r2 一次",
+          "usePickupBoard initial load does not fire arrived：首次載入回應含 r1 arrived → onArrived 未收到任何呼叫",
+          "usePickupBoard reload does not refire arrived already applied by ws：ws 派發 r1 arrived（onArrived 1 次）→ reload 回應 r1 arrived → onArrived 仍為 1 次",
+          "usePickupBoard reload does not fire arrived for terminal response：佇列 r1 acknowledged → reload 回應 r1 completed → onArrived 未呼叫，r1 在 closed",
+          "usePickupBoard stale reload response does not fire arrived：先後發出 reload A、B，B 先回（r1 acknowledged）、A 後回（r1 arrived，被序號丟棄）→ onArrived 未呼叫",
+          "usePickupBoard day change reload does not fire arrived：跨午夜換日後新日期的回應含 r9 arrived → onArrived 未呼叫"
+        ],
+        "run": "just web-test src/composables/usePickupBoard.spec.ts -t \"usePickupBoard\"",
+        "notes": ""
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]

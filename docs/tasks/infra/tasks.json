@@ -1,7 +1,7 @@
 {
   "area": "infra",
-  "version": 137,
-  "last_updated": "2026-10-17T08:07:57Z",
+  "version": 138,
+  "last_updated": "2026-10-17T08:26:21Z",
   "tasks": [
     {
       "id": "INFRA-001",
@@ -2061,6 +2061,44 @@
         "status": "pass",
         "reviewer": "review-r11-e2",
         "notes": "pass。commit 順序：4d4be20 / e4d3025 / 9fa737b（測試）先於 092e4fd（實作）。tdd.run 14 passed（含需要 node 的兩條）；INFRA-030 -k e2e_workflow 包含在內全綠；INFRA-051 -k \"service_logs or cleanup_tolerates\" 2 passed；INFRA-014 just e2e e2e/smoke.spec.ts -g smoke 2 passed。紅測試後來改的兩處沒有放寬：e4d3025 把 PASSWORD_VARS 從變數名改成變數展開（錯誤訊息只提到 E2E_ADMIN_PASSWORD 名稱不算外洩），set -x 改成 regex（原本的字串比對會誤判註解）；9fa737b 把「glob 字串」斷言換成以 node 實際載入、比對 node_modules 全部元件，因為 glob 方案已實測無效，新斷言更強。突變（改完以 cmp 還原）：拿掉 add-mask、add-mask 移到寫入 GITHUB_ENV 之後、腳本 echo $E2E_ADMIN_PASSWORD、腳本 set -euxo、parent testMatch 改回 e2e/parent/**、OPTIMIZE_DEPS_INCLUDE 少一項、bootstrap step 改成 true、Playwright env 寫字面密碼 → 各對應測試都紅。腳本失敗路徑實跑：缺帳密 exit 2；e2e.admin 已存在 exit 0（印出略過，不改密碼）；帳號格式不合法 exit 1（create-admin 422 → 印出錯誤訊息後 exit 1）。三份輸出都 grep 不到傳入的密碼，create-admin 失敗輸出只有 getpass 提示，沒有回顯輸入。密碼只經 stdin / env 傳遞，curl body 經 stdin，命令列參數看不到。CI unit job 會 skip 的兩條，都有靜態版本：test_playwright_config_test_match_static 斷言兩組 testMatch 的完整 pattern；test_vite_config_prebundles_element_plus_styles 斷言 import 與展開。只有 fs 列舉邏輯靠 node 測試，e2e workflow 本身也會跑到，足夠。optimizeDeps 冷啟動（同機、清 cacheDir、harness 與 vite.config.ts 相同但 dts:false，量到登入頁可操作）：不含 include 15.6 / 15.3 秒，且每次都有 1 次 reloading；含 include（118 項）10.8 / 12.8 秒、0 次 reloading。vite ready 0.7~1.1 秒，兩者差不多：啟動沒有變慢，第一頁反而較快。清 cacheDir 後重啟 dev server（含 include），flock 內 exams.spec.ts -g \"exams flow\" 一次 4 passed，dev server log 沒有 optimized dependencies changed. reloading，也沒有 Failed to fetch。本機模擬 CI：flock 內 pnpm exec playwright test（不帶 --project）跑 e2e/smoke.spec.ts、e2e/admin/support.spec.ts、e2e/parent/login-bind-pickup.spec.ts，11 passed。每次 run 後 owner 唯讀查：啟用員工 0、未封存學生 / 班級 / 監護人 0、exams 0、進行中接送 0、settings 11 / roles 4 / subjects 5 / exam_types 3，system_settings md5 不變。殘留見 risk_notes。"
+      }
+    },
+    {
+      "id": "INFRA-056",
+      "title": "CI e2e：trace 不記錄 e2e admin 密碼（改為 globalSetup API 登入後注入 storageState），補齊印密碼靜態檢查的空隙",
+      "description": "改寫 `apps/web/playwright.config.ts`、`apps/web/e2e/support/admin.ts`、`apps/web/e2e/support/global-setup.ts`（FRONTEND-290 的產物）與 `scripts/tests/test_ci_workflow.py` 的印密碼檢查（INFRA-055）；後台 e2e spec（FRONTEND-291~293、`e2e/admin/support.spec.ts`）只隨 `loginAsAdmin` 介面調整。產物仍在、只被本 task 部分改寫，被改的 task 維持 done；完成時同步被改 task 的 description（只寫最終行為），reviewer 一併跑被改 task 的 tdd.run 確認沒有回歸。\n\n現況（來源：INFRA-055 risk_notes 的 review-r11-e2 殘留 (2)(3)）：\n- CI `retries: 1`、`trace: 'on-first-retry'`。重試時 trace 會記下 `loginAsAdmin` 在登入頁 `fill` 的密碼（action 參數）與 `adminApi` 以 `POST /api/admin/auth/login` 送出的 request body，失敗時隨 `playwright-report` / `test-results` artifact 上傳。add-mask 只遮蔽 job log，不遮蔽 artifact 內容。帳密每次 run 隨機產生、DB 隨 runner 銷毀，實際風險低，但 artifact 保留 7 天、有 repo 讀取權限的人都下載得到。\n- `test_e2e_workflow_bootstrap_masks_password` 的空隙：只掃建立 admin 的 step 與 `scripts/e2e_bootstrap_admin.sh`，「產生 e2e admin 帳密」那一步不在印密碼掃描範圍內（只檢查 add-mask 在寫入 GITHUB_ENV 之前）；xtrace 檢查只認 `set -…x`，`set -o xtrace`、`bash -x`、`shopt`/`SHELLOPTS` 類寫法抓不到，也沒有掃 workflow 的 run 區塊。\n\n做法（選「API 登入後注入 storageState」，不選「trace 排除填值那一步」）：\n- 理由：Playwright 沒有把單一 action 排除在 trace 外的設定，要排除只能在測試內手動 stop / start tracing，與 `on-first-retry` 由框架管理的 tracing 互相干擾，且漏掉 `adminApi` 的 login request body；改成在不錄 trace 的 globalSetup 登入一次，測試裡完全不出現密碼，同時把每個 spec 的 UI 登入次數降為 0，也減少吃到每 IP 5 分鐘 20 次的登入限流。\n- globalSetup 在啟用 e2e admin 之後，以 `request.newContext({ baseURL })` 呼叫 `POST /api/admin/auth/login`（帶符合 CORS_ORIGINS 的 Origin），把 cookie 存成 storageState 檔。檔案放在不會被上傳的位置（例如 `os.tmpdir()` 下以 run 區分的檔名，或已列入 .gitignore 的 `apps/web/e2e/.auth/`），不可放在 `playwright-report`、`test-results`、`var/log` 底下；globalTeardown 刪除該檔。沒設 `E2E_ADMIN_USERNAME` 時（只跑家長端替身）不做事，行為同現行。\n- `loginAsAdmin(page)` 改為：以 storageState 的 cookie 進後台首頁，等待離開登入頁；不再填帳密。`adminApi(request)` 改為以 storageState 建立的 request context（不再送帳密）。後台 spec 的呼叫方式盡量不變。\n- 「真的走登入表單」的測試只保留 `e2e/admin/support.spec.ts` 一條（`e2e support login lands on first allowed page`），該 describe 以 `test.use({ trace: 'off' })` 關閉 trace，並改用獨立的 UI 登入 helper。「缺少帳密時立即失敗」的既有測試改為對 globalSetup / storageState 缺漏的情境斷言同一則錯誤訊息。\n- 靜態檢查：印密碼掃描範圍納入 e2e.yml 所有含 `E2E_ADMIN_PASSWORD` 或密碼變數的 run 區塊（含產生帳密那一步）；xtrace 偵測涵蓋 `set -x`、`set -ex` 等組合旗標、`set -o xtrace`、`bash -x` / `sh -x`、`shell: bash -x`，掃描對象為整份 e2e.yml 的 run / shell 與 `scripts/e2e_bootstrap_admin.sh`。偵測函式寫成可單獨測試，測試內以構造字串做負例。\n- 保留 storageState 中的 cookie（存取 / refresh token）會出現在 trace 的網路紀錄中；這些 token 在 run 結束時由 globalTeardown 停用帳號（token_version + 1）而全部失效，且 DB 隨 runner 銷毀，可接受；不在 trace 中出現的是密碼。\n\n**驗收標準**：每一條對應下列 red_case；INFRA-030、051、055 與 FRONTEND-290 的 tdd.run 全綠；另以 `E2E_ADMIN_PASSWORD` 為已知值、`--trace on` 跑一次 `e2e/admin/support.spec.ts` 與 `e2e/admin/exams.spec.ts`，解開 `test-results` 內所有 trace.zip，以該密碼字串搜尋 → 0 筆（回報附指令與結果）。",
+      "granularity_unit": "config",
+      "target_path": "apps/web/playwright.config.ts",
+      "source_ref": null,
+      "status": "pending",
+      "assignee_session": null,
+      "depends_on": [
+        "INFRA-055"
+      ],
+      "suggested_model": "sonnet-5",
+      "risk_notes": "本機跑 e2e 一律包在 `flock /tmp/afterschool_db.lock` 內，run 結束 globalTeardown 會停用 e2e.admin；驗收用的已知密碼只放在當次 shell env，不寫進任何檔案或 commit。storageState 檔若落在 repo 內，必須確認已被 .gitignore 排除且不在 upload-artifact 的 path 底下。",
+      "open_design_questions": [],
+      "tdd": {
+        "test_path": "scripts/tests/test_ci_workflow.py",
+        "markers": [
+          "unit",
+          "playwright"
+        ],
+        "red_cases": [
+          "test_e2e_password_detector_flags_echo_in_generate_step：以「產生 e2e admin 帳密」step 的 run 加上一行 `echo \"$password\"` 的構造字串餵給偵測函式 → 判定不合格；目前 e2e.yml 的所有 run 區塊 → 判定合格",
+          "test_e2e_xtrace_detector_variants：偵測函式對 'set -x'、'set -ex'、'set -o xtrace'、'bash -x scripts/e2e_bootstrap_admin.sh'、'shell: bash -x {0}' 皆判定開啟 xtrace，對 'set -euo pipefail' 判定未開啟；目前 e2e.yml 與 scripts/e2e_bootstrap_admin.sh → 未開啟",
+          "test_e2e_specs_do_not_read_admin_password：apps/web/e2e 底下讀取 E2E_ADMIN_PASSWORD 的只有 support/global-setup.ts 與 support.spec.ts 的 UI 登入 helper 所在檔；其餘 spec 與 support 檔不含 E2E_ADMIN_PASSWORD",
+          "test_e2e_ui_login_describe_has_trace_off：含 getByPlaceholder('請輸入密碼') 的檔案只有 UI 登入 helper 所在檔，且使用它的 describe 含 test.use({ trace: 'off' })",
+          "e2e support login via storage state（playwright，apps/web/e2e/admin/support.spec.ts）：loginAsAdmin(page) 後頁面離開 /#/login，期間 page 沒有發出 POST /api/admin/auth/login（以 page.on('request') 記錄斷言）",
+          "e2e support storage state outside uploaded paths（playwright，同檔）：globalSetup 產生的 storageState 檔路徑不在 playwright-report、test-results、var/log 之下，且檔案存在、含名稱為員工登入 cookie 的項目"
+        ],
+        "run": "just test scripts/tests/test_ci_workflow.py -k \"e2e_workflow or e2e_password or e2e_xtrace or e2e_specs or e2e_ui_login or playwright_config\" && flock /tmp/afterschool_db.lock timeout 600 just e2e e2e/admin/support.spec.ts -g \"e2e support\"",
+        "notes": "e2e 前置同 FRONTEND-290 tdd.notes（just up、建立並改好密碼的 e2e admin、E2E_ADMIN_* env）。e2e 檔不在 web-typecheck 範圍，以 tsconfig.node 的選項（tsc --ignoreConfig）指定檔案檢查。"
+      },
+      "review": {
+        "status": "pending",
+        "reviewer": null,
+        "notes": ""
       }
     }
   ]
