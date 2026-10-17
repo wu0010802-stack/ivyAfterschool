@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
-<meta name="preview-status" content="draft">
+<meta name="preview-status" content="approved">
 <meta name="preview-tasks" content="FRONTEND-236,FRONTEND-238,FRONTEND-296,FRONTEND-317">
 <meta name="preview-route" content="component:components/exams/{ScoreCell,RenotifyChoiceDialog}.vue">
 <meta name="preview-updated" content="2026-10-17">
@@ -580,6 +580,7 @@ const app = createApp({
 
     const decisions = [
       'ScoreCell 版面：68px 置中數字輸入框（tabular 數字；FRONTEND-317 由 64px 加寬，放得下「100.25」這類三位整數 + 兩位小數）+ 右側小勾選「缺」。狀態標記貼在輸入框右上角、不推動版面：dirty = 橘黃三角角標；saving = 主色轉圈 icon；saved = 綠底白勾，1 秒後由 saved 轉 idle 時淡出；error = 紅框 + 紅色警告 icon。',
+      'ScoreCell 輸入框由 64px 加寬為 68px（內寬 46px，FRONTEND-317，使用者裁定）：滿分大於 100 時的「100.25」「999.95」（字寬約 42.8px）完整顯示、不在框內捲動；整格約 124px，成績格科目欄最小寬 140 與列高不變。',
       'ScoreCell 不合法輸入（超出 0~滿分、超過兩位小數、非數字）即時紅框，hover / focus 時 tooltip 顯示「需介於 0~{fullScore}」或「最多兩位小數」，根元素 title 也帶同一訊息；輸入保留讓使用者修正，不 emit。非數字一律用「需介於 0~{fullScore}」。',
       'ScoreCell 後端錯誤（state error）tooltip 與 title 顯示 errorMessage（例如「分數超出 0~滿分」「儲存失敗，請重試」）；本地驗證錯誤優先於後端錯誤顯示。',
       'ScoreCell 缺考：勾選後輸入框清空、disabled、placeholder「缺考」；輸入「缺」或「-」後 blur / Enter 同勾選。取消勾選 emit {score: null, is_absent: false}，輸入框恢復可編輯且為空。',
@@ -604,13 +605,7 @@ const app = createApp({
       '觸控：圖示視覺 18×32px，可點範圍以透明區延伸到約 28×40px（往右延伸進儲存格內距，左邊只延伸 2px、不蓋到「缺」）。140px 欄寬放不下 44×44，與既有「缺」勾選同級、高於 WCAG 2.5.8 的 24×24；開啟後的編輯框按鈕在平板撐到 44px。',
       '點編輯框外面視同確定：內容合法就依確定的規則送出並關閉，焦點留在使用者點的地方（同 Excel / Google 試算表的附註，直接點下一格不會遺失剛打的備註）；超過 200 字時不關閉、焦點回到文字框。再點一次同一格的圖示視同點外面（不會關閉後又立刻打開）。',
     ]
-    const openQuestions = [
-      {
-        question: 'FRONTEND-317：改收兩位小數後，滿分超過 100 時的分數（例如 100.25、999.95）在 64px 輸入框內寬 42px 放不下（字寬 42.8px，會被捲掉約 1px）。要不要加寬輸入框？',
-        optionA: '（推薦，稿已照此畫）輸入框改 68px（內寬 46px），成績格欄最小寬 140 不變，版面不換行',
-        optionB: '維持 64px；滿分 > 100 且兩位小數的情況少見，超出時輸入框內水平捲動',
-      },
-    ]
+    const openQuestions = []
 
     const subjects = [
       { id: 'sub1', name: '國語', full: 100 },
