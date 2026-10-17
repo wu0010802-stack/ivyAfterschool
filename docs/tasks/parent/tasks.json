@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 232,
-  "last_updated": "2026-10-17T07:52:30Z",
+  "version": 233,
+  "last_updated": "2026-10-17T07:56:31Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -4246,7 +4246,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/parent/stores/parentWs.spec.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "FRONTEND-312"
@@ -4261,10 +4261,10 @@
         ],
         "red_cases": [
           "parentWs spec uses shared fake socket：src/parent/stores/parentWs.spec.ts 以 ?raw 讀取 → 不含 'class FakeWebSocket'，且 import 自 '@/test/fakeWebSocket'；既有 parentWs 案例全綠",
-          "parent specs have no local fake socket：import.meta.glob 讀 src/parent/**/*.spec.ts 原始碼 → 含 'class FakeWebSocket' 的檔案清單為 []"
+          "parentWs parent specs have no local fake socket：import.meta.glob 讀 /src/parent/**/*.spec.ts 原始碼（vite 的 glob 不含 parentWs.spec 本檔，本檔由上一條以 ?raw 檢查；並確認 main / notifications / PickupView / ConnectionBanner 的 spec 有被讀到）→ 含 'class FakeWebSocket' 的檔案清單為 []"
         ],
         "run": "just web-test src/parent/stores/parentWs.spec.ts -t \"parentWs\"",
-        "notes": "第二條的掃描 spec 放在 parentWs.spec.ts 內（describe 名稱以 parentWs 開頭讓 tdd.run 選得到）。逐檔替換後各跑該檔既有的 tdd.run，回報列出每檔前後測試數。"
+        "notes": "第二條的掃描 spec 放在 parentWs.spec.ts 內（describe 名稱以 parentWs 開頭讓 tdd.run 選得到）。替換前後測試數：main 13/13、pickupRequests 26/26、homeworkToday 10/10、notifications 23/23、parentWs 16/16（另加本 task 2 條 → 18）、ConnectionBanner 12/12、ParentLayout 22/22、PickupView 44/44、ChildHubView 26/26、NotificationsView 26/26、HomeworkView 17/17、useTodayStatus 16/16。共用版沒有追加任何能力；type + data + sent_at 封包輔助 serverMessage(socket, type, data) 留在 PickupView / ChildHubView / useTodayStatus 各自的 spec。共用版 close() 一律觸發 onclose：家長端程式經 createWsClient 先卸 handler 再 close，替換後各 spec 全綠。"
       },
       "review": {
         "status": "pending",
