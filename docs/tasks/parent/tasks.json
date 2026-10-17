@@ -1,7 +1,7 @@
 {
   "area": "parent",
-  "version": 224,
-  "last_updated": "2026-10-17T04:22:23Z",
+  "version": 225,
+  "last_updated": "2026-10-17T04:26:31Z",
   "tasks": [
     {
       "id": "PARENT-001",
@@ -4109,14 +4109,14 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.vue",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-parent-r11a",
       "depends_on": [
         "PARENT-131",
         "PARENT-132"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "",
+      "risk_notes": "[review-r11-p3 打回] (1) description 要求「狀態底色只畫在 padding-box 內」沒有測試：拿掉 .att-day--present/left/leave/absent/expected/unrecorded 與 .att-day.is-selected 的 padding-box，色塊回到 border-box 吃掉視覺欄距，spec 仍全綠。請補斷言（例如逐條檢查這七條規則：用 background-color 長寫，或 background 簡寫含 padding-box；並斷言 .att-day 之後沒有不帶 padding-box 的 background 簡寫），突變上述任一條要轉紅。建議同時把寫法對齊修正後的核可稿 2d7ac97（基底 `background: transparent padding-box`、狀態 / 選中格 `background-color`），並同步本 task 與 PARENT-131 description 的寫法敘述。(2) red_case「keeps seven columns」的範例 aria-label「10月1日（四）…」與實際格式（「10月2日 已到班」）不符，請改成測試實際斷言的值。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/web/src/parent/components/attendance/AttendanceCalendar.spec.ts",
@@ -4132,9 +4132,9 @@
         "notes": "樣式值依核可稿 docs/mockups/parent-component-attendance-calendar.html 與 parent-page-attendance.html（13c7054 核可，PARENT-207 decisions）。另以 Chromium 360×780 與 390×844 量測月曆格寬（目標 360 寬 ≥ 44px、無水平捲動），數值寫進回報。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "concern",
+        "reviewer": "review-r11-p3",
+        "notes": "打回（1 項測試缺口，實作本身的版面正確）。Chromium 1243 掛真實 AttendanceView（axios-mock-adapter 餵含六種狀態的月份）量測：360×780 按鈕格 44.28×52、色塊 40.28、視覺欄距 4px、列距 4px、grid column-gap 0 / row-gap 4px、月曆卡 padding 12px 8px、scrollWidth 360 = 視窗寬；390×844 按鈕格 48.56×52、色塊 44.58、視覺欄距 4px、scrollWidth 390。present / left / leave / absent / expected / unrecorded / closed / 今天+選中 / 點選的 present+選中+hover 的 computed background-clip 皆 padding-box、左右框 2px；state layer ::before inset 0（落在 padding box 內）；鍵盤 focus-visible outline 2px solid、offset -1px。實作底色寫法與修正後的稿（2d7ac97：基底 background: transparent padding-box、狀態 / 選中格改 background-color）不同（實作為基底 background-clip 長寫 + 各狀態 background 簡寫帶 padding-box），computed 結果相同。commit 順序 c37d9bc（紅）→ a8e3a87（實作），舊斷言 gap: 4px / outline-offset: 1px 的改寫屬規格變更、非放寬。PARENT-131 / 132 description 已同步，兩者 tdd.run（31 + 19 條）全綠；web-lint 0 error；web-typecheck exit 0。突變：把七條狀態 / 選中規則的 padding-box 拿掉 → Chromium 量到所有有色格 background-clip 變 border-box（色塊吃掉 4px 視覺欄距），但 AttendanceCalendar.spec 31 條仍全綠；還原後 cmp 與 git diff 乾淨。"
       }
     },
     {
