@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 467,
-  "last_updated": "2026-10-17T04:16:18Z",
+  "version": 468,
+  "last_updated": "2026-10-17T04:16:36Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15658,14 +15658,14 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/pickup/requests.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "in_progress",
       "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-414",
         "BACKEND-429"
       ],
       "suggested_model": "sonnet-5",
-      "risk_notes": "[review-r11-b 打回] (1) PickupQueueOut 加必填 latest_expected_arrival 後，BACKEND-402 的 apps/api/tests/unit/schemas/test_pickup_schemas.py::test_pickup_schemas_request_out 建 PickupQueueOut 未帶新欄位 → ValidationError 紅；需補上該欄位（並可順帶斷言 model_dump 的 latest_expected_arrival 為 'HH:MM'、不合格式被拒），跑 `just test apps/api/tests/unit/schemas/test_pickup_schemas.py -k \"test_pickup_schemas_\"` 全綠，並把此改動寫進本 task 的實作備註（說明動到 BACKEND-402 的既有測試）。(2) 順帶：apps/api/app/api/admin/pickup.py 模組 docstring 的 BACKEND-429 段仍寫「PickupQueueOut（open / closed / counts）」，補上 latest_expected_arrival。",
+      "risk_notes": "[review-r11-b 打回] (1) PickupQueueOut 加必填 latest_expected_arrival 後，BACKEND-402 的 apps/api/tests/unit/schemas/test_pickup_schemas.py::test_pickup_schemas_request_out 建 PickupQueueOut 未帶新欄位 → ValidationError 紅；需補上該欄位（並可順帶斷言 model_dump 的 latest_expected_arrival 為 'HH:MM'、不合格式被拒），跑 `just test apps/api/tests/unit/schemas/test_pickup_schemas.py -k \"test_pickup_schemas_\"` 全綠，並把此改動寫進本 task 的實作備註（說明動到 BACKEND-402 的既有測試）。(2) 順帶：apps/api/app/api/admin/pickup.py 模組 docstring 的 BACKEND-429 段仍寫「PickupQueueOut（open / closed / counts）」，補上 latest_expected_arrival。 [review-r11-b2 打回] apps/api/tests/unit/schemas/test_pickup_schemas.py:276 的 HH:MM 迴圈變數 bad 和第 260 行 dict 迴圈同名，`just typecheck apps/api/tests/unit/schemas/test_pickup_schemas.py` 報 mypy [assignment] 錯；把變數改名（例如 bad_hm），typecheck 該檔與 just lint 乾淨、tdd.run 三段仍全綠後再送審。",
       "open_design_questions": [],
       "tdd": {
         "test_path": "apps/api/tests/integration/services/pickup/test_pickup_requests.py",
@@ -15682,8 +15682,8 @@
       },
       "review": {
         "status": "concern",
-        "reviewer": "review-r11-b",
-        "notes": "打回。tdd.run 兩段（test_pickup_queue_ 6 條、test_admin_pickup_queue_ 6 條，即 BACKEND-414 / 429 的 tdd.run）全綠，測試 commit b87fa96 先於實作 594da65，突變（get_queue 寫死 '19:00'）使 follows_setting 轉紅，api_index B429 / domain_spec §2、§4 已同步。但 PickupQueueOut 新增必填欄位後，BACKEND-402 的單元測試 tests/unit/schemas/test_pickup_schemas.py::test_pickup_schemas_request_out 以舊鍵建 PickupQueueOut，回歸為 ValidationError（latest_expected_arrival Field required），`just test apps/api/tests/unit/schemas/test_pickup_schemas.py` 1 failed。"
+        "reviewer": "review-r11-b2",
+        "notes": "打回（複審）。上一輪兩項已修：666192b 讓 test_pickup_schemas_request_out 補上 latest_expected_arrival，並斷言 HH:MM、不合格式與缺欄被拒；706a414 補上 router docstring 的 B429 段。BACKEND-402 / 414 / 429 的 description 已同步。tdd.run 三段全綠（6 + 6 + 13 passed），BACKEND-402 / 414 / 429 沒有回歸。突變驗證：get_queue 改填 request_end → follows_setting 轉紅；schema 改成 str 或 TimeHM | None = None → request_out 轉紅（DID NOT RAISE）。lint 乾淨。但 `just typecheck apps/api/tests/unit/schemas/test_pickup_schemas.py` 失敗：第 276 行 `for bad in (\"7:00\", ...)` 沿用了第 260 行 dict 迴圈的變數名 bad，mypy 報 [assignment]（Incompatible types: str vs dict[str, str]）。這個檔在修正前也有 mypy 錯（call-arg），也就是一個錯換成另一個錯，動到的路徑 typecheck 不乾淨。"
       }
     },
     {
