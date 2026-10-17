@@ -6,7 +6,7 @@
 
 import contextlib
 import logging
-from collections.abc import Iterator
+from collections.abc import Hashable, Iterator
 from typing import Any
 
 import psycopg
@@ -14,7 +14,12 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.tx_hooks import CALLBACKS_KEY, install_tx_hooks, run_after_commit
+from app.core.tx_hooks import (
+    CALLBACKS_KEY,
+    collect_before_commit,
+    install_tx_hooks,
+    run_after_commit,
+)
 from tests.support import db_urls
 
 Conn = psycopg.Connection[tuple[Any, ...]]
@@ -254,3 +259,64 @@ def test_tx_hooks_savepoint_rollback_with_db_session(db_session: Session) -> Non
     db_session.commit()
 
     assert calls == ["outer"]
+
+
+# --- BACKEND-565 collect_before_commit：commit 前去重、整包 flush 一次 -------------------------
+
+
+def _recorder(received: list[dict[Hashable, object]]) -> Any:
+    def flush(session: Session, pending: dict[Hashable, object]) -> None:
+        assert isinstance(session, Session)
+        received.append(dict(pending))
+
+    return flush
+
+
+def test_collect_before_commit_dedupes_and_flushes_once(db_session: Session) -> None:
+    received: list[dict[Hashable, object]] = []
+    flush = _recorder(received)
+    collect_before_commit(db_session, "x", "a", 1, flush)
+    collect_before_commit(db_session, "x", "a", 2, flush)
+    collect_before_commit(db_session, "x", "b", 3, flush)
+    assert received == []
+
+    db_session.commit()
+
+    assert received == [{"a": 2, "b": 3}]
+
+    # commit 後清空：下一筆交易只帶新登記的 key
+    collect_before_commit(db_session, "x", "a", 4, flush)
+    db_session.commit()
+
+    assert received == [{"a": 2, "b": 3}, {"a": 4}]
+
+
+def test_collect_before_commit_skips_savepoint_and_clears_on_rollback(db_session: Session) -> None:
+    received: list[dict[Hashable, object]] = []
+    flush = _recorder(received)
+    with db_session.begin_nested():
+        collect_before_commit(db_session, "x", "a", 1, flush)
+    # savepoint 釋放也發 before_commit：不 flush，等最外層 commit
+    assert received == []
+
+    db_session.commit()
+
+    assert received == [{"a": 1}]
+
+    collect_before_commit(db_session, "x", "b", 2, flush)
+    db_session.rollback()
+    db_session.commit()
+
+    assert received == [{"a": 1}]
+
+
+def test_collect_before_commit_names_are_independent(db_session: Session) -> None:
+    got_x: list[dict[Hashable, object]] = []
+    got_y: list[dict[Hashable, object]] = []
+    collect_before_commit(db_session, "x", "a", 1, _recorder(got_x))
+    collect_before_commit(db_session, "y", "b", 2, _recorder(got_y))
+
+    db_session.commit()
+
+    assert got_x == [{"a": 1}]
+    assert got_y == [{"b": 2}]
