@@ -1,7 +1,7 @@
 {
   "area": "backend",
-  "version": 469,
-  "last_updated": "2026-10-17T04:17:39Z",
+  "version": 470,
+  "last_updated": "2026-10-17T04:18:26Z",
   "tasks": [
     {
       "id": "BACKEND-001",
@@ -15658,7 +15658,7 @@
       "granularity_unit": "method",
       "target_path": "apps/api/app/services/pickup/requests.py",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-backend-r11a",
       "depends_on": [
         "BACKEND-414",
@@ -15681,9 +15681,9 @@
         "notes": "改設定的案例用 db_session（交易結束 rollback），不得 commit 改動 system_settings 種子值；若必須 committing，測試結束前還原並以 owner 唯讀確認 pickup.window 回到預設。"
       },
       "review": {
-        "status": "concern",
+        "status": "pass",
         "reviewer": "review-r11-b2",
-        "notes": "打回（複審）。上一輪兩項已修：666192b 讓 test_pickup_schemas_request_out 補上 latest_expected_arrival，並斷言 HH:MM、不合格式與缺欄被拒；706a414 補上 router docstring 的 B429 段。BACKEND-402 / 414 / 429 的 description 已同步。tdd.run 三段全綠（6 + 6 + 13 passed），BACKEND-402 / 414 / 429 沒有回歸。突變驗證：get_queue 改填 request_end → follows_setting 轉紅；schema 改成 str 或 TimeHM | None = None → request_out 轉紅（DID NOT RAISE）。lint 乾淨。但 `just typecheck apps/api/tests/unit/schemas/test_pickup_schemas.py` 失敗：第 276 行 `for bad in (\"7:00\", ...)` 沿用了第 260 行 dict 迴圈的變數名 bad，mypy 報 [assignment]（Incompatible types: str vs dict[str, str]）。這個檔在修正前也有 mypy 錯（call-arg），也就是一個錯換成另一個錯，動到的路徑 typecheck 不乾淨。"
+        "notes": "通過（第三次審查）。b630f9b 把迴圈變數改名為 bad_hm，`just typecheck` 檢查 test_pickup_schemas.py、schemas/pickup.py、services/pickup/requests.py、api/admin/pickup.py 四檔無錯，該測試檔 lint 乾淨。tdd.run 三段全綠（6 + 6 + 13 passed），BACKEND-402 / 414 / 429 沒有回歸。前一次已驗證、本次沒有新改動的項目：上一輪兩個打回項已修；突變 get_queue 改填 request_end → follows_setting 轉紅，schema 改成 str 或 Optional → request_out 轉紅；被改 task 的 description 已同步；測試 commit 先於實作。"
       }
     },
     {
