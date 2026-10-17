@@ -8,6 +8,8 @@
 //   備註編輯框 teleport 到 body，裡面的鍵盤事件不會冒泡到格子的 keydown。
 // - 已發布考試尚未選擇是否通知家長時（notifyParents null）useScoreAutosave 不送出；本元件在格子變更後同一個 debounce
 //   到期仍在等選擇時開 RenotifyChoiceDialog。expose 的 flush() 不開 dialog（view 離開、發布、重新載入前呼叫）。
+// - 考試由草稿變成已發布（考試頁發布後呼叫 expose 的 markPublished()，或 load() 拿到的狀態改變）：
+//   尚未送出的格子不再以草稿身分送出，改等通知選擇，並以同一個 debounce 開 dialog。
 // - 表格高度是 100%：由父層（考試頁）給定內容區剩餘高度，表頭固定、只捲表格本體。
 // - 每場考試各有一個 useScoreAutosave（放在 detached effect scope，examId 固定）。examId 變更時丟棄前一場考試
 //   尚未送出（dirty / 等待通知選擇 / 儲存失敗）的格子：已送出中的請求照原考試完成，之後不再送出前一場的格子，
@@ -128,8 +130,11 @@ async function load(): Promise<void> {
     subjects.value = [...data.subjects].sort((a, b) => a.sort_order - b.sort_order)
     s.initial.value = data.cells
     // 第一次載入或發布狀態改變：重新決定是否需要選擇通知；同一場已發布考試維持本次編輯期間的選擇
-    if (!previous || previous.status !== data.exam.status) {
+    if (!previous) {
       s.notifyParents.value = data.exam.status === 'published' ? null : false
+    } else if (previous.status !== data.exam.status) {
+      if (data.exam.status === 'published') becamePublished(s)
+      else s.notifyParents.value = false
     }
     state.value = 'ready'
   } catch (err) {
@@ -137,6 +142,15 @@ async function load(): Promise<void> {
     errorText.value = errorMessage(err, '伺服器暫時沒有回應，請稍後再試')
     state.value = 'error'
   }
+}
+
+/**
+ * 草稿變成已發布：還沒選擇通知（草稿的 false）改成 null；markPublished 之後已選過的選擇保留。
+ * 有未送出的格子時以同一個 debounce 開 RenotifyChoiceDialog（發布當下尚未送出的修改也要詢問）。
+ */
+function becamePublished(s: ExamSession): void {
+  if (s.notifyParents.value === false) s.notifyParents.value = null
+  if (s.autosave.hasUnsaved.value) schedulePrompt()
 }
 
 /** 換考試：丟棄前一場未送出的格子；exam 清空讓 load 顯示 skeleton，新考試載入前不顯示前一場的表格 */
@@ -351,13 +365,18 @@ async function flush(): Promise<void> {
   await current().flush()
 }
 
+/** 考試頁發布成功後呼叫（成績格重新載入前）：之後的修改都等待通知選擇 */
+function markPublished(): void {
+  becamePublished(session.value)
+}
+
 // 卸載時停止目前 session 的 debounce 與 watcher（考試頁離開前已 flush）
 onBeforeUnmount(() => {
   clearPromptTimer()
   session.value.scope.stop()
 })
 
-defineExpose({ hasUnsaved, failedCount, flush, reload: load })
+defineExpose({ hasUnsaved, failedCount, flush, reload: load, markPublished })
 </script>
 
 <template>

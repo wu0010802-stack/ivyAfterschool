@@ -264,7 +264,9 @@ async function publish(): Promise<void> {
       return
     }
     ElMessage.success('已發布，家長會收到成績通知')
-    await reloadAll()
+    // 成績格重新載入前的修改也要詢問是否通知家長；發布前已 flush 過，重新載入不再 flush / 詢問放棄變更
+    scoreGrid.value?.markPublished()
+    await reloadAll('clean')
   } finally {
     busy.value = ''
   }
