@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 342,
-  "last_updated": "2026-10-17T04:18:43Z",
+  "version": 343,
+  "last_updated": "2026-10-17T04:19:20Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -1103,7 +1103,7 @@
     {
       "id": "FRONTEND-040",
       "title": "實作 components/common/FormDialog.vue：統一的表單對話框（送出 / 取消 / loading / 未儲存提醒）",
-      "description": "建立 `apps/web/src/components/common/FormDialog.vue`。移植 ivy `FE:src/components/common/FormDialog.vue` 的 size 分型、dirty 關閉確認（`confirmDiscardChanges`）、手機滿版；**去掉** requiredLegend、enterSubmit、autofocus 以外的進階選項。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/component-common-extra.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。一張稿逐一展示 FRONTEND-040、043 各元件的全部狀態；共用元件 039/041/042 在 `docs/mockups/component-common.html`。\n\n**props / emits**\n- `modelValue: boolean`、`title: string`、`size?: 'sm' | 'md' | 'lg'`（寬 420 / 560 / 800，預設 md）、`loading?: boolean`、`submitText?: string`（預設「儲存」）、`cancelText?: string`（預設「取消」）、`submitDisabled?: boolean`、`dirty?: boolean`、`hideFooter?: boolean`、`autofocus?: boolean`（預設 true）。\n- emits `update:modelValue`、`submit`、`closed`。\n**行為**\n- 送出按鈕：loading 時顯示 loading 且 disabled；點擊 emit `submit`（不自己關閉，由父層成功後關）。\n- 關閉（取消、X、Esc、點遮罩）：`dirty` 為 true 時先呼叫 FRONTEND-046 `confirmDiscardChanges()`，使用者取消則保持開啟；loading 中不可關閉。\n- 視窗寬 < 768 時 fullscreen，footer 固定在視窗底部、只有 body 區捲動：dialog 帶 `form-dialog` class，fullscreen 時 `.el-dialog` 為 flex column（header / footer 不伸縮、`.el-dialog__body` flex 1 且 `overflow-y: auto`）。Element Plus 的 `.el-dialog.is-fullscreen` 只設 `height: 100%` 與 `overflow: auto`，不補樣式時短表單的 footer 停在畫面中段、長表單 footer 被捲走。dialog teleport 到 body，這組規則寫在以 `form-dialog` 命名空間的非 scoped style。\n- 開啟動畫結束（el-dialog `opened`）後聚焦 body 內第一個可輸入的 input / textarea（略過 disabled、readonly、checkbox / radio，以及 el-select、日期 / 時間 picker、cascader、autocomplete 內的 input）；沒有可輸入欄位時不搶焦點。el-dialog 的 `closed` 轉 emit `closed`。\n- 關閉以 `before-close` 處理並由元件自行 emit `update:modelValue(false)`（受控：父層把 modelValue 改為 false 才真的關閉）。\n- 外觀以設計稿 `docs/mockups/component-common-extra.html` 的 decisions 為準：footer 靠右「取消」（default）在左、送出（primary）在右；loading 中「取消」停用、右上 X 隱藏、Esc 與點遮罩無效；`submitDisabled` 只停用送出鈕；`hideFooter` 時不渲染 footer。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/src/components/common/FormDialog.vue`。移植 ivy `FE:src/components/common/FormDialog.vue` 的 size 分型、dirty 關閉確認（`confirmDiscardChanges`）、手機滿版；**去掉** requiredLegend、enterSubmit、autofocus 以外的進階選項。\n\n**設計稿關卡**：實作前需通過設計稿關卡（`.claude/skills/ui-design-preview`），稿檔名 `docs/mockups/component-common-extra.html`（`preview-tasks` 需列入本 task id），`preview-status` 為 `approved` 才可進 `in_progress`。一張稿逐一展示 FRONTEND-040、043 各元件的全部狀態；共用元件 039/041/042 在 `docs/mockups/component-common.html`。\n\n**props / emits**\n- `modelValue: boolean`、`title: string`、`size?: 'sm' | 'md' | 'lg'`（寬 420 / 560 / 800，預設 md）、`loading?: boolean`、`submitText?: string`（預設「儲存」）、`cancelText?: string`（預設「取消」）、`submitDisabled?: boolean`、`dirty?: boolean`、`hideFooter?: boolean`、`autofocus?: boolean`（預設 true）。\n- emits `update:modelValue`、`submit`、`closed`。\n**行為**\n- 送出按鈕：loading 時顯示 loading 且 disabled；點擊 emit `submit`（不自己關閉，由父層成功後關）。\n- 關閉（取消、X、Esc、點遮罩）：`dirty` 為 true 時先呼叫 FRONTEND-046 `confirmDiscardChanges()`，使用者取消則保持開啟；loading 中不可關閉。\n- 視窗寬 < 768 時 fullscreen，footer 固定在視窗底部、只有 body 區捲動：dialog 帶 `form-dialog` class，fullscreen 時 `.el-dialog` 為 flex column（header / footer 不伸縮、`.el-dialog__body` flex 1 且 `overflow-y: auto`）。Element Plus 的 `.el-dialog.is-fullscreen` 只設 `height: 100%` 與 `overflow: auto`，不補樣式時短表單的 footer 停在畫面中段、長表單 footer 被捲走。dialog teleport 到 body，這組規則寫在以 `form-dialog` 命名空間的非 scoped style。\n- 開啟動畫結束（el-dialog `opened`）後聚焦 body 內第一個可輸入的 input / textarea（略過 disabled、readonly、checkbox / radio，以及 el-select、日期 / 時間 picker、cascader、autocomplete 內的 input）；沒有可輸入欄位時不搶焦點。el-dialog 的 `closed` 轉 emit `closed`。\n- 關閉以 `before-close` 處理並由元件自行 emit `update:modelValue(false)`（受控：父層把 modelValue 改為 false 才真的關閉）。\n- 外觀以設計稿 `docs/mockups/component-common-extra.html` 的 decisions 為準：footer 靠右「取消」（default）在左、送出（primary）在右；footer 這兩顆按鈕 `min-height: 44px`、左右 padding 20px、字級沿用 14px（平板觸控目標，桌機 / 平板 / 手機滿版同一規則，loading 時高度不變，見 FRONTEND-302）；loading 中「取消」停用、右上 X 隱藏、Esc 與點遮罩無效；`submitDisabled` 只停用送出鈕；`hideFooter` 時不渲染 footer。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/common/FormDialog.vue",
       "source_ref": "FE:src/components/common/FormDialog.vue::default",
@@ -6498,7 +6498,7 @@
       "granularity_unit": "component",
       "target_path": "apps/web/src/components/common/FormDialog.vue",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-frontend-r11a",
       "depends_on": [
         "FRONTEND-040"
@@ -6516,7 +6516,7 @@
           "FormDialog footer order unchanged：footer 內按鈕依序為「取消」「{submitText}」，送出鈕仍為 primary"
         ],
         "run": "just web-test src/components/common/FormDialog.spec.ts -t \"FormDialog\"",
-        "notes": "happy-dom 量不到版面：單元測試只鎖樣式宣告，實際高度以 Chromium 量測驗收。"
+        "notes": "happy-dom 量不到版面：單元測試只鎖樣式宣告，實際高度以 Chromium 量測驗收。\n實測（impl-frontend-r11a，Chromium 1243）：1024×768 footer「取消」「儲存」高 44px（loading 時亦 44px）、padding 20px、字級 14px；390×844 fullscreen 與 1440×900 同為 44px。"
       },
       "review": {
         "status": "pending",
