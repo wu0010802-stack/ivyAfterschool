@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 357,
-  "last_updated": "2026-10-17T07:46:24Z",
+  "version": 358,
+  "last_updated": "2026-10-17T07:48:20Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6851,7 +6851,7 @@
       "granularity_unit": "test",
       "target_path": "apps/web/src/test/fakeWebSocket.ts",
       "source_ref": null,
-      "status": "in_review",
+      "status": "done",
       "assignee_session": "impl-frontend-r11c",
       "depends_on": [
         "FRONTEND-004"
@@ -6872,9 +6872,9 @@
         "notes": "逐檔替換後各跑該 spec 的 tdd.run（測試數與替換前相同，回報列出每檔前後數字）。容器 CPU 有限，逐檔跑、不要同時跑全部。 替換前後測試數：createWsClient 14/14、adminWs 12/12、notifications 14/14、AdminLayout 27/27、PickupAuthorizationsView 22/22、PickupPosView 17/17、App 8/8、usePickupBoard 25/25（基準量完後 FRONTEND-298 另加 1 條）、useAdminWsTopic 10/10、useAttendanceBoard 17/17、useHomeworkBoard 15/15。事件封包（type + data + sent_at）輔助留在各 spec。"
       },
       "review": {
-        "status": "pending",
-        "reviewer": null,
-        "notes": ""
+        "status": "pass",
+        "reviewer": "review-r11-f3",
+        "notes": "TDD 順序 aa20c6f(test 紅) → 0edc153(共用版) → e879943(9 個 spec) → dc4daa4(剩 2 個) → 7bc4b44(tasks)。tdd.run 3 綠，2 條 red_case 一對一（另有 install 清空 instances 一條）。測試數以替換 commit 前後的原始碼比對：createWsClient 14/14、adminWs 12/12、notifications 14/14、AdminLayout 27/27、PickupAuthorizationsView 22/22、PickupPosView 17/17、App 8/8、usePickupBoard 25/25、useAdminWsTopic 10/10、useAttendanceBoard 17/17、useHomeworkBoard 15/15，與 tdd.notes 相符；現況 11 個 spec 全綠（usePickupBoard 現為 28 條，多出的是 298 / 306 後加的）。e879943 / dc4daa4 只有刪除各檔 class FakeWebSocket、stubGlobal 改成 installFakeWebSocket()、serverOpen/serverMessage/serverClose 改名為 open/message/close，事件封包輔助留在各 spec 且 sent_at 與原值相同；唯一被動到的 expect 是 serverMessage → message 的改名，沒有放寬或刪除斷言。close 語意：原本 11 個 fake 的程式端 close() 不觸發 onclose、serverClose 才觸發；共用版合併為 close() 一律觸發 onclose。正式碼只有 createWsClient 的 closeSocketSafely 會呼叫 socket.close()，而且會先清掉 handler，所以程式端關閉不觸發 onclose 是靠 createWsClient 本身，現在也有測試保護：拿掉 closeSocketSafely 的 onclose = null → stop prevents reconnect、pauses when page hidden 兩條轉紅（舊 fake 驗不到）；共用版 close() 不觸發 onclose → fakeWebSocket 與 createWsClient / adminWs 斷線重連相關 7 條轉紅。還原後 cmp 與 git diff 乾淨。304 / 305 tdd.run（useAttendanceBoard 17、useHomeworkBoard 15）無回歸。web-typecheck exit 0、變更檔 web-lint 乾淨。審查期間 usePickupBoard.ts 曾有別人未提交的改動，讓 306 的一條測試短暫轉紅，重跑時已 28/28 綠，與本 task 無關。"
       }
     },
     {
