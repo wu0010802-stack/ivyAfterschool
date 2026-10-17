@@ -721,6 +721,45 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
       expect(document.body.textContent).not.toContain('放棄變更')
     })
 
+    it('ExamDetailView publish reloads grid without flush or discard prompt', async () => {
+      let releaseExam: () => void = () => undefined
+      mock
+        .onGet(EXAM_URL)
+        .replyOnce(200, DRAFT)
+        .onGet(EXAM_URL)
+        .replyOnce(
+          () =>
+            new Promise((resolve) => {
+              releaseExam = () => resolve([200, PUBLISHED])
+            }),
+        )
+      mock.onGet(SUMMARY_URL).reply(200, summary([0, 0]))
+      mock.onPost('/admin/exams/e1/publish').reply(200, PUBLISHED)
+      mock.onPut(SCORES_URL).reply(200, { written: 1, changed: 1, renotified_students: 0 })
+      mock.onGet(SCORES_URL).replyOnce(200, scoreGrid(DRAFT)).onGet(SCORES_URL).reply(200, scoreGrid(PUBLISHED))
+      const { wrapper } = await mountView()
+      await tick()
+
+      await clickHeader(wrapper, '發布')
+      await answerMessageBox('發布')
+      await tick()
+      // 考試重新載入卡住中，期間修改一格
+      expect(getCount(EXAM_URL)).toBe(2)
+      await editCell(wrapper, '66')
+      releaseExam()
+      await tick()
+      await tick()
+
+      expect(document.body.textContent).not.toContain('放棄變更')
+      expect(mock.history.put).toHaveLength(0)
+      await tick(800)
+      const dialog = Array.from(document.body.querySelectorAll<HTMLElement>('.el-dialog')).find((d) =>
+        d.textContent?.includes('是否在修改後通知家長分數已更新？'),
+      )
+      expect(dialog).toBeDefined()
+      expect(document.body.textContent).not.toContain('放棄變更')
+    })
+
     it('ExamDetailView publish still flushes draft edits first', async () => {
       const calls: string[] = []
       mock.onGet(EXAM_URL).replyOnce(200, DRAFT).onGet(EXAM_URL).reply(200, PUBLISHED)

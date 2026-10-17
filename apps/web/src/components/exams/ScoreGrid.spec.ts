@@ -645,4 +645,30 @@ describe('ScoreGrid', { timeout: 30000 }, () => {
     expect(dialogOpen(wrapper)).toBe(true)
     expect(mock.history.put).toHaveLength(0)
   })
+
+  it('ScoreGrid keeps skip choice after reload turns published', async () => {
+    mock.onPut(GRID_URL).reply(200, RESULT)
+    const { wrapper } = await mountGrid({ attach: true, data: grid({ cells: [] }) })
+    gridVm(wrapper).markPublished()
+    await typeAndBlur(wrapper, 0, 0, '95')
+    await tick(800)
+    expect(dialogOpen(wrapper)).toBe(true)
+    await chooseInDialog('不通知')
+    expect(putBodies().map((b) => b.notify_parents)).toEqual([false])
+
+    // 重新載入拿到已發布：本次編輯期間已選「不通知」，不再詢問
+    mock.onGet(GRID_URL).reply(200, grid({ exam: { ...EXAM, status: 'published', subjects: SUBJECTS }, cells: [] }))
+    await (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
+    await tick()
+    await typeAndBlur(wrapper, 0, 1, '80')
+    await tick(800)
+
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(putBodies()).toHaveLength(2)
+    expect(putBodies()[1]).toEqual({
+      cells: [{ student_id: 's1', subject_id: 'sub2', score: 80, is_absent: false, note: null }],
+      notify_parents: false,
+    })
+    expect(toolbarText(wrapper)).toContain('所有變更已儲存')
+  })
 })
