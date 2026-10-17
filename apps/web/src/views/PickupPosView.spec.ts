@@ -14,17 +14,23 @@ import viewSource from './PickupPosView.vue?raw'
 import PickupPosView from './PickupPosView.vue'
 import { FakeWebSocket, installFakeWebSocket } from '@/test/fakeWebSocket'
 
-// DismissalPosBoard（FRONTEND-190）以 stub 取代：只檢查本頁傳入的資料與對 expose 的 focusRequest 呼叫
+// DismissalPosBoard（FRONTEND-190）以 stub 取代：只檢查本頁傳入的資料與對 expose 的 focusRequest 呼叫；
+// stub 內的「回覆時間」按鈕代表佇列卡上的按鈕（點擊開啟回覆 dialog 替身），用來鎖第一下點擊的事件時序（FRONTEND-314）
 const boardStub = vi.hoisted(() => ({ focusRequest: vi.fn<(id: string) => Promise<boolean>>() }))
 vi.mock('@/components/pickup/pos/DismissalPosBoard.vue', async () => {
-  const { defineComponent, h } = await import('vue')
+  const { defineComponent, h, ref } = await import('vue')
   return {
     default: defineComponent({
       name: 'DismissalPosBoard',
       props: { board: { type: Object, required: true }, canOperate: Boolean, canOverride: Boolean },
       setup(_, { expose }) {
         expose({ focusRequest: (id: string) => boardStub.focusRequest(id) })
-        return () => h('div', { class: 'board-stub' })
+        const replyOpen = ref(false)
+        return () =>
+          h('div', { class: 'board-stub' }, [
+            h('button', { type: 'button', class: 'reply-stub', onClick: () => (replyOpen.value = true) }, '回覆時間'),
+            replyOpen.value ? h('div', { role: 'dialog', class: 'reply-dialog-stub' }, '回覆預計可接送時間') : null,
+          ])
       },
     }),
   }
@@ -210,6 +216,20 @@ async function tap(wrapper: VueWrapper): Promise<void> {
   await settle()
 }
 
+/** 在指定元素上派發會冒泡的事件（先推進假時鐘） */
+async function fire(el: Element, type: string): Promise<void> {
+  tick()
+  el.dispatchEvent(new Event(type, { bubbles: true }))
+  await settle()
+}
+
+function replyButton(wrapper: VueWrapper): Element {
+  return wrapper.find('.reply-stub').element
+}
+
+/** chime.unlock 會預熱語音（空白 utterance）：以此計算 unlock 次數 */
+const unlockCalls = (): number => speech.speak.mock.calls.filter(([u]) => u.text === '').length
+
 function button(wrapper: VueWrapper, text: string): DOMWrapper<Element> | undefined {
   return wrapper.findAll('button').find((b) => b.text().trim() === text)
 }
@@ -312,9 +332,71 @@ describe('PickupPosView', { timeout: 20_000 }, () => {
 
     expect(wrapper.text()).toContain('點一下畫面以啟用提示音')
     await tap(wrapper)
-    expect(wrapper.text()).not.toContain('點一下畫面以啟用提示音')
-    // 第一次點擊預熱語音（空白、無聲的 utterance）
+    // pointerdown 就啟用提示音（預熱語音：空白、無聲的 utterance），提示列等這次點擊結束才消失
     expect(speech.speak.mock.calls.map(([u]) => u.text)).toEqual([''])
+    expect(wrapper.text()).toContain('點一下畫面以啟用提示音')
+    await fire(wrapper.find('.pos').element, 'click')
+    expect(wrapper.text()).not.toContain('點一下畫面以啟用提示音')
+  })
+
+  it('PickupPosView first tap unlocks chime but keeps hint until click', async () => {
+    mockData()
+    const { wrapper } = await mountView()
+
+    await fire(replyButton(wrapper), 'pointerdown')
+    expect(unlockCalls()).toBe(1)
+    expect(wrapper.text()).toContain('點一下畫面以啟用提示音')
+  })
+
+  it('PickupPosView first tap still activates the tapped button', async () => {
+    mockData()
+    const { wrapper } = await mountView()
+
+    const btn = replyButton(wrapper)
+    await fire(btn, 'pointerdown')
+    await fire(btn, 'pointerup')
+    // 提示列在 pointerup 時仍在：版面不會在點擊完成前上移
+    expect(wrapper.text()).toContain('點一下畫面以啟用提示音')
+    await fire(btn, 'click')
+    expect(wrapper.find('.reply-dialog-stub').exists()).toBe(true)
+    expect(wrapper.find('.reply-dialog-stub').text()).toBe('回覆預計可接送時間')
+    expect(wrapper.text()).not.toContain('點一下畫面以啟用提示音')
+    expect(unlockCalls()).toBe(1)
+  })
+
+  it('PickupPosView hint removed after pointercancel', async () => {
+    mockData()
+    const { wrapper } = await mountView()
+
+    const btn = replyButton(wrapper)
+    await fire(btn, 'pointerdown')
+    await fire(btn, 'pointercancel')
+    expect(wrapper.text()).not.toContain('點一下畫面以啟用提示音')
+    expect(wrapper.find('.reply-dialog-stub').exists()).toBe(false)
+    expect(unlockCalls()).toBe(1)
+  })
+
+  it('PickupPosView unlock only once', async () => {
+    mockData()
+    const { wrapper } = await mountView()
+
+    const btn = replyButton(wrapper)
+    await fire(btn, 'pointerdown')
+    await fire(btn, 'click')
+    await fire(btn, 'pointerdown')
+    await fire(btn, 'click')
+    expect(unlockCalls()).toBe(1)
+    expect(wrapper.text()).not.toContain('點一下畫面以啟用提示音')
+  })
+
+  it('PickupPosView unlock only once: click without pointerdown keeps hint', async () => {
+    // 鍵盤觸發的 click 沒有 pointerdown：不算啟用提示音，提示列保留
+    mockData()
+    const { wrapper } = await mountView()
+
+    await fire(replyButton(wrapper), 'click')
+    expect(unlockCalls()).toBe(0)
+    expect(wrapper.text()).toContain('點一下畫面以啟用提示音')
   })
 
   it('PickupPosView hides operate actions for readers', async () => {
