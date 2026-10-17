@@ -320,3 +320,32 @@ def test_collect_before_commit_names_are_independent(db_session: Session) -> Non
 
     assert got_x == [{"a": 1}]
     assert got_y == [{"b": 2}]
+
+
+def test_collect_before_commit_keeps_entries_on_savepoint_rollback(db_session: Session) -> None:
+    """savepoint rollback 不清除登記（同 BACKEND-374 / 404 原行為）：外層 commit 時一併 flush。"""
+    received: list[dict[Hashable, object]] = []
+    flush = _recorder(received)
+    collect_before_commit(db_session, "x", "a", 1, flush)
+    with contextlib.suppress(RuntimeError), db_session.begin_nested():
+        collect_before_commit(db_session, "x", "b", 2, flush)
+        raise RuntimeError("業務錯誤，savepoint 回滾")
+    assert received == []
+
+    db_session.commit()
+
+    assert received == [{"a": 1, "b": 2}]
+
+
+def test_collect_before_commit_listens_once_per_name(db_session: Session) -> None:
+    received: list[dict[Hashable, object]] = []
+    flush = _recorder(received)
+    before = (len(db_session.dispatch.before_commit), len(db_session.dispatch.after_soft_rollback))
+
+    collect_before_commit(db_session, "x", "a", 1, flush)
+    collect_before_commit(db_session, "x", "b", 2, flush)
+
+    after = (len(db_session.dispatch.before_commit), len(db_session.dispatch.after_soft_rollback))
+    assert after == (before[0] + 1, before[1] + 1)
+    db_session.commit()
+    assert received == [{"a": 1, "b": 2}]
