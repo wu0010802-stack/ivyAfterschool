@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import shutil
 import socket
 import subprocess
@@ -590,6 +591,84 @@ def test_api_dockerfile_includes_alembic() -> None:
     ignored = _dockerignore(API_DIR / ".dockerignore")
     assert "alembic" not in ignored
     assert "alembic/" not in ignored
+
+
+def _api_cmd() -> str:
+    return _instructions(dockerfile_stages(API_DIR / "Dockerfile")[-1], "CMD")[-1]
+
+
+def _api_host() -> str:
+    """runtime CMD（exec form 的 sh -c 腳本）中 --host 的值。"""
+    argv = json.loads(_api_cmd().removeprefix("CMD "))
+    assert argv[:2] == ["sh", "-c"], argv
+    tokens = shlex.split(argv[2])
+    assert tokens.count("--host") == 1, tokens
+    return tokens[tokens.index("--host") + 1]
+
+
+def test_api_dockerfile_listens_dual_stack() -> None:
+    assert _api_host() == ""
+    assert "--host ::" not in _api_cmd()
+
+
+def _free_dual_stack_port() -> int:
+    """IPv4 與 IPv6 都空著的 port：雙棧時 uvicorn 的兩個 socket 綁同一個 port。"""
+    for _ in range(20):
+        port = _free_port()
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind(("::1", port))
+            except OSError:
+                continue
+        return port
+    pytest.fail("找不到 IPv4 與 IPv6 都空著的 port")
+
+
+def _responses_by_family(tmp_path: Path, host: str) -> dict[str, str | None]:
+    """以 host 啟動 uvicorn，分別經 IPv4 / IPv6 loopback 請求；連線失敗記為 None。"""
+    import httpx
+
+    (tmp_path / "client_app.py").write_text(_CLIENT_APP, encoding="utf-8")
+    port = _free_dual_stack_port()
+    urls = {"ipv4": f"http://127.0.0.1:{port}/", "ipv6": f"http://[::1]:{port}/"}
+    uvicorn = API_DIR / ".venv" / "bin" / "uvicorn"
+    proc = subprocess.Popen(  # noqa: S603  固定參數啟動 venv 內的 uvicorn
+        [str(uvicorn), "client_app:app", "--host", host, "--port", str(port)],
+        cwd=tmp_path,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        # 兩種 host 都會監聽 IPv6，以它判斷就緒；asyncio 綁完全部 socket 才開始接受連線
+        deadline = time.monotonic() + 20
+        while True:
+            try:
+                httpx.get(urls["ipv6"], timeout=2)
+                break
+            except httpx.TransportError:
+                if time.monotonic() > deadline:
+                    pytest.fail("uvicorn 未就緒")
+                time.sleep(0.2)
+        seen: dict[str, str | None] = {}
+        for family, url in urls.items():
+            try:
+                response = httpx.get(url, timeout=2)
+                seen[family] = f"{response.status_code} {response.text}"
+            except httpx.ConnectError:
+                seen[family] = None
+        return seen
+    finally:
+        proc.terminate()
+        proc.wait(timeout=10)
+
+
+def test_api_uvicorn_dual_stack_accepts_ipv4_and_ipv6(tmp_path: Path) -> None:
+    assert _responses_by_family(tmp_path, _api_host()) == {
+        "ipv4": "200 127.0.0.1",
+        "ipv6": "200 ::1",
+    }
+    # 對照組：--host :: 時 IPv4 連線被拒（證明測試能偵測只監聽 IPv6）
+    assert _responses_by_family(tmp_path, "::") == {"ipv4": None, "ipv6": "200 ::1"}
 
 
 def test_web_dockerfile_frozen_lockfile() -> None:
