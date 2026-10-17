@@ -54,7 +54,7 @@ code { font-size: 13px; }
   <h1>設計稿總覽</h1>
   <p class="lead">後台與家長端每張設計稿的狀態，待核可的稿集中在最上方。出稿、核可、改稿時同步更新（待核可與已核可分兩區，各自依檔名排序）（流程見 <code>.claude/skills/ui-design-preview/SKILL.md</code>）。</p>
 
-  <h2>待核可（0）</h2>
+  <h2>待核可（4）</h2>
   <p class="lead">這一區的稿需要你核可後才會進入實作。點稿名打開，右上「設計說明 / 待裁定」可看設計決策與待裁定題；稿已照推薦選項畫。</p>
   <div class="card">
     <table>
@@ -69,12 +69,43 @@ code { font-size: 13px; }
         </tr>
       </thead>
       <tbody>
-        <tr class="empty"><td colspan="6">目前沒有待核可的稿</td></tr>
+        <tr>
+          <td><a href="component-exams.html">component-exams.html</a></td>
+          <td class="tasks">FRONTEND-236, FRONTEND-238, FRONTEND-296, FRONTEND-317</td>
+          <td class="route"><code>component:components/exams/{ScoreCell,RenotifyChoiceDialog}.vue</code></td>
+          <td class="note">1 題：成績輸入框 64→68px 以放下「100.25」（推薦 A：加寬）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
+        <tr>
+          <td><a href="page-exam-detail.html">page-exam-detail.html</a></td>
+          <td class="tasks">FRONTEND-233, FRONTEND-234, FRONTEND-235, FRONTEND-239, FRONTEND-296, FRONTEND-301, FRONTEND-315, FRONTEND-317</td>
+          <td class="route"><code>/exams/:id</code></td>
+          <td class="note">無待裁定（315 畫面不變只補 decision；317 滿分 / 分數最多兩位小數）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
+        <tr>
+          <td><a href="page-exams.html">page-exams.html</a></td>
+          <td class="tasks">FRONTEND-231, FRONTEND-232, FRONTEND-317</td>
+          <td class="route"><code>/exams</code></td>
+          <td class="note">無待裁定（建立考試滿分最多兩位小數）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
+        <tr>
+          <td><a href="page-pickup-pos.html">page-pickup-pos.html</a></td>
+          <td class="tasks">FRONTEND-189, FRONTEND-190, FRONTEND-191, FRONTEND-192, FRONTEND-193, FRONTEND-194, FRONTEND-195, FRONTEND-197, FRONTEND-198, FRONTEND-199, FRONTEND-298, FRONTEND-314</td>
+          <td class="route"><code>/pickup</code></td>
+          <td class="note">1 題：⋮ / 左滑時提示列是否也立即消失（推薦 A：照裁定，多留到下一次點擊）</td>
+          <td><span class="status status--draft">待核可</span></td>
+          <td>2026-10-17</td>
+        </tr>
       </tbody>
     </table>
   </div>
 
-  <h2>已核可（68）</h2>
+  <h2>已核可（64）</h2>
   <div class="card">
     <table>
       <thead>
@@ -110,13 +141,6 @@ code { font-size: 13px; }
           <td class="route"><code>component:components/common/{PageHeader,AdminListToolbar,EmptyState}.vue</code></td>
           <td><span class="status status--approved">已核可</span></td>
           <td>2026-10-03</td>
-        </tr>
-        <tr>
-          <td><a href="component-exams.html">component-exams.html</a></td>
-          <td class="tasks">FRONTEND-236, FRONTEND-238, FRONTEND-296</td>
-          <td class="route"><code>component:components/exams/{ScoreCell,RenotifyChoiceDialog}.vue</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-16</td>
         </tr>
         <tr>
           <td><a href="component-pickup-countdown.html">component-pickup-countdown.html</a></td>
@@ -189,20 +213,6 @@ code { font-size: 13px; }
           <td>2026-10-04</td>
         </tr>
         <tr>
-          <td><a href="page-exam-detail.html">page-exam-detail.html</a></td>
-          <td class="tasks">FRONTEND-233, FRONTEND-234, FRONTEND-235, FRONTEND-239, FRONTEND-296, FRONTEND-301</td>
-          <td class="route"><code>/exams/:id</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-16</td>
-        </tr>
-        <tr>
-          <td><a href="page-exams.html">page-exams.html</a></td>
-          <td class="tasks">FRONTEND-231, FRONTEND-232</td>
-          <td class="route"><code>/exams</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-08</td>
-        </tr>
-        <tr>
           <td><a href="page-homework-board.html">page-homework-board.html</a></td>
           <td class="tasks">FRONTEND-151, FRONTEND-153, FRONTEND-154, FRONTEND-155, FRONTEND-156, FRONTEND-157, FRONTEND-299</td>
           <td class="route"><code>/homework</code></td>
@@ -229,13 +239,6 @@ code { font-size: 13px; }
           <td class="route"><code>/pickup/authorizations</code></td>
           <td><span class="status status--approved">已核可</span></td>
           <td>2026-10-08</td>
-        </tr>
-        <tr>
-          <td><a href="page-pickup-pos.html">page-pickup-pos.html</a></td>
-          <td class="tasks">FRONTEND-189, FRONTEND-190, FRONTEND-191, FRONTEND-192, FRONTEND-193, FRONTEND-194, FRONTEND-195, FRONTEND-197, FRONTEND-198, FRONTEND-199, FRONTEND-298</td>
-          <td class="route"><code>/pickup</code></td>
-          <td><span class="status status--approved">已核可</span></td>
-          <td>2026-10-16</td>
         </tr>
         <tr>
           <td><a href="page-settings-accounts.html">page-settings-accounts.html</a></td>

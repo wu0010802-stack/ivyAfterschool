@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
-<meta name="preview-status" content="approved">
-<meta name="preview-tasks" content="FRONTEND-231,FRONTEND-232">
+<meta name="preview-status" content="draft">
+<meta name="preview-tasks" content="FRONTEND-231,FRONTEND-232,FRONTEND-317">
 <meta name="preview-route" content="/exams">
-<meta name="preview-updated" content="2026-10-08">
+<meta name="preview-updated" content="2026-10-17">
 
 <title>設計稿：考試列表</title>
 
@@ -804,6 +804,9 @@ const CLASSES = [
   { id: 'c4', name: '中年級B班', grade_levels: [3, 4], student_count: 29 },
   { id: 'c5', name: '高年級班', grade_levels: [5, 6], student_count: 22 },
 ]
+/** FRONTEND-317：滿分 >0、≤1000、最多兩位小數（與後端 numeric(6,2) 一致；實作抽到 utils/examScore.ts）。
+ *  不用 v * 100 === 整數 判斷（1.15 * 100 !== 115），以 Math.round 加容差比對 */
+const isValidFullScore = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 1000 && Math.abs(Math.round(v * 100) - v * 100) < 1e-6
 const SUBJECTS = [
   { id: 'sub1', name: '國語' }, { id: 'sub2', name: '數學' }, { id: 'sub3', name: '英語' }, { id: 'sub4', name: '自然' }, { id: 'sub5', name: '社會' },
 ]
@@ -879,7 +882,7 @@ const ExamFormDialog = {
       if (!form.exam_type_id) errors.exam_type_id = '請選擇考試類型'
       if (!form.exam_date) errors.exam_date = '請選擇考試日期'
       if (!form.grade_level && !form.class_id) errors.scope = '請選擇年級或班級'
-      if (subjects.value.some((s) => s.on && !(s.full_score > 0))) errors.subjects = '請輸入勾選科目的滿分'
+      if (subjects.value.some((s) => s.on && !isValidFullScore(s.full_score))) errors.subjects = '請輸入勾選科目的滿分（大於 0、最多 1000、最多兩位小數）'
       return !Object.values(errors).some(Boolean)
     }
     const createBody = () => {
@@ -1036,7 +1039,7 @@ const ExamFormDialog = {
             <div v-for="s in subjects" :key="s.subject_id" class="ef-subject" :class="{ 'is-off': !s.on }">
               <el-checkbox v-model="s.on" :disabled="loading" @change="errors.subjects = ''">{{ s.name }}</el-checkbox>
               <span class="ef-subject__full">滿分
-                <el-input-number v-model="s.full_score" :min="0.1" :max="1000" :step="1" controls-position="right"
+                <el-input-number v-model="s.full_score" :min="0.01" :max="1000" :step="1" controls-position="right"
                                  :disabled="!s.on || loading" :aria-label="s.name + ' 滿分'"
                                  @change="errors.subjects = ''"></el-input-number>
               </span>
@@ -1193,7 +1196,7 @@ const app = createApp({
       '空清單：篩選維持預設時 EmptyState「還沒有考試紀錄」+ 說明「預設只顯示近 90 天到未來 30 天的考試，更早的考試請調整日期區間」+（exams:write）「建立考試」；改過篩選時表格內 inline「沒有符合條件的考試」+「試著調整搜尋文字、篩選條件或日期區間」。載入中：表格 v-loading；載入失敗：EmptyState error「無法載入考試」+「重試」取代表格。',
       '只有 exams:read：沒有「建立考試」、整個 ⋮ 欄移除、空清單不附建立按鈕，其他照常（仍可點進考試頁看成績）。課輔老師（exams:write，無 exams:publish）在本頁與主任相同，差別只在考試頁的發布按鈕。',
       'ExamFormDialog（FormDialog lg 800，標題「建立考試」/「編輯考試」，送出鈕「建立」/「儲存」，編輯沒有變更時停用）：第一列 名稱（必填 ≤50 字計數）、考試類型（必填）、考試日期（必填，YYYY/MM/DD）；「應考對象 *」小標 + 灰字「年級與班級至少選一項，決定應考學生名單」，下面年級、班級兩個可清除下拉（placeholder「不限」），兩者皆空送出時兩框紅色並在下方顯示「請選擇年級或班級」，兩者皆選時灰字「只包含該班中該年級的學生」；備註（≤200 字計數）。',
-      '建立時另有「科目與滿分」：每科一個 48px 高的框（勾選框 + 科目名，右側「滿分」數字框），預設全部勾選、滿分 100（>0、≤1000、最多一位小數），取消勾選的科目滿分停用；小標右側「全選」（部分勾選時為半選）；小標旁灰字「建立後可在考試頁的「科目設定」分頁調整科目、滿分與順序」。沒有任何啟用科目時改顯示「尚未建立任何科目。可以先建立考試，之後再到考試頁的「科目設定」新增。」。',
+      '建立時另有「科目與滿分」：每科一個 48px 高的框（勾選框 + 科目名，右側「滿分」數字框），預設全部勾選、滿分 100（>0、≤1000、最多兩位小數，與後端 numeric(6,2) 一致；不合法時小標下方「請輸入勾選科目的滿分（大於 0、最多 1000、最多兩位小數）」，FRONTEND-317），取消勾選的科目滿分停用；小標右側「全選」（部分勾選時為半選）；小標旁灰字「建立後可在考試頁的「科目設定」分頁調整科目、滿分與順序」。沒有任何啟用科目時改顯示「尚未建立任何科目。可以先建立考試，之後再到考試頁的「科目設定」新增。」。',
       '建立流程：POST /admin/exams（只送有值的欄位）→ 有勾選科目才 PUT subjects（sort_order 依科目順序 1..n）→ ElMessage.success「已建立考試」→ 導到 /exams/{id}?tab=scores。科目那步失敗：考試仍算建立成功，改顯示 warning「考試已建立，但科目設定失敗，請到「科目設定」分頁重試」並照樣導頁（成績分頁會引導去設定科目）。',
       '編輯（入口在考試頁 header「編輯資訊」，本稿用控制列開啟）：沒有科目區，草稿底部灰字「科目與滿分請在考試頁的「科目設定」分頁調整」；只送有變更的欄位，年級 / 班級清除時送 null。已發布：頂端 info「已發布的考試只能修改名稱、日期與備註」，類型、年級、班級 disabled。草稿改了年級或班級：橘字「變更應考對象後，已有成績但不在新名單的學生，成績會保留並標示「已不在名單」。」。考試的班級不在目前學年度清單時仍顯示原班級名稱。',
       '錯誤：422 invalid_exam_type / invalid_class / grade_not_in_class → 分別在類型 / 班級 / 年級欄下方顯示後端 message；409 exam_published（編輯草稿時被別人發布，且改了類型或範圍）→ dialog 頂端紅色 alert 顯示後端 message，dialog 不關。前端驗證：名稱「請輸入考試名稱」、類型「請選擇考試類型」、日期「請選擇考試日期」。',
