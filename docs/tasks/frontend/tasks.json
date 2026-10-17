@@ -1,7 +1,7 @@
 {
   "area": "frontend",
-  "version": 355,
-  "last_updated": "2026-10-17T07:42:54Z",
+  "version": 356,
+  "last_updated": "2026-10-17T07:43:28Z",
   "tasks": [
     {
       "id": "FRONTEND-001",
@@ -6171,11 +6171,11 @@
     {
       "id": "FRONTEND-293",
       "title": "撰寫 e2e：建立考試 → 成績輸入（自動儲存）→ 發布",
-      "description": "建立 `apps/web/e2e/admin/exams.spec.ts`。種子資料 2 位學生（班級對象）。\n\n**流程**\n1. `loginAsAdmin` → `/#/exams` →「建立考試」：名稱「E2E 段考-{runId}」、類型第一個、日期今天、班級為種子班級、科目勾選國語與數學 → 建立後進入 `?tab=scores`。\n2. 第一位學生國語輸入 95、數學輸入 88；第二位國語勾「缺」、數學輸入 101（超過滿分，格子顯示錯誤、不送出）後改為 100。\n3. 等待工具列顯示「所有變更已儲存」；重新整理後分數仍在。\n4. 「各科平均」分頁：國語平均 95.0（缺考不計）、數學平均 94.0。\n5. 「發布」→ 確認 → 狀態「已發布」；修改第一位國語為 96 → 出現重新通知選擇 → 選「不通知」→ 儲存成功。\n- afterAll：刪除考試（已發布先 `POST /api/admin/exams/{id}/unpublish` 再 `DELETE`，草稿直接刪），不在共用 DB 留下考試與成績列；再 cleanup 學生。\n\n**驗收標準**：每一條對應下列 red_case。",
+      "description": "建立 `apps/web/e2e/admin/exams.spec.ts`。種子資料 2 位學生（班級對象）。\n\n**流程**\n1. `loginAsAdmin` → `/#/exams` →「建立考試」：名稱「E2E 段考-{runId}」、類型第一個、日期今天、班級為種子班級、科目勾選國語與數學 → 建立後進入 `?tab=scores`。\n2. 第一位學生國語輸入 95、數學輸入 88；第二位國語勾「缺」、數學輸入 101（超過滿分，格子顯示錯誤、不送出）後改為 100。\n3. 等待工具列顯示「所有變更已儲存」；重新整理後分數仍在。\n4. 「各科平均」分頁：國語平均 95.0（缺考不計）、數學平均 94.0。\n5. 「發布」→ 確認 → 狀態「已發布」；修改第一位國語為 96 → 出現重新通知選擇 → 選「不通知」→ 儲存成功。\n- 考試 id 以 `page.waitForResponse` 取自按「建立」的 `POST /api/admin/exams` 回應（不靠網址）；建立後換到 `?tab=scores` 的等待給 30 秒（dev server 冷快取首次編譯考試頁）。\n- afterAll：刪除本次建立的考試——上述 id 加上以名稱「E2E 段考-{runId}」查 `GET /api/admin/exams?q=` 補到的同名考試（已發布先 `POST /api/admin/exams/{id}/unpublish` 再 `DELETE`，草稿直接刪），換頁前就失敗時也不在共用 DB 留下考試與成績列；再 cleanup 學生。\n\n**驗收標準**：每一條對應下列 red_case。",
       "granularity_unit": "test",
       "target_path": "apps/web/e2e/admin/exams.spec.ts",
       "source_ref": null,
-      "status": "in_progress",
+      "status": "in_review",
       "assignee_session": "impl-e2e-r11",
       "depends_on": [
         "FRONTEND-290",
