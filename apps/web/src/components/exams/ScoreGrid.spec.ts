@@ -128,6 +128,21 @@ function dialogOpen(wrapper: VueWrapper): boolean {
   return wrapper.findComponent(RenotifyChoiceDialog).props('modelValue') as boolean
 }
 
+function gridVm(wrapper: VueWrapper): { markPublished: () => void } {
+  return wrapper.vm as unknown as { markPublished: () => void }
+}
+
+/** 點 RenotifyChoiceDialog 的按鈕（teleport 到 body） */
+async function chooseInDialog(text: string): Promise<void> {
+  const button = Array.from(document.body.querySelectorAll<HTMLButtonElement>('.el-dialog button')).find(
+    (b) => b.textContent?.trim() === text,
+  )
+  if (!button) throw new Error(`dialog 找不到按鈕「${text}」`)
+  button.click()
+  await tick()
+  await tick()
+}
+
 function dirtyChanges(wrapper: VueWrapper): unknown[][] {
   return wrapper.emitted('dirty-change') ?? []
 }
@@ -565,5 +580,69 @@ describe('ScoreGrid', { timeout: 30000 }, () => {
     await tick()
     expect(mock.history.get).toHaveLength(2)
     expect(scoreInput(wrapper, 0, 0).value).toBe('70')
+  })
+
+  it('ScoreGrid prompts when reload turns exam published with dirty cells', async () => {
+    mock.onPut(GRID_URL).reply(200, RESULT)
+    const { wrapper } = await mountGrid({ attach: true, data: grid({ cells: [] }) })
+    await typeAndBlur(wrapper, 0, 0, '95')
+
+    // debounce 到期前，重新載入拿到已發布
+    const published = grid({ exam: { ...EXAM, status: 'published', subjects: SUBJECTS }, cells: [] })
+    mock.onGet(GRID_URL).reply(200, published)
+    await (wrapper.vm as unknown as { reload: () => Promise<void> }).reload()
+    await tick()
+    expect(dialogOpen(wrapper)).toBe(false)
+
+    await tick(800)
+    expect(dialogOpen(wrapper)).toBe(true)
+    expect(document.body.textContent).toContain('是否在修改後通知家長分數已更新？')
+    expect(mock.history.put).toHaveLength(0)
+    expect(toolbarText(wrapper)).toContain('1 格尚未儲存')
+
+    await chooseInDialog('不通知')
+    expect(putBodies()).toEqual([
+      {
+        cells: [{ student_id: 's1', subject_id: 'sub1', score: 95, is_absent: false, note: null }],
+        notify_parents: false,
+      },
+    ])
+    expect(toolbarText(wrapper)).toContain('所有變更已儲存')
+  })
+
+  it('ScoreGrid markPublished holds pending edits until choice', async () => {
+    mock.onPut(GRID_URL).reply(200, RESULT)
+    const { wrapper } = await mountGrid({ attach: true })
+    await typeAndBlur(wrapper, 0, 1, '88')
+    gridVm(wrapper).markPublished()
+    await tick()
+
+    await tick(800)
+    expect(mock.history.put).toHaveLength(0)
+    expect(dialogOpen(wrapper)).toBe(true)
+    expect(toolbarText(wrapper)).toContain('1 格尚未儲存')
+
+    await chooseInDialog('通知家長')
+    expect(putBodies()).toEqual([
+      {
+        cells: [{ student_id: 's1', subject_id: 'sub2', score: 88, is_absent: false, note: null }],
+        notify_parents: true,
+      },
+    ])
+    expect(toolbarText(wrapper)).toContain('所有變更已儲存')
+  })
+
+  it('ScoreGrid markPublished without dirty cells does not prompt', async () => {
+    mock.onPut(GRID_URL).reply(200, RESULT)
+    const { wrapper } = await mountGrid({ attach: true })
+    gridVm(wrapper).markPublished()
+    await tick(800)
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(toolbarText(wrapper)).toContain('尚未選擇')
+
+    await typeAndBlur(wrapper, 1, 0, '70')
+    await tick(800)
+    expect(dialogOpen(wrapper)).toBe(true)
+    expect(mock.history.put).toHaveLength(0)
   })
 })

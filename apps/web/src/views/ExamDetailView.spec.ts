@@ -10,8 +10,13 @@ import { VIEW_LOADERS } from '@/router/viewLoaders'
 import { createApiMock, mountWithApp } from '@/test/helpers'
 import ExamDetailView from './ExamDetailView.vue'
 
-/** ScoreGrid stub：flush 後的 hasUnsaved / failedCount 由測試決定，記錄呼叫次數 */
+/**
+ * ScoreGrid stub：flush 後的 hasUnsaved / failedCount 由測試決定，記錄呼叫次數。
+ * useReal 為 true 時改掛真正的 ScoreGrid（發布與成績格重新載入交錯的整合案例），expose 轉接到內層元件。
+ */
 const grid = vi.hoisted(() => ({
+  useReal: false,
+  markPublishedCalls: 0,
   hasUnsaved: false,
   failedCount: 0,
   afterFlush: { hasUnsaved: false, failedCount: 0 },
@@ -23,13 +28,38 @@ const grid = vi.hoisted(() => ({
   instance: null as null | { hasUnsaved: { value: boolean }; failedCount: { value: number } },
 }))
 
-vi.mock('@/components/exams/ScoreGrid.vue', async () => {
+interface GridExpose {
+  hasUnsaved: boolean
+  failedCount: number
+  flush: () => Promise<void>
+  reload: () => Promise<void>
+  markPublished: () => void
+}
+
+vi.mock('@/components/exams/ScoreGrid.vue', async (importOriginal) => {
   const { defineComponent: define, h: render, ref } = await import('vue')
+  const actual = await importOriginal<{ default: object }>()
   return {
     default: define({
       name: 'ScoreGrid',
+      inheritAttrs: false,
       props: { examId: { type: String, required: true }, canWrite: Boolean },
-      setup(props, { expose }) {
+      setup(props, { expose, attrs }) {
+        if (grid.useReal) {
+          const inner = ref<GridExpose | null>(null)
+          expose({
+            get hasUnsaved() {
+              return inner.value?.hasUnsaved ?? false
+            },
+            get failedCount() {
+              return inner.value?.failedCount ?? 0
+            },
+            flush: () => inner.value?.flush(),
+            reload: () => inner.value?.reload(),
+            markPublished: () => inner.value?.markPublished(),
+          })
+          return () => render(actual.default, { ...props, ...attrs, ref: inner })
+        }
         grid.mounts += 1
         grid.examIds.push(props.examId)
         const hasUnsaved = ref(grid.hasUnsaved)
@@ -45,6 +75,9 @@ vi.mock('@/components/exams/ScoreGrid.vue', async () => {
           },
           reload: async () => {
             grid.reloadCalls += 1
+          },
+          markPublished: () => {
+            grid.markPublishedCalls += 1
           },
         })
         return () => render('div', { class: 'score-grid-stub', 'data-exam': props.examId })
@@ -192,6 +225,8 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
   beforeEach(() => {
     mock = createApiMock(adminHttp)
     Object.assign(grid, {
+      useReal: false,
+      markPublishedCalls: 0,
       hasUnsaved: false,
       failedCount: 0,
       afterFlush: { hasUnsaved: false, failedCount: 0 },
@@ -258,6 +293,9 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
     expect(wrapper.find('.exam-meta .el-tag').text()).toBe('已發布')
     expect(getCount(EXAM_URL)).toBe(2)
     expect(grid.reloadCalls).toBe(1)
+    expect(grid.markPublishedCalls).toBe(1)
+    // 發布前已 flush 過：重新載入成績格時不再 flush
+    expect(grid.flushCalls).toBe(1)
     expect(headerButtons(wrapper)).toEqual(['編輯資訊', '取消發布'])
   })
 
@@ -590,6 +628,126 @@ describe('ExamDetailView', { timeout: 60000 }, () => {
     await settle()
     await settle()
     expect(wrapper.findComponent({ name: 'ExamSubjectsEditor' }).props('scoredCounts')).toEqual({ sub1: 29, sub2: 28 })
+  })
+
+  describe('with real ScoreGrid', () => {
+    const SCORES_URL = '/admin/exams/e1/scores'
+    const SUBJECTS = DRAFT.subjects
+    const STUDENTS = [{ id: 's1', student_no: 'S11301', name: '王小明', class_name: '中年級班', in_roster: true }]
+
+    function scoreGrid(exam: Exam) {
+      return { exam, students: STUDENTS, subjects: SUBJECTS, cells: [] }
+    }
+
+    async function tick(ms = 0): Promise<void> {
+      await nextTick()
+      await vi.advanceTimersByTimeAsync(ms)
+      await flushPromises()
+      await nextTick()
+    }
+
+    async function editCell(wrapper: VueWrapper, value: string): Promise<void> {
+      const input = wrapper.find('.sg-cell[data-row="0"][data-col="0"] input[inputmode=decimal]')
+      await input.setValue(value)
+      await input.trigger('blur')
+      await tick()
+    }
+
+    function putBodies(): { cells: unknown[]; notify_parents: boolean }[] {
+      return mock.history.put.map((c) => JSON.parse(c.data as string))
+    }
+
+    beforeEach(() => {
+      grid.useReal = true
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('ExamDetailView publish then edit before grid reload asks renotify', async () => {
+      mock.onGet(EXAM_URL).replyOnce(200, DRAFT).onGet(EXAM_URL).reply(200, PUBLISHED)
+      mock.onGet(SUMMARY_URL).reply(200, summary([0, 0]))
+      mock.onPost('/admin/exams/e1/publish').reply(200, PUBLISHED)
+      mock.onPut(SCORES_URL).reply(200, { written: 1, changed: 1, renotified_students: 0 })
+      let releaseGrid: () => void = () => undefined
+      mock
+        .onGet(SCORES_URL)
+        .replyOnce(200, scoreGrid(DRAFT))
+        .onGet(SCORES_URL)
+        .replyOnce(
+          () =>
+            new Promise((resolve) => {
+              releaseGrid = () => resolve([200, scoreGrid(PUBLISHED)])
+            }),
+        )
+      const { wrapper } = await mountView()
+      await tick()
+
+      await clickHeader(wrapper, '發布')
+      await answerMessageBox('發布')
+      await tick()
+      expect(mock.history.post.map((c) => c.url)).toEqual(['/admin/exams/e1/publish'])
+      // 成績格的重新載入卡住中
+      expect(mock.history.get.filter((c) => c.url === SCORES_URL)).toHaveLength(2)
+
+      await editCell(wrapper, '90')
+      await tick(800)
+      expect(mock.history.put).toHaveLength(0)
+      expect(document.body.textContent).not.toContain('放棄變更')
+
+      releaseGrid()
+      await tick()
+      await tick(800)
+      const dialog = Array.from(document.body.querySelectorAll<HTMLElement>('.el-dialog')).find((d) =>
+        d.textContent?.includes('是否在修改後通知家長分數已更新？'),
+      )
+      expect(dialog).toBeDefined()
+      const skip = Array.from(dialog!.querySelectorAll<HTMLButtonElement>('button')).find(
+        (b) => b.textContent?.trim() === '不通知',
+      )
+      skip!.click()
+      await tick()
+      await tick()
+
+      expect(putBodies()).toEqual([
+        {
+          cells: [{ student_id: 's1', subject_id: 'sub1', score: 90, is_absent: false, note: null }],
+          notify_parents: false,
+        },
+      ])
+      expect(wrapper.find('.grid-toolbar').text()).toContain('所有變更已儲存')
+      expect(document.body.textContent).not.toContain('放棄變更')
+    })
+
+    it('ExamDetailView publish still flushes draft edits first', async () => {
+      const calls: string[] = []
+      mock.onGet(EXAM_URL).replyOnce(200, DRAFT).onGet(EXAM_URL).reply(200, PUBLISHED)
+      mock.onGet(SCORES_URL).replyOnce(200, scoreGrid(DRAFT)).onGet(SCORES_URL).reply(200, scoreGrid(PUBLISHED))
+      mock.onGet(SUMMARY_URL).reply(200, summary([0, 0]))
+      mock.onPut(SCORES_URL).reply((config) => {
+        calls.push(`put:${(JSON.parse(config.data as string) as { notify_parents: boolean }).notify_parents}`)
+        return [200, { written: 1, changed: 1, renotified_students: 0 }]
+      })
+      mock.onPost('/admin/exams/e1/publish').reply(() => {
+        calls.push('publish')
+        return [200, PUBLISHED]
+      })
+      const { wrapper } = await mountView()
+      await tick()
+
+      // debounce 到期前就按發布
+      await editCell(wrapper, '77')
+      await clickHeader(wrapper, '發布')
+      await answerMessageBox('發布')
+      await tick()
+
+      expect(calls).toEqual(['put:false', 'publish'])
+      expect(putBodies()[0]?.cells).toEqual([
+        { student_id: 's1', subject_id: 'sub1', score: 77, is_absent: false, note: null },
+      ])
+    })
   })
 
   it('ExamDetailView is wired in view loaders', async () => {
